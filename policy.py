@@ -32,7 +32,6 @@ class SoftmaxPolicy(Policy):
         """
         logits = self.forward(state)
         softmax_probs = F.softmax(logits)
-        print 'state', state, 'probs', softmax_probs.data
         action_indices = []
         for i in xrange(softmax_probs.data.shape[0]):
             histogram = np.random.multinomial(1, softmax_probs.data[i])
@@ -62,11 +61,9 @@ class FCSoftmaxPolicy(chainer.ChainList, SoftmaxPolicy):
         super(FCSoftmaxPolicy, self).__init__(*layers)
 
     def forward(self, state):
-        print 'forward with state', state
         h = chainer.Variable(state)
         for layer in self[:-1]:
             h = F.relu(layer(h))
-            print 'h', h.data
         h = self[-1](h)
         return h
 
