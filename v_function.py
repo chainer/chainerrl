@@ -27,6 +27,6 @@ class FCVFunction(chainer.ChainList, VFunction):
     def __call__(self, state):
         h = chainer.Variable(state)
         for layer in self[:-1]:
-            h = F.relu(layer(h))
+            h = F.elu(layer(h))
         h = self[-1](h)
         return h
