@@ -62,7 +62,7 @@ def run_a3c_process(pi_shared_arrays, v_shared_arrays, opt_shared_arrays):
     set_shared_params(pi, pi_shared_arrays)
     set_shared_params(v, v_shared_arrays)
 
-    optimizer = optimizers.RMSprop()
+    optimizer = optimizers.RMSprop(lr=1e-3)
     optimizer.setup(chainer.ChainList(pi, v))
     set_shared_states(optimizer, opt_shared_arrays)
     agent = a3c.A3C(pi, v, optimizer, 1, 0.9)
