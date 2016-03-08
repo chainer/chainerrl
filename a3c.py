@@ -60,7 +60,7 @@ class A3C(agent.Agent):
             action, prob = self.policy.sample_with_probability(state)
             self.past_action_prob[self.t] = prob
             self.t += 1
-            return action
+            return action[0]
         else:
             return None
 
