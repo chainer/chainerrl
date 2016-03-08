@@ -27,3 +27,7 @@ class XOR(environment.EpisodicEnvironment):
     def initialize(self):
         self._state = np.random.randint(2, size=2)
         self._reward = 0
+
+    @property
+    def is_terminal(self):
+        return np.random.randint(10) == 0

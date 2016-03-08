@@ -21,3 +21,7 @@ class EpisodicEnvironment(Environment):
         """
         pass
 
+    @property
+    def is_terminal(self):
+        pass
+

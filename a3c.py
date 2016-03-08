@@ -64,8 +64,50 @@ class A3C(agent.Agent):
         else:
             return None
 
+    @property
+    def links(self):
+        return [self.policy, self.v_function]
 
-def create_a3c_agents(num_agents):
+    @property
+    def optimizers(self):
+        return [self.optimizer]
+
+
+def set_shared_params(a, b):
+    for param_name, param in a.namedparams():
+        if param_name in b:
+            shared_param = b[param_name]
+            param.data = np.frombuffer(shared_param.get_obj(
+            ), dtype=param.data.dtype).reshape(param.data.shape)
+
+
+def set_shared_states(a, b):
+    for state_name, shared_state in b.iteritems():
+        for param_name, param in shared_state.iteritems():
+            old_param = a._states[state_name][param_name]
+            a._states[state_name][param_name] = np.frombuffer(
+                param.get_obj(),
+                dtype=old_param.dtype).reshape(old_param.shape)
+
+
+def extract_params_as_shared_arrays(link):
+    shared_arrays = {}
+    for param_name, param in link.namedparams():
+        shared_arrays[param_name] = mp.Array('f', param.data.ravel())
+    return shared_arrays
+
+
+def extract_states_as_shared_arrays(optimizer):
+    shared_arrays = {}
+    for state_name, state in optimizer._states.iteritems():
+        shared_arrays[state_name] = {}
+        for param_name, param in state.iteritems():
+            shared_arrays[state_name][
+                param_name] = mp.Array('f', param.ravel())
+    return shared_arrays
+
+
+def create_a3c_agents(base_agent, num_process, envs):
     raise NotImplementedError
 
 
