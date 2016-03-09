@@ -24,6 +24,8 @@ def main():
     parser.add_argument('processes', type=int)
     parser.add_argument('rom', type=str)
     parser.add_argument('--seed', type=int, default=None)
+    parser.add_argument('--use-sdl', action='store_true')
+    parser.set_defaults(use_sdl=False)
     args = parser.parse_args()
 
     if args.seed is not None:
@@ -39,7 +41,7 @@ def main():
         return a3c.A3C(pi, v, opt, 5, 0.99)
 
     def env_func():
-        return ale.ALE(args.rom, use_sdl=False)
+        return ale.ALE(args.rom, use_sdl=args.use_sdl)
 
     def run_func(agent, env):
         total_r = 0
