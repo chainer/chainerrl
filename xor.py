@@ -30,4 +30,4 @@ class XOR(environment.EpisodicEnvironment):
 
     @property
     def is_terminal(self):
-        return np.random.randint(10) == 0
+        return False
