@@ -46,7 +46,7 @@ class SoftmaxPolicy(Policy):
         probs = F.softmax(logits)
         action_indices = _sample_actions(probs.data)
         sampled_actions_probs = F.select_item(
-            softmax_probs,
+            probs,
             chainer.Variable(np.asarray(action_indices, dtype=np.int32)))
         return action_indices, sampled_actions_probs
 
