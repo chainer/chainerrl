@@ -65,6 +65,24 @@ class SoftmaxPolicy(Policy):
             chainer.Variable(np.asarray(action_indices, dtype=np.int32)))
         return action_indices, sampled_actions_log_probs
 
+    def sample_with_log_probability_and_entropy(self, state):
+        """
+        Returns:
+          ~list: action indices
+          ~chainer.Variable: log probabilities of sampled actions
+        """
+        logits = self.forward(state)
+        probs = F.softmax(logits)
+        action_indices = _sample_actions(probs.data)
+        log_probs = F.log_softmax(logits)
+        sampled_actions_log_probs = F.select_item(
+            log_probs,
+            chainer.Variable(np.asarray(action_indices, dtype=np.int32)))
+        # Entropy
+        entropy = - F.sum(probs * log_probs, axis=1)
+        print 'entropy:{}, probs:{}'.format(entropy.data, probs.data)
+        return action_indices, sampled_actions_log_probs, entropy
+
 
 class FCSoftmaxPolicy(chainer.ChainList, SoftmaxPolicy):
 

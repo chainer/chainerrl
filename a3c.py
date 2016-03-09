@@ -9,15 +9,17 @@ class A3C(agent.Agent):
     See http://arxiv.org/abs/1602.01783
     """
 
-    def __init__(self, policy, v_function, optimizer, t_max, gamma):
+    def __init__(self, policy, v_function, optimizer, t_max, gamma, beta=1e-2):
         self.policy = policy
         self.v_function = v_function
         self.optimizer = optimizer
         self.t_max = t_max
         self.gamma = gamma
+        self.beta = beta
         self.t = 0
         self.t_start = 0
         self.past_action_log_prob = {}
+        self.past_action_entropy = {}
         self.past_states = {}
         self.past_rewards = {}
 
@@ -49,7 +51,9 @@ class A3C(agent.Agent):
                 advantage = R - v
                 # Accumulate gradients of policy
                 log_prob = self.past_action_log_prob[i]
-                pi_loss += (- log_prob * float(advantage.data))
+                # pi_loss += (- log_prob * float(advantage.data))
+                pi_loss -= log_prob * float(advantage.data)
+                pi_loss -= self.beta * self.past_action_entropy[i]
                 # Accumulate gradients of value function
                 v_loss += advantage ** 2
             pi_loss.backward()
@@ -58,6 +62,7 @@ class A3C(agent.Agent):
             self.optimizer.update()
 
             self.past_action_log_prob = {}
+            self.past_action_entropy = {}
             self.past_states = {}
             self.past_rewards = {}
 
@@ -65,8 +70,10 @@ class A3C(agent.Agent):
 
         if not is_state_terminal:
             self.past_states[self.t] = state
-            action, log_prob = self.policy.sample_with_log_probability(state)
+            action, log_prob, entropy = \
+                self.policy.sample_with_log_probability_and_entropy(state)
             self.past_action_log_prob[self.t] = log_prob
+            self.past_action_entropy[self.t] = entropy
             self.t += 1
             return action[0]
         else:
