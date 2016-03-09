@@ -14,6 +14,7 @@ import a3c
 import xor
 import random_seed
 import async
+import rmsprop_ones
 
 
 def main():
@@ -33,7 +34,7 @@ def main():
     def agent_func():
         pi = policy.FCSoftmaxPolicy(2, 2, 10, 2)
         v = v_function.FCVFunction(2, 10, 2)
-        opt = optimizers.RMSprop(lr=args.lr)
+        opt = rmsprop_ones.RMSpropOnes(lr=args.lr)
         opt.setup(chainer.ChainList(pi, v))
         return a3c.A3C(pi, v, opt, args.t_max, args.gamma, args.beta)
 

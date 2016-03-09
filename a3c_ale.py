@@ -16,6 +16,7 @@ import a3c
 import ale
 import random_seed
 import async
+import rmsprop_ones
 
 
 def main():
@@ -31,7 +32,7 @@ def main():
     def agent_func():
         pi = ale_policy.DQNPolicy()
         v = ale_v_function.DQNVFunction()
-        opt = optimizers.RMSprop(lr=1e-5)
+        opt = rmsprop_ones.RMSpropOnes(lr=1e-3)
         opt.setup(chainer.ChainList(pi, v))
         return a3c.A3C(pi, v, opt, 5, 0.99)
 
