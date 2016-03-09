@@ -29,8 +29,10 @@ def main():
     if args.seed is not None:
         random_seed.set_random_seed(args.seed)
 
+    n_actions = ale.ALE(args.rom).number_of_actions
+
     def agent_func():
-        pi = ale_policy.DQNPolicy()
+        pi = ale_policy.DQNPolicy(n_actions=n_actions)
         v = ale_v_function.DQNVFunction()
         opt = rmsprop_ones.RMSpropOnes(lr=1e-3)
         opt.setup(chainer.ChainList(pi, v))

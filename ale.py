@@ -38,6 +38,7 @@ class ALE(environment.EpisodicEnvironment):
         assert ale.getFrameNumber() == 0
 
         self.ale = ale
+        self.legal_actions = ale.getMinimalActionSet()
         self.initialize()
 
     def current_screen(self):
@@ -81,13 +82,13 @@ class ALE(environment.EpisodicEnvironment):
             return 0
 
     @property
-    def legal_actions(self):
-        return self.ale.getLegalActionSet()
+    def number_of_actions(self):
+        return len(self.legal_actions)
 
     def receive_action(self, action):
         assert not self.is_terminal
 
-        self._reward = self.ale.act(action)
+        self._reward = self.ale.act(self.legal_actions[action])
         self.last_screens.append(self.current_screen())
         if self.lives > self.ale.lives():
             self.lives_lost = True
