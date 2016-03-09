@@ -17,7 +17,7 @@ class A3C(agent.Agent):
         self.gamma = gamma
         self.t = 0
         self.t_start = 0
-        self.past_action_prob = {}
+        self.past_action_log_prob = {}
         self.past_states = {}
         self.past_rewards = {}
 
@@ -27,7 +27,11 @@ class A3C(agent.Agent):
 
         self.past_rewards[self.t - 1] = reward
 
-        if is_state_terminal or self.t - self.t_start == self.t_max:
+        if (is_state_terminal and self.t_start < self.t) \
+                or self.t - self.t_start == self.t_max:
+
+            assert self.t_start < self.t
+
             # Update
             if is_state_terminal:
                 R = 0
@@ -36,20 +40,24 @@ class A3C(agent.Agent):
 
             self.optimizer.zero_grads()
 
+            pi_loss = 0
+            v_loss = 0
             for i in reversed(xrange(self.t_start, self.t)):
                 R *= self.gamma
                 R += self.past_rewards[i]
                 v = self.v_function(self.past_states[i])
                 advantage = R - v
                 # Accumulate gradients of policy
-                log_prob = F.log(self.past_action_prob[i])
-                (- log_prob * float(advantage.data)).backward()
+                log_prob = self.past_action_log_prob[i]
+                pi_loss += (- log_prob * float(advantage.data))
                 # Accumulate gradients of value function
-                (advantage ** 2).backward()
+                v_loss += advantage ** 2
+            pi_loss.backward()
+            v_loss.backward()
 
             self.optimizer.update()
 
-            self.past_action_prob = {}
+            self.past_action_log_prob = {}
             self.past_states = {}
             self.past_rewards = {}
 
@@ -57,8 +65,8 @@ class A3C(agent.Agent):
 
         if not is_state_terminal:
             self.past_states[self.t] = state
-            action, prob = self.policy.sample_with_probability(state)
-            self.past_action_prob[self.t] = prob
+            action, log_prob = self.policy.sample_with_log_probability(state)
+            self.past_action_log_prob[self.t] = log_prob
             self.t += 1
             return action[0]
         else:

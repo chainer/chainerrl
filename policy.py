@@ -13,6 +13,18 @@ class Policy(object):
         raise NotImplementedError
 
 
+def _sample_actions(batch_probs):
+    """
+    Args:
+      batch_probs (ndarray): batch of action probabilities BxA
+    """
+    action_indices = []
+    for i in xrange(batch_probs.shape[0]):
+        histogram = np.random.multinomial(1, batch_probs[i])
+        action_indices.append(int(np.nonzero(histogram)[0]))
+    return action_indices
+
+
 class SoftmaxPolicy(Policy):
     """Abstract softmax policy class.
     """
@@ -31,15 +43,27 @@ class SoftmaxPolicy(Policy):
           ~chainer.Variable: probabilities of sampled actions
         """
         logits = self.forward(state)
-        softmax_probs = F.softmax(logits)
-        action_indices = []
-        for i in xrange(softmax_probs.data.shape[0]):
-            histogram = np.random.multinomial(1, softmax_probs.data[i])
-            action_indices.append(int(np.nonzero(histogram)[0]))
+        probs = F.softmax(logits)
+        action_indices = _sample_actions(probs.data)
         sampled_actions_probs = F.select_item(
             softmax_probs,
             chainer.Variable(np.asarray(action_indices, dtype=np.int32)))
         return action_indices, sampled_actions_probs
+
+    def sample_with_log_probability(self, state):
+        """
+        Returns:
+          ~list: action indices
+          ~chainer.Variable: log probabilities of sampled actions
+        """
+        logits = self.forward(state)
+        probs = F.softmax(logits)
+        action_indices = _sample_actions(probs.data)
+        log_probs = F.log_softmax(logits)
+        sampled_actions_log_probs = F.select_item(
+            log_probs,
+            chainer.Variable(np.asarray(action_indices, dtype=np.int32)))
+        return action_indices, sampled_actions_log_probs
 
 
 class FCSoftmaxPolicy(chainer.ChainList, SoftmaxPolicy):
