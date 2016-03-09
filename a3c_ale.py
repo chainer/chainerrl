@@ -8,8 +8,9 @@ import numpy as np
 import chainer
 from chainer import optimizers
 
-import ale_policy
-import ale_v_function
+import fc_tail_policy
+import fc_tail_v_function
+import dqn_head
 import policy
 import v_function
 import a3c
@@ -34,8 +35,9 @@ def main():
     n_actions = ale.ALE(args.rom).number_of_actions
 
     def agent_func():
-        pi = ale_policy.DQNPolicy(n_actions=n_actions)
-        v = ale_v_function.DQNVFunction()
+        head = dqn_head.NIPSDQNHead()
+        pi = fc_tail_policy.FCTailPolicy(head, 256, n_actions=n_actions)
+        v = fc_tail_v_function.FCTailVFunction(head, 256)
         opt = rmsprop_ones.RMSpropOnes(lr=1e-3)
         opt.setup(chainer.ChainList(pi, v))
         return a3c.A3C(pi, v, opt, 5, 0.99)
