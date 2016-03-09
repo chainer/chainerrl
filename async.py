@@ -8,6 +8,11 @@ import random_seed
 
 
 def set_shared_params(a, b):
+    """
+    Args:
+      a (chainer.Link): link whose params are to be replaced
+      b (dict): dict that consists of (param_name, multiprocessing.Array)
+    """
     for param_name, param in a.namedparams():
         if param_name in b:
             shared_param = b[param_name]
