@@ -42,7 +42,7 @@ def main():
         # TODO: epsilon scheduling
         epsilon = random.random()
         return nstep_q_learning.NStepQLearning(q_func, opt, 5, 0.99, epsilon,
-                                               i_target=5000)
+                                               i_target=40000 / args.processes)
 
     def env_func():
         return ale.ALE(args.rom, use_sdl=args.use_sdl)
