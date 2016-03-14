@@ -41,7 +41,8 @@ def main():
         opt.add_hook(chainer.optimizer.GradientClipping(1.0))
         # TODO: epsilon scheduling
         epsilon = random.random()
-        return nstep_q_learning.NStepQLearning(q_func, opt, 5, 0.99, epsilon)
+        return nstep_q_learning.NStepQLearning(q_func, opt, 5, 0.99, epsilon,
+                                               i_target=5000)
 
     def env_func():
         return ale.ALE(args.rom, use_sdl=args.use_sdl)

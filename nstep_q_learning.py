@@ -1,6 +1,14 @@
+import copy
+
 from chainer import functions as F
 
 import agent
+
+
+def copy_param(target_link, source_link):
+    target_params = dict(target_link.namedparams())
+    for param_name, param in source_link.namedparams():
+        target_params[param_name].data[:] = param.data
 
 
 class NStepQLearning(agent.Agent):
@@ -9,12 +17,14 @@ class NStepQLearning(agent.Agent):
     See http://arxiv.org/abs/1602.01783
     """
 
-    def __init__(self, q_function, optimizer, t_max, gamma, epsilon):
+    def __init__(self, q_function, optimizer, t_max, gamma, epsilon, i_target):
         self.q_function = q_function
+        self.target_q_function = copy.deepcopy(q_function)
         self.optimizer = optimizer
         self.t_max = t_max
         self.gamma = gamma
         self.epsilon = epsilon
+        self.i_target = i_target
         self.t = 0
         self.t_start = 0
         self.past_action_values = {}
@@ -36,9 +46,8 @@ class NStepQLearning(agent.Agent):
             if is_state_terminal:
                 R = 0
             else:
-                R = float(self.q_function.sample_greedily_with_value(state)[1].data)
-
-            self.optimizer.zero_grads()
+                R = float(
+                    self.target_q_function.sample_greedily_with_value(state)[1].data)
 
             loss = 0
             for i in reversed(xrange(self.t_start, self.t)):
@@ -55,8 +64,8 @@ class NStepQLearning(agent.Agent):
             # I'm not sure but if we need to normalize losses...
             # loss /= self.t - self.t_start
 
+            self.optimizer.zero_grads()
             loss.backward()
-
             self.optimizer.update()
 
             self.past_action_values = {}
@@ -72,13 +81,21 @@ class NStepQLearning(agent.Agent):
             print 'q:{}'.format(q.data)
             self.past_action_values[self.t] = q
             self.t += 1
+
+            # Update the target network
+            # Global counter T is used in the original paper, but here we use
+            # process specific counter instead. So i_target should be set
+            # x-times smaller, where x is the number of processes
+            if self.t % self.i_target:
+                copy_param(self.target_q_function, self.q_function)
+
             return action[0]
         else:
             return None
 
     @property
     def links(self):
-        return [self.q_function]
+        return [self.q_function, self.target_q_function]
 
     @property
     def optimizers(self):
