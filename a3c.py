@@ -56,6 +56,15 @@ class A3C(agent.Agent):
                 pi_loss -= self.beta * self.past_action_entropy[i]
                 # Accumulate gradients of value function
                 v_loss += advantage ** 2
+
+            # Do we need to normalize losses by (self.t - self.t_start)?
+            # Otherwise, loss scales can be different in case of self.t_max
+            # and in case of termination.
+
+            # I'm not sure but if we need to normalize losses...
+            # pi_loss /= self.t - self.t_start
+            # v_loss /= self.t - self.t_start
+
             pi_loss.backward()
             v_loss.backward()
 
