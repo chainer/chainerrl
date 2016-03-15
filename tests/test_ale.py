@@ -1,5 +1,7 @@
 import unittest
 import random
+import tempfile
+import sys
 
 from PIL import Image
 import numpy as np
@@ -38,6 +40,18 @@ class TestALE(unittest.TestCase):
 
     def test_current_screen(self):
         self.env.initialize()
-        screen = self.env.current_screen()
-        img = Image.fromarray(screen.astype(np.uint8), mode='L')
-        img.save('test_screen.png')
+        tempdir = tempfile.mkdtemp()
+        print >> sys.stderr, 'tempdir: {}'.format(tempdir)
+        t = 0
+        while not self.env.is_terminal:
+            screen = self.env.current_screen()
+            screen *= 128
+            screen += 128
+            self.assertEquals((screen > 255).sum(), 0)
+            self.assertEquals((screen < 0).sum(), 0)
+            legal_actions = self.env.legal_actions
+            a = random.randrange(len(legal_actions))
+            self.env.receive_action(a)
+            img = Image.fromarray(screen.astype(np.uint8), mode='L')
+            img.save('{}/{}.bmp'.format(tempdir, str(t).zfill(6)))
+            t += 1

@@ -6,6 +6,7 @@ import numpy as np
 import scipy.misc as spm
 from ale_python_interface import ALEInterface
 from PIL import Image
+import cv2
 
 import environment
 
@@ -20,7 +21,7 @@ class ALE(environment.EpisodicEnvironment):
 
         ale = ALEInterface()
         ale.setInt(b'random_seed', seed)
-        ale.setInt(b'frame_skip', frame_skip)
+        self.frame_skip = frame_skip
         if use_sdl:
             if 'DISPLAY' not in os.environ:
                 raise RuntimeError(
@@ -42,19 +43,28 @@ class ALE(environment.EpisodicEnvironment):
         self.initialize()
 
     def current_screen(self):
-        # 210x160x1
-        img = self.ale.getScreenGrayscale()
-        if img.shape == (250, 160, 1):
+        # Max of two consecutive frames
+        rgb_img = np.maximum(self.ale.getScreenRGB(), self.last_raw_screen)
+        assert rgb_img.shape == (210, 160, 3)
+        # RGB -> Luminance
+        img = rgb_img[:, :, 0] * 0.2126 + rgb_img[:, :, 1] * \
+            0.0722 + rgb_img[:, :, 2] * 0.7152
+        if img.shape == (250, 160):
             raise RuntimeError("This ROM is for PAL. Please use ROMs for NTSC")
-        assert img.shape == (210, 160, 1)
+        assert img.shape == (210, 160)
         # Shrink (210, 160) -> (110, 84)
-        img = Image.fromarray(img.reshape(img.shape[:-1]), mode='L')
-        assert img.size == (160, 210)
-        img = np.asarray(img.resize((84, 110)), dtype=np.float32)
+        img = cv2.resize(img, (84, 110),
+                         interpolation=cv2.INTER_LINEAR)
+        img = img.astype(np.float32)
+        # img = Image.fromarray(img.reshape(img.shape[:-1]), mode='L')
+        # assert img.size == (160, 210)
+        # img = np.asarray(img.resize((84, 110)), dtype=np.float32)
         assert img.shape == (110, 84)
         # Crop (110, 84) -> (84, 84)
         unused_height = 110 - 84
-        img = img[unused_height / 2: 110 - unused_height / 2, :]
+        bottom_crop = 8
+        top_crop = unused_height - bottom_crop
+        img = img[top_crop: 110 - bottom_crop, :]
         assert img.shape == (84, 84)
         # [0,255] -> [-128, 127]
         img -= 128
@@ -88,7 +98,11 @@ class ALE(environment.EpisodicEnvironment):
     def receive_action(self, action):
         assert not self.is_terminal
 
-        self._reward = self.ale.act(self.legal_actions[action])
+        self._reward = 0
+        for i in xrange(4):
+            if i == 3:
+                self.last_raw_screen = self.ale.getScreenRGB()
+            self._reward += self.ale.act(self.legal_actions[action])
         self.last_screens.append(self.current_screen())
         if self.lives > self.ale.lives():
             self.lives_lost = True
@@ -100,6 +114,7 @@ class ALE(environment.EpisodicEnvironment):
 
         if self.ale.getFrameNumber() == 0 or self.ale.game_over():
             self.ale.reset_game()
+            self.last_raw_screen = self.ale.getScreenRGB()
             self._reward = 0
 
             self.last_screens = collections.deque(
