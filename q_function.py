@@ -4,6 +4,7 @@ import numpy as np
 import chainer
 from chainer import functions as F
 from chainer import links as L
+from chainer import cuda
 
 
 class QFunction(object):
@@ -21,21 +22,23 @@ class StateInputQFunction(QFunction):
 
     def sample_epsilon_greedily_with_value(self, state, epsilon):
         assert state.shape[0] == 1
+        xp = cuda.get_array_module(state)
         values = self.forward(state)
         if random.random() < epsilon:
             a = random.randint(0, self.n_actions - 1)
         else:
             a = values.data[0].argmax()
         q = F.select_item(
-            values, chainer.Variable(np.asarray([a], dtype=np.int32)))
+            values, chainer.Variable(xp.asarray([a], dtype=np.int32)))
         return [a], q
 
     def sample_greedily_with_value(self, state):
         assert state.shape[0] == 1
+        xp = cuda.get_array_module(state)
         values = self.forward(state)
         a = values.data[0].argmax()
         q = F.select_item(
-            values, chainer.Variable(np.asarray([a], dtype=np.int32)))
+            values, chainer.Variable(xp.asarray([a], dtype=np.int32)))
         return [a], q
 
 
