@@ -3,12 +3,7 @@ import copy
 from chainer import functions as F
 
 import agent
-
-
-def copy_param(target_link, source_link):
-    target_params = dict(target_link.namedparams())
-    for param_name, param in source_link.namedparams():
-        target_params[param_name].data[:] = param.data
+from copy_param import copy_param
 
 
 class NStepQLearning(agent.Agent):
