@@ -16,7 +16,7 @@ class StateInputQFunction(QFunction):
     Output: values for each action
     """
 
-    def forward(self, state):
+    def forward(self, state, test=False):
         raise NotImplementedError()
 
     def sample_epsilon_greedily_with_value(self, state, epsilon):
@@ -57,7 +57,7 @@ class FCSIQFunction(chainer.ChainList, StateInputQFunction):
 
         super(FCSIQFunction, self).__init__(*layers)
 
-    def forward(self, state):
+    def forward(self, state, test=False):
         h = chainer.Variable(state)
         for layer in self[:-1]:
             h = F.elu(layer(h))

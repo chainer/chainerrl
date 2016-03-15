@@ -21,6 +21,6 @@ class FCTailQFunction(chainer.ChainList, q_function.StateInputQFunction):
 
         super(FCTailQFunction, self).__init__(*layers)
 
-    def forward(self, state):
+    def forward(self, state, test=False):
         h = self[0](state)
         return self[1](h)
