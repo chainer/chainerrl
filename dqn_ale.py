@@ -2,6 +2,8 @@ import multiprocessing as mp
 import os
 import argparse
 import random
+import sys
+import tempfile
 
 import numpy as np
 
@@ -21,11 +23,11 @@ import replay_buffer
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('processes', type=int)
     parser.add_argument('rom', type=str)
     parser.add_argument('--seed', type=int, default=None)
     parser.add_argument('--gpu', type=int, default=0)
     parser.add_argument('--use-sdl', action='store_true')
+    parser.add_argument('--final-exploration-frames', type=int, default=1e6)
     parser.set_defaults(use_sdl=False)
     args = parser.parse_args()
 
@@ -44,24 +46,33 @@ def main():
     rbuf = replay_buffer.ReplayBuffer(1e6)
     # TODO: epsilon scheduling
     agent = DQN(q_func, opt, rbuf, gpu=args.gpu, gamma=0.99,
-                epsilon=0.2, replay_start_size=1000, target_update_frequency=1000)
+                epsilon=1.0, replay_start_size=1000, target_update_frequency=1000)
 
     env = ale.ALE(args.rom, use_sdl=args.use_sdl)
 
     episode_r = 0
 
     for i in xrange(1000000):
+        try:
+            episode_r += env.reward
 
-        episode_r += env.reward
+            action = agent.act(env.state, env.reward, env.is_terminal)
 
-        action = agent.act(env.state, env.reward, env.is_terminal)
+            if agent.epsilon >= 0.1:
+                agent.epsilon -= 0.9 / args.final_exploration_frames
 
-        if env.is_terminal:
-            print 'i:{} episode_r:{}'.format(i, episode_r)
-            episode_r = 0
-            env.initialize()
-        else:
-            env.receive_action(action)
+            if env.is_terminal:
+                print 'i:{} epsilon:{} episode_r:{}'.format(i, agent.epsilon, episode_r)
+                episode_r = 0
+                env.initialize()
+            else:
+                env.receive_action(action)
+        except KeyboardInterrupt:
+            tempdir = tempfile.mkdtemp(prefix='drill')
+            agent.save_model(tempdir + '/{}_keyboardinterrupt.h5'.format(i))
+            print >> sys.stderr, 'Saved the current model to {}'.format(
+                tempdir)
+            raise
 
 if __name__ == '__main__':
     main()
