@@ -37,7 +37,7 @@ class DelayedXOR(environment.EpisodicEnvironment):
                 self._state[2] -= 1
             else:
                 self._state[2] += 1
-        self._state[:2] = np.random.randint(2, size=2)
+            self._state[:2] = np.random.randint(2, size=2)
 
     def initialize(self):
         self._state = np.empty(3, dtype=np.int32)
