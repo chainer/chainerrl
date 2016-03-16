@@ -185,6 +185,7 @@ class DQN(agent.Agent):
 
     def _load_model_without_lock(self, model_filename):
         serializers.load_hdf5(model_filename, self.q_function)
+        copy_param.copy_param(self.target_q_function, self.q_function)
         opt_filename = model_filename + '.opt'
         if os.path.exists(opt_filename):
             print 'WARNING: {0} was not found, so loaded only a model'.format(
@@ -218,6 +219,7 @@ class DQN(agent.Agent):
         if not is_state_terminal:
             action, q = self.q_function.sample_epsilon_greedily_with_value(
                 self._batch_states([state]), self.epsilon)
+            action = int(action[0])
             if self.t % 100 == 0:
                 print 't:{} q:{}'.format(self.t, q.data)
             self.t += 1
@@ -229,12 +231,6 @@ class DQN(agent.Agent):
             if self.t % self.target_update_frequency == 0:
                 copy_param(self.target_q_function, self.q_function)
 
-            self.last_state = state
-            self.last_action = action
-        else:
-            self.last_state = None
-            self.last_action = None
-
         if self.last_state is not None:
             assert self.last_action is not None
             # Add a transition to the replay buffer
@@ -244,6 +240,13 @@ class DQN(agent.Agent):
                 reward=reward,
                 next_state=state,
                 is_state_terminal=is_state_terminal)
+
+        if not is_state_terminal:
+            self.last_state = state
+            self.last_action = action
+        else:
+            self.last_state = None
+            self.last_action = None
 
         if len(self.replay_buffer) >= self.replay_start_size and \
                 self.t % self.update_frequency == 0:
