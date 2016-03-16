@@ -11,7 +11,7 @@ from chainer import optimizers
 import policy
 import v_function
 import a3c
-import xor
+import delayed_xor
 import random_seed
 import async
 import rmsprop_ones
@@ -32,14 +32,14 @@ def main():
         random_seed.set_random_seed(args.seed)
 
     def agent_func():
-        pi = policy.FCSoftmaxPolicy(2, 2, 10, 2)
-        v = v_function.FCVFunction(2, 10, 2)
+        pi = policy.FCSoftmaxPolicy(3, 2, 10, 2)
+        v = v_function.FCVFunction(3, 10, 2)
         opt = rmsprop_ones.RMSpropOnes(lr=args.lr)
         opt.setup(chainer.ChainList(pi, v))
         return a3c.A3C(pi, v, opt, args.t_max, args.gamma, args.beta)
 
     def env_func():
-        return xor.XOR()
+        return delayed_xor.DelayedXOR(5)
 
     def run_func(agent, env):
         total_r = 0
