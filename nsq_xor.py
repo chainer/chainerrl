@@ -11,6 +11,7 @@ from chainer import optimizers
 import policy
 import nstep_q_learning
 import xor
+import delayed_xor
 import random_seed
 import async
 import rmsprop_ones
@@ -32,14 +33,14 @@ def main():
         random_seed.set_random_seed(args.seed)
 
     def agent_func():
-        q_func = q_function.FCSIQFunction(2, 2, 10, 2)
+        q_func = q_function.FCSIQFunction(3, 2, 10, 2)
         opt = rmsprop_ones.RMSpropOnes(lr=args.lr)
         opt.setup(q_func)
         return nstep_q_learning.NStepQLearning(q_func, opt, args.t_max,
-            args.gamma, args.epsilon)
+            args.gamma, args.epsilon, i_target=args.steps / 100)
 
     def env_func():
-        return xor.XOR()
+        return delayed_xor.DelayedXOR(5)
 
     def run_func(agent, env):
         total_r = 0
