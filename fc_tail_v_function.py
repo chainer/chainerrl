@@ -1,11 +1,7 @@
-import numpy as np
-
 import chainer
-from chainer import functions as F
 from chainer import links as L
 
 import v_function
-import dqn_net
 
 
 class FCTailVFunction(chainer.ChainList, v_function.VFunction):
