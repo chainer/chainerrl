@@ -24,6 +24,7 @@ def main():
     parser.add_argument('rom', type=str)
     parser.add_argument('--seed', type=int, default=None)
     parser.add_argument('--use-sdl', action='store_true')
+    parser.add_argument('--final-exploration-frames', type=int, default=1e6)
     parser.set_defaults(use_sdl=False)
     args = parser.parse_args()
 
@@ -39,15 +40,23 @@ def main():
         opt = rmsprop_ones.RMSpropOnes(lr=1e-3, eps=1e-4)
         opt.setup(q_func)
         opt.add_hook(chainer.optimizer.GradientClipping(1.0))
-        # TODO: epsilon scheduling
-        epsilon = random.random()
-        return nstep_q_learning.NStepQLearning(q_func, opt, 5, 0.99, epsilon,
+        return nstep_q_learning.NStepQLearning(q_func, opt, 5, 0.99, 1.0,
                                                i_target=40000 / args.processes)
 
     def env_func():
         return ale.ALE(args.rom, use_sdl=args.use_sdl)
 
     def run_func(agent, env):
+
+        # Random epsilon assignment described in the original paper
+        rand = random.random()
+        if rand < 0.4:
+            epsilon_target = 0.1
+        elif rand < 0.7:
+            epsilon_target = 0.01
+        else:
+            epsilon_target = 0.5
+
         total_r = 0
         episode_r = 0
 
@@ -56,10 +65,13 @@ def main():
             total_r += env.reward
             episode_r += env.reward
 
+            if agent.epsilon > epsilon_target:
+                agent.epsilon -= (1 - epsilon_target) / args.final_exploration_frames
+
             action = agent.act(env.state, env.reward, env.is_terminal)
 
             if env.is_terminal:
-                print 'i:{} episode_r:{}'.format(i, episode_r)
+                print 'i:{} epsilon:{} episode_r:{}'.format(i, agent.epsilon, episode_r)
                 episode_r = 0
                 env.initialize()
             else:
