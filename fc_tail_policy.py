@@ -1,11 +1,7 @@
-import numpy as np
-
 import chainer
-from chainer import functions as F
 from chainer import links as L
 
 import policy
-import dqn_net
 
 
 class FCTailPolicy(chainer.ChainList, policy.SoftmaxPolicy):
