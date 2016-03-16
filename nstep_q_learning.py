@@ -73,7 +73,8 @@ class NStepQLearning(agent.Agent):
             self.past_states[self.t] = state
             action, q = self.q_function.sample_epsilon_greedily_with_value(
                 state, self.epsilon)
-            print 'q:{}'.format(q.data)
+            if self.t % 100 == 0:
+                print 'q:{}'.format(q.data)
             self.past_action_values[self.t] = q
             self.t += 1
 
