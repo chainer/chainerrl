@@ -18,9 +18,10 @@ class ReplayBuffer(object):
           next_action: a_{t+1} (can be None for off-policy algorithms)
           is_state_terminal (bool)
         """
-        self.memory.append(dict(state=state, action=action, reward=reward,
-                                next_state=next_state, next_action=next_action,
-                                is_state_terminal=is_state_terminal))
+        experience = dict(state=state, action=action, reward=reward,
+                          next_state=next_state, next_action=next_action,
+                          is_state_terminal=is_state_terminal)
+        self.memory.append(experience)
 
     def sample(self, n):
         """Sample n unique samples from this replay buffer
