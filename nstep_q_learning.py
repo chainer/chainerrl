@@ -88,7 +88,8 @@ class NStepQLearning(agent.Agent):
             # Global counter T is used in the original paper, but here we use
             # process specific counter instead. So i_target should be set
             # x-times smaller, where x is the number of processes
-            if self.t % self.i_target:
+            if self.t % self.i_target == 0:
+                print 'self.t:', self.t
                 copy_param(self.target_q_function, self.q_function)
 
             return action[0]
