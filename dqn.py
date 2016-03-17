@@ -13,6 +13,7 @@ from chainer import serializers
 import agent
 import q_function
 from copy_param import copy_param
+import smooth_l1_loss
 
 
 def _to_device(obj, gpu):
@@ -157,7 +158,7 @@ class DQN(agent.Agent):
             for e in delta:
                 errors_out.append(e)
 
-        return F.mean_squared_error(batch_q, batch_q_target)
+        return smooth_l1_loss.smooth_l1_loss(batch_q, batch_q_target)
 
     def compute_q_values(self, states):
         """Compute Q-values

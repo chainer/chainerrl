@@ -1,6 +1,9 @@
+import numpy as np
+import chainer
 from chainer import functions as F
 
 import agent
+import smooth_l1_loss
 
 
 class A3C(agent.Agent):
@@ -55,7 +58,8 @@ class A3C(agent.Agent):
                 pi_loss -= log_prob * float(advantage.data)
                 pi_loss -= self.beta * self.past_action_entropy[i]
                 # Accumulate gradients of value function
-                v_loss += advantage ** 2
+                v_loss += smooth_l1_loss.smooth_l1_loss(
+                    v, chainer.Variable(np.asarray([[R]])))
 
             # Do we need to normalize losses by (self.t - self.t_start)?
             # Otherwise, loss scales can be different in case of self.t_max
@@ -66,7 +70,7 @@ class A3C(agent.Agent):
             # v_loss /= self.t - self.t_start
 
             pi_loss.backward()
-            v_loss.backward()
+            # v_loss.backward()
 
             self.optimizer.update()
 

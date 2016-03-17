@@ -1,9 +1,12 @@
 import copy
 
+import numpy as np
+import chainer
 from chainer import functions as F
 
 import agent
 from copy_param import copy_param
+import smooth_l1_loss
 
 
 class NStepQLearning(agent.Agent):
@@ -48,9 +51,12 @@ class NStepQLearning(agent.Agent):
             for i in reversed(xrange(self.t_start, self.t)):
                 R *= self.gamma
                 R += self.past_rewards[i]
-                q = self.past_action_values[i]
+                q = F.reshape(self.past_action_values[i], (1,1))
                 # Accumulate gradients of Q-function
-                loss += (R - q) ** 2
+                # loss += (R - q) ** 2
+                # loss += F.mean_squared_error(q, chainer.Variable(np.asarray([R])))
+                loss += smooth_l1_loss.smooth_l1_loss(
+                    q, chainer.Variable(np.asarray([[R]], dtype=np.float32)))
 
             # Do we need to normalize losses by (self.t - self.t_start)?
             # Otherwise, loss scales can be different in case of self.t_max
