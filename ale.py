@@ -40,11 +40,14 @@ class ALE(environment.EpisodicEnvironment):
 
         self.ale = ale
         self.legal_actions = ale.getMinimalActionSet()
+        self.last_raw_screen = None
         self.initialize()
 
     def current_screen(self):
-        # Max of two consecutive frames
-        rgb_img = np.maximum(self.ale.getScreenRGB(), self.last_raw_screen)
+        rgb_img = self.ale.getScreenRGB()
+        if self.last_raw_screen is not None:
+            # Max of two consecutive frames
+            rgb_img = np.maximum(rgb_img, self.last_raw_screen)
         assert rgb_img.shape == (210, 160, 3)
         # RGB -> Luminance
         img = rgb_img[:, :, 0] * 0.2126 + rgb_img[:, :, 1] * \
@@ -56,9 +59,6 @@ class ALE(environment.EpisodicEnvironment):
         img = cv2.resize(img, (84, 110),
                          interpolation=cv2.INTER_LINEAR)
         img = img.astype(np.float32)
-        # img = Image.fromarray(img.reshape(img.shape[:-1]), mode='L')
-        # assert img.size == (160, 210)
-        # img = np.asarray(img.resize((84, 110)), dtype=np.float32)
         assert img.shape == (110, 84)
         # Crop (110, 84) -> (84, 84)
         unused_height = 110 - 84
@@ -104,6 +104,8 @@ class ALE(environment.EpisodicEnvironment):
                 self.last_raw_screen = self.ale.getScreenRGB()
             self._reward += self.ale.act(self.legal_actions[action])
         self.last_screens.append(self.current_screen())
+
+        # Check lives are lost
         if self.lives > self.ale.lives():
             self.lives_lost = True
         else:
@@ -114,7 +116,6 @@ class ALE(environment.EpisodicEnvironment):
 
         if self.ale.getFrameNumber() == 0 or self.ale.game_over():
             self.ale.reset_game()
-            self.last_raw_screen = self.ale.getScreenRGB()
             self._reward = 0
 
             self.last_screens = collections.deque(
