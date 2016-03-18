@@ -95,7 +95,7 @@ def main():
 
     # Save the final model
     tempdir = tempfile.mkdtemp(prefix='drill')
-    agent.save_model(tempdir + '/{}_finish.h5'.format())
+    agent.save_model(tempdir + '/{}_finish.h5'.format(args.steps))
     print 'Saved the current model to {}'.format(tempdir)
 
 if __name__ == '__main__':
