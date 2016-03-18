@@ -91,3 +91,10 @@ def run_async(n_process, agent_func, env_func, run_func):
 
     for p in processes:
         p.join()
+
+    for i in xrange(len(base_agent.links)):
+        set_shared_params(base_agent.links[i], link_arrays[i])
+
+    base_agent.sync_parameters()
+
+    return base_agent
