@@ -16,8 +16,10 @@ class ALE(environment.EpisodicEnvironment):
     """
 
     def __init__(self, rom_filename, seed=0, use_sdl=False, n_last_screens=4,
-                 frame_skip=4):
+                 frame_skip=4, treat_life_lost_as_terminal=True, crop_or_scale='scale'):
         self.n_last_screens = n_last_screens
+        self.treat_life_lost_as_terminal = treat_life_lost_as_terminal
+        self.crop_or_scale = crop_or_scale
 
         ale = ALEInterface()
         ale.setInt(b'random_seed', seed)
@@ -55,16 +57,23 @@ class ALE(environment.EpisodicEnvironment):
         if img.shape == (250, 160):
             raise RuntimeError("This ROM is for PAL. Please use ROMs for NTSC")
         assert img.shape == (210, 160)
-        # Shrink (210, 160) -> (110, 84)
-        img = cv2.resize(img, (84, 110),
-                         interpolation=cv2.INTER_LINEAR)
-        img = img.astype(np.float32)
-        assert img.shape == (110, 84)
-        # Crop (110, 84) -> (84, 84)
-        unused_height = 110 - 84
-        bottom_crop = 8
-        top_crop = unused_height - bottom_crop
-        img = img[top_crop: 110 - bottom_crop, :]
+        if self.crop_or_scale == 'crop':
+            # Shrink (210, 160) -> (110, 84)
+            img = cv2.resize(img, (84, 110),
+                             interpolation=cv2.INTER_LINEAR)
+            img = img.astype(np.float32)
+            assert img.shape == (110, 84)
+            # Crop (110, 84) -> (84, 84)
+            unused_height = 110 - 84
+            bottom_crop = 8
+            top_crop = unused_height - bottom_crop
+            img = img[top_crop: 110 - bottom_crop, :]
+        elif self.crop_or_scale == 'scale':
+            img = cv2.resize(img, (84, 84),
+                             interpolation=cv2.INTER_LINEAR)
+            img = img.astype(np.float32)
+        else:
+            raise RuntimeError('crop_or_scale must be either crop or scale')
         assert img.shape == (84, 84)
         # [0,255] -> [-128, 127]
         img -= 128
@@ -80,7 +89,10 @@ class ALE(environment.EpisodicEnvironment):
 
     @property
     def is_terminal(self):
-        return self.lives_lost or self.ale.game_over()
+        if self.treat_life_lost_as_terminal:
+            return self.lives_lost or self.ale.game_over()
+        else:
+            return self.ale.game_over()
 
     @property
     def reward(self):
