@@ -34,9 +34,10 @@ def main():
     def agent_func():
         pi = policy.FCSoftmaxPolicy(3, 2, 10, 2)
         v = v_function.FCVFunction(3, 10, 2)
+        model = chainer.ChainList(pi, v)
         opt = rmsprop_ones.RMSpropOnes(lr=args.lr)
-        opt.setup(chainer.ChainList(pi, v))
-        return a3c.A3C(pi, v, opt, args.t_max, args.gamma, args.beta)
+        opt.setup(model)
+        return a3c.A3C(model, opt, args.t_max, args.gamma, args.beta)
 
     def env_func():
         return delayed_xor.DelayedXOR(5)

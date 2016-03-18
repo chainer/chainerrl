@@ -1,9 +1,12 @@
+import copy
+
 import numpy as np
 import chainer
 from chainer import functions as F
 
 import agent
 import smooth_l1_loss
+import copy_param
 
 
 class A3C(agent.Agent):
@@ -12,9 +15,20 @@ class A3C(agent.Agent):
     See http://arxiv.org/abs/1602.01783
     """
 
-    def __init__(self, policy, v_function, optimizer, t_max, gamma, beta=1e-2):
-        self.policy = policy
-        self.v_function = v_function
+    def __init__(self, model, optimizer, t_max, gamma, beta=1e-2):
+
+        assert len(model) == 2
+
+        # Globally shared model
+        self.shared_model = model
+        self.shared_policy = self.shared_model[0]
+        self.shared_v_function = self.shared_model[1]
+
+        # Thread specific model
+        self.model = copy.deepcopy(self.shared_model)
+        self.policy = self.model[0]
+        self.v_function = self.model[1]
+
         self.optimizer = optimizer
         self.t_max = t_max
         self.gamma = gamma
@@ -25,6 +39,9 @@ class A3C(agent.Agent):
         self.past_action_entropy = {}
         self.past_states = {}
         self.past_rewards = {}
+
+    def sync_parameters(self):
+        copy_param.copy_param(self.model, self.shared_model)
 
     def act(self, state, reward, is_state_terminal):
 
@@ -37,13 +54,10 @@ class A3C(agent.Agent):
 
             assert self.t_start < self.t
 
-            # Update
             if is_state_terminal:
                 R = 0
             else:
                 R = float(self.v_function(state).data)
-
-            self.optimizer.zero_grads()
 
             pi_loss = 0
             v_loss = 0
@@ -54,25 +68,40 @@ class A3C(agent.Agent):
                 advantage = R - v
                 # Accumulate gradients of policy
                 log_prob = self.past_action_log_prob[i]
-                # pi_loss += (- log_prob * float(advantage.data))
+                entropy = self.past_action_entropy[i]
+
+                # Log probability is increased proportionally to advantage
                 pi_loss -= log_prob * float(advantage.data)
-                pi_loss -= self.beta * self.past_action_entropy[i]
+                # Entropy is maximized
+                pi_loss -= self.beta * entropy
                 # Accumulate gradients of value function
+
+                # Squared loss is used in the original paper, but here I
+                # try smooth L1 loss as in the Nature DQN paper.
                 v_loss += smooth_l1_loss.smooth_l1_loss(
-                    v, chainer.Variable(np.asarray([[R]])))
+                    v,
+                    chainer.Variable(np.asarray([[R]], dtype=np.float32)))
 
             # Do we need to normalize losses by (self.t - self.t_start)?
             # Otherwise, loss scales can be different in case of self.t_max
             # and in case of termination.
 
             # I'm not sure but if we need to normalize losses...
-            # pi_loss /= self.t - self.t_start
-            # v_loss /= self.t - self.t_start
+            pi_loss /= self.t - self.t_start
+            v_loss /= self.t - self.t_start
 
-            pi_loss.backward()
-            # v_loss.backward()
+            loss = pi_loss + v_loss
 
+            # Compute gradients using thread-specific model
+            self.model.zerograds()
+            loss.backward()
+            # Copy the gradients to the globally shared model
+            self.shared_model.zerograds()
+            copy_param.copy_grad(self.shared_model, self.model)
+            # Update the globally shared model
             self.optimizer.update()
+
+            self.sync_parameters()
 
             self.past_action_log_prob = {}
             self.past_action_entropy = {}
@@ -88,13 +117,15 @@ class A3C(agent.Agent):
             self.past_action_log_prob[self.t] = log_prob
             self.past_action_entropy[self.t] = entropy
             self.t += 1
+            if self.t % 100 == 0:
+                print 't:{} entropy:{} prob:{}'.format(self.t, entropy.data, np.exp(log_prob.data))
             return action[0]
         else:
             return None
 
     @property
     def links(self):
-        return [self.policy, self.v_function]
+        return [self.shared_model]
 
     @property
     def optimizers(self):

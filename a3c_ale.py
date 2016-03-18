@@ -26,6 +26,8 @@ def main():
     parser.add_argument('rom', type=str)
     parser.add_argument('--seed', type=int, default=None)
     parser.add_argument('--use-sdl', action='store_true')
+    parser.add_argument('--t-max', type=int, default=5)
+    parser.add_argument('--beta', type=float, default=1e-2)
     parser.set_defaults(use_sdl=False)
     args = parser.parse_args()
 
@@ -39,8 +41,9 @@ def main():
         pi = fc_tail_policy.FCTailPolicy(head, 256, n_actions=n_actions)
         v = fc_tail_v_function.FCTailVFunction(head, 256)
         opt = rmsprop_ones.RMSpropOnes(lr=1e-3)
-        opt.setup(chainer.ChainList(pi, v))
-        return a3c.A3C(pi, v, opt, 5, 0.99)
+        model = chainer.ChainList(pi, v)
+        opt.setup(model)
+        return a3c.A3C(model, opt, args.t_max, 0.99, beta=args.beta)
 
     def env_func():
         return ale.ALE(args.rom, use_sdl=args.use_sdl)
