@@ -126,6 +126,8 @@ class ALE(environment.EpisodicEnvironment):
 
     def initialize(self):
 
+        self.last_raw_screen = None
+
         if self.ale.getFrameNumber() == 0 or self.ale.game_over():
             self.ale.reset_game()
             self._reward = 0
