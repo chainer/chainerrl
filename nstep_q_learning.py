@@ -5,7 +5,7 @@ import chainer
 from chainer import functions as F
 
 import agent
-from copy_param import copy_param
+import copy_param
 import smooth_l1_loss
 
 
@@ -16,7 +16,10 @@ class NStepQLearning(agent.Agent):
     """
 
     def __init__(self, q_function, optimizer, t_max, gamma, epsilon, i_target):
-        self.q_function = q_function
+        # Globally shared model
+        self.shared_q_function = q_function
+        # Thread specific model
+        self.q_function = copy.deepcopy(q_function)
         self.target_q_function = copy.deepcopy(q_function)
         self.optimizer = optimizer
         self.t_max = t_max
@@ -28,6 +31,9 @@ class NStepQLearning(agent.Agent):
         self.past_action_values = {}
         self.past_states = {}
         self.past_rewards = {}
+
+    def sync_parameters(self):
+        copy_param.copy_param(self.q_function, self.shared_q_function)
 
     def act(self, state, reward, is_state_terminal):
 
@@ -51,7 +57,7 @@ class NStepQLearning(agent.Agent):
             for i in reversed(xrange(self.t_start, self.t)):
                 R *= self.gamma
                 R += self.past_rewards[i]
-                q = F.reshape(self.past_action_values[i], (1,1))
+                q = F.reshape(self.past_action_values[i], (1, 1))
                 # Accumulate gradients of Q-function
                 # loss += (R - q) ** 2
                 # loss += F.mean_squared_error(q, chainer.Variable(np.asarray([R])))
@@ -65,9 +71,16 @@ class NStepQLearning(agent.Agent):
             # I'm not sure but if we need to normalize losses...
             # loss /= self.t - self.t_start
 
-            self.optimizer.zero_grads()
+            # Compute gradients using thread-specific model
+            self.q_function.zerograds()
             loss.backward()
+            # Copy the gradients to the globally shared model
+            self.shared_q_function.zerograds()
+            copy_param.copy_grad(self.shared_q_function, self.q_function)
+            # Update the globally shared model
             self.optimizer.update()
+
+            self.sync_parameters()
 
             self.past_action_values = {}
             self.past_states = {}
@@ -90,7 +103,7 @@ class NStepQLearning(agent.Agent):
             # x-times smaller, where x is the number of processes
             if self.t % self.i_target == 0:
                 print 'self.t:', self.t
-                copy_param(self.target_q_function, self.q_function)
+                copy_param.copy_param(self.target_q_function, self.q_function)
 
             return action[0]
         else:
@@ -98,7 +111,7 @@ class NStepQLearning(agent.Agent):
 
     @property
     def links(self):
-        return [self.q_function, self.target_q_function]
+        return [self.shared_q_function, self.target_q_function]
 
     @property
     def optimizers(self):
