@@ -18,8 +18,8 @@ class TestAsync(unittest.TestCase):
 
         arrays = async.extract_params_as_shared_arrays(model)
 
-        model_a = L.Linear(2,2)
-        model_b = L.Linear(2,2)
+        model_a = L.Linear(2, 2)
+        model_b = L.Linear(2, 2)
 
         async.set_shared_params(model_a, arrays)
         async.set_shared_params(model_b, arrays)
@@ -37,7 +37,6 @@ class TestAsync(unittest.TestCase):
                              b_params['/W'].grad.ctypes.data)
         self.assertNotEquals(a_params['/b'].grad.ctypes.data,
                              b_params['/b'].grad.ctypes.data)
-
 
     def test_shared_link(self):
         """Check interprocess parameter sharing works if models share links
@@ -83,3 +82,35 @@ class TestAsync(unittest.TestCase):
                              b_params['/1/W'].data.ctypes.data)
         self.assertNotEquals(a_params['/1/b'].data.ctypes.data,
                              b_params['/1/b'].data.ctypes.data)
+
+    def test_shared_link_copy(self):
+        head = L.Linear(2, 2)
+        model_a = chainer.ChainList(head.copy(), L.Linear(2, 3))
+        model_b = chainer.ChainList(head.copy(), L.Linear(2, 4))
+        a_params = dict(model_a.namedparams())
+        b_params = dict(model_b.namedparams())
+        self.assertEquals(a_params['/0/W'].data.ctypes.data,
+                          b_params['/0/W'].data.ctypes.data)
+        self.assertEquals(a_params['/0/b'].data.ctypes.data,
+                          b_params['/0/b'].data.ctypes.data)
+        import copy
+        model_a_copy = copy.deepcopy(model_a)
+        model_b_copy = copy.deepcopy(model_b)
+        a_copy_params = dict(model_a_copy.namedparams())
+        b_copy_params = dict(model_b_copy.namedparams())
+        # When A and B are separately deepcopied, head is no longer shared
+        self.assertNotEquals(a_copy_params['/0/W'].data.ctypes.data,
+                             b_copy_params['/0/W'].data.ctypes.data)
+        self.assertNotEquals(a_copy_params['/0/b'].data.ctypes.data,
+                             b_copy_params['/0/b'].data.ctypes.data)
+
+        model_total_copy = copy.deepcopy(chainer.ChainList(model_a, model_b))
+        model_a_copy = model_total_copy[0]
+        model_b_copy = model_total_copy[1]
+        a_copy_params = dict(model_a_copy.namedparams())
+        b_copy_params = dict(model_b_copy.namedparams())
+        # When ChainList(A, B) is deepcopied, head is still shared!
+        self.assertEquals(a_copy_params['/0/W'].data.ctypes.data,
+                          b_copy_params['/0/W'].data.ctypes.data)
+        self.assertEquals(a_copy_params['/0/b'].data.ctypes.data,
+                          b_copy_params['/0/b'].data.ctypes.data)
