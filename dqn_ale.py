@@ -27,6 +27,7 @@ def main():
     parser.add_argument('--seed', type=int, default=None)
     parser.add_argument('--gpu', type=int, default=0)
     parser.add_argument('--use-sdl', action='store_true')
+    parser.set_defaults(use_sdl=False)
     parser.add_argument('--final-exploration-frames',
                         type=int, default=int(1e6))
     parser.add_argument('--model', type=str, default='')
@@ -35,7 +36,6 @@ def main():
     parser.add_argument('--replay-start-size', type=int, default=int(5e4))
     parser.add_argument('--target-update-frequency',
                         type=int, default=int(1e4))
-    parser.set_defaults(use_sdl=False)
     args = parser.parse_args()
 
     if args.seed is not None:
