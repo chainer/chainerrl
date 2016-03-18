@@ -19,6 +19,8 @@ def _sample_actions(batch_probs):
       batch_probs (ndarray): batch of action probabilities BxA
     """
     action_indices = []
+    # Avoid "ValueError: sum(pvals[:-1]) > 1.0" in numpy.multinomial
+    batch_probs = batch_probs - np.finfo(np.float32).epsneg
     for i in xrange(batch_probs.shape[0]):
         histogram = np.random.multinomial(1, batch_probs[i])
         action_indices.append(int(np.nonzero(histogram)[0]))
