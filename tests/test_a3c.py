@@ -21,6 +21,10 @@ class TestA3C(unittest.TestCase):
         pass
 
     def test_abc(self):
+        self._test_abc(1)
+        self._test_abc(5)
+
+    def _test_abc(self, t_max):
 
         nproc = 8
 
@@ -29,9 +33,9 @@ class TestA3C(unittest.TestCase):
             pi = policy.FCSoftmaxPolicy(1, n_actions, 10, 2)
             v = v_function.FCVFunction(1, 10, 2)
             model = chainer.ChainList(pi, v)
-            opt = optimizers.RMSprop(1e-3, eps=1e-1)
+            opt = optimizers.RMSprop(1e-3, eps=1e-2)
             opt.setup(model)
-            return a3c.A3C(model, opt, 5, 0.9, beta=1e-1)
+            return a3c.A3C(model, opt, t_max, 0.9, beta=1e-2)
 
         def env_func():
             return simple_abc.ABC()
