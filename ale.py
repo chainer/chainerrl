@@ -112,6 +112,8 @@ class ALE(environment.EpisodicEnvironment):
 
         self._reward = 0
         for i in xrange(4):
+            if self.ale.game_over():
+                break
             if i == 3:
                 self.last_raw_screen = self.ale.getScreenRGB()
             self._reward += self.ale.act(self.legal_actions[action])
@@ -128,13 +130,14 @@ class ALE(environment.EpisodicEnvironment):
 
         self.last_raw_screen = None
 
-        if self.ale.getFrameNumber() == 0 or self.ale.game_over():
+        if self.ale.game_over():
             self.ale.reset_game()
-            self._reward = 0
 
-            self.last_screens = collections.deque(
-                [self.current_screen()] * self.n_last_screens,
-                maxlen=self.n_last_screens)
+        self._reward = 0
+
+        self.last_screens = collections.deque(
+            [self.current_screen()] * self.n_last_screens,
+            maxlen=self.n_last_screens)
 
         self.lives_lost = False
         self.lives = self.ale.lives()
