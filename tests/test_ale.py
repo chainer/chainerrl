@@ -58,3 +58,16 @@ class TestALE(unittest.TestCase):
                 img.save('{}/{}_{}.bmp'.format(tempdir,
                                                str(episode).zfill(6), str(t).zfill(6)))
                 t += 1
+
+    def test_reward(self):
+        env = ale.ALE('pong.bin')
+        for episode in xrange(3):
+            total_r = 0
+            while not env.is_terminal:
+                self.assertEquals(env.state.shape, (4, 84, 84))
+                a = random.randrange(len(env.legal_actions))
+                env.receive_action(a)
+                total_r += env.reward
+            self.assertGreater(total_r, -22)
+            self.assertLess(total_r, -15)
+            env.initialize()
