@@ -46,17 +46,19 @@ class TestALE(unittest.TestCase):
             env.initialize()
             t = 0
             while not env.is_terminal:
-                screen = env.state[-1]
-                screen *= 128
-                screen += 128
-                self.assertEquals((screen > 255).sum(), 0)
-                self.assertEquals((screen < 0).sum(), 0)
+                for i in xrange(4):
+                    screen = env.state[i]
+                    screen *= 128
+                    screen += 128
+                    self.assertEquals((screen > 255).sum(), 0)
+                    self.assertEquals((screen < 0).sum(), 0)
+                    img = Image.fromarray(screen.astype(np.uint8), mode='L')
+                    filename = '{}/{}_{}_{}.bmp'.format(tempdir,
+                                                        str(episode).zfill(6), str(t).zfill(6), i)
+                    img.save(filename)
                 legal_actions = env.legal_actions
                 a = random.randrange(len(legal_actions))
                 env.receive_action(a)
-                img = Image.fromarray(screen.astype(np.uint8), mode='L')
-                img.save('{}/{}_{}.bmp'.format(tempdir,
-                                               str(episode).zfill(6), str(t).zfill(6)))
                 t += 1
 
     def test_reward(self):
