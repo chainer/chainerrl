@@ -7,13 +7,14 @@ from chainer import links as L
 
 import copy_param
 
+
 class TestCopyParam(unittest.TestCase):
 
     def test_copy_param(self):
         a = L.Linear(1, 5)
         b = L.Linear(1, 5)
 
-        s = chainer.Variable(np.random.rand(1,1).astype(np.float32))
+        s = chainer.Variable(np.random.rand(1, 1).astype(np.float32))
         a_out = list(a(s).data.ravel())
         b_out = list(b(s).data.ravel())
         self.assertNotEquals(a_out, b_out)
@@ -25,4 +26,3 @@ class TestCopyParam(unittest.TestCase):
         b_out_new = list(b(s).data.ravel())
         self.assertEquals(a_out_new, b_out)
         self.assertEquals(b_out_new, b_out)
-
