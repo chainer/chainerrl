@@ -70,6 +70,7 @@ def main():
 
     episode_r = 0
 
+    episode_idx = 0
     for i in xrange(args.steps):
         try:
             episode_r += env.reward
@@ -82,6 +83,19 @@ def main():
             if env.is_terminal:
                 print 'i:{} epsilon:{} episode_r:{}'.format(i, agent.epsilon, episode_r)
                 episode_r = 0
+                if episode_idx % 100 == 0:
+                    # Test
+                    env.initialize()
+                    test_r = 0
+                    while not env.is_terminal:
+                        s = env.state.reshape((1,) + env.state.shape)
+                        if args.gpu >= 0:
+                            s = chainer.cuda.to_gpu(s)
+                        a = agent.q_function.sample_epsilon_greedily_with_value(
+                            s, 5e-2)[0][0]
+                        test_r += env.receive_action(a)
+                    print 'test_r:', test_r
+                episode_idx += 1
                 env.initialize()
             else:
                 env.receive_action(action)
