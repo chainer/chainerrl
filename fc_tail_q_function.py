@@ -12,7 +12,7 @@ class FCTailQFunction(chainer.ChainList, q_function.StateInputQFunction):
 
         layers = [
             head.copy(),
-            L.Linear(head_output_size, n_actions),
+            L.Linear(head_output_size, n_actions, bias=0.1),
         ]
 
         super(FCTailQFunction, self).__init__(*layers)
