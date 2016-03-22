@@ -58,14 +58,6 @@ class DQN(agent.Agent):
         self.last_action = None
         self.lock = threading.Lock()
 
-    def _update_without_lock(self, experiences, errors_out=None):
-        assert experiences
-        loss = self._compute_loss(
-            experiences, self.gamma, errors_out=errors_out)
-        self.optimizer.zero_grads()
-        loss.backward()
-        self.optimizer.update()
-
     def update(self, experiences, errors_out=None):
         """Update the model from experiences
 
