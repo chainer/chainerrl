@@ -42,14 +42,11 @@ class ALE(environment.EpisodicEnvironment):
 
         self.ale = ale
         self.legal_actions = ale.getMinimalActionSet()
-        self.last_raw_screen = None
         self.initialize()
 
     def current_screen(self):
-        rgb_img = self.ale.getScreenRGB()
-        if self.last_raw_screen is not None:
-            # Max of two consecutive frames
-            rgb_img = np.maximum(rgb_img, self.last_raw_screen)
+        # Max of two consecutive frames
+        rgb_img = np.maximum(self.ale.getScreenRGB(), self.last_raw_screen)
         assert rgb_img.shape == (210, 160, 3)
         # RGB -> Luminance
         img = rgb_img[:, :, 0] * 0.2126 + rgb_img[:, :, 1] * \
@@ -78,7 +75,7 @@ class ALE(environment.EpisodicEnvironment):
         # [0,255] -> [-128, 127]
         img -= 128
         # [-128, 127] -> [-1, 1)
-        img /= 128
+        img /= 128.0
         return img
 
     @property
@@ -96,12 +93,7 @@ class ALE(environment.EpisodicEnvironment):
 
     @property
     def reward(self):
-        if self._reward > 0:
-            return 1
-        elif self._reward < 0:
-            return -1
-        else:
-            return 0
+        return self._reward
 
     @property
     def number_of_actions(self):
@@ -110,13 +102,13 @@ class ALE(environment.EpisodicEnvironment):
     def receive_action(self, action):
         assert not self.is_terminal
 
-        self._reward = 0
+        raw_reward = 0
         for i in xrange(4):
             if self.ale.game_over():
                 break
             if i == 3:
                 self.last_raw_screen = self.ale.getScreenRGB()
-            self._reward += self.ale.act(self.legal_actions[action])
+            raw_reward += self.ale.act(self.legal_actions[action])
         self.last_screens.append(self.current_screen())
 
         # Check lives are lost
@@ -126,14 +118,22 @@ class ALE(environment.EpisodicEnvironment):
             self.lives_lost = False
         self.lives = self.ale.lives()
 
-    def initialize(self):
+        if raw_reward > 0:
+            self._reward = 1
+        elif raw_reward < 0:
+            self._reward = -1
+        else:
+            self._reward = 0
+        return self._reward
 
-        self.last_raw_screen = None
+    def initialize(self):
 
         if self.ale.game_over():
             self.ale.reset_game()
 
         self._reward = 0
+
+        self.last_raw_screen = self.ale.getScreenRGB()
 
         self.last_screens = collections.deque(
             [self.current_screen()] * self.n_last_screens,
