@@ -12,7 +12,7 @@ from chainer import serializers
 
 import agent
 import q_function
-from copy_param import copy_param
+import copy_param
 import smooth_l1_loss
 
 
@@ -230,7 +230,7 @@ class DQN(agent.Agent):
             # process specific counter instead. So i_target should be set
             # x-times smaller, where x is the number of processes
             if self.t % self.target_update_frequency == 0:
-                copy_param(self.target_q_function, self.q_function)
+                copy_param.copy_param(self.target_q_function, self.q_function)
 
         if self.last_state is not None:
             assert self.last_action is not None
