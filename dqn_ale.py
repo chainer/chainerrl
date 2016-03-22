@@ -70,12 +70,16 @@ def main():
     activation = parse_activation(args.activation)
     q_func = parse_arch(args.arch, n_actions, activation)
 
-
+    # Use the same hyper parameters as the Nature paper's
     opt = optimizers.RMSpropGraves(
         lr=2.5e-4, alpha=0.95, momentum=0.95, eps=1e-4)
+
     opt.setup(q_func)
     # opt.add_hook(chainer.optimizer.GradientClipping(1.0))
+
+    # 10^6 in the Nature paper, but use 10^5 for avoiding out-of-memory
     rbuf = replay_buffer.ReplayBuffer(1e5)
+
     agent = DQN(q_func, opt, rbuf, gpu=args.gpu, gamma=0.99,
                 epsilon=1.0, replay_start_size=args.replay_start_size,
                 target_update_frequency=args.target_update_frequency)
