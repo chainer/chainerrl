@@ -222,6 +222,7 @@ class DQN(agent.Agent):
             # process specific counter instead. So i_target should be set
             # x-times smaller, where x is the number of processes
             if self.t % self.target_update_frequency == 0:
+                print 'sync'
                 copy_param.copy_param(self.target_q_function, self.q_function)
 
         if self.last_state is not None:
