@@ -11,10 +11,10 @@ class NatureDQNHead(chainer.ChainList):
         self.n_input_channels = n_input_channels
 
         layers = [
-            L.Convolution2D(n_input_channels, 32, 8, stride=4),
-            L.Convolution2D(32, 64, 4, stride=2),
-            L.Convolution2D(64, 64, 3, stride=1),
-            L.Linear(3136, 512),
+            L.Convolution2D(n_input_channels, 32, 8, stride=4, bias=0.1),
+            L.Convolution2D(32, 64, 4, stride=2, bias=0.1),
+            L.Convolution2D(64, 64, 3, stride=1, bias=0.1),
+            L.Linear(3136, 512, bias=0.1),
         ]
 
         super(NatureDQNHead, self).__init__(*layers)
@@ -31,9 +31,9 @@ class NIPSDQNHead(chainer.ChainList):
         self.n_input_channels = n_input_channels
 
         layers = [
-            L.Convolution2D(n_input_channels, 16, 8, stride=4),
-            L.Convolution2D(16, 32, 4, stride=2),
-            L.Linear(2592, 256),
+            L.Convolution2D(n_input_channels, 16, 8, stride=4, bias=0.1),
+            L.Convolution2D(16, 32, 4, stride=2, bias=0.1),
+            L.Linear(2592, 256, bias=0.1),
         ]
 
         super(NIPSDQNHead, self).__init__(*layers)
