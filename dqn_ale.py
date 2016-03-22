@@ -1,6 +1,7 @@
+import argparse
+import json
 import multiprocessing as mp
 import os
-import argparse
 import random
 import sys
 import tempfile
@@ -20,6 +21,7 @@ import random_seed
 import async
 import rmsprop_ones
 import replay_buffer
+import subprocess
 
 
 def parse_activation(activation_str):
@@ -45,26 +47,68 @@ def parse_arch(arch, n_actions, activation):
         raise RuntimeError('Not supported architecture: {}'.format(arch))
 
 
+def eval_performance(rom, q_func, gpu):
+    env = ale.ALE(rom)
+    test_r = 0
+    while not env.is_terminal:
+        s = env.state.reshape((1,) + env.state.shape)
+        if gpu >= 0:
+            s = chainer.cuda.to_gpu(s)
+        a = q_func.sample_epsilon_greedily_with_value(s, 5e-2)[0][0]
+        test_r += env.receive_action(a)
+    print 'test_r:', test_r
+    return test_r
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('rom', type=str)
+    parser.add_argument('--outdir', type=str, default=None)
     parser.add_argument('--seed', type=int, default=None)
     parser.add_argument('--gpu', type=int, default=0)
     parser.add_argument('--use-sdl', action='store_true')
     parser.set_defaults(use_sdl=False)
     parser.add_argument('--final-exploration-frames',
-                        type=int, default=int(1e6))
+                        type=int, default=10 ** 6)
     parser.add_argument('--model', type=str, default='')
     parser.add_argument('--arch', type=str, default='nature')
-    parser.add_argument('--steps', type=int, default=int(1e7))
-    parser.add_argument('--replay-start-size', type=int, default=int(5e4))
+    parser.add_argument('--steps', type=int, default=10 ** 7)
+    parser.add_argument('--replay-start-size', type=int, default=5 * 10 ** 4)
     parser.add_argument('--target-update-frequency',
-                        type=int, default=int(1e4))
+                        type=int, default=10 ** 4)
     parser.add_argument('--activation', type=str, default='relu')
     args = parser.parse_args()
 
     if args.seed is not None:
         random_seed.set_random_seed(args.seed)
+
+    if args.outdir is not None:
+        if os.path.exists(args.outdir):
+            if not os.path.isdir(args.outdir):
+                raise RuntimeError('{} is not a directory'.format(args.outdir))
+        else:
+            os.makedirs(args.outdir)
+        outdir = args.outdir
+    else:
+        outdir = tempfile.mkdtemp()
+
+    print 'Output files are saved in {}'.format(outdir)
+
+    # Save all the arguments
+    with open(os.path.join(outdir, 'args.txt'), 'w') as f:
+        f.write(json.dumps(vars(args)))
+
+    # Save `git status`
+    with open(os.path.join(outdir, 'git-status.txt'), 'w') as f:
+        f.write(subprocess.check_output(['git', 'status']))
+
+    # Save `git log`
+    with open(os.path.join(outdir, 'git-log.txt'), 'w') as f:
+        f.write(subprocess.check_output(['git', 'log']))
+
+    # Save `git diff`
+    with open(os.path.join(outdir, 'git-diff.txt'), 'w') as f:
+        f.write(subprocess.check_output(['git', 'diff']))
 
     n_actions = ale.ALE(args.rom).number_of_actions
     activation = parse_activation(args.activation)
@@ -92,7 +136,26 @@ def main():
     episode_r = 0
 
     episode_idx = 0
+    max_score = None
+
     for i in xrange(args.steps):
+
+        if i % (args.steps / 100) == 0:
+            # Test performance
+            score = eval_performance(args.rom, agent.q_function, args.gpu)
+            with open(os.path.join(outdir, 'scores.txt'), 'a+') as f:
+                print >> f, i, score
+            if max_score is None or score > max_score:
+                if max_score is not None:
+                    # Save the best model so far
+                    print 'The best score is updated {} -> {}'.format(
+                        max_score, score)
+                    filename = os.path.join(
+                        outdir, '{}_keyboardinterrupt.h5'.format(i))
+                    agent.save_model(filename)
+                    print 'Saved the current best model to {}'.format(filename)
+                max_score = score
+
         try:
             episode_r += env.reward
 
@@ -102,36 +165,23 @@ def main():
                 agent.epsilon -= 0.9 / args.final_exploration_frames
 
             if env.is_terminal:
-                print 'i:{} epsilon:{} episode_r:{}'.format(i, agent.epsilon, episode_r)
+                print 'i:{} episode_idx:{} epsilon:{} episode_r:{}'.format(i, episode_idx, agent.epsilon, episode_r)
                 episode_r = 0
-                if episode_idx % 100 == 0:
-                    # Test
-                    env.initialize()
-                    test_r = 0
-                    while not env.is_terminal:
-                        s = env.state.reshape((1,) + env.state.shape)
-                        if args.gpu >= 0:
-                            s = chainer.cuda.to_gpu(s)
-                        a = agent.q_function.sample_epsilon_greedily_with_value(
-                            s, 5e-2)[0][0]
-                        test_r += env.receive_action(a)
-                    print 'test_r:', test_r
                 episode_idx += 1
                 env.initialize()
             else:
                 env.receive_action(action)
         except KeyboardInterrupt:
             # Save the current model before being killed
-            tempdir = tempfile.mkdtemp(prefix='drill')
-            agent.save_model(tempdir + '/{}_keyboardinterrupt.h5'.format(i))
+            agent.save_model(os.path.join(
+                outdir, '{}_keyboardinterrupt.h5'.format(i)))
             print >> sys.stderr, 'Saved the current model to {}'.format(
-                tempdir)
+                outdir)
             raise
 
     # Save the final model
-    tempdir = tempfile.mkdtemp(prefix='drill')
-    agent.save_model(tempdir + '/{}_finish.h5'.format(args.steps))
-    print 'Saved the current model to {}'.format(tempdir)
+    agent.save_model(os.path.join(outdir, '{}_finish.h5'.format(args.steps)))
+    print 'Saved the current model to {}'.format(outdir)
 
 if __name__ == '__main__':
     main()
