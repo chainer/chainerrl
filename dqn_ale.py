@@ -9,6 +9,7 @@ import numpy as np
 
 import chainer
 from chainer import optimizers
+from chainer import functions as F
 
 import fc_tail_q_function
 import dqn_head
@@ -19,6 +20,29 @@ import random_seed
 import async
 import rmsprop_ones
 import replay_buffer
+
+
+def parse_activation(activation_str):
+    if activation_str == 'relu':
+        return F.relu
+    elif activation_str == 'elu':
+        return F.elu
+    else:
+        raise RuntimeError(
+            'Not supported activation: {}'.format(activation_str))
+
+
+def parse_arch(arch, n_actions, activation):
+    if arch == 'nature':
+        head = dqn_head.NatureDQNHead(activation=activation)
+        return fc_tail_q_function.FCTailQFunction(
+            head, 512, n_actions=n_actions)
+    elif arch == 'nips':
+        head = dqn_head.NIPSDQNHead(activation=activation)
+        return fc_tail_q_function.FCTailQFunction(
+            head, 256, n_actions=n_actions)
+    else:
+        raise RuntimeError('Not supported architecture: {}'.format(arch))
 
 
 def main():
@@ -36,23 +60,16 @@ def main():
     parser.add_argument('--replay-start-size', type=int, default=int(5e4))
     parser.add_argument('--target-update-frequency',
                         type=int, default=int(1e4))
+    parser.add_argument('--activation', type=str, default='relu')
     args = parser.parse_args()
 
     if args.seed is not None:
         random_seed.set_random_seed(args.seed)
 
     n_actions = ale.ALE(args.rom).number_of_actions
+    activation = parse_activation(args.activation)
+    q_func = parse_arch(args.arch, n_actions, activation)
 
-    if args.arch == 'nature':
-        head = dqn_head.NatureDQNHead()
-        q_func = fc_tail_q_function.FCTailQFunction(
-            head, 512, n_actions=n_actions)
-    elif args.arch == 'nips':
-        head = dqn_head.NIPSDQNHead()
-        q_func = fc_tail_q_function.FCTailQFunction(
-            head, 256, n_actions=n_actions)
-    else:
-        raise RuntimeError('Not supported architecture: {}'.format(args.arch))
 
     opt = optimizers.RMSpropGraves(
         lr=2.5e-4, alpha=0.95, momentum=0.95, eps=1e-4)

@@ -7,8 +7,9 @@ from chainer import links as L
 
 class NatureDQNHead(chainer.ChainList):
 
-    def __init__(self, n_input_channels=4):
+    def __init__(self, n_input_channels=4, activation=F.relu):
         self.n_input_channels = n_input_channels
+        self.activation = activation
 
         layers = [
             L.Convolution2D(n_input_channels, 32, 8, stride=4, bias=0.1),
@@ -22,13 +23,15 @@ class NatureDQNHead(chainer.ChainList):
     def __call__(self, state):
         h = chainer.Variable(state)
         for layer in self:
-            h = F.relu(layer(h))
+            h = self.activation(layer(h))
         return h
+
 
 class NIPSDQNHead(chainer.ChainList):
 
-    def __init__(self, n_input_channels=4):
+    def __init__(self, n_input_channels=4, activation=F.relu):
         self.n_input_channels = n_input_channels
+        self.activation = activation
 
         layers = [
             L.Convolution2D(n_input_channels, 16, 8, stride=4, bias=0.1),
@@ -41,5 +44,5 @@ class NIPSDQNHead(chainer.ChainList):
     def __call__(self, state):
         h = chainer.Variable(state)
         for layer in self:
-            h = F.relu(layer(h))
+            h = self.activation(layer(h))
         return h
