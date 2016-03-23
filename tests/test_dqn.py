@@ -1,12 +1,9 @@
 import unittest
 
-import numpy as np
-import chainer
 from chainer import optimizers
 
 import q_function
 from dqn import DQN
-import delayed_xor
 import random_seed
 import replay_buffer
 from simple_abc import ABC
@@ -17,9 +14,7 @@ class TestDQN(unittest.TestCase):
     def setUp(self):
         pass
 
-    def test_abc(self):
-
-        gpu = -1
+    def _test_abc(self, gpu):
 
         random_seed.set_random_seed(0)
 
@@ -33,7 +28,6 @@ class TestDQN(unittest.TestCase):
         agent = DQN(q_func, opt, rbuf, gpu=-1, gamma=0.9, epsilon=0.1,
                     replay_start_size=1000, target_update_frequency=1000)
 
-        # env = delayed_xor.DelayedXOR(5)
         env = ABC()
 
         total_r = 0
@@ -62,3 +56,9 @@ class TestDQN(unittest.TestCase):
             env.receive_action(action)
             total_r += env.reward
         self.assertAlmostEqual(total_r, 1)
+
+    def test_abc_gpu(self):
+        self._test_abc(0)
+
+    def test_abc_cpu(self):
+        self._test_abc(-1)
