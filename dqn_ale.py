@@ -77,6 +77,8 @@ def main():
     parser.add_argument('--target-update-frequency',
                         type=int, default=10 ** 4)
     parser.add_argument('--activation', type=str, default='relu')
+    parser.add_argument('--clip-delta', action='store_true')
+    parser.set_defaults(clip_delta=False)
     args = parser.parse_args()
 
     if args.seed is not None:
@@ -126,7 +128,8 @@ def main():
 
     agent = DQN(q_func, opt, rbuf, gpu=args.gpu, gamma=0.99,
                 epsilon=1.0, replay_start_size=args.replay_start_size,
-                target_update_frequency=args.target_update_frequency)
+                target_update_frequency=args.target_update_frequency,
+                clip_delta=args.clip_delta)
 
     if len(args.model) > 0:
         agent.load_model(args.model)

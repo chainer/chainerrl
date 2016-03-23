@@ -32,7 +32,8 @@ class DQN(agent.Agent):
 
     def __init__(self, q_function, optimizer, replay_buffer, gamma, epsilon,
                  gpu=-1, replay_start_size=50000, minibatch_size=32,
-                 update_frequency=4, target_update_frequency=10000):
+                 update_frequency=4, target_update_frequency=10000,
+                 clip_delta=True):
         """
         Args:
           replay_start_size (int): if replay buffer's size is less than replay_start_size, skip updating
@@ -53,6 +54,8 @@ class DQN(agent.Agent):
         self.minibatch_size = minibatch_size
         self.update_frequency = update_frequency
         self.target_update_frequency = target_update_frequency
+        self.clip_delta = clip_delta
+
         self.t = 0
         self.last_state = None
         self.last_action = None
@@ -150,7 +153,10 @@ class DQN(agent.Agent):
             for e in delta:
                 errors_out.append(e)
 
-        return smooth_l1_loss.smooth_l1_loss(batch_q, batch_q_target)
+        if self.clip_delta:
+            return smooth_l1_loss.smooth_l1_loss(batch_q, batch_q_target)
+        else:
+            return F.sum((batch_q - batch_q_target) ** 2)
 
     def compute_q_values(self, states):
         """Compute Q-values

@@ -26,7 +26,8 @@ class TestDQN(unittest.TestCase):
 
         rbuf = replay_buffer.ReplayBuffer(1e5)
         agent = DQN(q_func, opt, rbuf, gpu=gpu, gamma=0.9, epsilon=0.1,
-                    replay_start_size=1000, target_update_frequency=1000)
+                    replay_start_size=1000, target_update_frequency=1000,
+                    clip_delta=False)
 
         env = ABC()
 
