@@ -170,7 +170,7 @@ def main():
                 agent.epsilon -= 0.9 / args.final_exploration_frames
 
             if env.is_terminal:
-                print 'i:{} episode_idx:{} epsilon:{} episode_r:{}'.format(i, episode_idx, agent.epsilon, episode_r)
+                print '{} i:{} episode_idx:{} epsilon:{} episode_r:{}'.format(outdir, i, episode_idx, agent.epsilon, episode_r)
                 episode_r = 0
                 episode_idx += 1
                 env.initialize()
