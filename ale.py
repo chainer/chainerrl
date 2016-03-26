@@ -104,19 +104,25 @@ class ALE(environment.EpisodicEnvironment):
 
         raw_reward = 0
         for i in xrange(4):
-            if self.ale.game_over():
-                break
+
+            # Last screeen must be stored before executing the 4th action
             if i == 3:
                 self.last_raw_screen = self.ale.getScreenRGB()
-            raw_reward += self.ale.act(self.legal_actions[action])
-        self.last_screens.append(self.current_screen())
 
-        # Check lives are lost
-        if self.lives > self.ale.lives():
-            self.lives_lost = True
-        else:
-            self.lives_lost = False
-        self.lives = self.ale.lives()
+            raw_reward += self.ale.act(self.legal_actions[action])
+
+            # Check if lives are lost
+            if self.lives > self.ale.lives():
+                self.lives_lost = True
+            else:
+                self.lives_lost = False
+            self.lives = self.ale.lives()
+
+            if self.is_terminal:
+                break
+
+        # We must have last screen here unless it's terminal
+        self.last_screens.append(self.current_screen())
 
         if raw_reward > 0:
             self._reward = 1
