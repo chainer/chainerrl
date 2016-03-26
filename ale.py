@@ -142,7 +142,8 @@ class ALE(environment.EpisodicEnvironment):
         self.last_raw_screen = self.ale.getScreenRGB()
 
         self.last_screens = collections.deque(
-            [self.current_screen()] * self.n_last_screens,
+            [np.zeros((84, 84), dtype=np.float32)] * 3 +
+            [self.current_screen()],
             maxlen=self.n_last_screens)
 
         self.lives_lost = False
