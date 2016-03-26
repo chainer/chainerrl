@@ -120,7 +120,7 @@ def main():
 
     # Use the same hyper parameters as the Nature paper's
     opt = optimizers.RMSpropGraves(
-        lr=2.5e-4, alpha=0.95, momentum=0.95, eps=1e-4)
+        lr=2.5e-4, alpha=0.95, momentum=0.95, eps=1e-2)
 
     opt.setup(q_func)
     # opt.add_hook(chainer.optimizer.GradientClipping(1.0))
