@@ -26,6 +26,16 @@ def _to_device(obj, gpu):
             return cuda.to_cpu(obj)
 
 
+def clipped_loss(x, t):
+    diff = x - t
+    abs_loss = abs(diff)
+    squared_loss = diff ** 2
+    abs_loss = F.expand_dims(abs_loss, 1)
+    squared_loss = F.expand_dims(squared_loss, 1)
+    # return F.sum(F.min(F.concat((abs_loss, squared_loss), axis=1), axis=1)) / np.float32(len(x))
+    return F.sum(F.min(F.concat((abs_loss, squared_loss), axis=1), axis=1))
+
+
 class DQN(agent.Agent):
     """DQN = QNetwork + Optimizer
     """
@@ -154,7 +164,8 @@ class DQN(agent.Agent):
                 errors_out.append(e)
 
         if self.clip_delta:
-            return smooth_l1_loss.smooth_l1_loss(batch_q, batch_q_target)
+            # return smooth_l1_loss.smooth_l1_loss(batch_q, batch_q_target)
+            return clipped_loss(batch_q, batch_q_target) / len(experiences)
         else:
             return F.sum((batch_q - batch_q_target) ** 2)
 
