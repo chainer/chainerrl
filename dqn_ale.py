@@ -29,6 +29,8 @@ def parse_activation(activation_str):
         return F.relu
     elif activation_str == 'elu':
         return F.elu
+    elif activation_str == 'lrelu':
+        return F.leaky_relu
     else:
         raise RuntimeError(
             'Not supported activation: {}'.format(activation_str))
