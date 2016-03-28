@@ -3,6 +3,7 @@ import numpy as np
 import chainer
 from chainer import functions as F
 from chainer import links as L
+from chainer import cuda
 
 
 class Policy(object):
@@ -37,6 +38,15 @@ class SoftmaxPolicy(Policy):
           ~chainer.Variable: logits of actions
         """
         raise NotImplementedError
+
+    def __call__(self, state, action):
+        assert state.shape[0] == 1
+        xp = cuda.get_array_module(state)
+        logits = self.forward(state)
+        probs = F.softmax(logits)
+        q = F.select_item(
+            probs, chainer.Variable(xp.asarray(action, dtype=np.int32)))
+        return q
 
     def sample_with_probability(self, state):
         """

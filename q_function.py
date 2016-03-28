@@ -20,6 +20,14 @@ class StateInputQFunction(QFunction):
     def forward(self, state, test=False):
         raise NotImplementedError()
 
+    def __call__(self, state, action):
+        assert state.shape[0] == 1
+        xp = cuda.get_array_module(state)
+        values = self.forward(state)
+        q = F.select_item(
+            values, chainer.Variable(xp.asarray(action, dtype=np.int32)))
+        return q
+
     def sample_epsilon_greedily_with_value(self, state, epsilon):
         assert state.shape[0] == 1
         xp = cuda.get_array_module(state)
