@@ -63,6 +63,9 @@ def eval_performance(rom, q_func, gpu):
 
 
 def main():
+    import logging
+    logging.basicConfig(level=logging.DEBUG)
+
     parser = argparse.ArgumentParser()
     parser.add_argument('rom', type=str)
     parser.add_argument('--outdir', type=str, default=None)

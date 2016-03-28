@@ -3,6 +3,8 @@ import threading
 import unittest
 import os
 import tempfile
+from logging import getLogger
+logger = getLogger(__name__)
 
 import numpy as np
 import chainer.functions as F
@@ -231,7 +233,7 @@ class DQN(agent.Agent):
                 self._batch_states([state]), self.epsilon)
             action = int(action[0])
             if self.t % 100 == 0:
-                print 't:{} q:{}'.format(self.t, q.data)
+                logger.debug('t:{} q:{}'.format(self.t, q.data))
             self.t += 1
 
             # Update the target network
