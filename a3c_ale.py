@@ -20,6 +20,29 @@ import async
 import rmsprop_ones
 
 
+def run_func_for_profiling(agent, env):
+    # Must be put outside main()  so that cProfile.runctx can see
+
+    total_r = 0
+    episode_r = 0
+
+    for i in xrange(100):
+
+        total_r += env.reward
+        episode_r += env.reward
+
+        action = agent.act(env.state, env.reward, env.is_terminal)
+
+        if env.is_terminal:
+            print 'i:{} episode_r:{}'.format(i, episode_r)
+            episode_r = 0
+            env.initialize()
+        else:
+            env.receive_action(action)
+
+    print 'pid:{}, total_r:{}'.format(os.getpid(), total_r)
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('processes', type=int)
@@ -28,6 +51,7 @@ def main():
     parser.add_argument('--use-sdl', action='store_true')
     parser.add_argument('--t-max', type=int, default=5)
     parser.add_argument('--beta', type=float, default=1e-2)
+    parser.add_argument('--profile', action='store_true')
     parser.set_defaults(use_sdl=False)
     args = parser.parse_args()
 
@@ -66,10 +90,18 @@ def main():
             else:
                 env.receive_action(action)
 
-
         print 'pid:{}, total_r:{}'.format(os.getpid(), total_r)
 
-    async.run_async(args.processes, agent_func, env_func, run_func)
+    if args.profile:
+
+        def profile_run_func(agent, env):
+            import cProfile
+            cProfile.runctx('run_func_for_profiling(agent, env)', globals(),
+                            locals(), 'profile-{}.out'.format(os.getpid()))
+
+        async.run_async(args.processes, agent_func, env_func, profile_run_func)
+    else:
+        async.run_async(args.processes, agent_func, env_func, run_func)
 
 
 if __name__ == '__main__':
