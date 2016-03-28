@@ -79,8 +79,9 @@ def main():
     parser.add_argument('--target-update-frequency',
                         type=int, default=10 ** 4)
     parser.add_argument('--activation', type=str, default='relu')
-    parser.add_argument('--clip-delta', action='store_true')
-    parser.set_defaults(clip_delta=False)
+    parser.add_argument('--no-clip-delta',
+                        dest='clip_delta', action='store_false')
+    parser.set_defaults(clip_delta=True)
     args = parser.parse_args()
 
     if args.seed is not None:
