@@ -2,6 +2,8 @@ import multiprocessing as mp
 import os
 import argparse
 import random
+from logging import getLogger
+logger = getLogger(__name__)
 
 import numpy as np
 
@@ -66,21 +68,25 @@ def main():
             episode_r += env.reward
 
             if agent.epsilon > epsilon_target:
-                agent.epsilon -= (1 - epsilon_target) / args.final_exploration_frames
+                agent.epsilon -= (1 - epsilon_target) / \
+                    args.final_exploration_frames
 
             action = agent.act(env.state, env.reward, env.is_terminal)
 
             if env.is_terminal:
-                print 'i:{} epsilon:{} episode_r:{}'.format(i, agent.epsilon, episode_r)
+                logger.debug('i:{} epsilon:{} episode_r:{}'.format(
+                    i, agent.epsilon, episode_r))
                 episode_r = 0
                 env.initialize()
             else:
                 env.receive_action(action)
 
-        print 'pid:{}, total_r:{}'.format(os.getpid(), total_r)
+        print logger.debug('pid:{}, total_r:{}'.format(os.getpid(), total_r))
 
     async.run_async(args.processes, agent_func, env_func, run_func)
 
 
 if __name__ == '__main__':
+    import logging
+    logging.basicConfig(level=logging.DEBUG)
     main()

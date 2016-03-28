@@ -1,4 +1,6 @@
 import copy
+from logging import getLogger
+logger = getLogger(__name__)
 
 import numpy as np
 import chainer
@@ -93,7 +95,7 @@ class NStepQLearning(agent.Agent):
             action, q = self.q_function.sample_epsilon_greedily_with_value(
                 state, self.epsilon)
             if self.t % 100 == 0:
-                print 'q:{}'.format(q.data)
+                logger.debug('q:%s', q.data)
             self.past_action_values[self.t] = q
             self.t += 1
 
@@ -102,7 +104,7 @@ class NStepQLearning(agent.Agent):
             # process specific counter instead. So i_target should be set
             # x-times smaller, where x is the number of processes
             if self.t % self.i_target == 0:
-                print 'self.t:', self.t
+                logger.debug('self.t:%s', self.t)
                 copy_param.copy_param(self.target_q_function, self.q_function)
 
             return action[0]
