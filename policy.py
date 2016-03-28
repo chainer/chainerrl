@@ -1,3 +1,6 @@
+from logging import getLogger
+logger = getLogger(__name__)
+
 import numpy as np
 
 import chainer
@@ -92,7 +95,7 @@ class SoftmaxPolicy(Policy):
             chainer.Variable(np.asarray(action_indices, dtype=np.int32)))
         # Entropy
         entropy = - F.sum(probs * log_probs, axis=1)
-        print 'entropy:{}, probs:{}'.format(entropy.data, probs.data)
+        logger.debug('entropy:%s, probs:%s', entropy.data, probs.data)
         return action_indices, sampled_actions_log_probs, entropy
 
 
