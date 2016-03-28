@@ -46,7 +46,10 @@ class ALE(environment.EpisodicEnvironment):
 
     def current_screen(self):
         # Max of two consecutive frames
+        assert self.last_raw_screen is not None
         rgb_img = np.maximum(self.ale.getScreenRGB(), self.last_raw_screen)
+        # Make sure the last raw screen is used only once
+        self.last_raw_screen = None
         assert rgb_img.shape == (210, 160, 3)
         # RGB -> Luminance
         img = rgb_img[:, :, 0] * 0.2126 + rgb_img[:, :, 1] * \
@@ -122,7 +125,8 @@ class ALE(environment.EpisodicEnvironment):
                 break
 
         # We must have last screen here unless it's terminal
-        self.last_screens.append(self.current_screen())
+        if not self.is_terminal:
+            self.last_screens.append(self.current_screen())
 
         if raw_reward > 0:
             self._reward = 1

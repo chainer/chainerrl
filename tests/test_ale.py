@@ -35,7 +35,8 @@ class TestALE(unittest.TestCase):
             a = random.randrange(len(legal_actions))
             print 'a', a
             env.receive_action(a)
-            np.testing.assert_array_equal(last_state[1:], env.state[:3])
+            if not env.is_terminal:
+                np.testing.assert_array_equal(last_state[1:], env.state[:3])
             last_state = env.state
 
     def test_current_screen(self):
