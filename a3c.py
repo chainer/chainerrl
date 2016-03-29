@@ -4,6 +4,7 @@ logger = getLogger(__name__)
 
 import numpy as np
 import chainer
+from chainer import functions as F
 
 import agent
 import smooth_l1_loss
@@ -102,6 +103,7 @@ class A3C(agent.Agent):
             pi_loss /= self.t - self.t_start
             v_loss /= self.t - self.t_start
 
+            pi_loss, v_loss = F.broadcast(pi_loss, v_loss)
             loss = pi_loss + v_loss
 
             # Compute gradients using thread-specific model
