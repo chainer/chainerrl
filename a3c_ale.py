@@ -44,6 +44,9 @@ def run_func_for_profiling(agent, env):
 
 
 def main():
+    import logging
+    logging.basicConfig(level=logging.DEBUG)
+
     parser = argparse.ArgumentParser()
     parser.add_argument('processes', type=int)
     parser.add_argument('rom', type=str)
