@@ -28,7 +28,7 @@ class TestA3C(unittest.TestCase):
 
         nproc = 8
 
-        def agent_func():
+        def agent_func(process_idx):
             n_actions = 3
             pi = policy.FCSoftmaxPolicy(1, n_actions, 10, 2)
             v = v_function.FCVFunction(1, 10, 2)
@@ -37,10 +37,10 @@ class TestA3C(unittest.TestCase):
             opt.setup(model)
             return a3c.A3C(model, opt, t_max, 0.9, beta=1e-2)
 
-        def env_func():
+        def env_func(process_idx):
             return simple_abc.ABC()
 
-        def run_func(agent, env):
+        def run_func(process_idx, agent, env):
             total_r = 0
             episode_r = 0
 

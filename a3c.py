@@ -4,11 +4,11 @@ logger = getLogger(__name__)
 
 import numpy as np
 import chainer
-from chainer import functions as F
 
 import agent
 import smooth_l1_loss
 import copy_param
+import clipped_loss
 
 
 class A3C(agent.Agent):
@@ -17,7 +17,8 @@ class A3C(agent.Agent):
     See http://arxiv.org/abs/1602.01783
     """
 
-    def __init__(self, model, optimizer, t_max, gamma, beta=1e-2):
+    def __init__(self, model, optimizer, t_max, gamma, beta=1e-2,
+                 process_idx=0, clip_delta=False):
 
         assert len(model) == 2
 
@@ -35,6 +36,9 @@ class A3C(agent.Agent):
         self.t_max = t_max
         self.gamma = gamma
         self.beta = beta
+        self.process_idx = process_idx
+        self.clip_delta = clip_delta
+
         self.t = 0
         self.t_start = 0
         self.past_action_log_prob = {}
@@ -67,7 +71,9 @@ class A3C(agent.Agent):
                 R *= self.gamma
                 R += self.past_rewards[i]
                 v = self.v_function(self.past_states[i])
-                logger.debug('s:%s v:%s R:%s', self.past_states[i].sum(), v.data, R)
+                if self.process_idx == 0:
+                    logger.debug('s:%s v:%s R:%s', self.past_states[
+                                 i].sum(), v.data, R)
                 advantage = R - v
                 # Accumulate gradients of policy
                 log_prob = self.past_action_log_prob[i]
@@ -81,9 +87,12 @@ class A3C(agent.Agent):
 
                 # Squared loss is used in the original paper, but here I
                 # try smooth L1 loss as in the Nature DQN paper.
-                v_loss += smooth_l1_loss.smooth_l1_loss(
-                    v,
-                    chainer.Variable(np.asarray([[R]], dtype=np.float32)))
+                if self.clip_delta:
+                    v_loss += clipped_loss.clipped_loss(
+                        v,
+                        chainer.Variable(np.asarray([[R]], dtype=np.float32)))
+                else:
+                    v_loss += (v - R) ** 2 / 2
 
             # Do we need to normalize losses by (self.t - self.t_start)?
             # Otherwise, loss scales can be different in case of self.t_max
@@ -103,7 +112,8 @@ class A3C(agent.Agent):
             copy_param.copy_grad(self.shared_model, self.model)
             # Update the globally shared model
             self.optimizer.update()
-            logger.debug('update')
+            if self.process_idx == 0:
+                logger.debug('update')
 
             self.sync_parameters()
 
@@ -121,7 +131,7 @@ class A3C(agent.Agent):
             self.past_action_log_prob[self.t] = log_prob
             self.past_action_entropy[self.t] = entropy
             self.t += 1
-            if self.t % 100 == 0:
+            if self.process_idx == 0:
                 logger.debug('t:%s entropy:%s prob:%s',
                              self.t, entropy.data, np.exp(log_prob.data))
             return action[0]

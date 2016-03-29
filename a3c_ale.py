@@ -60,19 +60,19 @@ def main():
 
     n_actions = ale.ALE(args.rom).number_of_actions
 
-    def agent_func():
+    def agent_func(process_idx):
         head = dqn_head.NIPSDQNHead()
         pi = fc_tail_policy.FCTailPolicy(head, 256, n_actions=n_actions)
         v = fc_tail_v_function.FCTailVFunction(head, 256)
         opt = rmsprop_ones.RMSpropOnes(lr=1e-3)
         model = chainer.ChainList(pi, v)
         opt.setup(model)
-        return a3c.A3C(model, opt, args.t_max, 0.99, beta=args.beta)
+        return a3c.A3C(model, opt, args.t_max, 0.99, beta=args.beta, process_idx=process_idx)
 
-    def env_func():
+    def env_func(process_idx):
         return ale.ALE(args.rom, use_sdl=args.use_sdl)
 
-    def run_func(agent, env):
+    def run_func(process_idx, agent, env):
         total_r = 0
         episode_r = 0
 
@@ -84,13 +84,15 @@ def main():
             action = agent.act(env.state, env.reward, env.is_terminal)
 
             if env.is_terminal:
-                print 'i:{} episode_r:{}'.format(i, episode_r)
+                if process_idx == 0:
+                    print 'i:{} episode_r:{}'.format(i, episode_r)
                 episode_r = 0
                 env.initialize()
             else:
                 env.receive_action(action)
 
-        print 'pid:{}, total_r:{}'.format(os.getpid(), total_r)
+        if process_idx == 0:
+            print 'pid:{}, total_r:{}'.format(os.getpid(), total_r)
 
     if args.profile:
 
