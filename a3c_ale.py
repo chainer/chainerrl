@@ -69,8 +69,9 @@ def main():
 
     def agent_func(process_idx):
         head = dqn_head.NIPSDQNHead()
-        pi = fc_tail_policy.FCTailPolicy(head, 256, n_actions=n_actions)
-        v = fc_tail_v_function.FCTailVFunction(head, 256)
+        pi = fc_tail_policy.FCTailPolicy(
+            head, head.n_output_channels, n_actions=n_actions)
+        v = fc_tail_v_function.FCTailVFunction(head, head.n_output_channels)
         opt = rmsprop_ones.RMSpropOnes(lr=1e-3)
         model = chainer.ChainList(pi, v)
         opt.setup(model)
