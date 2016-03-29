@@ -99,10 +99,11 @@ def main():
 
     if args.profile:
 
-        def profile_run_func(agent, env):
+        def profile_run_func(process_idx, agent, env):
             import cProfile
-            cProfile.runctx('run_func_for_profiling(agent, env)', globals(),
-                            locals(), 'profile-{}.out'.format(os.getpid()))
+            cProfile.runctx('run_func_for_profiling(agent, env)',
+                            globals(), locals(),
+                            'profile-{}.out'.format(os.getpid()))
 
         async.run_async(args.processes, agent_func, env_func, profile_run_func)
     else:
