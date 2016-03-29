@@ -75,6 +75,7 @@ def main():
         opt = rmsprop_ones.RMSpropOnes(lr=1e-3)
         model = chainer.ChainList(pi, v)
         opt.setup(model)
+        opt.add_hook(chainer.optimizer.GradientClipping(1))
         return a3c.A3C(model, opt, args.t_max, 0.99, beta=args.beta, process_idx=process_idx)
 
     def env_func(process_idx):
