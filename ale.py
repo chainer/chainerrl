@@ -23,6 +23,7 @@ class ALE(environment.EpisodicEnvironment):
 
         ale = ALEInterface()
         ale.setInt(b'random_seed', seed)
+        ale.setFloat(b'repeat_action_probability', 0.0)
         self.frame_skip = frame_skip
         if use_sdl:
             if 'DISPLAY' not in os.environ:
