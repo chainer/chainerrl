@@ -44,6 +44,10 @@ def run_func_for_profiling(agent, env):
 
 
 def main():
+
+    # This line makes execution much faster, I don't know why
+    os.environ['OMP_NUM_THREADS'] = '1'
+
     import logging
     logging.basicConfig(level=logging.DEBUG)
 
