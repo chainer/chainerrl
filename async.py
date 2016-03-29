@@ -46,21 +46,21 @@ def extract_states_as_shared_arrays(optimizer):
     return shared_arrays
 
 
-def run_a3c_process(agent_func, env_func, run_func, link_arrays, opt_arrays,
+def run_a3c_process(process_idx, agent_func, env_func, run_func, link_arrays, opt_arrays,
                     seed):
 
     random_seed.set_random_seed(seed)
 
-    agent = agent_func()
+    agent = agent_func(process_idx)
     for i, link in enumerate(agent.links):
         set_shared_params(link, link_arrays[i])
 
     for i, opt in enumerate(agent.optimizers):
         set_shared_states(opt, opt_arrays[i])
 
-    env = env_func()
+    env = env_func(process_idx)
 
-    run_func(agent, env)
+    run_func(process_idx, agent, env)
 
 
 def run_async(n_process, agent_func, env_func, run_func):
@@ -72,7 +72,7 @@ def run_async(n_process, agent_func, env_func, run_func):
       env_func: function that returns a new environment
       run_func: function that receives an agent and an environment
     """
-    base_agent = agent_func()
+    base_agent = agent_func(0)
     links = base_agent.links
     opts = base_agent.optimizers
     link_arrays = [extract_params_as_shared_arrays(link) for link in links]
@@ -80,10 +80,10 @@ def run_async(n_process, agent_func, env_func, run_func):
 
     processes = []
 
-    for _ in xrange(n_process):
+    for process_idx in xrange(n_process):
         processes.append(mp.Process(target=run_a3c_process, args=(
-            agent_func, env_func, run_func, link_arrays, opt_arrays,
-            random.randint(0, 2 ** 32 - 1)
+            process_idx, agent_func, env_func, run_func, link_arrays,
+            opt_arrays, random.randint(0, 2 ** 32 - 1)
         )))
 
     for p in processes:
