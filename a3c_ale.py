@@ -7,6 +7,7 @@ import numpy as np
 
 import chainer
 from chainer import optimizers
+from chainer import functions as F
 
 import fc_tail_policy
 import fc_tail_v_function
@@ -26,7 +27,7 @@ def run_func_for_profiling(agent, env):
     total_r = 0
     episode_r = 0
 
-    for i in xrange(100):
+    for i in xrange(1000):
 
         total_r += env.reward
         episode_r += env.reward
@@ -72,7 +73,11 @@ def main():
         pi = fc_tail_policy.FCTailPolicy(
             head, head.n_output_channels, n_actions=n_actions)
         v = fc_tail_v_function.FCTailVFunction(head, head.n_output_channels)
-        opt = rmsprop_ones.RMSpropOnes(lr=1e-3)
+        # opt = optimizers.RMSprop(lr=1e-3)
+        opt = rmsprop_ones.RMSpropOnes(lr=2e-3, eps=1e-1)
+        # opt = rmsprop_ones.RMSpropOnes(lr=1e-4, eps=1e-1)
+        # opt = optimizers.RMSpropGraves(
+        #     lr=2.5e-4, alpha=0.95, momentum=0.95, eps=1e-2)
         model = chainer.ChainList(pi, v)
         opt.setup(model)
         opt.add_hook(chainer.optimizer.GradientClipping(1))

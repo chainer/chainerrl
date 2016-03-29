@@ -103,16 +103,22 @@ class A3C(agent.Agent):
             pi_loss /= self.t - self.t_start
             v_loss /= self.t - self.t_start
 
-            pi_loss, v_loss = F.broadcast(pi_loss, v_loss)
-            loss = pi_loss + v_loss
+            pi_loss /= 100
+
+            if self.process_idx == 0:
+                logger.debug('pi_loss:%s v_loss:%s', pi_loss.data, v_loss.data)
 
             # Compute gradients using thread-specific model
             self.model.zerograds()
-            loss.backward()
+            pi_loss.backward()
+            v_loss.backward()
             # Copy the gradients to the globally shared model
             self.shared_model.zerograds()
             copy_param.copy_grad(self.shared_model, self.model)
             # Update the globally shared model
+            if self.process_idx == 0:
+                norm = self.optimizer.compute_grads_norm()
+                logger.debug('grad norm:%s', norm)
             self.optimizer.update()
             if self.process_idx == 0:
                 logger.debug('update')
@@ -128,14 +134,14 @@ class A3C(agent.Agent):
 
         if not is_state_terminal:
             self.past_states[self.t] = state
-            action, log_prob, entropy = \
+            action, log_prob, entropy, probs = \
                 self.policy.sample_with_log_probability_and_entropy(state)
             self.past_action_log_prob[self.t] = log_prob
             self.past_action_entropy[self.t] = entropy
             self.t += 1
             if self.process_idx == 0:
-                logger.debug('t:%s entropy:%s prob:%s',
-                             self.t, entropy.data, np.exp(log_prob.data))
+                logger.debug('t:%s entropy:%s, probs:%s',
+                             self.t, entropy.data, probs.data)
             return action[0]
         else:
             return None
