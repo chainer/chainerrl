@@ -1,10 +1,12 @@
 import copy
 from logging import getLogger
 logger = getLogger(__name__)
+import os
 
 import numpy as np
 import chainer
 from chainer import functions as F
+from chainer import serializers
 
 import agent
 import smooth_l1_loss
@@ -153,3 +155,20 @@ class A3C(agent.Agent):
     @property
     def optimizers(self):
         return [self.optimizer]
+
+    def load_model(self, model_filename):
+        """Load a network model form a file
+        """
+        serializers.load_hdf5(model_filename, self.model)
+        copy_param.copy_param(self.model, self.shared_model)
+        opt_filename = model_filename + '.opt'
+        if os.path.exists(opt_filename):
+            print 'WARNING: {0} was not found, so loaded only a model'.format(
+                opt_filename)
+            serializers.load_hdf5(model_filename + '.opt', self.optimizer)
+
+    def save_model(self, model_filename):
+        """Save a network model to a file
+        """
+        serializers.save_hdf5(model_filename, self.model)
+        serializers.save_hdf5(model_filename + '.opt', self.optimizer)

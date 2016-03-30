@@ -1,5 +1,6 @@
 import os
 import unittest
+import tempfile
 
 import numpy as np
 import chainer
@@ -22,6 +23,7 @@ class TestA3C(unittest.TestCase):
 
     def test_abc(self):
         self._test_abc(1)
+        self._test_abc(2)
         self._test_abc(5)
 
     def _test_abc(self, t_max):
@@ -66,7 +68,7 @@ class TestA3C(unittest.TestCase):
         final_agent = async.run_async(nproc, agent_func, env_func, run_func)
 
         # Test
-        env = env_func()
+        env = env_func(0)
         total_r = env.reward
         while not env.is_terminal:
             action = final_agent.policy.sample_with_probability(
@@ -75,3 +77,19 @@ class TestA3C(unittest.TestCase):
             env.receive_action(action)
             total_r += env.reward
         self.assertAlmostEqual(total_r, 1)
+
+    def test_save_load(self):
+        n_actions = 3
+        pi = policy.FCSoftmaxPolicy(1, n_actions, 10, 2)
+        v = v_function.FCVFunction(1, 10, 2)
+        model = chainer.ChainList(pi, v)
+        opt = optimizers.RMSprop(1e-3, eps=1e-2)
+        opt.setup(model)
+        agent = a3c.A3C(model, opt, 1, 0.9, beta=1e-2)
+
+        outdir = tempfile.mkdtemp()
+        filename = os.path.join(outdir, 'test_a3c.h5')
+        agent.save_model(filename)
+        self.assertTrue(os.path.exists(filename))
+        self.assertTrue(os.path.exists(filename + '.opt'))
+        agent.load_model(filename)
