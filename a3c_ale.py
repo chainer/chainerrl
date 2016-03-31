@@ -108,7 +108,7 @@ def main():
             head, head.n_output_channels, n_actions=n_actions)
         v = fc_tail_v_function.FCTailVFunction(head, head.n_output_channels)
         # opt = optimizers.RMSprop(lr=1e-3)
-        opt = rmsprop_ones.RMSpropOnes(lr=2e-3, eps=1e-1)
+        opt = rmsprop_ones.RMSpropOnes(lr=1e-3, eps=1e-2, alpha=0.999)
         # opt = rmsprop_ones.RMSpropOnes(lr=1e-4, eps=1e-1)
         # opt = optimizers.RMSpropGraves(
         #     lr=2.5e-4, alpha=0.95, momentum=0.95, eps=1e-2)

@@ -105,7 +105,7 @@ class A3C(agent.Agent):
             pi_loss /= self.t - self.t_start
             v_loss /= self.t - self.t_start
 
-            pi_loss /= 100
+            pi_loss /= 10
 
             if self.process_idx == 0:
                 logger.debug('pi_loss:%s v_loss:%s', pi_loss.data, v_loss.data)

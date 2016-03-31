@@ -30,7 +30,7 @@ class NatureDQNHead(chainer.ChainList):
 class NIPSDQNHead(chainer.ChainList):
 
     def __init__(self, n_input_channels=4, n_output_channels=256,
-                 activation=F.relu, bias=0.1):
+                 activation=F.leaky_relu, bias=0.1):
         self.n_input_channels = n_input_channels
         self.activation = activation
         self.n_output_channels = n_output_channels
