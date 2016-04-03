@@ -1,12 +1,6 @@
 import argparse
-import json
-import multiprocessing as mp
 import os
-import random
 import sys
-import tempfile
-
-import numpy as np
 
 import chainer
 from chainer import optimizers
@@ -14,14 +8,11 @@ from chainer import functions as F
 
 import fc_tail_q_function
 import dqn_head
-import q_function
 from dqn import DQN
 import ale
 import random_seed
-import async
-import rmsprop_ones
 import replay_buffer
-import subprocess
+from prepare_output_dir import prepare_output_dir
 
 
 def parse_activation(activation_str):
@@ -90,33 +81,9 @@ def main():
     if args.seed is not None:
         random_seed.set_random_seed(args.seed)
 
-    if args.outdir is not None:
-        if os.path.exists(args.outdir):
-            if not os.path.isdir(args.outdir):
-                raise RuntimeError('{} is not a directory'.format(args.outdir))
-        else:
-            os.makedirs(args.outdir)
-        outdir = args.outdir
-    else:
-        outdir = tempfile.mkdtemp()
+    outdir = prepare_output_dir(args, args.outdir)
 
     print 'Output files are saved in {}'.format(outdir)
-
-    # Save all the arguments
-    with open(os.path.join(outdir, 'args.txt'), 'w') as f:
-        f.write(json.dumps(vars(args)))
-
-    # Save `git status`
-    with open(os.path.join(outdir, 'git-status.txt'), 'w') as f:
-        f.write(subprocess.check_output(['git', 'status']))
-
-    # Save `git log`
-    with open(os.path.join(outdir, 'git-log.txt'), 'w') as f:
-        f.write(subprocess.check_output(['git', 'log']))
-
-    # Save `git diff`
-    with open(os.path.join(outdir, 'git-diff.txt'), 'w') as f:
-        f.write(subprocess.check_output(['git', 'diff']))
 
     n_actions = ale.ALE(args.rom).number_of_actions
     activation = parse_activation(args.activation)
@@ -149,23 +116,23 @@ def main():
 
     for i in xrange(args.steps):
 
-        if i % (args.steps / 100) == 0:
-            # Test performance
-            score = eval_performance(args.rom, agent.q_function, args.gpu)
-            with open(os.path.join(outdir, 'scores.txt'), 'a+') as f:
-                print >> f, i, score
-            if max_score is None or score > max_score:
-                if max_score is not None:
-                    # Save the best model so far
-                    print 'The best score is updated {} -> {}'.format(
-                        max_score, score)
-                    filename = os.path.join(
-                        outdir, '{}_keyboardinterrupt.h5'.format(i))
-                    agent.save_model(filename)
-                    print 'Saved the current best model to {}'.format(filename)
-                max_score = score
-
         try:
+            if i % (args.steps / 100) == 0:
+                # Test performance
+                score = eval_performance(args.rom, agent.q_function, args.gpu)
+                with open(os.path.join(outdir, 'scores.txt'), 'a+') as f:
+                    print >> f, i, score
+                if max_score is None or score > max_score:
+                    if max_score is not None:
+                        # Save the best model so far
+                        print 'The best score is updated {} -> {}'.format(
+                            max_score, score)
+                        filename = os.path.join(
+                            outdir, '{}_keyboardinterrupt.h5'.format(i))
+                        agent.save_model(filename)
+                        print 'Saved the current best model to {}'.format(filename)
+                    max_score = score
+
             episode_r += env.reward
 
             action = agent.act(env.state, env.reward, env.is_terminal)

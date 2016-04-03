@@ -1,10 +1,5 @@
-import multiprocessing as mp
 import os
 import argparse
-import random
-import tempfile
-import json
-import subprocess
 import sys
 
 import numpy as np
@@ -16,13 +11,12 @@ from chainer import functions as F
 import fc_tail_policy
 import fc_tail_v_function
 import dqn_head
-import policy
-import v_function
 import a3c
 import ale
 import random_seed
 import async
 import rmsprop_ones
+from prepare_output_dir import prepare_output_dir
 
 
 def run_func_for_profiling(agent, env):
@@ -135,7 +129,9 @@ def main():
 
                 if env.is_terminal:
                     if process_idx == 0:
-                        print 'i:{} episode_r:{}'.format(i, episode_r)
+                        print '{} i:{} episode_r:{}'.format(outdir, i, episode_r)
+                        with open(os.path.join(outdir, 'scores.txt'), 'a+') as f:
+                            print >> f, i, episode_r
                         if max_score == None or episode_r > max_score:
                             if max_score is not None:
                                 # Save the best model so far
