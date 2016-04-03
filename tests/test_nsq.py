@@ -27,7 +27,7 @@ class TestNSQ(unittest.TestCase):
 
         nproc = 8
 
-        def agent_func():
+        def agent_func(process_idx):
             n_actions = 3
             q_func = q_function.FCSIQFunction(1, n_actions, 10, 2)
             opt = optimizers.RMSprop(1e-3, eps=1e-2)
@@ -36,10 +36,10 @@ class TestNSQ(unittest.TestCase):
                                                    0.9, 0.1,
                                                    i_target=10)
 
-        def env_func():
+        def env_func(process_idx):
             return simple_abc.ABC()
 
-        def run_func(agent, env):
+        def run_func(process_idx, agent, env):
             total_r = 0
             episode_r = 0
 
@@ -65,7 +65,7 @@ class TestNSQ(unittest.TestCase):
         final_agent = async.run_async(nproc, agent_func, env_func, run_func)
 
         # Test
-        env = env_func()
+        env = env_func(0)
         total_r = env.reward
         while not env.is_terminal:
             action = final_agent.q_function.sample_greedily_with_value(
