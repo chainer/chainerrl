@@ -69,7 +69,7 @@ class NatureDQNHeadCReLU(chainer.ChainList):
             L.Linear(3136, n_output_channels, bias=bias),
         ]
 
-        super(NatureDQNHead, self).__init__(*layers)
+        super(NatureDQNHeadCReLU, self).__init__(*layers)
 
     def __call__(self, state):
         h = chainer.Variable(state)
