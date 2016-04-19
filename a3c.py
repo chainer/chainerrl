@@ -21,7 +21,7 @@ class A3C(agent.Agent):
     """
 
     def __init__(self, model, optimizer, t_max, gamma, beta=1e-2,
-                 process_idx=0, clip_delta=False):
+                 process_idx=0, clip_delta=False, clip_reward=True):
 
         assert len(model) == 2
 
@@ -41,6 +41,7 @@ class A3C(agent.Agent):
         self.beta = beta
         self.process_idx = process_idx
         self.clip_delta = clip_delta
+        self.clip_reward = clip_reward
 
         self.t = 0
         self.t_start = 0
@@ -53,6 +54,9 @@ class A3C(agent.Agent):
         copy_param.copy_param(self.model, self.shared_model)
 
     def act(self, state, reward, is_state_terminal):
+
+        if self.clip_reward:
+            reward = np.clip(reward, -1, 1)
 
         state = state.reshape((1,) + state.shape)
 

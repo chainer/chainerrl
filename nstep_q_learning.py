@@ -17,7 +17,8 @@ class NStepQLearning(agent.Agent):
     See http://arxiv.org/abs/1602.01783
     """
 
-    def __init__(self, q_function, optimizer, t_max, gamma, epsilon, i_target):
+    def __init__(self, q_function, optimizer, t_max, gamma, epsilon, i_target,
+                 clip_reward=True):
         # Globally shared model
         self.shared_q_function = q_function
         # Thread specific model
@@ -28,6 +29,7 @@ class NStepQLearning(agent.Agent):
         self.gamma = gamma
         self.epsilon = epsilon
         self.i_target = i_target
+        self.clip_reward = clip_reward
         self.t = 0
         self.t_start = 0
         self.past_action_values = {}
@@ -38,6 +40,9 @@ class NStepQLearning(agent.Agent):
         copy_param.copy_param(self.q_function, self.shared_q_function)
 
     def act(self, state, reward, is_state_terminal):
+
+        if self.clip_reward:
+            reward = np.clip(reward, -1, 1)
 
         state = state.reshape((1,) + state.shape)
 
