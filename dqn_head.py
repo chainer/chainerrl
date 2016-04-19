@@ -56,10 +56,8 @@ class NIPSDQNHead(chainer.ChainList):
 
 class NatureDQNHeadCReLU(chainer.ChainList):
 
-    def __init__(self, n_input_channels=4, n_output_channels=512,
-                 activation=F.relu):
+    def __init__(self, n_input_channels=4, n_output_channels=512):
         self.n_input_channels = n_input_channels
-        self.activation = activation
         self.n_output_channels = n_output_channels
 
         layers = [
@@ -74,7 +72,7 @@ class NatureDQNHeadCReLU(chainer.ChainList):
     def __call__(self, state):
         h = chainer.Variable(state)
         for layer in self:
-            h = self.activation(layer(h))
+            h = crelu.crelu(layer(h))
         return h
 
 
