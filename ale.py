@@ -16,7 +16,8 @@ class ALE(environment.EpisodicEnvironment):
     """
 
     def __init__(self, rom_filename, seed=0, use_sdl=False, n_last_screens=4,
-                 frame_skip=4, treat_life_lost_as_terminal=True, crop_or_scale='scale'):
+                 frame_skip=4, treat_life_lost_as_terminal=True,
+                 crop_or_scale='scale'):
         self.n_last_screens = n_last_screens
         self.treat_life_lost_as_terminal = treat_life_lost_as_terminal
         self.crop_or_scale = crop_or_scale
@@ -106,14 +107,14 @@ class ALE(environment.EpisodicEnvironment):
     def receive_action(self, action):
         assert not self.is_terminal
 
-        raw_reward = 0
+        rewards = []
         for i in xrange(4):
 
             # Last screeen must be stored before executing the 4th action
             if i == 3:
                 self.last_raw_screen = self.ale.getScreenRGB()
 
-            raw_reward += self.ale.act(self.legal_actions[action])
+            rewards.append(self.ale.act(self.legal_actions[action]))
 
             # Check if lives are lost
             if self.lives > self.ale.lives():
@@ -129,12 +130,8 @@ class ALE(environment.EpisodicEnvironment):
         if not self.is_terminal:
             self.last_screens.append(self.current_screen())
 
-        if raw_reward > 0:
-            self._reward = 1
-        elif raw_reward < 0:
-            self._reward = -1
-        else:
-            self._reward = 0
+        self._reward = sum(rewards)
+
         return self._reward
 
     def initialize(self):
