@@ -13,6 +13,7 @@ import ale
 import random_seed
 import replay_buffer
 from prepare_output_dir import prepare_output_dir
+import oplu
 
 
 def parse_activation(activation_str):
@@ -22,6 +23,8 @@ def parse_activation(activation_str):
         return F.elu
     elif activation_str == 'lrelu':
         return F.leaky_relu
+    elif activation_str == 'oplu':
+        return oplu.oplu
     else:
         raise RuntimeError(
             'Not supported activation: {}'.format(activation_str))
@@ -30,6 +33,10 @@ def parse_activation(activation_str):
 def parse_arch(arch, n_actions, activation):
     if arch == 'nature':
         head = dqn_head.NatureDQNHead(activation=activation)
+        return fc_tail_q_function.FCTailQFunction(
+            head, 512, n_actions=n_actions)
+    if arch == 'nature_crelu':
+        head = dqn_head.NatureDQNHeadCReLU()
         return fc_tail_q_function.FCTailQFunction(
             head, 512, n_actions=n_actions)
     elif arch == 'nips':
@@ -67,7 +74,8 @@ def main():
     parser.add_argument('--final-exploration-frames',
                         type=int, default=10 ** 6)
     parser.add_argument('--model', type=str, default='')
-    parser.add_argument('--arch', type=str, default='nature')
+    parser.add_argument('--arch', type=str, default='nature',
+            choices=['nature', 'nips', 'nature_crelu'])
     parser.add_argument('--steps', type=int, default=10 ** 7)
     parser.add_argument('--replay-start-size', type=int, default=5 * 10 ** 4)
     parser.add_argument('--target-update-frequency',
