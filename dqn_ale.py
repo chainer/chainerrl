@@ -72,7 +72,7 @@ def main():
     parser.add_argument('--replay-start-size', type=int, default=5 * 10 ** 4)
     parser.add_argument('--target-update-frequency',
                         type=int, default=10 ** 4)
-    parser.add_argument('--update-frequency', type=int, default=4)
+    parser.add_argument('--update-frequency', type=int, default=1)
     parser.add_argument('--activation', type=str, default='relu')
     parser.add_argument('--no-clip-delta',
                         dest='clip_delta', action='store_false')

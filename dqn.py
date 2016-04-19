@@ -44,7 +44,7 @@ class DQN(agent.Agent):
 
     def __init__(self, q_function, optimizer, replay_buffer, gamma, epsilon,
                  gpu=-1, replay_start_size=50000, minibatch_size=32,
-                 update_frequency=4, target_update_frequency=10000,
+                 update_frequency=1, target_update_frequency=10000,
                  clip_delta=True, clip_reward=True):
         """
         Args:
