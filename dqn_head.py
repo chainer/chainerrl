@@ -57,16 +57,16 @@ class NIPSDQNHead(chainer.ChainList):
 class NatureDQNHeadCReLU(chainer.ChainList):
 
     def __init__(self, n_input_channels=4, n_output_channels=512,
-                 activation=F.relu, bias=0.1):
+                 activation=F.relu):
         self.n_input_channels = n_input_channels
         self.activation = activation
         self.n_output_channels = n_output_channels
 
         layers = [
-            L.Convolution2D(n_input_channels, 32 / 2, 8, stride=4, bias=bias),
-            L.Convolution2D(32, 64 / 2, 4, stride=2, bias=bias),
-            L.Convolution2D(64, 64 / 2, 3, stride=1, bias=bias),
-            L.Linear(3136, n_output_channels, bias=bias),
+            L.Convolution2D(n_input_channels, 32 / 2, 8, stride=4),
+            L.Convolution2D(32, 64 / 2, 4, stride=2),
+            L.Convolution2D(64, 64 / 2, 3, stride=1),
+            L.Linear(3136, n_output_channels / 2),
         ]
 
         super(NatureDQNHeadCReLU, self).__init__(*layers)
