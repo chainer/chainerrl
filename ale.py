@@ -17,10 +17,11 @@ class ALE(environment.EpisodicEnvironment):
 
     def __init__(self, rom_filename, seed=0, use_sdl=False, n_last_screens=4,
                  frame_skip=4, treat_life_lost_as_terminal=True,
-                 crop_or_scale='scale'):
+                 crop_or_scale='scale', max_start_nullops=30):
         self.n_last_screens = n_last_screens
         self.treat_life_lost_as_terminal = treat_life_lost_as_terminal
         self.crop_or_scale = crop_or_scale
+        self.max_start_nullops = max_start_nullops
 
         ale = ALEInterface()
         ale.setInt(b'random_seed', seed)
@@ -138,6 +139,11 @@ class ALE(environment.EpisodicEnvironment):
 
         if self.ale.game_over():
             self.ale.reset_game()
+
+            if self.max_start_nullops > 0:
+                n_nullops = np.random.randint(0, self.max_start_nullops + 1)
+                for _ in range(n_nullops):
+                    self.ale.act(0)
 
         self._reward = 0
 
