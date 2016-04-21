@@ -48,7 +48,7 @@ def parse_arch(arch, n_actions, activation):
 
 
 def eval_performance(rom, q_func, gpu):
-    env = ale.ALE(rom)
+    env = ale.ALE(rom, treat_life_lost_as_terminal=False)
     test_r = 0
     while not env.is_terminal:
         s = env.state.reshape((1,) + env.state.shape)
