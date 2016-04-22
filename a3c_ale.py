@@ -77,33 +77,9 @@ def main():
     if args.seed is not None:
         random_seed.set_random_seed(args.seed)
 
-    if args.outdir is not None:
-        if os.path.exists(args.outdir):
-            if not os.path.isdir(args.outdir):
-                raise RuntimeError('{} is not a directory'.format(args.outdir))
-        else:
-            os.makedirs(args.outdir)
-        outdir = args.outdir
-    else:
-        outdir = tempfile.mkdtemp()
+    outdir = prepare_output_dir(args, args.outdir)
 
     print 'Output files are saved in {}'.format(outdir)
-
-    # Save all the arguments
-    with open(os.path.join(outdir, 'args.txt'), 'w') as f:
-        f.write(json.dumps(vars(args)))
-
-    # Save `git status`
-    with open(os.path.join(outdir, 'git-status.txt'), 'w') as f:
-        f.write(subprocess.check_output(['git', 'status']))
-
-    # Save `git log`
-    with open(os.path.join(outdir, 'git-log.txt'), 'w') as f:
-        f.write(subprocess.check_output(['git', 'log']))
-
-    # Save `git diff`
-    with open(os.path.join(outdir, 'git-diff.txt'), 'w') as f:
-        f.write(subprocess.check_output(['git', 'diff']))
 
     n_actions = ale.ALE(args.rom).number_of_actions
 
