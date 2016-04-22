@@ -42,6 +42,17 @@ def run_func_for_profiling(agent, env):
     print 'pid:{}, total_r:{}'.format(os.getpid(), total_r)
 
 
+def phi(screens):
+    assert len(screens) == 4
+    assert screens[0].dtype == np.uint8
+    raw_values = np.asarray(screens, dtype=np.float32)
+    # [0,255] -> [-128, 127]
+    raw_values -= 128
+    # [-128, 127] -> [-1, 1)
+    raw_values /= 128.0
+    return raw_values
+
+
 def main():
 
     # This line makes execution much faster, I don't know why
@@ -109,7 +120,7 @@ def main():
         model = chainer.ChainList(pi, v)
         opt.setup(model)
         opt.add_hook(chainer.optimizer.GradientClipping(2))
-        return a3c.A3C(model, opt, args.t_max, 0.99, beta=args.beta, process_idx=process_idx)
+        return a3c.A3C(model, opt, args.t_max, 0.99, beta=args.beta, process_idx=process_idx, phi=phi)
 
     def env_func(process_idx):
         return ale.ALE(args.rom, use_sdl=args.use_sdl)

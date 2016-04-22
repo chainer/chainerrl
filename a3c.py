@@ -21,7 +21,8 @@ class A3C(agent.Agent):
     """
 
     def __init__(self, model, optimizer, t_max, gamma, beta=1e-2,
-                 process_idx=0, clip_delta=False, clip_reward=True):
+                 process_idx=0, clip_delta=False, clip_reward=True,
+                 phi=lambda x: x):
 
         assert len(model) == 2
 
@@ -42,6 +43,7 @@ class A3C(agent.Agent):
         self.process_idx = process_idx
         self.clip_delta = clip_delta
         self.clip_reward = clip_reward
+        self.phi = phi
 
         self.t = 0
         self.t_start = 0
@@ -58,7 +60,7 @@ class A3C(agent.Agent):
         if self.clip_reward:
             reward = np.clip(reward, -1, 1)
 
-        state = state.reshape((1,) + state.shape)
+        state = np.expand_dims(self.phi(state), 0)
 
         self.past_rewards[self.t - 1] = reward
 
