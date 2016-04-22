@@ -45,7 +45,7 @@ class DQN(agent.Agent):
     def __init__(self, q_function, optimizer, replay_buffer, gamma, epsilon,
                  gpu=-1, replay_start_size=50000, minibatch_size=32,
                  update_frequency=1, target_update_frequency=10000,
-                 clip_delta=True, clip_reward=True):
+                 clip_delta=True, clip_reward=True, phi=lambda x: x):
         """
         Args:
           replay_start_size (int): if replay buffer's size is less than replay_start_size, skip updating
@@ -68,6 +68,7 @@ class DQN(agent.Agent):
         self.target_update_frequency = target_update_frequency
         self.clip_delta = clip_delta
         self.clip_reward = clip_reward
+        self.phi = phi
 
         self.t = 0
         self.last_state = None
@@ -100,8 +101,9 @@ class DQN(agent.Agent):
         """
         if not states:
             return []
+        states = [self.phi(s) for s in states]
         xp = cuda.get_array_module(states[0])
-        batch = xp.vstack([state for state in states])
+        batch = xp.asarray(states)
         if self.gpu >= 0:
             batch = cuda.to_gpu(batch, device=self.gpu)
         else:
@@ -228,8 +230,6 @@ class DQN(agent.Agent):
 
         if self.clip_reward:
             reward = np.clip(reward, -1, 1)
-
-        state = state.reshape((1,) + state.shape)
 
         if not is_state_terminal:
             action, q = self.q_function.sample_epsilon_greedily_with_value(

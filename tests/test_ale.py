@@ -16,19 +16,25 @@ class TestALE(unittest.TestCase):
 
     def test_state(self):
         env = ale.ALE('breakout.bin')
-        self.assertEquals(env.state.shape, (4, 84, 84))
-        self.assertEquals(env.state.dtype, np.float32)
-        # Pixel values must be in [-1,1]
-        self.assertEquals((env.state > 1.0).sum(), 0)
-        self.assertEquals((env.state < -1.0).sum(), 0)
+        self.assertEquals(len(env.state), 4)
+        for s in env.state:
+            self.assertEquals(s.shape, (84, 84))
+            self.assertEquals(s.dtype, np.uint8)
 
     def test_episode(self):
         env = ale.ALE('breakout.bin')
         self.assertFalse(env.is_terminal)
         last_state = env.state
         while not env.is_terminal:
-            self.assertEquals(env.state.shape, (4, 84, 84))
-            print 'state', env.state.sum()
+
+            # test state
+            self.assertEquals(len(env.state), 4)
+            for s in env.state:
+                self.assertEquals(s.shape, (84, 84))
+                self.assertEquals(s.dtype, np.uint8)
+
+            print 'state (sum)', sum(env.state).sum()
+
             legal_actions = env.legal_actions
             print 'legal_actions:', legal_actions
             self.assertGreater(len(legal_actions), 0)
@@ -36,7 +42,8 @@ class TestALE(unittest.TestCase):
             print 'a', a
             env.receive_action(a)
             if not env.is_terminal:
-                np.testing.assert_array_equal(last_state[1:], env.state[:3])
+                np.testing.assert_array_equal(
+                    np.asarray(last_state[1:]), np.asarray(env.state[:3]))
             last_state = env.state
 
     def test_current_screen(self):
@@ -49,13 +56,10 @@ class TestALE(unittest.TestCase):
             while not env.is_terminal:
                 for i in xrange(4):
                     screen = env.state[i]
-                    screen *= 128
-                    screen += 128
-                    self.assertEquals((screen > 255).sum(), 0)
-                    self.assertEquals((screen < 0).sum(), 0)
-                    img = Image.fromarray(screen.astype(np.uint8), mode='L')
-                    filename = '{}/{}_{}_{}.bmp'.format(tempdir,
-                                                        str(episode).zfill(6), str(t).zfill(6), i)
+                    self.assertEqual(screen.dtype, np.uint8)
+                    img = Image.fromarray(screen, mode='L')
+                    filename = '{}/{}_{}_{}.bmp'.format(
+                        tempdir, str(episode).zfill(6), str(t).zfill(6), i)
                     img.save(filename)
                 legal_actions = env.legal_actions
                 a = random.randrange(len(legal_actions))
@@ -67,7 +71,6 @@ class TestALE(unittest.TestCase):
         for episode in xrange(3):
             total_r = 0
             while not env.is_terminal:
-                self.assertEquals(env.state.shape, (4, 84, 84))
                 a = random.randrange(len(env.legal_actions))
                 env.receive_action(a)
                 total_r += env.reward

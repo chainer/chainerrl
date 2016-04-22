@@ -57,6 +57,7 @@ class ALE(environment.EpisodicEnvironment):
         # RGB -> Luminance
         img = rgb_img[:, :, 0] * 0.2126 + rgb_img[:, :, 1] * \
             0.0722 + rgb_img[:, :, 2] * 0.7152
+        img = img.astype(np.uint8)
         if img.shape == (250, 160):
             raise RuntimeError("This ROM is for PAL. Please use ROMs for NTSC")
         assert img.shape == (210, 160)
@@ -64,7 +65,6 @@ class ALE(environment.EpisodicEnvironment):
             # Shrink (210, 160) -> (110, 84)
             img = cv2.resize(img, (84, 110),
                              interpolation=cv2.INTER_LINEAR)
-            img = img.astype(np.float32)
             assert img.shape == (110, 84)
             # Crop (110, 84) -> (84, 84)
             unused_height = 110 - 84
@@ -74,21 +74,15 @@ class ALE(environment.EpisodicEnvironment):
         elif self.crop_or_scale == 'scale':
             img = cv2.resize(img, (84, 84),
                              interpolation=cv2.INTER_LINEAR)
-            img = img.astype(np.float32)
         else:
             raise RuntimeError('crop_or_scale must be either crop or scale')
         assert img.shape == (84, 84)
-        # [0,255] -> [-128, 127]
-        img -= 128
-        # [-128, 127] -> [-1, 1)
-        img /= 128.0
         return img
 
     @property
     def state(self):
-        ret = np.asarray(self.last_screens)
-        assert ret.shape == (4, 84, 84)
-        return ret
+        assert len(self.last_screens) == 4
+        return list(self.last_screens)
 
     @property
     def is_terminal(self):
@@ -150,7 +144,7 @@ class ALE(environment.EpisodicEnvironment):
         self.last_raw_screen = self.ale.getScreenRGB()
 
         self.last_screens = collections.deque(
-            [np.zeros((84, 84), dtype=np.float32)] * 3 +
+            [np.zeros((84, 84), dtype=np.uint8)] * 3 +
             [self.current_screen()],
             maxlen=self.n_last_screens)
 

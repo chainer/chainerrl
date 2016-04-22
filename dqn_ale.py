@@ -5,6 +5,7 @@ import sys
 import chainer
 from chainer import optimizers
 from chainer import functions as F
+import numpy as np
 
 import fc_tail_q_function
 import dqn_head
@@ -51,13 +52,24 @@ def eval_performance(rom, q_func, gpu):
     env = ale.ALE(rom, treat_life_lost_as_terminal=False)
     test_r = 0
     while not env.is_terminal:
-        s = env.state.reshape((1,) + env.state.shape)
+        s = np.expand_dims(phi(env.state), 0)
         if gpu >= 0:
             s = chainer.cuda.to_gpu(s)
         a = q_func.sample_epsilon_greedily_with_value(s, 5e-2)[0][0]
         test_r += env.receive_action(a)
     print 'test_r:', test_r
     return test_r
+
+
+def phi(screens):
+    assert len(screens) == 4
+    assert screens[0].dtype == np.uint8
+    raw_values = np.asarray(screens, dtype=np.float32)
+    # [0,255] -> [-128, 127]
+    raw_values -= 128
+    # [-128, 127] -> [-1, 1)
+    raw_values /= 128.0
+    return raw_values
 
 
 def main():
@@ -75,7 +87,7 @@ def main():
                         type=int, default=10 ** 6)
     parser.add_argument('--model', type=str, default='')
     parser.add_argument('--arch', type=str, default='nature',
-            choices=['nature', 'nips', 'nature_crelu'])
+                        choices=['nature', 'nips', 'nature_crelu'])
     parser.add_argument('--steps', type=int, default=10 ** 7)
     parser.add_argument('--replay-start-size', type=int, default=5 * 10 ** 4)
     parser.add_argument('--target-update-frequency',
@@ -105,14 +117,14 @@ def main():
     opt.setup(q_func)
     # opt.add_hook(chainer.optimizer.GradientClipping(1.0))
 
-    # 10^6 in the Nature paper, but use 10^5 for avoiding out-of-memory
-    rbuf = replay_buffer.ReplayBuffer(1e5)
+    rbuf = replay_buffer.ReplayBuffer(1e6)
 
     agent = DQN(q_func, opt, rbuf, gpu=args.gpu, gamma=0.99,
                 epsilon=1.0, replay_start_size=args.replay_start_size,
                 target_update_frequency=args.target_update_frequency,
                 clip_delta=args.clip_delta,
-                update_frequency=args.update_frequency)
+                update_frequency=args.update_frequency,
+                phi=phi)
 
     if len(args.model) > 0:
         agent.load_model(args.model)
