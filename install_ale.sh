@@ -4,15 +4,13 @@ set -e
 
 # Install ALE
 git clone https://github.com/mgbellemare/Arcade-Learning-Environment.git
-cd Arcade-Learning-Environment.git
-mkdir build
-cd build
+cd Arcade-Learning-Environment
 cmake -DUSE_SDL=ON -DUSE_RLGLUE=OFF -DBUILD_EXAMPLES=ON ..
 make -j 4
-cd ..
 pip install --user .
 
 # Get ROMs
+cd ..
 wget http://www.atarimania.com/roms/Roms.zip
 unzip Roms.zip
 unzip ROMS.zip
