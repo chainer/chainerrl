@@ -17,12 +17,12 @@ class TestCopyParam(unittest.TestCase):
         s = chainer.Variable(np.random.rand(1, 1).astype(np.float32))
         a_out = list(a(s).data.ravel())
         b_out = list(b(s).data.ravel())
-        self.assertNotEquals(a_out, b_out)
+        self.assertNotEqual(a_out, b_out)
 
         # Copy b's parameters to a
         copy_param.copy_param(a, b)
 
         a_out_new = list(a(s).data.ravel())
         b_out_new = list(b(s).data.ravel())
-        self.assertEquals(a_out_new, b_out)
-        self.assertEquals(b_out_new, b_out)
+        self.assertEqual(a_out_new, b_out)
+        self.assertEqual(b_out_new, b_out)

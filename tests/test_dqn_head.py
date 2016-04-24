@@ -42,7 +42,7 @@ class _TestDQNHead(unittest.TestCase):
         a, b = generate_different_two_states()
         a = np.expand_dims(a, axis=0)
         b = np.expand_dims(b, axis=0)
-        for _ in xrange(1000):
+        for _ in range(1000):
             # a
             v_func.zerograds()
             loss = (v_func(a) - 1.0) ** 2 / 2
@@ -56,7 +56,7 @@ class _TestDQNHead(unittest.TestCase):
 
         va = float(v_func(a).data)
         vb = float(v_func(b).data)
-        print va, vb
+        print((va, vb))
         self.assertAlmostEqual(va, 1.0, places=3)
         self.assertAlmostEqual(vb, 0.0, places=3)
 
@@ -71,7 +71,7 @@ class _TestDQNHead(unittest.TestCase):
         a = np.expand_dims(a, axis=0)
         b = np.expand_dims(b, axis=0)
         action = np.random.randint(n_actions)
-        for _ in xrange(1000):
+        for _ in range(1000):
             # a
             q_func.zerograds()
             loss = (q_func(a, [action]) - 1.0) ** 2 / 2
@@ -85,7 +85,7 @@ class _TestDQNHead(unittest.TestCase):
 
         qa = float(q_func(a, [action]).data)
         qb = float(q_func(b, [action]).data)
-        print qa, qb
+        print((qa, qb))
         self.assertAlmostEqual(qa, 1.0, places=3)
         self.assertAlmostEqual(qb, 0.0, places=3)
 
@@ -99,7 +99,7 @@ class _TestDQNHead(unittest.TestCase):
         a, b = generate_different_two_states()
         a = np.expand_dims(a, axis=0)
         b = np.expand_dims(b, axis=0)
-        for _ in xrange(1000):
+        for _ in range(1000):
             # a
             pi.zerograds()
             loss = F.softmax_cross_entropy(

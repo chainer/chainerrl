@@ -16,10 +16,10 @@ class TestALE(unittest.TestCase):
 
     def test_state(self):
         env = ale.ALE('breakout.bin')
-        self.assertEquals(len(env.state), 4)
+        self.assertEqual(len(env.state), 4)
         for s in env.state:
-            self.assertEquals(s.shape, (84, 84))
-            self.assertEquals(s.dtype, np.uint8)
+            self.assertEqual(s.shape, (84, 84))
+            self.assertEqual(s.dtype, np.uint8)
 
     def test_episode(self):
         env = ale.ALE('breakout.bin')
@@ -28,18 +28,18 @@ class TestALE(unittest.TestCase):
         while not env.is_terminal:
 
             # test state
-            self.assertEquals(len(env.state), 4)
+            self.assertEqual(len(env.state), 4)
             for s in env.state:
-                self.assertEquals(s.shape, (84, 84))
-                self.assertEquals(s.dtype, np.uint8)
+                self.assertEqual(s.shape, (84, 84))
+                self.assertEqual(s.dtype, np.uint8)
 
-            print 'state (sum)', sum(env.state).sum()
+            print('state (sum)', sum(env.state).sum())
 
             legal_actions = env.legal_actions
-            print 'legal_actions:', legal_actions
+            print('legal_actions:', legal_actions)
             self.assertGreater(len(legal_actions), 0)
             a = random.randrange(len(legal_actions))
-            print 'a', a
+            print('a', a)
             env.receive_action(a)
             if not env.is_terminal:
                 np.testing.assert_array_equal(
@@ -49,12 +49,12 @@ class TestALE(unittest.TestCase):
     def test_current_screen(self):
         env = ale.ALE('breakout.bin')
         tempdir = tempfile.mkdtemp()
-        print >> sys.stderr, 'tempdir: {}'.format(tempdir)
-        for episode in xrange(6):
+        print('tempdir: {}'.format(tempdir), file=sys.stderr)
+        for episode in range(6):
             env.initialize()
             t = 0
             while not env.is_terminal:
-                for i in xrange(4):
+                for i in range(4):
                     screen = env.state[i]
                     self.assertEqual(screen.dtype, np.uint8)
                     img = Image.fromarray(screen, mode='L')
@@ -68,7 +68,7 @@ class TestALE(unittest.TestCase):
 
     def test_reward(self):
         env = ale.ALE('pong.bin')
-        for episode in xrange(3):
+        for episode in range(3):
             total_r = 0
             while not env.is_terminal:
                 a = random.randrange(len(env.legal_actions))

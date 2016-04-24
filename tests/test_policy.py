@@ -21,9 +21,9 @@ class TestFCSoftmaxPolicy(unittest.TestCase):
         state = np.random.rand(
             batch_size, self.n_input_channels).astype(np.float32)
         action_indices, probs = self.policy.sample_with_probability(state)
-        self.assertEquals(len(action_indices), batch_size)
-        self.assertEquals(probs.data.shape, (batch_size,))
-        for i in xrange(batch_size):
+        self.assertEqual(len(action_indices), batch_size)
+        self.assertEqual(probs.data.shape, (batch_size,))
+        for i in range(batch_size):
             self.assertGreaterEqual(action_indices[i], 0)
             self.assertLess(action_indices[i], self.n_actions)
             # Probability must be strictly larger than zero because it was

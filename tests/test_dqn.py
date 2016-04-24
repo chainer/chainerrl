@@ -34,14 +34,14 @@ class TestDQN(unittest.TestCase):
         episode_r = 0
 
         # Train
-        for i in xrange(5000):
+        for i in range(5000):
             episode_r += env.reward
             total_r += env.reward
 
             action = agent.act(env.state, env.reward, env.is_terminal)
 
             if env.is_terminal:
-                print 'i:{} epsilon:{} episode_r:{}'.format(i, agent.epsilon, episode_r)
+                print(('i:{} epsilon:{} episode_r:{}'.format(i, agent.epsilon, episode_r)))
                 episode_r = 0
                 env.initialize()
             else:

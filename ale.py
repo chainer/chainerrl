@@ -103,7 +103,7 @@ class ALE(environment.EpisodicEnvironment):
         assert not self.is_terminal
 
         rewards = []
-        for i in xrange(4):
+        for i in range(4):
 
             # Last screeen must be stored before executing the 4th action
             if i == 3:
