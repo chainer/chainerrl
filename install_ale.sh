@@ -5,7 +5,7 @@ set -e
 # Install ALE
 git clone https://github.com/mgbellemare/Arcade-Learning-Environment.git
 cd Arcade-Learning-Environment
-cmake -DUSE_SDL=ON -DUSE_RLGLUE=OFF -DBUILD_EXAMPLES=ON ..
+cmake -DUSE_SDL=ON -DUSE_RLGLUE=OFF -DBUILD_EXAMPLES=ON .
 make -j 4
 pip install --user .
 
