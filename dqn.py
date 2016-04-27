@@ -17,6 +17,7 @@ import agent
 import q_function
 import copy_param
 import smooth_l1_loss
+from clipped_loss import clipped_loss
 
 
 def _to_device(obj, gpu):
@@ -27,16 +28,6 @@ def _to_device(obj, gpu):
             return cuda.to_gpu(obj, gpu)
         else:
             return cuda.to_cpu(obj)
-
-
-def clipped_loss(x, t):
-    diff = x - t
-    abs_loss = abs(diff)
-    squared_loss = diff ** 2
-    abs_loss = F.expand_dims(abs_loss, 1)
-    squared_loss = F.expand_dims(squared_loss, 1)
-    # return F.sum(F.min(F.concat((abs_loss, squared_loss), axis=1), axis=1)) / np.float32(len(x))
-    return F.sum(F.min(F.concat((abs_loss, squared_loss), axis=1), axis=1))
 
 
 class DQN(agent.Agent):
