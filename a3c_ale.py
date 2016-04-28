@@ -25,7 +25,7 @@ def run_func_for_profiling(agent, env):
     total_r = 0
     episode_r = 0
 
-    for i in xrange(1000):
+    for i in range(1000):
 
         total_r += env.reward
         episode_r += env.reward
@@ -33,13 +33,13 @@ def run_func_for_profiling(agent, env):
         action = agent.act(env.state, env.reward, env.is_terminal)
 
         if env.is_terminal:
-            print 'i:{} episode_r:{}'.format(i, episode_r)
+            print('i:{} episode_r:{}'.format(i, episode_r))
             episode_r = 0
             env.initialize()
         else:
             env.receive_action(action)
 
-    print 'pid:{}, total_r:{}'.format(os.getpid(), total_r)
+    print('pid:{}, total_r:{}'.format(os.getpid(), total_r))
 
 
 def phi(screens):
@@ -79,7 +79,7 @@ def main():
 
     outdir = prepare_output_dir(args, args.outdir)
 
-    print 'Output files are saved in {}'.format(outdir)
+    print('Output files are saved in {}'.format(outdir))
 
     n_actions = ale.ALE(args.rom).number_of_actions
 
@@ -117,7 +117,7 @@ def main():
         max_score = None
 
         try:
-            for i in xrange(args.steps):
+            for i in range(args.steps):
 
                 total_r += env.reward
                 episode_r += env.reward
@@ -126,19 +126,19 @@ def main():
 
                 if env.is_terminal:
                     if process_idx == 0:
-                        print '{} i:{} episode_r:{}'.format(outdir, i, episode_r)
+                        print('{} i:{} episode_r:{}'.format(outdir, i, episode_r))
                         with open(os.path.join(outdir, 'scores.txt'), 'a+') as f:
-                            print >> f, i, episode_r
+                            print(i, episode_r, file=f)
                         if max_score == None or episode_r > max_score:
                             if max_score is not None:
                                 # Save the best model so far
-                                print 'The best score is updated {} -> {}'.format(
-                                    max_score, episode_r)
+                                print('The best score is updated {} -> {}'.format(
+                                    max_score, episode_r))
                                 filename = os.path.join(
                                     outdir, '{}.h5'.format(i))
                                 agent.save_model(filename)
-                                print 'Saved the current best model to {}'.format(
-                                    filename)
+                                print('Saved the current best model to {}'.format(
+                                    filename))
                             max_score = episode_r
                     episode_r = 0
                     env.initialize()
@@ -149,16 +149,16 @@ def main():
                 # Save the current model before being killed
                 agent.save_model(os.path.join(
                     outdir, '{}_keyboardinterrupt.h5'.format(i)))
-                print >> sys.stderr, 'Saved the current model to {}'.format(
-                    outdir)
+                print('Saved the current model to {}'.format(
+                    outdir), file=sys.stderr)
             raise
 
         if process_idx == 0:
-            print '{} pid:{}, total_r:{}'.format(outdir, os.getpid(), total_r)
+            print('{} pid:{}, total_r:{}'.format(outdir, os.getpid(), total_r))
             # Save the final model
             agent.save_model(
                 os.path.join(outdir, '{}_finish.h5'.format(args.steps)))
-            print 'Saved the current model to {}'.format(outdir)
+            print('Saved the current model to {}'.format(outdir))
 
     if args.profile:
 
