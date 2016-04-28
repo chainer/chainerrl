@@ -88,6 +88,16 @@ def main():
         pi = fc_tail_policy.FCTailPolicy(
             head, head.n_output_channels, n_actions=n_actions)
         v = fc_tail_v_function.FCTailVFunction(head, head.n_output_channels)
+
+        # Initialize last layers with uniform random values following:
+        # http://arxiv.org/abs/1509.02971
+        for param in pi[-1].params():
+            param.data[:] = \
+                np.random.uniform(-3e-3, 3e-3, size=param.data.shape)
+        for param in v[-1].params():
+            param.data[:] = \
+                np.random.uniform(-3e-4, 3e-4, size=param.data.shape)
+
         # opt = optimizers.RMSprop(lr=1e-3)
         opt = rmsprop_ones.RMSpropOnes(lr=1e-3, eps=1e-2, alpha=0.999)
         # opt = rmsprop_ones.RMSpropOnes(lr=1e-4, eps=1e-1)
