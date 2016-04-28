@@ -95,7 +95,7 @@ class SoftmaxPolicy(Policy):
             chainer.Variable(np.asarray(action_indices, dtype=np.int32)))
         # Entropy
         entropy = - F.sum(probs * log_probs, axis=1)
-        logger.debug('entropy:%s, probs:%s', entropy.data, probs.data)
+        # TODO Too many return values; must re-consider interfaces
         return action_indices, sampled_actions_log_probs, entropy, probs
 
 
