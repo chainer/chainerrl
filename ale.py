@@ -134,10 +134,10 @@ class ALE(environment.EpisodicEnvironment):
         if self.ale.game_over():
             self.ale.reset_game()
 
-            if self.max_start_nullops > 0:
-                n_nullops = np.random.randint(0, self.max_start_nullops + 1)
-                for _ in range(n_nullops):
-                    self.ale.act(0)
+        if self.max_start_nullops > 0:
+            n_nullops = np.random.randint(0, self.max_start_nullops + 1)
+            for _ in range(n_nullops):
+                self.ale.act(0)
 
         self._reward = 0
 
