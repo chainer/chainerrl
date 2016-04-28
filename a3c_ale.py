@@ -67,10 +67,11 @@ def main():
     parser.add_argument('--seed', type=int, default=None)
     parser.add_argument('--outdir', type=str, default=None)
     parser.add_argument('--use-sdl', action='store_true')
-    parser.add_argument('--t-max', type=int, default=5)
+    parser.add_argument('--t-max', type=int, default=20)
     parser.add_argument('--beta', type=float, default=1e-2)
     parser.add_argument('--profile', action='store_true')
     parser.add_argument('--steps', type=int, default=10 ** 7)
+    parser.add_argument('--lr', type=float, default=7e-4)
     parser.set_defaults(use_sdl=False)
     args = parser.parse_args()
 
@@ -99,14 +100,15 @@ def main():
                 np.random.uniform(-3e-4, 3e-4, size=param.data.shape)
 
         # opt = optimizers.RMSprop(lr=1e-3)
-        opt = rmsprop_ones.RMSpropOnes(lr=1e-3, eps=1e-2, alpha=0.999)
+        opt = rmsprop_ones.RMSpropOnes(lr=7e-4, eps=1e-2, alpha=0.99)
         # opt = rmsprop_ones.RMSpropOnes(lr=1e-4, eps=1e-1)
         # opt = optimizers.RMSpropGraves(
         #     lr=2.5e-4, alpha=0.95, momentum=0.95, eps=1e-2)
         model = chainer.ChainList(pi, v)
         opt.setup(model)
-        opt.add_hook(chainer.optimizer.GradientClipping(2))
-        return a3c.A3C(model, opt, args.t_max, 0.99, beta=args.beta, process_idx=process_idx, phi=phi)
+        opt.add_hook(chainer.optimizer.GradientClipping(40))
+        return a3c.A3C(model, opt, args.t_max, 0.99, beta=args.beta,
+                       process_idx=process_idx, phi=phi)
 
     def env_func(process_idx):
         return ale.ALE(args.rom, use_sdl=args.use_sdl)
@@ -119,6 +121,8 @@ def main():
         try:
             for i in range(args.steps):
 
+                agent.optimizer.lr = (args.steps - i) / args.steps * args.lr
+
                 total_r += env.reward
                 episode_r += env.reward
 
@@ -126,7 +130,8 @@ def main():
 
                 if env.is_terminal:
                     if process_idx == 0:
-                        print('{} i:{} episode_r:{}'.format(outdir, i, episode_r))
+                        print('{} i:{} lr:{} episode_r:{}'.format(
+                            outdir, i, agent.optimizer.lr, episode_r))
                         with open(os.path.join(outdir, 'scores.txt'), 'a+') as f:
                             print(i, episode_r, file=f)
                         if max_score == None or episode_r > max_score:

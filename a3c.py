@@ -103,6 +103,8 @@ class A3C(agent.Agent):
                 else:
                     v_loss += (v - R) ** 2 / 2
 
+            pi_loss *= 0.5
+
             # Do we need to normalize losses by (self.t - self.t_start)?
             # Otherwise, loss scales can be different in case of self.t_max
             # and in case of termination.
