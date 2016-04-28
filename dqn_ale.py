@@ -22,6 +22,8 @@ def parse_activation(activation_str):
         return F.relu
     elif activation_str == 'elu':
         return F.elu
+    elif activation_str == 'oplu':
+        return oplu.oplu
     elif activation_str == 'lrelu':
         return F.leaky_relu
     elif activation_str == 'oplu':
