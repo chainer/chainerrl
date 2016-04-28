@@ -21,8 +21,8 @@ def set_shared_params(a, b):
 
 
 def set_shared_states(a, b):
-    for state_name, shared_state in b.iteritems():
-        for param_name, param in shared_state.iteritems():
+    for state_name, shared_state in b.items():
+        for param_name, param in shared_state.items():
             old_param = a._states[state_name][param_name]
             a._states[state_name][param_name] = np.frombuffer(
                 param,
@@ -38,9 +38,9 @@ def extract_params_as_shared_arrays(link):
 
 def extract_states_as_shared_arrays(optimizer):
     shared_arrays = {}
-    for state_name, state in optimizer._states.iteritems():
+    for state_name, state in optimizer._states.items():
         shared_arrays[state_name] = {}
-        for param_name, param in state.iteritems():
+        for param_name, param in state.items():
             shared_arrays[state_name][
                 param_name] = mp.RawArray('f', param.ravel())
     return shared_arrays
@@ -80,7 +80,7 @@ def run_async(n_process, agent_func, env_func, run_func):
 
     processes = []
 
-    for process_idx in xrange(n_process):
+    for process_idx in range(n_process):
         processes.append(mp.Process(target=run_a3c_process, args=(
             process_idx, agent_func, env_func, run_func, link_arrays,
             opt_arrays, random.randint(0, 2 ** 32 - 1)
@@ -92,7 +92,7 @@ def run_async(n_process, agent_func, env_func, run_func):
     for p in processes:
         p.join()
 
-    for i in xrange(len(base_agent.links)):
+    for i in range(len(base_agent.links)):
         set_shared_params(base_agent.links[i], link_arrays[i])
 
     base_agent.sync_parameters()

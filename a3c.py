@@ -76,7 +76,7 @@ class A3C(agent.Agent):
 
             pi_loss = 0
             v_loss = 0
-            for i in reversed(xrange(self.t_start, self.t)):
+            for i in reversed(range(self.t_start, self.t)):
                 R *= self.gamma
                 R += self.past_rewards[i]
                 v = self.v_function(self.past_states[i])
@@ -167,8 +167,8 @@ class A3C(agent.Agent):
         copy_param.copy_param(self.model, self.shared_model)
         opt_filename = model_filename + '.opt'
         if os.path.exists(opt_filename):
-            print 'WARNING: {0} was not found, so loaded only a model'.format(
-                opt_filename)
+            print('WARNING: {0} was not found, so loaded only a model'.format(
+                opt_filename))
             serializers.load_hdf5(model_filename + '.opt', self.optimizer)
 
     def save_model(self, model_filename):

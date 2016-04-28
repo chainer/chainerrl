@@ -121,7 +121,7 @@ class DQN(agent.Agent):
         batch_q_target = batch_q.copy()
 
         # Set target values for max actions
-        for batch_idx in xrange(len(experiences)):
+        for batch_idx in range(len(experiences)):
             experience = experiences[batch_idx]
             action = experience['action']
             reward = experience['reward']
@@ -203,8 +203,8 @@ class DQN(agent.Agent):
         copy_param.copy_param(self.target_q_function, self.q_function)
         opt_filename = model_filename + '.opt'
         if os.path.exists(opt_filename):
-            print 'WARNING: {0} was not found, so loaded only a model'.format(
-                opt_filename)
+            print('WARNING: {0} was not found, so loaded only a model'.format(
+                opt_filename))
             serializers.load_hdf5(model_filename + '.opt', self.optimizer)
 
     def load_model(self, model_filename):
@@ -244,7 +244,7 @@ class DQN(agent.Agent):
             # process specific counter instead. So i_target should be set
             # x-times smaller, where x is the number of processes
             if self.t % self.target_update_frequency == 0:
-                print 'sync'
+                print('sync')
                 copy_param.copy_param(self.target_q_function, self.q_function)
 
         if self.last_state is not None:

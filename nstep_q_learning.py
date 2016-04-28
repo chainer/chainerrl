@@ -61,7 +61,7 @@ class NStepQLearning(agent.Agent):
                     self.target_q_function.sample_greedily_with_value(state)[1].data)
 
             loss = 0
-            for i in reversed(xrange(self.t_start, self.t)):
+            for i in reversed(range(self.t_start, self.t)):
                 R *= self.gamma
                 R += self.past_rewards[i]
                 q = F.reshape(self.past_action_values[i], (1, 1))

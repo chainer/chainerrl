@@ -62,7 +62,7 @@ class FCSIQFunction(chainer.ChainList, StateInputQFunction):
         layers = []
         assert n_hidden_layers >= 1
         layers.append(L.Linear(n_input_channels, n_hidden_channels))
-        for i in xrange(n_hidden_layers - 1):
+        for i in range(n_hidden_layers - 1):
             layers.append(L.Linear(n_hidden_channels, n_hidden_channels))
         layers.append(L.Linear(n_hidden_channels, n_actions))
 

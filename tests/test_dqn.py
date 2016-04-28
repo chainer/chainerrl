@@ -24,7 +24,7 @@ class TestDQN(unittest.TestCase):
             lr=1e-3, alpha=0.95, momentum=0.95, eps=1e-4)
         opt.setup(q_func)
 
-        rbuf = replay_buffer.ReplayBuffer(1e5)
+        rbuf = replay_buffer.ReplayBuffer(10 ** 5)
         agent = DQN(q_func, opt, rbuf, gpu=gpu, gamma=0.9, epsilon=0.1,
                     replay_start_size=1000, target_update_frequency=1000)
 

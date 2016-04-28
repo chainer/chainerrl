@@ -25,7 +25,7 @@ def _sample_actions(batch_probs):
     action_indices = []
     # Avoid "ValueError: sum(pvals[:-1]) > 1.0" in numpy.multinomial
     batch_probs = batch_probs - np.finfo(np.float32).epsneg
-    for i in xrange(batch_probs.shape[0]):
+    for i in range(batch_probs.shape[0]):
         histogram = np.random.multinomial(1, batch_probs[i])
         action_indices.append(int(np.nonzero(histogram)[0]))
     return action_indices
@@ -96,7 +96,7 @@ class SoftmaxPolicy(Policy):
         # Entropy
         entropy = - F.sum(probs * log_probs, axis=1)
         logger.debug('entropy:%s, probs:%s', entropy.data, probs.data)
-        return action_indices, sampled_actions_log_probs, entropy
+        return action_indices, sampled_actions_log_probs, entropy, probs
 
 
 class FCSoftmaxPolicy(chainer.ChainList, SoftmaxPolicy):
@@ -111,7 +111,7 @@ class FCSoftmaxPolicy(chainer.ChainList, SoftmaxPolicy):
         layers = []
         assert n_hidden_layers >= 1
         layers.append(L.Linear(n_input_channels, n_hidden_channels))
-        for i in xrange(n_hidden_layers - 1):
+        for i in range(n_hidden_layers - 1):
             layers.append(L.Linear(n_hidden_channels, n_hidden_channels))
         layers.append(L.Linear(n_hidden_channels, n_actions))
 
