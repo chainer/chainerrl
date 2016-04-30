@@ -53,7 +53,7 @@ def main():
         opt.setup(q_func)
         opt.add_hook(chainer.optimizer.GradientClipping(1.0))
         return nstep_q_learning.NStepQLearning(q_func, opt, 5, 0.99, 1.0,
-                                               i_target=40000 / args.processes)
+                                               i_target=40000 // args.processes)
 
     def env_func(process_idx):
         return ale.ALE(args.rom, use_sdl=args.use_sdl)
