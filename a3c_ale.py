@@ -106,7 +106,8 @@ def main():
             return pi(out), v(out)
 
         # opt = optimizers.RMSprop(lr=1e-3)
-        opt = rmsprop_ones.RMSpropOnes(lr=7e-4, eps=1e-2, alpha=0.99)
+        opt = rmsprop_ones.RMSpropAsync(lr=7e-4, eps=1e-1, alpha=0.99)
+
         # opt = rmsprop_ones.RMSpropOnes(lr=1e-4, eps=1e-1)
         # opt = optimizers.RMSpropGraves(
         #     lr=2.5e-4, alpha=0.95, momentum=0.95, eps=1e-2)
