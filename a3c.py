@@ -103,14 +103,6 @@ class A3C(agent.Agent):
 
             pi_loss *= 0.5
 
-            # Do we need to normalize losses by (self.t - self.t_start)?
-            # Otherwise, loss scales can be different in case of self.t_max
-            # and in case of termination.
-
-            # I'm not sure but if we need to normalize losses...
-            pi_loss /= self.t - self.t_start
-            v_loss /= self.t - self.t_start
-
             if self.process_idx == 0:
                 logger.debug('pi_loss:%s v_loss:%s', pi_loss.data, v_loss.data)
 
