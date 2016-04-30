@@ -31,96 +31,62 @@ def _sample_actions(batch_probs):
     return action_indices
 
 
+class PolicyOutput(object):
+    pass
+
+
+class SoftmaxPolicyOutput(PolicyOutput):
+
+    def __init__(self, logits):
+        self.logits = logits
+        self.probs = F.softmax(logits)
+        self.action_indices = _sample_actions(self.probs.data)
+        self.log_probs = F.log_softmax(logits)
+        self.sampled_actions_log_probs = F.select_item(
+            self.log_probs,
+            chainer.Variable(np.asarray(self.action_indices, dtype=np.int32)))
+        self.entropy = - F.sum(self.probs * self.log_probs, axis=1)
+
+
 class SoftmaxPolicy(Policy):
     """Abstract softmax policy class.
     """
 
-    def forward(self, state):
+    def compute_logits(self, state):
         """
         Returns:
           ~chainer.Variable: logits of actions
         """
         raise NotImplementedError
 
-    def __call__(self, state, action):
-        assert state.shape[0] == 1
-        xp = cuda.get_array_module(state)
-        logits = self.forward(state)
-        probs = F.softmax(logits)
-        q = F.select_item(
-            probs, chainer.Variable(xp.asarray(action, dtype=np.int32)))
-        return q
-
-    def sample_with_probability(self, state):
-        """
-        Returns:
-          ~list: action indices
-          ~chainer.Variable: probabilities of sampled actions
-        """
-        logits = self.forward(state)
-        probs = F.softmax(logits)
-        action_indices = _sample_actions(probs.data)
-        sampled_actions_probs = F.select_item(
-            probs,
-            chainer.Variable(np.asarray(action_indices, dtype=np.int32)))
-        return action_indices, sampled_actions_probs
-
-    def sample_with_log_probability(self, state):
-        """
-        Returns:
-          ~list: action indices
-          ~chainer.Variable: log probabilities of sampled actions
-        """
-        logits = self.forward(state)
-        probs = F.softmax(logits)
-        action_indices = _sample_actions(probs.data)
-        log_probs = F.log_softmax(logits)
-        sampled_actions_log_probs = F.select_item(
-            log_probs,
-            chainer.Variable(np.asarray(action_indices, dtype=np.int32)))
-        return action_indices, sampled_actions_log_probs
-
-    def sample_with_log_probability_and_entropy(self, state):
-        """
-        Returns:
-          ~list: action indices
-          ~chainer.Variable: log probabilities of sampled actions
-        """
-        logits = self.forward(state)
-        probs = F.softmax(logits)
-        action_indices = _sample_actions(probs.data)
-        log_probs = F.log_softmax(logits)
-        sampled_actions_log_probs = F.select_item(
-            log_probs,
-            chainer.Variable(np.asarray(action_indices, dtype=np.int32)))
-        # Entropy
-        entropy = - F.sum(probs * log_probs, axis=1)
-        # TODO Too many return values; must re-consider interfaces
-        return action_indices, sampled_actions_log_probs, entropy, probs
+    def __call__(self, state):
+        return SoftmaxPolicyOutput(self.compute_logits(state))
 
 
 class FCSoftmaxPolicy(chainer.ChainList, SoftmaxPolicy):
 
-    def __init__(self, n_input_channels, n_actions, n_hidden_channels,
-                 n_hidden_layers):
+    def __init__(self, n_input_channels, n_actions,
+                 n_hidden_layers=0, n_hidden_channels=None):
         self.n_input_channels = n_input_channels
         self.n_actions = n_actions
         self.n_hidden_layers = n_hidden_layers
         self.n_hidden_channels = n_hidden_channels
 
         layers = []
-        assert n_hidden_layers >= 1
-        layers.append(L.Linear(n_input_channels, n_hidden_channels))
-        for i in range(n_hidden_layers - 1):
-            layers.append(L.Linear(n_hidden_channels, n_hidden_channels))
-        layers.append(L.Linear(n_hidden_channels, n_actions))
+        if n_hidden_layers > 0:
+            layers.append(L.Linear(n_input_channels, n_hidden_channels))
+            for i in range(n_hidden_layers - 1):
+                layers.append(L.Linear(n_hidden_channels, n_hidden_channels))
+            layers.append(L.Linear(n_hidden_channels, n_actions))
+        else:
+            layers.append(L.Linear(n_input_channels, n_actions))
 
         super(FCSoftmaxPolicy, self).__init__(*layers)
 
-    def forward(self, state):
-        h = chainer.Variable(state)
+    def compute_logits(self, state):
+        h = state
         for layer in self[:-1]:
-            h = F.elu(layer(h))
+            h = F.relu(layer(h))
         h = self[-1](h)
         return h
 

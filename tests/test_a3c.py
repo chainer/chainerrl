@@ -32,12 +32,18 @@ class TestA3C(unittest.TestCase):
 
         def agent_func(process_idx):
             n_actions = 3
-            pi = policy.FCSoftmaxPolicy(1, n_actions, 10, 2)
-            v = v_function.FCVFunction(1, 10, 2)
+            pi = policy.FCSoftmaxPolicy(
+                1, n_actions, n_hidden_channels=10, n_hidden_layers=2)
+            v = v_function.FCVFunction(
+                1, n_hidden_channels=10, n_hidden_layers=2)
             model = chainer.ChainList(pi, v)
             opt = optimizers.RMSprop(1e-3, eps=1e-2)
+
+            def pv_func(model, state):
+                pi, v = model
+                return pi(state), v(state)
             opt.setup(model)
-            return a3c.A3C(model, opt, t_max, 0.9, beta=1e-2)
+            return a3c.A3C(model, pv_func, opt, t_max, 0.9, beta=1e-2)
 
         def env_func(process_idx):
             return simple_abc.ABC()
@@ -70,9 +76,11 @@ class TestA3C(unittest.TestCase):
         # Test
         env = env_func(0)
         total_r = env.reward
+        final_pi = final_agent.model[0]
         while not env.is_terminal:
-            action = final_agent.policy.sample_with_probability(
-                env.state.reshape((1,) + env.state.shape))[0][0]
+            pout = final_pi(chainer.Variable(
+                env.state.reshape((1,) + env.state.shape)))
+            action = pout.action_indices[0]
             print(('state:', env.state, 'action:', action))
             env.receive_action(action)
             total_r += env.reward
@@ -83,9 +91,14 @@ class TestA3C(unittest.TestCase):
         pi = policy.FCSoftmaxPolicy(1, n_actions, 10, 2)
         v = v_function.FCVFunction(1, 10, 2)
         model = chainer.ChainList(pi, v)
+
+        def pv_func(model, state):
+            print(type(state))
+            pi, v = model
+            return pi(state), v(state)
         opt = optimizers.RMSprop(1e-3, eps=1e-2)
         opt.setup(model)
-        agent = a3c.A3C(model, opt, 1, 0.9, beta=1e-2)
+        agent = a3c.A3C(model, pv_func, opt, 1, 0.9, beta=1e-2)
 
         outdir = tempfile.mkdtemp()
         filename = os.path.join(outdir, 'test_a3c.h5')

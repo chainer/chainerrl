@@ -8,8 +8,8 @@ import chainer
 from chainer import optimizers
 from chainer import functions as F
 
-import fc_tail_policy
-import fc_tail_v_function
+import policy
+import v_function
 import dqn_head
 import a3c
 import ale
@@ -86,9 +86,9 @@ def main():
 
     def agent_func(process_idx):
         head = dqn_head.NIPSDQNHead()
-        pi = fc_tail_policy.FCTailPolicy(
-            head, head.n_output_channels, n_actions=n_actions)
-        v = fc_tail_v_function.FCTailVFunction(head, head.n_output_channels)
+        pi = policy.FCSoftmaxPolicy(head.n_output_channels, n_actions)
+        v = v_function.FCVFunction(head.n_output_channels)
+        model = chainer.ChainList(head, pi, v)
 
         # Initialize last layers with uniform random values following:
         # http://arxiv.org/abs/1509.02971
@@ -99,15 +99,19 @@ def main():
             param.data[:] = \
                 np.random.uniform(-3e-4, 3e-4, size=param.data.shape)
 
+        def pv_func(model, state):
+            head, pi, v = model
+            out = head(state)
+            return pi(out), v(out)
+
         # opt = optimizers.RMSprop(lr=1e-3)
         opt = rmsprop_ones.RMSpropOnes(lr=7e-4, eps=1e-2, alpha=0.99)
         # opt = rmsprop_ones.RMSpropOnes(lr=1e-4, eps=1e-1)
         # opt = optimizers.RMSpropGraves(
         #     lr=2.5e-4, alpha=0.95, momentum=0.95, eps=1e-2)
-        model = chainer.ChainList(pi, v)
         opt.setup(model)
         opt.add_hook(chainer.optimizer.GradientClipping(40))
-        return a3c.A3C(model, opt, args.t_max, 0.99, beta=args.beta,
+        return a3c.A3C(model, pv_func, opt, args.t_max, 0.99, beta=args.beta,
                        process_idx=process_idx, phi=phi)
 
     def env_func(process_idx):

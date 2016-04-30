@@ -40,8 +40,8 @@ class _TestDQNHead(unittest.TestCase):
         opt = self.create_optimizer()
         opt.setup(v_func)
         a, b = generate_different_two_states()
-        a = np.expand_dims(a, axis=0)
-        b = np.expand_dims(b, axis=0)
+        a = chainer.Variable(np.expand_dims(a, axis=0))
+        b = chainer.Variable(np.expand_dims(b, axis=0))
         for _ in range(1000):
             # a
             v_func.zerograds()
@@ -68,8 +68,8 @@ class _TestDQNHead(unittest.TestCase):
         opt = self.create_optimizer()
         opt.setup(q_func)
         a, b = generate_different_two_states()
-        a = np.expand_dims(a, axis=0)
-        b = np.expand_dims(b, axis=0)
+        a = chainer.Variable(np.expand_dims(a, axis=0))
+        b = chainer.Variable(np.expand_dims(b, axis=0))
         action = np.random.randint(n_actions)
         for _ in range(1000):
             # a
@@ -97,8 +97,8 @@ class _TestDQNHead(unittest.TestCase):
         opt = self.create_optimizer()
         opt.setup(pi)
         a, b = generate_different_two_states()
-        a = np.expand_dims(a, axis=0)
-        b = np.expand_dims(b, axis=0)
+        a = chainer.Variable(np.expand_dims(a, axis=0))
+        b = chainer.Variable(np.expand_dims(b, axis=0))
         for _ in range(1000):
             # a
             pi.zerograds()

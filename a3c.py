@@ -20,22 +20,17 @@ class A3C(agent.Agent):
     See http://arxiv.org/abs/1602.01783
     """
 
-    def __init__(self, model, optimizer, t_max, gamma, beta=1e-2,
+    def __init__(self, model, pv_func, optimizer, t_max, gamma, beta=1e-2,
                  process_idx=0, clip_delta=False, clip_reward=True,
                  phi=lambda x: x):
 
-        assert len(model) == 2
-
         # Globally shared model
         self.shared_model = model
-        self.shared_policy = self.shared_model[0]
-        self.shared_v_function = self.shared_model[1]
 
         # Thread specific model
         self.model = copy.deepcopy(self.shared_model)
-        self.policy = self.model[0]
-        self.v_function = self.model[1]
 
+        self.pv_func = pv_func
         self.optimizer = optimizer
         self.t_max = t_max
         self.gamma = gamma
@@ -51,16 +46,18 @@ class A3C(agent.Agent):
         self.past_action_entropy = {}
         self.past_states = {}
         self.past_rewards = {}
+        self.past_values = {}
 
     def sync_parameters(self):
-        copy_param.copy_param(self.model, self.shared_model)
+        copy_param.copy_param(target_link=self.model,
+                              source_link=self.shared_model)
 
     def act(self, state, reward, is_state_terminal):
 
         if self.clip_reward:
             reward = np.clip(reward, -1, 1)
 
-        state = np.expand_dims(self.phi(state), 0)
+        statevar = chainer.Variable(np.expand_dims(self.phi(state), 0))
 
         self.past_rewards[self.t - 1] = reward
 
@@ -72,17 +69,18 @@ class A3C(agent.Agent):
             if is_state_terminal:
                 R = 0
             else:
-                R = float(self.v_function(state).data)
+                _, vout = self.pv_func(self.model, statevar)
+                R = float(vout.data)
 
             pi_loss = 0
             v_loss = 0
             for i in reversed(range(self.t_start, self.t)):
                 R *= self.gamma
                 R += self.past_rewards[i]
-                v = self.v_function(self.past_states[i])
+                v = self.past_values[i]
                 if self.process_idx == 0:
                     logger.debug('s:%s v:%s R:%s', self.past_states[
-                                 i].sum(), v.data, R)
+                                 i][-1].sum(), v.data, R)
                 advantage = R - v
                 # Accumulate gradients of policy
                 log_prob = self.past_action_log_prob[i]
@@ -122,7 +120,8 @@ class A3C(agent.Agent):
             v_loss.backward()
             # Copy the gradients to the globally shared model
             self.shared_model.zerograds()
-            copy_param.copy_grad(self.shared_model, self.model)
+            copy_param.copy_grad(
+                target_link=self.shared_model, source_link=self.model)
             # Update the globally shared model
             if self.process_idx == 0:
                 norm = self.optimizer.compute_grads_norm()
@@ -137,20 +136,21 @@ class A3C(agent.Agent):
             self.past_action_entropy = {}
             self.past_states = {}
             self.past_rewards = {}
+            self.past_values = {}
 
             self.t_start = self.t
 
         if not is_state_terminal:
             self.past_states[self.t] = state
-            action, log_prob, entropy, probs = \
-                self.policy.sample_with_log_probability_and_entropy(state)
-            self.past_action_log_prob[self.t] = log_prob
-            self.past_action_entropy[self.t] = entropy
+            pout, vout = self.pv_func(self.model, statevar)
+            self.past_action_log_prob[self.t] = pout.sampled_actions_log_probs
+            self.past_action_entropy[self.t] = pout.entropy
+            self.past_values[self.t] = vout
             self.t += 1
             if self.process_idx == 0:
                 logger.debug('t:%s entropy:%s, probs:%s',
-                             self.t, entropy.data, probs.data)
-            return action[0]
+                             self.t, pout.entropy.data, pout.probs.data)
+            return pout.action_indices[0]
         else:
             return None
 
@@ -166,7 +166,8 @@ class A3C(agent.Agent):
         """Load a network model form a file
         """
         serializers.load_hdf5(model_filename, self.model)
-        copy_param.copy_param(self.model, self.shared_model)
+        copy_param.copy_param(target_link=self.model,
+                              source_link=self.shared_model)
         opt_filename = model_filename + '.opt'
         if os.path.exists(opt_filename):
             print('WARNING: {0} was not found, so loaded only a model'.format(

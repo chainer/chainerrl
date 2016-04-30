@@ -69,7 +69,7 @@ class FCSIQFunction(chainer.ChainList, StateInputQFunction):
         super(FCSIQFunction, self).__init__(*layers)
 
     def forward(self, state, test=False):
-        h = chainer.Variable(state)
+        h = state
         for layer in self[:-1]:
             h = F.elu(layer(h))
         h = self[-1](h)
