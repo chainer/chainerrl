@@ -17,6 +17,7 @@ import random_seed
 import async
 import rmsprop_ones
 from prepare_output_dir import prepare_output_dir
+from nonbias_weight_decay import NonbiasWeightDecay
 
 
 def run_func_for_profiling(agent, env):
@@ -111,6 +112,7 @@ def main():
         #     lr=2.5e-4, alpha=0.95, momentum=0.95, eps=1e-2)
         opt.setup(model)
         opt.add_hook(chainer.optimizer.GradientClipping(40))
+        opt.add_hook(NonbiasWeightDecay(1e-5))
         return a3c.A3C(model, pv_func, opt, args.t_max, 0.99, beta=args.beta,
                        process_idx=process_idx, phi=phi)
 
