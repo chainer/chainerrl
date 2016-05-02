@@ -1,6 +1,7 @@
 import os
 import unittest
 import tempfile
+import multiprocessing as mp
 
 import numpy as np
 import chainer
@@ -14,6 +15,11 @@ import simple_abc
 import random_seed
 import replay_buffer
 from simple_abc import ABC
+
+
+def pv_func(model, state):
+    pi, v = model
+    return pi(state), v(state)
 
 
 class TestA3C(unittest.TestCase):
@@ -30,25 +36,35 @@ class TestA3C(unittest.TestCase):
 
         nproc = 8
 
-        def agent_func(process_idx):
-            n_actions = 3
+        def model_opt():
             pi = policy.FCSoftmaxPolicy(
                 1, n_actions, n_hidden_channels=10, n_hidden_layers=2)
             v = v_function.FCVFunction(
                 1, n_hidden_channels=10, n_hidden_layers=2)
             model = chainer.ChainList(pi, v)
             opt = optimizers.RMSprop(1e-3, eps=1e-2)
-
-            def pv_func(model, state):
-                pi, v = model
-                return pi(state), v(state)
             opt.setup(model)
-            return a3c.A3C(model, pv_func, opt, t_max, 0.9, beta=1e-2)
+            return model, opt
 
-        def env_func(process_idx):
-            return simple_abc.ABC()
+        n_actions = 3
 
-        def run_func(process_idx, agent, env):
+        model, opt = model_opt()
+        counter = mp.Value('i', 0)
+
+        model_params = async.share_params_as_shared_arrays(model)
+        opt_state = async.share_states_as_shared_arrays(opt)
+
+        def run_func(process_idx):
+
+            env = simple_abc.ABC()
+
+            model, opt = model_opt()
+            async.set_shared_params(model, model_params)
+            async.set_shared_states(opt, opt_state)
+
+            opt.setup(model)
+            agent = a3c.A3C(model, pv_func, opt, t_max, 0.9, beta=1e-2)
+
             total_r = 0
             episode_r = 0
 
@@ -60,22 +76,28 @@ class TestA3C(unittest.TestCase):
                 action = agent.act(env.state, env.reward, env.is_terminal)
 
                 if env.is_terminal:
-                    print(('i:{} episode_r:{}'.format(i, episode_r)))
+                    print(('i:{} counter:{} episode_r:{}'.format(
+                        i, counter.value, episode_r)))
                     episode_r = 0
                     env.initialize()
                 else:
                     env.receive_action(action)
 
-            print(('pid:{}, total_r:{}'.format(os.getpid(), total_r)))
+                with counter.get_lock():
+                    counter.value += 1
+
+            print(('pid:{}, counter:{}, total_r:{}'.format(
+                os.getpid(), counter.value, total_r)))
 
             return agent
 
         # Train
-        final_agent = async.run_async(nproc, agent_func, env_func, run_func)
+        async.run_async(nproc, run_func)
 
         # Test
-        env = env_func(0)
+        env = simple_abc.ABC()
         total_r = env.reward
+        final_agent = a3c.A3C(model, pv_func, opt, t_max, 0.9, beta=1e-2)
         final_pi = final_agent.model[0]
         while not env.is_terminal:
             pout = final_pi(chainer.Variable(

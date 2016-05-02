@@ -2,6 +2,7 @@ import multiprocessing as mp
 import os
 import random
 
+import chainer
 import numpy as np
 
 import random_seed
@@ -13,6 +14,7 @@ def set_shared_params(a, b):
       a (chainer.Link): link whose params are to be replaced
       b (dict): dict that consists of (param_name, multiprocessing.Array)
     """
+    assert isinstance(a, chainer.Link)
     for param_name, param in a.namedparams():
         if param_name in b:
             shared_param = b[param_name]
@@ -21,6 +23,8 @@ def set_shared_params(a, b):
 
 
 def set_shared_states(a, b):
+    assert isinstance(a, chainer.Optimizer)
+    assert hasattr(a, 'target'), 'Optimizer.setup must be called first'
     for state_name, shared_state in b.items():
         for param_name, param in shared_state.items():
             old_param = a._states[state_name][param_name]
@@ -30,13 +34,28 @@ def set_shared_states(a, b):
 
 
 def extract_params_as_shared_arrays(link):
+    assert isinstance(link, chainer.Link)
     shared_arrays = {}
     for param_name, param in link.namedparams():
         shared_arrays[param_name] = mp.RawArray('f', param.data.ravel())
     return shared_arrays
 
 
+def share_params_as_shared_arrays(link):
+    shared_arrays = extract_params_as_shared_arrays(link)
+    set_shared_params(link, shared_arrays)
+    return shared_arrays
+
+
+def share_states_as_shared_arrays(link):
+    shared_arrays = extract_states_as_shared_arrays(link)
+    set_shared_states(link, shared_arrays)
+    return shared_arrays
+
+
 def extract_states_as_shared_arrays(optimizer):
+    assert isinstance(optimizer, chainer.Optimizer)
+    assert hasattr(optimizer, 'target'), 'Optimizer.setup must be called first'
     shared_arrays = {}
     for state_name, state in optimizer._states.items():
         shared_arrays[state_name] = {}
@@ -46,55 +65,26 @@ def extract_states_as_shared_arrays(optimizer):
     return shared_arrays
 
 
-def run_a3c_process(process_idx, agent_func, env_func, run_func, link_arrays, opt_arrays,
-                    seed):
-
-    random_seed.set_random_seed(seed)
-
-    agent = agent_func(process_idx)
-    for i, link in enumerate(agent.links):
-        set_shared_params(link, link_arrays[i])
-
-    for i, opt in enumerate(agent.optimizers):
-        set_shared_states(opt, opt_arrays[i])
-
-    env = env_func(process_idx)
-
-    run_func(process_idx, agent, env)
-
-
-def run_async(n_process, agent_func, env_func, run_func):
+def run_async(n_process, run_func):
     """Run experiments asynchronously.
 
     Args:
       n_process (int): number of processes
-      agent_func: function that returns a new agent
-      env_func: function that returns a new environment
-      run_func: function that receives an agent and an environment
+      run_func: function that will be run in parallel
     """
-    base_agent = agent_func(0)
-    links = base_agent.links
-    opts = base_agent.optimizers
-    link_arrays = [extract_params_as_shared_arrays(link) for link in links]
-    opt_arrays = [extract_states_as_shared_arrays(opt) for opt in opts]
 
     processes = []
 
+    def set_seed_and_run(process_idx, run_func):
+        random_seed.set_random_seed(np.random.randint(0, 2 ** 32))
+        run_func(process_idx)
+
     for process_idx in range(n_process):
-        processes.append(mp.Process(target=run_a3c_process, args=(
-            process_idx, agent_func, env_func, run_func, link_arrays,
-            opt_arrays, random.randint(0, 2 ** 32 - 1)
-        )))
+        processes.append(mp.Process(target=set_seed_and_run, args=(
+            process_idx, run_func)))
 
     for p in processes:
         p.start()
 
     for p in processes:
         p.join()
-
-    for i in range(len(base_agent.links)):
-        set_shared_params(base_agent.links[i], link_arrays[i])
-
-    base_agent.sync_parameters()
-
-    return base_agent
