@@ -87,6 +87,7 @@ def main():
     parser.add_argument('--steps', type=int, default=10 ** 7)
     parser.add_argument('--lr', type=float, default=7e-4)
     parser.add_argument('--eval-frequency', type=int, default=10 ** 5)
+    parser.add_argument('--weight-decay', type=float, default=1e-5)
     parser.set_defaults(use_sdl=False)
     args = parser.parse_args()
 
@@ -120,7 +121,7 @@ def main():
         opt = rmsprop_async.RMSpropAsync(lr=7e-4, eps=1e-1, alpha=0.99)
         opt.setup(model)
         opt.add_hook(chainer.optimizer.GradientClipping(40))
-        opt.add_hook(NonbiasWeightDecay(1e-5))
+        opt.add_hook(NonbiasWeightDecay(args.weight_decay))
         return model, opt
 
     model, opt = model_opt()
