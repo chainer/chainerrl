@@ -5,16 +5,13 @@ import os
 
 import numpy as np
 import chainer
-from chainer import functions as F
 from chainer import serializers
 
-import agent
-import smooth_l1_loss
 import copy_param
 import clipped_loss
 
 
-class A3C(agent.Agent):
+class A3C(object):
     """A3C: Asynchronous Advantage Actor-Critic.
 
     See http://arxiv.org/abs/1602.01783
@@ -101,7 +98,12 @@ class A3C(agent.Agent):
                 else:
                     v_loss += (v - R) ** 2 / 2
 
+            # Make pi's effective learning rate lower than v's
             pi_loss *= 0.5
+
+            # Normalize the loss of sequences truncated by terminal states
+            pi_loss *= self.t_max / (self.t - self.t_start)
+            v_loss *= self.t_max / (self.t - self.t_start)
 
             if self.process_idx == 0:
                 logger.debug('pi_loss:%s v_loss:%s', pi_loss.data, v_loss.data)
