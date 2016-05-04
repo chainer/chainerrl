@@ -15,7 +15,7 @@ class ALE(environment.EpisodicEnvironment):
     """Arcade Learning Environment.
     """
 
-    def __init__(self, rom_filename, seed=0, use_sdl=False, n_last_screens=4,
+    def __init__(self, rom_filename, seed=None, use_sdl=False, n_last_screens=4,
                  frame_skip=4, treat_life_lost_as_terminal=True,
                  crop_or_scale='scale', max_start_nullops=30):
         self.n_last_screens = n_last_screens
@@ -24,6 +24,12 @@ class ALE(environment.EpisodicEnvironment):
         self.max_start_nullops = max_start_nullops
 
         ale = ALEInterface()
+        if seed is not None:
+            assert seed >= 0 and seed < 2 ** 16, \
+                "ALE's random seed must be represented by unsigned int"
+        else:
+            # Use numpy's random state
+            seed = np.random.randint(0, 2 ** 16)
         ale.setInt(b'random_seed', seed)
         ale.setFloat(b'repeat_action_probability', 0.0)
         self.frame_skip = frame_skip
