@@ -3,9 +3,7 @@ import os
 import sys
 
 import numpy as np
-import scipy.misc as spm
 from ale_python_interface import ALEInterface
-from PIL import Image
 import cv2
 
 import environment
