@@ -16,7 +16,7 @@ import a3c
 import ale
 import random_seed
 import async
-import rmsprop_ones
+import rmsprop_async
 from prepare_output_dir import prepare_output_dir
 from nonbias_weight_decay import NonbiasWeightDecay
 
@@ -117,7 +117,7 @@ def main():
             param.data[:] = \
                 np.random.uniform(-3e-4, 3e-4, size=param.data.shape)
         model = chainer.ChainList(head, pi, v)
-        opt = rmsprop_ones.RMSpropAsync(lr=7e-4, eps=1e-1, alpha=0.99)
+        opt = rmsprop_async.RMSpropAsync(lr=7e-4, eps=1e-1, alpha=0.99)
         opt.setup(model)
         opt.add_hook(chainer.optimizer.GradientClipping(40))
         opt.add_hook(NonbiasWeightDecay(1e-5))
