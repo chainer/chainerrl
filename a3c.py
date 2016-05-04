@@ -148,14 +148,6 @@ class A3C(object):
         else:
             return None
 
-    @property
-    def links(self):
-        return [self.shared_model]
-
-    @property
-    def optimizers(self):
-        return [self.optimizer]
-
     def load_model(self, model_filename):
         """Load a network model form a file
         """
