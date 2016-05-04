@@ -58,4 +58,4 @@ class SoftmaxPolicyOutput(PolicyOutput):
 
     @cached_property
     def entropy(self):
-        return F.sum(self.probs * self.log_probs, axis=1)
+        return - F.sum(self.probs * self.log_probs, axis=1)
