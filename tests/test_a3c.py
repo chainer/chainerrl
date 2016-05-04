@@ -102,7 +102,8 @@ class TestA3C(unittest.TestCase):
         while not env.is_terminal:
             pout = final_pi(chainer.Variable(
                 env.state.reshape((1,) + env.state.shape)))
-            action = pout.action_indices[0]
+            # Use the most probale actions for stability of test results
+            action = pout.most_probable_actions[0]
             print(('state:', env.state, 'action:', action))
             env.receive_action(action)
             total_r += env.reward

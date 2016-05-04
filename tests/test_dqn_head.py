@@ -6,25 +6,28 @@ from chainer import optimizers
 from chainer import functions as F
 
 import dqn_head
+import policy
 import fc_tail_q_function
 import fc_tail_v_function
-import fc_tail_policy
 
 
 def generate_different_two_states():
-    sample_state = np.random.rand(4, 84, 84).astype(np.float32)
+    """Generate differnet two input planes.
+
+    Generated input two planes differ only at one random pixel.
+    """
+    sample_state = np.random.rand(1, 4, 84, 84).astype(np.float32)
     a = sample_state.copy()
     b = sample_state.copy()
     pos = np.random.randint(a.size)
     a.ravel()[pos] = 0.8
     b.ravel()[pos] = 0.2
     assert not np.allclose(a, b)
-    return a, b
+    return chainer.Variable(a), chainer.Variable(b)
 
 
 class _TestDQNHead(unittest.TestCase):
-    """Test DQN heads are trainable
-    """
+    """Test that DQN heads are trainable."""
 
     def create_head(self):
         pass
@@ -40,8 +43,6 @@ class _TestDQNHead(unittest.TestCase):
         opt = self.create_optimizer()
         opt.setup(v_func)
         a, b = generate_different_two_states()
-        a = chainer.Variable(np.expand_dims(a, axis=0))
-        b = chainer.Variable(np.expand_dims(b, axis=0))
         for _ in range(1000):
             # a
             v_func.zerograds()
@@ -68,8 +69,6 @@ class _TestDQNHead(unittest.TestCase):
         opt = self.create_optimizer()
         opt.setup(q_func)
         a, b = generate_different_two_states()
-        a = chainer.Variable(np.expand_dims(a, axis=0))
-        b = chainer.Variable(np.expand_dims(b, axis=0))
         action = np.random.randint(n_actions)
         for _ in range(1000):
             # a
@@ -92,31 +91,33 @@ class _TestDQNHead(unittest.TestCase):
     def test_policy(self):
         n_actions = 3
         head = self.create_head()
-        pi = fc_tail_policy.FCTailPolicy(
-            head, head.n_output_channels, n_actions=n_actions)
+        pi = policy.FCSoftmaxPolicy(head.n_output_channels, n_actions)
         opt = self.create_optimizer()
-        opt.setup(pi)
+        opt.setup(chainer.ChainList(head, pi))
         a, b = generate_different_two_states()
-        a = chainer.Variable(np.expand_dims(a, axis=0))
-        b = chainer.Variable(np.expand_dims(b, axis=0))
+
+        def pout_func(s):
+            return pi(head(s))
+
+        def compute_loss(s, gt_label):
+            pout = pout_func(s)
+            return F.softmax_cross_entropy(
+                pout.logits,
+                chainer.Variable(np.asarray([gt_label], dtype=np.int32)))
+
         for _ in range(1000):
-            # a
+            loss_a = compute_loss(a, 0)
+            loss_b = compute_loss(b, 1)
+            print('loss for a:', loss_a.data)
+            print('loss for b:', loss_b.data)
+            head.zerograds()
             pi.zerograds()
-            loss = F.softmax_cross_entropy(
-                pi.forward(a),
-                chainer.Variable(np.asarray([0], dtype=np.int32)))
-            loss.backward()
-            opt.update()
-            # b
-            pi.zerograds()
-            loss = F.softmax_cross_entropy(
-                pi.forward(b),
-                chainer.Variable(np.asarray([1], dtype=np.int32)))
-            loss.backward()
+            loss_a.backward()
+            loss_b.backward()
             opt.update()
 
-        pa = float(pi(a, [0]).data)
-        pb = float(pi(b, [1]).data)
+        pa = float(pi(head(a)).probs.data[0, 0])
+        pb = float(pi(head(b)).probs.data[0, 1])
         self.assertAlmostEqual(pa, 1.0, places=3)
         self.assertAlmostEqual(pb, 1.0, places=3)
 

@@ -1,6 +1,7 @@
 import unittest
 import random
 
+import chainer
 import numpy as np
 
 import q_function
@@ -16,7 +17,8 @@ class TestQFunction(unittest.TestCase):
         N = 1000
         greedy_count = 0
         for _ in range(N):
-            random_state = np.asarray([[random.random()]], dtype=np.float32)
+            random_state = chainer.Variable(
+                np.random.rand(1, 1).astype(np.float32))
             values = q_func.forward(random_state).data
             print(('q values:', values))
 

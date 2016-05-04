@@ -1,6 +1,7 @@
 import unittest
 
 import numpy as np
+import chainer
 
 import policy
 
@@ -18,15 +19,16 @@ class TestFCSoftmaxPolicy(unittest.TestCase):
 
     def test_sample_with_probability(self):
         batch_size = 2
-        state = np.random.rand(
-            batch_size, self.n_input_channels).astype(np.float32)
-        action_indices, probs = self.policy.sample_with_probability(state)
-        self.assertEqual(len(action_indices), batch_size)
-        self.assertEqual(probs.data.shape, (batch_size,))
+        state = chainer.Variable(np.random.rand(
+            batch_size, self.n_input_channels).astype(np.float32))
+        pout = self.policy(state)
+        self.assertEqual(len(pout.action_indices), batch_size)
+        self.assertEqual(pout.probs.data.shape, (batch_size, self.n_actions))
         for i in range(batch_size):
-            self.assertGreaterEqual(action_indices[i], 0)
-            self.assertLess(action_indices[i], self.n_actions)
+            self.assertGreaterEqual(pout.action_indices[i], 0)
+            self.assertLess(pout.action_indices[i], self.n_actions)
             # Probability must be strictly larger than zero because it was
             # actually sampled
-            self.assertGreater(probs.data[i], 0)
-            self.assertLessEqual(probs.data[i], 1)
+            for a in range(self.n_actions):
+                self.assertGreater(pout.probs.data[i, a], 0)
+                self.assertLessEqual(pout.probs.data[i, a], 1)
