@@ -21,16 +21,18 @@ class StateInputQFunction(QFunction):
         raise NotImplementedError()
 
     def __call__(self, state, action):
-        assert state.shape[0] == 1
-        xp = cuda.get_array_module(state)
+        assert isinstance(state, chainer.Variable)
+        assert state.data.shape[0] == 1
+        xp = cuda.get_array_module(state.data)
         values = self.forward(state)
         q = F.select_item(
             values, chainer.Variable(xp.asarray(action, dtype=np.int32)))
         return q
 
     def sample_epsilon_greedily_with_value(self, state, epsilon):
-        assert state.shape[0] == 1
-        xp = cuda.get_array_module(state)
+        assert isinstance(state, chainer.Variable)
+        assert state.data.shape[0] == 1
+        xp = cuda.get_array_module(state.data)
         values = self.forward(state)
         if random.random() < epsilon:
             a = random.randint(0, self.n_actions - 1)
@@ -41,8 +43,9 @@ class StateInputQFunction(QFunction):
         return [a], q
 
     def sample_greedily_with_value(self, state):
-        assert state.shape[0] == 1
-        xp = cuda.get_array_module(state)
+        assert isinstance(state, chainer.Variable)
+        assert state.data.shape[0] == 1
+        xp = cuda.get_array_module(state.data)
         values = self.forward(state)
         a = values.data[0].argmax()
         q = F.select_item(
@@ -69,6 +72,7 @@ class FCSIQFunction(chainer.ChainList, StateInputQFunction):
         super(FCSIQFunction, self).__init__(*layers)
 
     def forward(self, state, test=False):
+        assert isinstance(state, chainer.Variable)
         h = state
         for layer in self[:-1]:
             h = F.elu(layer(h))

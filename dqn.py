@@ -7,6 +7,7 @@ from logging import getLogger
 logger = getLogger(__name__)
 
 import numpy as np
+import chainer
 import chainer.functions as F
 from chainer import optimizers, cuda, Variable
 from chainer.testing import attr
@@ -108,7 +109,7 @@ class DQN(agent.Agent):
             batch = cuda.to_gpu(batch, device=self.gpu)
         else:
             batch = cuda.to_cpu(batch)
-        return batch
+        return chainer.Variable(batch)
 
     def _compute_target_values(self, experiences, gamma, batch_q):
 
