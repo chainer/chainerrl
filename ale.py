@@ -41,10 +41,10 @@ class ALE(environment.EpisodicEnvironment):
             if sys.platform == 'darwin':
                 import pygame
                 pygame.init()
-                ale.setBool('sound', False)  # Sound doesn't work on OSX
+                ale.setBool(b'sound', False)  # Sound doesn't work on OSX
             elif sys.platform.startswith('linux'):
-                ale.setBool('sound', True)
-            ale.setBool('display_screen', True)
+                ale.setBool(b'sound', True)
+            ale.setBool(b'display_screen', True)
         ale.loadROM(str.encode(rom_filename))
 
         assert ale.getFrameNumber() == 0

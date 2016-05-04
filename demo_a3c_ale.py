@@ -22,8 +22,8 @@ def phi(screens):
     return raw_values
 
 
-def eval_performance(rom, p_func, deterministic=False):
-    env = ale.ALE(rom, treat_life_lost_as_terminal=False)
+def eval_performance(rom, p_func, deterministic=False, use_sdl=False):
+    env = ale.ALE(rom, treat_life_lost_as_terminal=False, use_sdl=use_sdl)
     test_r = 0
     while not env.is_terminal:
         s = chainer.Variable(np.expand_dims(phi(env.state), 0))
@@ -76,7 +76,8 @@ def main():
     scores = []
     for i in range(args.n_runs):
         score = eval_performance(
-            args.rom, p_func, deterministic=args.deterministic)
+            args.rom, p_func, deterministic=args.deterministic,
+            use_sdl=args.use_sdl)
         print('Run {}: {}'.format(i, score))
         scores.append(score)
     print('Average: {}'.format(sum(scores) / args.n_runs))
