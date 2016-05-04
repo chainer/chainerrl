@@ -1,56 +1,22 @@
 from logging import getLogger
 logger = getLogger(__name__)
 
-import numpy as np
-
 import chainer
 from chainer import functions as F
 from chainer import links as L
-from chainer import cuda
+
+import policy_output
 
 
 class Policy(object):
-    """Abstract policy class.
-    """
+    """Abstract policy class."""
 
-    def sample_with_probability(self, state):
+    def __call__(self, state):
         raise NotImplementedError
 
 
-def _sample_actions(batch_probs):
-    """
-    Args:
-      batch_probs (ndarray): batch of action probabilities BxA
-    """
-    action_indices = []
-    # Avoid "ValueError: sum(pvals[:-1]) > 1.0" in numpy.multinomial
-    batch_probs = batch_probs - np.finfo(np.float32).epsneg
-    for i in range(batch_probs.shape[0]):
-        histogram = np.random.multinomial(1, batch_probs[i])
-        action_indices.append(int(np.nonzero(histogram)[0]))
-    return action_indices
-
-
-class PolicyOutput(object):
-    pass
-
-
-class SoftmaxPolicyOutput(PolicyOutput):
-
-    def __init__(self, logits):
-        self.logits = logits
-        self.probs = F.softmax(logits)
-        self.action_indices = _sample_actions(self.probs.data)
-        self.log_probs = F.log_softmax(logits)
-        self.sampled_actions_log_probs = F.select_item(
-            self.log_probs,
-            chainer.Variable(np.asarray(self.action_indices, dtype=np.int32)))
-        self.entropy = - F.sum(self.probs * self.log_probs, axis=1)
-
-
 class SoftmaxPolicy(Policy):
-    """Abstract softmax policy class.
-    """
+    """Abstract softmax policy class."""
 
     def compute_logits(self, state):
         """
@@ -60,10 +26,11 @@ class SoftmaxPolicy(Policy):
         raise NotImplementedError
 
     def __call__(self, state):
-        return SoftmaxPolicyOutput(self.compute_logits(state))
+        return policy_output.SoftmaxPolicyOutput(self.compute_logits(state))
 
 
 class FCSoftmaxPolicy(chainer.ChainList, SoftmaxPolicy):
+    """Softmax policy that consists of FC layers and rectifiers"""
 
     def __init__(self, n_input_channels, n_actions,
                  n_hidden_layers=0, n_hidden_channels=None):
@@ -92,11 +59,6 @@ class FCSoftmaxPolicy(chainer.ChainList, SoftmaxPolicy):
 
 
 class GaussianPolicy(Policy):
-    """Abstract gaussian policy class.
+    """Abstract Gaussian policy class.
     """
-
-    def forward(self, state):
-        raise NotImplementedError
-
-    def sample_with_probability(self, state):
-        raise NotImplementedError
+    pass
