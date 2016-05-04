@@ -69,7 +69,7 @@ def eval_performance(rom, p_func):
 
 def main():
 
-    # This line makes execution much faster, I don't know why
+    # Prevent numpy from using multiple threads
     os.environ['OMP_NUM_THREADS'] = '1'
 
     import logging
