@@ -57,9 +57,10 @@ def eval_performance(rom, q_func, gpu):
         s = np.expand_dims(phi(env.state), 0)
         if gpu >= 0:
             s = chainer.cuda.to_gpu(s)
-        a = q_func.sample_epsilon_greedily_with_value(s, 5e-2)[0][0]
+        a = q_func.sample_epsilon_greedily_with_value(
+            chainer.Variable(s), 5e-2)[0][0]
         test_r += env.receive_action(a)
-    print 'test_r:', test_r
+    print('test_r:', test_r)
     return test_r
 
 
@@ -106,7 +107,7 @@ def main():
 
     outdir = prepare_output_dir(args, args.outdir)
 
-    print 'Output files are saved in {}'.format(outdir)
+    print('Output files are saved in {}'.format(outdir))
 
     n_actions = ale.ALE(args.rom).number_of_actions
     activation = parse_activation(args.activation)
@@ -119,7 +120,7 @@ def main():
     opt.setup(q_func)
     # opt.add_hook(chainer.optimizer.GradientClipping(1.0))
 
-    rbuf = replay_buffer.ReplayBuffer(1e6)
+    rbuf = replay_buffer.ReplayBuffer(10 ** 6)
 
     agent = DQN(q_func, opt, rbuf, gpu=args.gpu, gamma=0.99,
                 epsilon=1.0, replay_start_size=args.replay_start_size,
@@ -138,23 +139,23 @@ def main():
     episode_idx = 0
     max_score = None
 
-    for i in xrange(args.steps):
+    for i in range(args.steps):
 
         try:
             if i % (args.steps / 100) == 0:
                 # Test performance
                 score = eval_performance(args.rom, agent.q_function, args.gpu)
                 with open(os.path.join(outdir, 'scores.txt'), 'a+') as f:
-                    print >> f, i, score
+                    print(i, score, file=f)
                 if max_score is None or score > max_score:
                     if max_score is not None:
                         # Save the best model so far
-                        print 'The best score is updated {} -> {}'.format(
-                            max_score, score)
+                        print('The best score is updated {} -> {}'.format(
+                            max_score, score))
                         filename = os.path.join(
                             outdir, '{}_keyboardinterrupt.h5'.format(i))
                         agent.save_model(filename)
-                        print 'Saved the current best model to {}'.format(filename)
+                        print('Saved the current best model to {}'.format(filename))
                     max_score = score
 
             episode_r += env.reward
@@ -165,7 +166,8 @@ def main():
                 agent.epsilon -= 0.9 / args.final_exploration_frames
 
             if env.is_terminal:
-                print '{} i:{} episode_idx:{} epsilon:{} episode_r:{}'.format(outdir, i, episode_idx, agent.epsilon, episode_r)
+                print('{} i:{} episode_idx:{} epsilon:{} episode_r:{}'.format(
+                    outdir, i, episode_idx, agent.epsilon, episode_r))
                 episode_r = 0
                 episode_idx += 1
                 env.initialize()
@@ -175,13 +177,13 @@ def main():
             # Save the current model before being killed
             agent.save_model(os.path.join(
                 outdir, '{}_keyboardinterrupt.h5'.format(i)))
-            print >> sys.stderr, 'Saved the current model to {}'.format(
-                outdir)
+            print('Saved the current model to {}'.format(
+                outdir), file=sys.stderr)
             raise
 
     # Save the final model
     agent.save_model(os.path.join(outdir, '{}_finish.h5'.format(args.steps)))
-    print 'Saved the current model to {}'.format(outdir)
+    print('Saved the current model to {}'.format(outdir))
 
 if __name__ == '__main__':
     main()
