@@ -1,7 +1,9 @@
-import os
 import argparse
-import sys
 import multiprocessing as mp
+import os
+import sys
+import statistics
+import time
 
 import numpy as np
 
@@ -55,16 +57,23 @@ def phi(screens):
     return raw_values
 
 
-def eval_performance(rom, p_func):
-    env = ale.ALE(rom, treat_life_lost_as_terminal=False)
-    test_r = 0
-    while not env.is_terminal:
-        s = chainer.Variable(np.expand_dims(phi(env.state), 0))
-        pout = p_func(s)
-        a = pout.action_indices[0]
-        test_r += env.receive_action(a)
-    print('test_r:', test_r)
-    return test_r
+def eval_performance(rom, p_func, n_runs):
+    assert n_runs > 1, 'Computing stdev requires at least two runs'
+    scores = []
+    for i in range(n_runs):
+        env = ale.ALE(rom, treat_life_lost_as_terminal=False)
+        test_r = 0
+        while not env.is_terminal:
+            s = chainer.Variable(np.expand_dims(phi(env.state), 0))
+            pout = p_func(s)
+            a = pout.action_indices[0]
+            test_r += env.receive_action(a)
+        scores.append(test_r)
+        print('test_{}:'.format(i), test_r)
+    mean = statistics.mean(scores)
+    median = statistics.median(scores)
+    stdev = statistics.stdev(scores)
+    return mean, median, stdev
 
 
 def main():
@@ -86,7 +95,8 @@ def main():
     parser.add_argument('--profile', action='store_true')
     parser.add_argument('--steps', type=int, default=10 ** 8)
     parser.add_argument('--lr', type=float, default=7e-4)
-    parser.add_argument('--eval-frequency', type=int, default=10 ** 5)
+    parser.add_argument('--eval-frequency', type=int, default=10 ** 6)
+    parser.add_argument('--eval-n-runs', type=int, default=10)
     parser.add_argument('--weight-decay', type=float, default=1e-5)
     parser.set_defaults(use_sdl=False)
     args = parser.parse_args()
@@ -129,8 +139,14 @@ def main():
     shared_params = async.share_params_as_shared_arrays(model)
     shared_states = async.share_states_as_shared_arrays(opt)
 
-    max_score = mp.Value('l', np.iinfo(np.int32).min)
+    max_score = mp.Value('f', np.finfo(np.float32).min)
     counter = mp.Value('l', 0)
+    start_time = time.time()
+
+    # Write a header line first
+    with open(os.path.join(outdir, 'scores.txt'), 'a+') as f:
+        column_names = ('steps', 'elapsed', 'mean', 'median', 'stdev')
+        print('\t'.join(column_names), file=f)
 
     def run_func(process_idx):
         total_r = 0
@@ -182,20 +198,23 @@ def main():
                     def p_func(s):
                         pout, _ = agent.pv_func(agent.model, s)
                         return pout
-                    score = eval_performance(args.rom, p_func)
+                    mean, median, stdev = eval_performance(
+                        args.rom, p_func, args.eval_n_runs)
                     with open(os.path.join(outdir, 'scores.txt'), 'a+') as f:
-                        print(global_t, score, file=f)
+                        elapsed = time.time() - start_time
+                        record = (global_t, elapsed, mean, median, stdev)
+                        print('\t'.join(str(x) for x in record), file=f)
                     with max_score.get_lock():
-                        if score > max_score.value:
+                        if mean > max_score.value:
                             # Save the best model so far
                             print('The best score is updated {} -> {}'.format(
-                                max_score.value, score))
+                                max_score.value, mean))
                             filename = os.path.join(
                                 outdir, '{}.h5'.format(global_t))
                             agent.save_model(filename)
                             print('Saved the current best model to {}'.format(
                                 filename))
-                            max_score.value = score
+                            max_score.value = mean
 
         except KeyboardInterrupt:
             if process_idx == 0:
