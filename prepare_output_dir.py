@@ -35,14 +35,14 @@ def prepare_output_dir(args, user_specified_dir=None):
 
     # Save `git status`
     with open(os.path.join(outdir, 'git-status.txt'), 'w') as f:
-        f.write(str(subprocess.check_output(['git', 'status'])))
+        f.write(subprocess.getoutput('git status'))
 
     # Save `git log`
     with open(os.path.join(outdir, 'git-log.txt'), 'w') as f:
-        f.write(str(subprocess.check_output(['git', 'log'])))
+        f.write(subprocess.getoutput('git log'))
 
     # Save `git diff`
     with open(os.path.join(outdir, 'git-diff.txt'), 'w') as f:
-        f.write(str(subprocess.check_output(['git', 'diff'])))
+        f.write(subprocess.getoutput('git diff'))
 
     return outdir
