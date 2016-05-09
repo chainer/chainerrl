@@ -10,6 +10,7 @@ import numpy as np
 import chainer
 from chainer import optimizers
 from chainer import functions as F
+from chainer import links as L
 
 import policy
 import v_function
@@ -74,6 +75,22 @@ def eval_performance(rom, p_func, n_runs):
     return mean, median, stdev
 
 
+def init_like_torch(link):
+    # Mimic torch's default parameter initialization
+    # TODO(muupan): Use chainer's initializers when it is merged
+    for l in link.links():
+        if isinstance(l, L.Linear):
+            out_channels, in_channels = l.W.data.shape
+            stdv = 1 / np.sqrt(in_channels)
+            l.W.data[:] = np.random.uniform(-stdv, stdv, size=l.W.data.shape)
+            l.b.data[:] = np.random.uniform(-stdv, stdv, size=l.b.data.shape)
+        elif isinstance(l, L.Convolution2D):
+            out_channels, in_channels, kh, kw = l.W.data.shape
+            stdv = 1 / np.sqrt(in_channels * kh * kw)
+            l.W.data[:] = np.random.uniform(-stdv, stdv, size=l.W.data.shape)
+            l.b.data[:] = np.random.uniform(-stdv, stdv, size=l.b.data.shape)
+
+
 def main():
 
     # Prevent numpy from using multiple threads
@@ -117,15 +134,8 @@ def main():
         head = dqn_head.NIPSDQNHead()
         pi = policy.FCSoftmaxPolicy(head.n_output_channels, n_actions)
         v = v_function.FCVFunction(head.n_output_channels)
-        # Initialize last layers with uniform random values following:
-        # http://arxiv.org/abs/1509.02971
-        for param in pi[-1].params():
-            param.data[:] = \
-                np.random.uniform(-3e-3, 3e-3, size=param.data.shape)
-        for param in v[-1].params():
-            param.data[:] = \
-                np.random.uniform(-3e-4, 3e-4, size=param.data.shape)
         model = chainer.ChainList(head, pi, v)
+        init_like_torch(model)
         opt = rmsprop_async.RMSpropAsync(lr=7e-4, eps=1e-1, alpha=0.99)
         opt.setup(model)
         opt.add_hook(chainer.optimizer.GradientClipping(40))
