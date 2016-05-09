@@ -108,11 +108,11 @@ def main():
     parser.add_argument('--t-max', type=int, default=5)
     parser.add_argument('--beta', type=float, default=1e-2)
     parser.add_argument('--profile', action='store_true')
-    parser.add_argument('--steps', type=int, default=10 ** 8)
+    parser.add_argument('--steps', type=int, default=8 * 10 ** 7)
     parser.add_argument('--lr', type=float, default=7e-4)
     parser.add_argument('--eval-frequency', type=int, default=10 ** 6)
     parser.add_argument('--eval-n-runs', type=int, default=10)
-    parser.add_argument('--weight-decay', type=float, default=1e-5)
+    parser.add_argument('--weight-decay', type=float, default=0.0)
     parser.set_defaults(use_sdl=False)
     args = parser.parse_args()
 

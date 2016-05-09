@@ -6,6 +6,7 @@ import os
 import numpy as np
 import chainer
 from chainer import serializers
+from chainer import functions as F
 
 import copy_param
 import clipped_loss
@@ -98,20 +99,19 @@ class A3C(object):
                 else:
                     v_loss += (v - R) ** 2 / 2
 
-            # Make pi's effective learning rate lower than v's
-            pi_loss *= 0.5
+            # Make v's effective learning rate half of v's
+            v_loss *= 0.5
 
             # Normalize the loss of sequences truncated by terminal states
-            pi_loss *= self.t_max / (self.t - self.t_start)
-            v_loss *= self.t_max / (self.t - self.t_start)
+            # pi_loss *= self.t_max / (self.t - self.t_start)
+            # v_loss *= self.t_max / (self.t - self.t_start)
 
             if self.process_idx == 0:
                 logger.debug('pi_loss:%s v_loss:%s', pi_loss.data, v_loss.data)
 
             # Compute gradients using thread-specific model
             self.model.zerograds()
-            pi_loss.backward()
-            v_loss.backward()
+            (pi_loss + F.reshape(v_loss, pi_loss.data.shape)).backward()
             # Copy the gradients to the globally shared model
             self.shared_model.zerograds()
             copy_param.copy_grad(
