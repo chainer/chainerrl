@@ -50,10 +50,8 @@ def phi(screens):
     assert len(screens) == 4
     assert screens[0].dtype == np.uint8
     raw_values = np.asarray(screens, dtype=np.float32)
-    # [0,255] -> [-128, 127]
-    raw_values -= 128
-    # [-128, 127] -> [-1, 1)
-    raw_values /= 128.0
+    # [0,255] -> [0, 1]
+    raw_values /= 255.0
     return raw_values
 
 
