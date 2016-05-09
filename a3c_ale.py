@@ -139,7 +139,8 @@ def main():
         opt = rmsprop_async.RMSpropAsync(lr=7e-4, eps=1e-1, alpha=0.99)
         opt.setup(model)
         opt.add_hook(chainer.optimizer.GradientClipping(40))
-        opt.add_hook(NonbiasWeightDecay(args.weight_decay))
+        if args.weight_decay > 0:
+            opt.add_hook(NonbiasWeightDecay(args.weight_decay))
         return model, opt
 
     model, opt = model_opt()
