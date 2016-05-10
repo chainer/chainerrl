@@ -91,6 +91,90 @@ def init_like_torch(link):
             l.b.data[:] = np.random.uniform(-stdv, stdv, size=l.b.data.shape)
 
 
+def train_loop(process_idx, counter, max_score, args, agent, env, start_time):
+    try:
+
+        total_r = 0
+        episode_r = 0
+        global_t = 0
+        local_t = 0
+
+        while True:
+
+            # Get and increment the global counter
+            with counter.get_lock():
+                counter.value += 1
+                global_t = counter.value
+            local_t += 1
+
+            if global_t > args.steps:
+                break
+
+            agent.optimizer.lr = (
+                args.steps - global_t - 1) / args.steps * args.lr
+
+            total_r += env.reward
+            episode_r += env.reward
+
+            action = agent.act(env.state, env.reward, env.is_terminal)
+
+            if env.is_terminal:
+                if process_idx == 0:
+                    print('{} global_t:{} local_t:{} lr:{} episode_r:{}'.format(
+                        args.outdir, global_t, local_t, agent.optimizer.lr, episode_r))
+                episode_r = 0
+                env.initialize()
+            else:
+                env.receive_action(action)
+
+            if global_t % args.eval_frequency == 0:
+                # Evaluation
+                def p_func(s):
+                    pout, _ = agent.pv_func(agent.model, s)
+                    return pout
+                mean, median, stdev = eval_performance(
+                    args.rom, p_func, args.eval_n_runs)
+                with open(os.path.join(args.outdir, 'scores.txt'), 'a+') as f:
+                    elapsed = time.time() - start_time
+                    record = (global_t, elapsed, mean, median, stdev)
+                    print('\t'.join(str(x) for x in record), file=f)
+                with max_score.get_lock():
+                    if mean > max_score.value:
+                        # Save the best model so far
+                        print('The best score is updated {} -> {}'.format(
+                            max_score.value, mean))
+                        filename = os.path.join(
+                            args.outdir, '{}.h5'.format(global_t))
+                        agent.save_model(filename)
+                        print('Saved the current best model to {}'.format(
+                            filename))
+                        max_score.value = mean
+
+    except KeyboardInterrupt:
+        if process_idx == 0:
+            # Save the current model before being killed
+            agent.save_model(os.path.join(
+                args.outdir, '{}_keyboardinterrupt.h5'.format(global_t)))
+            print('Saved the current model to {}'.format(
+                args.outdir), file=sys.stderr)
+        raise
+
+    if global_t == args.steps + 1:
+        # Save the final model
+        agent.save_model(
+            os.path.join(args.outdir, '{}_finish.h5'.format(args.steps)))
+        print('Saved the final model to {}'.format(args.outdir))
+
+
+def train_loop_with_profile(process_idx, counter, max_score, args, agent, env,
+                            start_time):
+    import cProfile
+    cmd = 'train_loop(process_idx, counter, max_score, args, agent, env, ' \
+        'start_time)'
+    cProfile.runctx(cmd, globals(), locals(),
+                    'profile-{}.out'.format(os.getpid()))
+
+
 def main():
 
     # Prevent numpy from using multiple threads
@@ -119,9 +203,9 @@ def main():
     if args.seed is not None:
         random_seed.set_random_seed(args.seed)
 
-    outdir = prepare_output_dir(args, args.outdir)
+    args.outdir = prepare_output_dir(args, args.outdir)
 
-    print('Output files are saved in {}'.format(outdir))
+    print('Output files are saved in {}'.format(args.outdir))
 
     n_actions = ale.ALE(args.rom).number_of_actions
 
@@ -153,14 +237,11 @@ def main():
     start_time = time.time()
 
     # Write a header line first
-    with open(os.path.join(outdir, 'scores.txt'), 'a+') as f:
+    with open(os.path.join(args.outdir, 'scores.txt'), 'a+') as f:
         column_names = ('steps', 'elapsed', 'mean', 'median', 'stdev')
         print('\t'.join(column_names), file=f)
 
     def run_func(process_idx):
-        total_r = 0
-        episode_r = 0
-
         env = ale.ALE(args.rom, use_sdl=args.use_sdl)
         model, opt = model_opt()
         async.set_shared_params(model, shared_params)
@@ -169,88 +250,14 @@ def main():
         agent = a3c.A3C(model, pv_func, opt, args.t_max, 0.99, beta=args.beta,
                         process_idx=process_idx, phi=phi)
 
-        try:
+        if args.profile:
+            train_loop_with_profile(process_idx, counter, max_score,
+                                    args, agent, env, start_time)
+        else:
+            train_loop(process_idx, counter, max_score,
+                       args, agent, env, start_time)
 
-            global_t = 0
-            local_t = 0
-
-            while True:
-
-                # Get and increment the global counter
-                with counter.get_lock():
-                    counter.value += 1
-                    global_t = counter.value
-                local_t += 1
-
-                if global_t > args.steps:
-                    break
-
-                agent.optimizer.lr = (
-                    args.steps - global_t - 1) / args.steps * args.lr
-
-                total_r += env.reward
-                episode_r += env.reward
-
-                action = agent.act(env.state, env.reward, env.is_terminal)
-
-                if env.is_terminal:
-                    if process_idx == 0:
-                        print('{} global_t:{} local_t:{} lr:{} episode_r:{}'.format(
-                            outdir, global_t, local_t, agent.optimizer.lr, episode_r))
-                    episode_r = 0
-                    env.initialize()
-                else:
-                    env.receive_action(action)
-
-                if global_t % args.eval_frequency == 0:
-                    # Evaluation
-                    def p_func(s):
-                        pout, _ = agent.pv_func(agent.model, s)
-                        return pout
-                    mean, median, stdev = eval_performance(
-                        args.rom, p_func, args.eval_n_runs)
-                    with open(os.path.join(outdir, 'scores.txt'), 'a+') as f:
-                        elapsed = time.time() - start_time
-                        record = (global_t, elapsed, mean, median, stdev)
-                        print('\t'.join(str(x) for x in record), file=f)
-                    with max_score.get_lock():
-                        if mean > max_score.value:
-                            # Save the best model so far
-                            print('The best score is updated {} -> {}'.format(
-                                max_score.value, mean))
-                            filename = os.path.join(
-                                outdir, '{}.h5'.format(global_t))
-                            agent.save_model(filename)
-                            print('Saved the current best model to {}'.format(
-                                filename))
-                            max_score.value = mean
-
-        except KeyboardInterrupt:
-            if process_idx == 0:
-                # Save the current model before being killed
-                agent.save_model(os.path.join(
-                    outdir, '{}_keyboardinterrupt.h5'.format(global_t)))
-                print('Saved the current model to {}'.format(
-                    outdir), file=sys.stderr)
-            raise
-
-        if global_t == args.steps + 1:
-            # Save the final model
-            agent.save_model(
-                os.path.join(outdir, '{}_finish.h5'.format(args.steps)))
-            print('Saved the final model to {}'.format(outdir))
-
-    if args.profile:
-
-        def profile_run_func(process_idx):
-            import cProfile
-            cProfile.runctx('run_func_for_profiling()',
-                            globals(), locals(),
-                            'profile-{}.out'.format(os.getpid()))
-
-        async.run_async(args.processes, profile_run_func)
-    else:
-        async.run_async(args.processes, run_func)
+    async.run_async(args.processes, run_func)
 
 
 if __name__ == '__main__':
