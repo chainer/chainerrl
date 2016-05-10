@@ -1,4 +1,5 @@
 import argparse
+import os
 
 import numpy as np
 import chainer
@@ -19,8 +20,10 @@ def phi(screens):
     return raw_values
 
 
-def eval_performance(rom, p_func, deterministic=False, use_sdl=False):
-    env = ale.ALE(rom, treat_life_lost_as_terminal=False, use_sdl=use_sdl)
+def eval_performance(rom, p_func, deterministic=False, use_sdl=False,
+                     record_screen_dir=None):
+    env = ale.ALE(rom, treat_life_lost_as_terminal=False, use_sdl=use_sdl,
+                  record_screen_dir=record_screen_dir)
     test_r = 0
     while not env.is_terminal:
         s = chainer.Variable(np.expand_dims(phi(env.state), 0))
@@ -45,6 +48,7 @@ def main():
     parser.add_argument('--use-sdl', action='store_true')
     parser.add_argument('--n-runs', type=int, default=10)
     parser.add_argument('--deterministic', action='store_true')
+    parser.add_argument('--record-screen-dir', type=str, default=None)
     parser.set_defaults(use_sdl=False)
     parser.set_defaults(deterministic=False)
     args = parser.parse_args()
@@ -72,9 +76,13 @@ def main():
 
     scores = []
     for i in range(args.n_runs):
+        episode_record_dir = None
+        if args.record_screen_dir is not None:
+            episode_record_dir = os.path.join(args.record_screen_dir, str(i))
+            os.makedirs(episode_record_dir)
         score = eval_performance(
             args.rom, p_func, deterministic=args.deterministic,
-            use_sdl=args.use_sdl)
+            use_sdl=args.use_sdl, record_screen_dir=episode_record_dir)
         print('Run {}: {}'.format(i, score))
         scores.append(score)
     print('Average: {}'.format(sum(scores) / args.n_runs))

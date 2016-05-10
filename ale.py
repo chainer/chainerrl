@@ -15,7 +15,8 @@ class ALE(environment.EpisodicEnvironment):
 
     def __init__(self, rom_filename, seed=None, use_sdl=False, n_last_screens=4,
                  frame_skip=4, treat_life_lost_as_terminal=True,
-                 crop_or_scale='scale', max_start_nullops=30):
+                 crop_or_scale='scale', max_start_nullops=30,
+                 record_screen_dir=None):
         self.n_last_screens = n_last_screens
         self.treat_life_lost_as_terminal = treat_life_lost_as_terminal
         self.crop_or_scale = crop_or_scale
@@ -31,6 +32,8 @@ class ALE(environment.EpisodicEnvironment):
         ale.setInt(b'random_seed', seed)
         ale.setFloat(b'repeat_action_probability', 0.0)
         ale.setBool(b'color_averaging', False)
+        if record_screen_dir is not None:
+            ale.setString(b'record_screen_dir', str.encode(record_screen_dir))
         self.frame_skip = frame_skip
         if use_sdl:
             if 'DISPLAY' not in os.environ:
