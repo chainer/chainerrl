@@ -1,14 +1,16 @@
 import copy
 from logging import getLogger
-logger = getLogger(__name__)
 import os
 
 import numpy as np
 import chainer
 from chainer import serializers
+from chainer import functions as F
 
 import copy_param
 import clipped_loss
+
+logger = getLogger(__name__)
 
 
 class A3C(object):
@@ -19,7 +21,8 @@ class A3C(object):
 
     def __init__(self, model, pv_func, optimizer, t_max, gamma, beta=1e-2,
                  process_idx=0, clip_delta=False, clip_reward=True,
-                 phi=lambda x: x):
+                 phi=lambda x: x, pi_loss_coef=1.0, v_loss_coef=0.5,
+                 keep_loss_scale_same=False):
 
         # Globally shared model
         self.shared_model = model
@@ -36,6 +39,9 @@ class A3C(object):
         self.clip_delta = clip_delta
         self.clip_reward = clip_reward
         self.phi = phi
+        self.pi_loss_coef = pi_loss_coef
+        self.v_loss_coef = v_loss_coef
+        self.keep_loss_scale_same = keep_loss_scale_same
 
         self.t = 0
         self.t_start = 0
@@ -98,20 +104,27 @@ class A3C(object):
                 else:
                     v_loss += (v - R) ** 2 / 2
 
-            # Make pi's effective learning rate lower than v's
-            pi_loss *= 0.5
+            if self.pi_loss_coef != 1.0:
+                pi_loss *= self.pi_loss_coef
+
+            if self.v_loss_coef != 1.0:
+                v_loss *= self.v_loss_coef
 
             # Normalize the loss of sequences truncated by terminal states
-            pi_loss *= self.t_max / (self.t - self.t_start)
-            v_loss *= self.t_max / (self.t - self.t_start)
+            if self.keep_loss_scale_same and \
+                    self.t - self.t_start < self.t_max:
+                factor = self.t_max / (self.t - self.t_start)
+                pi_loss *= factor
+                v_loss *= factor
 
             if self.process_idx == 0:
                 logger.debug('pi_loss:%s v_loss:%s', pi_loss.data, v_loss.data)
 
+            total_loss = pi_loss + F.reshape(v_loss, pi_loss.data.shape)
+
             # Compute gradients using thread-specific model
             self.model.zerograds()
-            pi_loss.backward()
-            v_loss.backward()
+            total_loss.backward()
             # Copy the gradients to the globally shared model
             self.shared_model.zerograds()
             copy_param.copy_grad(

@@ -30,6 +30,7 @@ class ALE(environment.EpisodicEnvironment):
             seed = np.random.randint(0, 2 ** 16)
         ale.setInt(b'random_seed', seed)
         ale.setFloat(b'repeat_action_probability', 0.0)
+        ale.setBool(b'color_averaging', False)
         self.frame_skip = frame_skip
         if use_sdl:
             if 'DISPLAY' not in os.environ:
@@ -46,6 +47,7 @@ class ALE(environment.EpisodicEnvironment):
         ale.loadROM(str.encode(rom_filename))
 
         assert ale.getFrameNumber() == 0
+
 
         self.ale = ale
         self.legal_actions = ale.getMinimalActionSet()
