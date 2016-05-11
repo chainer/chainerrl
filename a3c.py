@@ -8,7 +8,6 @@ from chainer import serializers
 from chainer import functions as F
 
 import copy_param
-import clipped_loss
 
 logger = getLogger(__name__)
 
@@ -20,8 +19,8 @@ class A3C(object):
     """
 
     def __init__(self, model, pv_func, optimizer, t_max, gamma, beta=1e-2,
-                 process_idx=0, clip_delta=False, clip_reward=True,
-                 phi=lambda x: x, pi_loss_coef=1.0, v_loss_coef=0.5,
+                 process_idx=0, clip_reward=True, phi=lambda x: x,
+                 pi_loss_coef=1.0, v_loss_coef=0.5,
                  keep_loss_scale_same=False):
 
         # Globally shared model
@@ -36,7 +35,6 @@ class A3C(object):
         self.gamma = gamma
         self.beta = beta
         self.process_idx = process_idx
-        self.clip_delta = clip_delta
         self.clip_reward = clip_reward
         self.phi = phi
         self.pi_loss_coef = pi_loss_coef
@@ -95,14 +93,7 @@ class A3C(object):
                 pi_loss -= self.beta * entropy
                 # Accumulate gradients of value function
 
-                # Squared loss is used in the original paper, but here I
-                # try smooth L1 loss as in the Nature DQN paper.
-                if self.clip_delta:
-                    v_loss += clipped_loss.clipped_loss(
-                        v,
-                        chainer.Variable(np.asarray([[R]], dtype=np.float32)))
-                else:
-                    v_loss += (v - R) ** 2 / 2
+                v_loss += (v - R) ** 2 / 2
 
             if self.pi_loss_coef != 1.0:
                 pi_loss *= self.pi_loss_coef
