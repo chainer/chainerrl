@@ -16,8 +16,6 @@ from chainer import serializers
 import agent
 import q_function
 import copy_param
-import smooth_l1_loss
-from clipped_loss import clipped_loss
 
 
 def _to_device(obj, gpu):
@@ -161,10 +159,9 @@ class DQN(agent.Agent):
                 errors_out.append(e)
 
         if self.clip_delta:
-            # return smooth_l1_loss.smooth_l1_loss(batch_q, batch_q_target)
-            return clipped_loss(batch_q, batch_q_target) / len(experiences)
+            return F.sum(F.huber_loss(batch_q, batch_q_target, delta=1.0)) / len(experiences)
         else:
-            return F.sum((batch_q - batch_q_target) ** 2)
+            return F.mean_squared_error(batch_q, batch_q_target) / 2
 
     def compute_q_values(self, states):
         """Compute Q-values

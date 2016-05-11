@@ -8,7 +8,6 @@ from chainer import functions as F
 
 import agent
 import copy_param
-import smooth_l1_loss
 
 
 class NStepQLearning(agent.Agent):
@@ -68,8 +67,9 @@ class NStepQLearning(agent.Agent):
                 # Accumulate gradients of Q-function
                 # loss += (R - q) ** 2
                 # loss += F.mean_squared_error(q, chainer.Variable(np.asarray([R])))
-                loss += smooth_l1_loss.smooth_l1_loss(
-                    q, chainer.Variable(np.asarray([[R]], dtype=np.float32)))
+                loss += F.sum(F.huber_loss(
+                    q, chainer.Variable(np.asarray([[R]], dtype=np.float32)),
+                    delta=1.0))
 
             # Do we need to normalize losses by (self.t - self.t_start)?
             # Otherwise, loss scales can be different in case of self.t_max
