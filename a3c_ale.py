@@ -22,6 +22,7 @@ import async
 import rmsprop_async
 from prepare_output_dir import prepare_output_dir
 from nonbias_weight_decay import NonbiasWeightDecay
+from init_like_torch import init_like_torch
 
 
 def run_func_for_profiling(agent, env):
@@ -73,22 +74,6 @@ def eval_performance(rom, p_func, n_runs):
     median = statistics.median(scores)
     stdev = statistics.stdev(scores)
     return mean, median, stdev
-
-
-def init_like_torch(link):
-    # Mimic torch's default parameter initialization
-    # TODO(muupan): Use chainer's initializers when it is merged
-    for l in link.links():
-        if isinstance(l, L.Linear):
-            out_channels, in_channels = l.W.data.shape
-            stdv = 1 / np.sqrt(in_channels)
-            l.W.data[:] = np.random.uniform(-stdv, stdv, size=l.W.data.shape)
-            l.b.data[:] = np.random.uniform(-stdv, stdv, size=l.b.data.shape)
-        elif isinstance(l, L.Convolution2D):
-            out_channels, in_channels, kh, kw = l.W.data.shape
-            stdv = 1 / np.sqrt(in_channels * kh * kw)
-            l.W.data[:] = np.random.uniform(-stdv, stdv, size=l.W.data.shape)
-            l.b.data[:] = np.random.uniform(-stdv, stdv, size=l.b.data.shape)
 
 
 def train_loop(process_idx, counter, max_score, args, agent, env, start_time):
