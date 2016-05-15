@@ -15,6 +15,7 @@ import random_seed
 import replay_buffer
 from prepare_output_dir import prepare_output_dir
 import oplu
+from init_like_torch import init_like_torch
 
 
 def parse_activation(activation_str):
@@ -112,6 +113,7 @@ def main():
     n_actions = ale.ALE(args.rom).number_of_actions
     activation = parse_activation(args.activation)
     q_func = parse_arch(args.arch, n_actions, activation)
+    init_like_torch(q_func)
 
     # Use the same hyper parameters as the Nature paper's
     opt = optimizers.RMSpropGraves(
