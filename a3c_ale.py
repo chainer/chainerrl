@@ -1,4 +1,5 @@
 import argparse
+import copy
 import multiprocessing as mp
 import os
 import sys
@@ -126,6 +127,9 @@ def train_loop(process_idx, counter, max_score, args, agent, env, start_time):
 
             if global_t % args.eval_frequency == 0:
                 # Evaluation
+
+                # We must use a copy of the model because test runs can change
+                # the hidden states of the model
                 test_model = copy.deepcopy(agent.model)
                 test_model.reset_state()
 
