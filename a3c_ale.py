@@ -5,12 +5,8 @@ import sys
 import statistics
 import time
 
-import numpy as np
-
 import chainer
-from chainer import optimizers
-from chainer import functions as F
-from chainer import links as L
+import numpy as np
 
 import policy
 import v_function
@@ -23,6 +19,7 @@ import rmsprop_async
 from prepare_output_dir import prepare_output_dir
 from nonbias_weight_decay import NonbiasWeightDecay
 from init_like_torch import init_like_torch
+from dqn_phi import dqn_phi
 
 
 def run_func_for_profiling(agent, env):
@@ -48,15 +45,6 @@ def run_func_for_profiling(agent, env):
     print('pid:{}, total_r:{}'.format(os.getpid(), total_r))
 
 
-def phi(screens):
-    assert len(screens) == 4
-    assert screens[0].dtype == np.uint8
-    raw_values = np.asarray(screens, dtype=np.float32)
-    # [0,255] -> [0, 1]
-    raw_values /= 255.0
-    return raw_values
-
-
 def eval_performance(rom, p_func, n_runs):
     assert n_runs > 1, 'Computing stdev requires at least two runs'
     scores = []
@@ -64,7 +52,7 @@ def eval_performance(rom, p_func, n_runs):
         env = ale.ALE(rom, treat_life_lost_as_terminal=False)
         test_r = 0
         while not env.is_terminal:
-            s = chainer.Variable(np.expand_dims(phi(env.state), 0))
+            s = chainer.Variable(np.expand_dims(dqn_phi(env.state), 0))
             pout = p_func(s)
             a = pout.action_indices[0]
             test_r += env.receive_action(a)
@@ -233,7 +221,7 @@ def main():
         async.set_shared_states(opt, shared_states)
 
         agent = a3c.A3C(model, pv_func, opt, args.t_max, 0.99, beta=args.beta,
-                        process_idx=process_idx, phi=phi)
+                        process_idx=process_idx, phi=dqn_phi)
 
         if args.profile:
             train_loop_with_profile(process_idx, counter, max_score,

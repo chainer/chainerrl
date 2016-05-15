@@ -16,6 +16,7 @@ import replay_buffer
 from prepare_output_dir import prepare_output_dir
 import oplu
 from init_like_torch import init_like_torch
+from dqn_phi import dqn_phi
 
 
 def parse_activation(activation_str):
@@ -55,7 +56,7 @@ def eval_performance(rom, q_func, gpu):
     env = ale.ALE(rom, treat_life_lost_as_terminal=False)
     test_r = 0
     while not env.is_terminal:
-        s = np.expand_dims(phi(env.state), 0)
+        s = np.expand_dims(dqn_phi(env.state), 0)
         if gpu >= 0:
             s = chainer.cuda.to_gpu(s)
         a = q_func.sample_epsilon_greedily_with_value(
@@ -63,17 +64,6 @@ def eval_performance(rom, q_func, gpu):
         test_r += env.receive_action(a)
     print('test_r:', test_r)
     return test_r
-
-
-def phi(screens):
-    assert len(screens) == 4
-    assert screens[0].dtype == np.uint8
-    raw_values = np.asarray(screens, dtype=np.float32)
-    # [0,255] -> [-128, 127]
-    raw_values -= 128
-    # [-128, 127] -> [-1, 1)
-    raw_values /= 128.0
-    return raw_values
 
 
 def main():
@@ -129,7 +119,7 @@ def main():
                 target_update_frequency=args.target_update_frequency,
                 clip_delta=args.clip_delta,
                 update_frequency=args.update_frequency,
-                phi=phi)
+                phi=dqn_phi)
 
     if len(args.model) > 0:
         agent.load_model(args.model)
