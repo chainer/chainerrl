@@ -135,6 +135,7 @@ def train_loop(process_idx, counter, max_score, args, agent, env, start_time):
 
                 def p_func(s):
                     pout, _ = test_model.pi_and_v(s)
+                    test_model.unchain_backward()
                     return pout
                 mean, median, stdev = eval_performance(
                     args.rom, p_func, args.eval_n_runs)
