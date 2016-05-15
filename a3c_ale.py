@@ -56,10 +56,10 @@ class A3CLSTM(chainer.ChainList, a3c.A3CModel):
         out = self.head(state)
         if keep_same_state:
             prev_h, prev_c = self.lstm.h, self.lstm.c
-            out = F.relu(self.lstm(out))
+            out = self.lstm(out)
             self.lstm.h, self.lstm.c = prev_h, prev_c
         else:
-            out = F.relu(self.lstm(out))
+            out = self.lstm(out)
         return self.pi(out), self.v(out)
 
     def reset_state(self):
