@@ -5,29 +5,23 @@ import numpy as np
 import chainer
 from chainer import serializers
 
-import policy
-import v_function
-import dqn_head
 import ale
 import random_seed
+from dqn_phi import dqn_phi
+from a3c_ale import A3CFF
+from a3c_ale import A3CLSTM
 
 
-def phi(screens):
-    assert len(screens) == 4
-    assert screens[0].dtype == np.uint8
-    raw_values = np.asarray(screens, dtype=np.float32)
-    raw_values /= 255.0
-    return raw_values
-
-
-def eval_performance(rom, p_func, deterministic=False, use_sdl=False,
+def eval_performance(rom, model, deterministic=False, use_sdl=False,
                      record_screen_dir=None):
     env = ale.ALE(rom, treat_life_lost_as_terminal=False, use_sdl=use_sdl,
                   record_screen_dir=record_screen_dir)
+    model.reset_state()
     test_r = 0
     while not env.is_terminal:
-        s = chainer.Variable(np.expand_dims(phi(env.state), 0))
-        pout = p_func(s)
+        s = chainer.Variable(np.expand_dims(dqn_phi(env.state), 0))
+        pout = model.pi_and_v(s)[0]
+        model.unchain_backward()
         if deterministic:
             a = pout.most_probable_actions[0]
         else:
@@ -49,7 +43,9 @@ def main():
     parser.add_argument('--n-runs', type=int, default=10)
     parser.add_argument('--deterministic', action='store_true')
     parser.add_argument('--record-screen-dir', type=str, default=None)
+    parser.add_argument('--use-lstm', action='store_true')
     parser.set_defaults(use_sdl=False)
+    parser.set_defaults(use_lstm=False)
     parser.set_defaults(deterministic=False)
     args = parser.parse_args()
 
@@ -57,22 +53,12 @@ def main():
 
     n_actions = ale.ALE(args.rom).number_of_actions
 
-    def pv_func(model, state):
-        head, pi, v = model
-        out = head(state)
-        return pi(out), v(out)
-
     # Load an A3C-DQN model
-    head = dqn_head.NIPSDQNHead()
-    pi = policy.FCSoftmaxPolicy(head.n_output_channels, n_actions)
-    v = v_function.FCVFunction(head.n_output_channels)
-    model = chainer.ChainList(head, pi, v)
+    if args.use_lstm:
+        model = A3CLSTM(n_actions)
+    else:
+        model = A3CFF(n_actions)
     serializers.load_hdf5(args.model, model)
-
-    def p_func(s):
-        head, pi, _ = model
-        out = head(s)
-        return pi(out)
 
     scores = []
     for i in range(args.n_runs):
@@ -81,7 +67,7 @@ def main():
             episode_record_dir = os.path.join(args.record_screen_dir, str(i))
             os.makedirs(episode_record_dir)
         score = eval_performance(
-            args.rom, p_func, deterministic=args.deterministic,
+            args.rom, model, deterministic=args.deterministic,
             use_sdl=args.use_sdl, record_screen_dir=episode_record_dir)
         print('Run {}: {}'.format(i, score))
         scores.append(score)
