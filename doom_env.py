@@ -1,14 +1,16 @@
 import os
 import sys
+import time
 
 
 class DoomEnv(object):
 
     def __init__(self, vizdoom_dir=os.path.expanduser('~/ViZDoom'),
                  window_visible=True, scenario='basic', skipcount=10,
-                 resolution_width=640):
+                 resolution_width=640, sleep=0.0):
 
         self.skipcount = skipcount
+        self.sleep = sleep
 
         sys.path.append(os.path.join(vizdoom_dir, "examples/python"))
         from vizdoom import DoomGame
@@ -53,4 +55,5 @@ class DoomEnv(object):
     def step(self, action):
         r = self.game.make_action(self.actions[action], self.skipcount)
         r /= 100
+        time.sleep(self.sleep * self.skipcount)
         return self.game.get_state(), r, self.game.is_episode_finished(), None
