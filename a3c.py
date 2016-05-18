@@ -24,7 +24,6 @@ class A3CModel(chainer.Link):
         pass
 
 
-
 class A3C(object):
     """A3C: Asynchronous Advantage Actor-Critic.
 
@@ -70,7 +69,8 @@ class A3C(object):
         if self.clip_reward:
             reward = np.clip(reward, -1, 1)
 
-        statevar = chainer.Variable(np.expand_dims(self.phi(state), 0))
+        if not is_state_terminal:
+            statevar = chainer.Variable(np.expand_dims(self.phi(state), 0))
 
         self.past_rewards[self.t - 1] = reward
 
@@ -92,8 +92,8 @@ class A3C(object):
                 R += self.past_rewards[i]
                 v = self.past_values[i]
                 if self.process_idx == 0:
-                    logger.debug('s:%s v:%s R:%s', self.past_states[
-                                 i][-1].sum(), v.data, R)
+                    logger.debug('s:%s v:%s R:%s',
+                                 self.past_states[i].data.sum(), v.data, R)
                 advantage = R - v
                 # Accumulate gradients of policy
                 log_prob = self.past_action_log_prob[i]
@@ -152,7 +152,7 @@ class A3C(object):
             self.t_start = self.t
 
         if not is_state_terminal:
-            self.past_states[self.t] = state
+            self.past_states[self.t] = statevar
             pout, vout = self.model.pi_and_v(statevar)
             self.past_action_log_prob[self.t] = pout.sampled_actions_log_probs
             self.past_action_entropy[self.t] = pout.entropy
