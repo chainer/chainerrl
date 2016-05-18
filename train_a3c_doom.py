@@ -81,7 +81,7 @@ def main():
     parser.add_argument('--profile', action='store_true')
     parser.add_argument('--steps', type=int, default=8 * 10 ** 7)
     parser.add_argument('--lr', type=float, default=7e-4)
-    parser.add_argument('--eval-frequency', type=int, default=10 ** 6)
+    parser.add_argument('--eval-frequency', type=int, default=10 ** 5)
     parser.add_argument('--eval-n-runs', type=int, default=10)
     parser.add_argument('--use-lstm', action='store_true')
     parser.set_defaults(use_sdl=False)
@@ -106,13 +106,15 @@ def main():
             model = A3CLSTM(n_actions)
         else:
             model = A3CFF(n_actions)
-        opt = rmsprop_async.RMSpropAsync(lr=7e-4, eps=1e-1, alpha=0.99)
+        opt = rmsprop_async.RMSpropAsync(lr=args.lr, eps=1e-1, alpha=0.99)
         opt.setup(model)
         opt.add_hook(chainer.optimizer.GradientClipping(40))
         return model, opt
 
-    run_a3c.run_a3c(args.processes, make_env, model_opt,
-                    phi, t_max=args.t_max, args=args)
+    run_a3c.run_a3c(args.processes, make_env, model_opt, phi, t_max=args.t_max,
+                    beta=args.beta, profile=args.profile, steps=args.steps,
+                    eval_frequency=args.eval_frequency,
+                    eval_n_runs=args.eval_n_runs, args=args)
 
 
 if __name__ == '__main__':
