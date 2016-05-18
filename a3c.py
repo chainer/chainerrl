@@ -12,13 +12,25 @@ import copy_param
 logger = getLogger(__name__)
 
 
+class A3CModel(chainer.Link):
+
+    def pi_and_v(self, state, keep_same_state=False):
+        raise NotImplementedError()
+
+    def reset_state(self):
+        pass
+
+    def unchain_backward(self):
+        pass
+
+
 class A3C(object):
     """A3C: Asynchronous Advantage Actor-Critic.
 
     See http://arxiv.org/abs/1602.01783
     """
 
-    def __init__(self, model, pv_func, optimizer, t_max, gamma, beta=1e-2,
+    def __init__(self, model, optimizer, t_max, gamma, beta=1e-2,
                  process_idx=0, clip_reward=True, phi=lambda x: x,
                  pi_loss_coef=1.0, v_loss_coef=0.5,
                  keep_loss_scale_same=False):
@@ -29,7 +41,6 @@ class A3C(object):
         # Thread specific model
         self.model = copy.deepcopy(self.shared_model)
 
-        self.pv_func = pv_func
         self.optimizer = optimizer
         self.t_max = t_max
         self.gamma = gamma
@@ -58,7 +69,8 @@ class A3C(object):
         if self.clip_reward:
             reward = np.clip(reward, -1, 1)
 
-        statevar = chainer.Variable(np.expand_dims(self.phi(state), 0))
+        if not is_state_terminal:
+            statevar = chainer.Variable(np.expand_dims(self.phi(state), 0))
 
         self.past_rewards[self.t - 1] = reward
 
@@ -70,7 +82,7 @@ class A3C(object):
             if is_state_terminal:
                 R = 0
             else:
-                _, vout = self.pv_func(self.model, statevar)
+                _, vout = self.model.pi_and_v(statevar, keep_same_state=True)
                 R = float(vout.data)
 
             pi_loss = 0
@@ -80,8 +92,8 @@ class A3C(object):
                 R += self.past_rewards[i]
                 v = self.past_values[i]
                 if self.process_idx == 0:
-                    logger.debug('s:%s v:%s R:%s', self.past_states[
-                                 i][-1].sum(), v.data, R)
+                    logger.debug('s:%s v:%s R:%s',
+                                 self.past_states[i].data.sum(), v.data, R)
                 advantage = R - v
                 # Accumulate gradients of policy
                 log_prob = self.past_action_log_prob[i]
@@ -129,6 +141,7 @@ class A3C(object):
                 logger.debug('update')
 
             self.sync_parameters()
+            self.model.unchain_backward()
 
             self.past_action_log_prob = {}
             self.past_action_entropy = {}
@@ -139,8 +152,8 @@ class A3C(object):
             self.t_start = self.t
 
         if not is_state_terminal:
-            self.past_states[self.t] = state
-            pout, vout = self.pv_func(self.model, statevar)
+            self.past_states[self.t] = statevar
+            pout, vout = self.model.pi_and_v(statevar)
             self.past_action_log_prob[self.t] = pout.sampled_actions_log_probs
             self.past_action_entropy[self.t] = pout.entropy
             self.past_values[self.t] = vout
@@ -150,6 +163,7 @@ class A3C(object):
                              self.t, pout.entropy.data, pout.probs.data)
             return pout.action_indices[0]
         else:
+            self.model.reset_state()
             return None
 
     def load_model(self, model_filename):

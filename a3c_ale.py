@@ -1,4 +1,5 @@
 import argparse
+import copy
 import multiprocessing as mp
 import os
 import sys
@@ -6,6 +7,8 @@ import statistics
 import time
 
 import chainer
+from chainer import links as L
+from chainer import functions as F
 import numpy as np
 
 import policy
@@ -22,27 +25,49 @@ from init_like_torch import init_like_torch
 from dqn_phi import dqn_phi
 
 
-def run_func_for_profiling(agent, env):
-    # Must be put outside main()  so that cProfile.runctx can see
+class A3CFF(chainer.ChainList, a3c.A3CModel):
 
-    total_r = 0
-    episode_r = 0
+    def __init__(self, n_actions):
+        self.head = dqn_head.NIPSDQNHead()
+        self.pi = policy.FCSoftmaxPolicy(
+            self.head.n_output_channels, n_actions)
+        self.v = v_function.FCVFunction(self.head.n_output_channels)
+        super().__init__(self.head, self.pi, self.v)
+        init_like_torch(self)
 
-    for i in range(1000):
+    def pi_and_v(self, state, keep_same_state=False):
+        out = self.head(state)
+        return self.pi(out), self.v(out)
 
-        total_r += env.reward
-        episode_r += env.reward
 
-        action = agent.act(env.state, env.reward, env.is_terminal)
+class A3CLSTM(chainer.ChainList, a3c.A3CModel):
 
-        if env.is_terminal:
-            print('i:{} episode_r:{}'.format(i, episode_r))
-            episode_r = 0
-            env.initialize()
+    def __init__(self, n_actions):
+        self.head = dqn_head.NIPSDQNHead()
+        self.pi = policy.FCSoftmaxPolicy(
+            self.head.n_output_channels, n_actions)
+        self.v = v_function.FCVFunction(self.head.n_output_channels)
+        self.lstm = L.LSTM(self.head.n_output_channels,
+                           self.head.n_output_channels)
+        super().__init__(self.head, self.lstm, self.pi, self.v)
+        init_like_torch(self)
+
+    def pi_and_v(self, state, keep_same_state=False):
+        out = self.head(state)
+        if keep_same_state:
+            prev_h, prev_c = self.lstm.h, self.lstm.c
+            out = self.lstm(out)
+            self.lstm.h, self.lstm.c = prev_h, prev_c
         else:
-            env.receive_action(action)
+            out = self.lstm(out)
+        return self.pi(out), self.v(out)
 
-    print('pid:{}, total_r:{}'.format(os.getpid(), total_r))
+    def reset_state(self):
+        self.lstm.reset_state()
+
+    def unchain_backward(self):
+        self.lstm.h.unchain_backward()
+        self.lstm.c.unchain_backward()
 
 
 def eval_performance(rom, p_func, n_runs):
@@ -102,8 +127,15 @@ def train_loop(process_idx, counter, max_score, args, agent, env, start_time):
 
             if global_t % args.eval_frequency == 0:
                 # Evaluation
+
+                # We must use a copy of the model because test runs can change
+                # the hidden states of the model
+                test_model = copy.deepcopy(agent.model)
+                test_model.reset_state()
+
                 def p_func(s):
-                    pout, _ = agent.pv_func(agent.model, s)
+                    pout, _ = test_model.pi_and_v(s)
+                    test_model.unchain_backward()
                     return pout
                 mean, median, stdev = eval_performance(
                     args.rom, p_func, args.eval_n_runs)
@@ -170,7 +202,9 @@ def main():
     parser.add_argument('--eval-frequency', type=int, default=10 ** 6)
     parser.add_argument('--eval-n-runs', type=int, default=10)
     parser.add_argument('--weight-decay', type=float, default=0.0)
+    parser.add_argument('--use-lstm', action='store_true')
     parser.set_defaults(use_sdl=False)
+    parser.set_defaults(use_lstm=False)
     args = parser.parse_args()
 
     if args.seed is not None:
@@ -182,17 +216,11 @@ def main():
 
     n_actions = ale.ALE(args.rom).number_of_actions
 
-    def pv_func(model, state):
-        head, pi, v = model
-        out = head(state)
-        return pi(out), v(out)
-
     def model_opt():
-        head = dqn_head.NIPSDQNHead()
-        pi = policy.FCSoftmaxPolicy(head.n_output_channels, n_actions)
-        v = v_function.FCVFunction(head.n_output_channels)
-        model = chainer.ChainList(head, pi, v)
-        init_like_torch(model)
+        if args.use_lstm:
+            model = A3CLSTM(n_actions)
+        else:
+            model = A3CFF(n_actions)
         opt = rmsprop_async.RMSpropAsync(lr=7e-4, eps=1e-1, alpha=0.99)
         opt.setup(model)
         opt.add_hook(chainer.optimizer.GradientClipping(40))
@@ -220,7 +248,7 @@ def main():
         async.set_shared_params(model, shared_params)
         async.set_shared_states(opt, shared_states)
 
-        agent = a3c.A3C(model, pv_func, opt, args.t_max, 0.99, beta=args.beta,
+        agent = a3c.A3C(model, opt, args.t_max, 0.99, beta=args.beta,
                         process_idx=process_idx, phi=dqn_phi)
 
         if args.profile:
