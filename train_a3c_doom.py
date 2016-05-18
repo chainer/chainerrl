@@ -76,6 +76,7 @@ def main():
     parser.add_argument('processes', type=int)
     parser.add_argument('--seed', type=int, default=None)
     parser.add_argument('--outdir', type=str, default=None)
+    parser.add_argument('--scenario', type=str, default='basic')
     parser.add_argument('--t-max', type=int, default=5)
     parser.add_argument('--beta', type=float, default=1e-2)
     parser.add_argument('--profile', action='store_true')
@@ -84,7 +85,8 @@ def main():
     parser.add_argument('--eval-frequency', type=int, default=10 ** 5)
     parser.add_argument('--eval-n-runs', type=int, default=10)
     parser.add_argument('--use-lstm', action='store_true')
-    parser.set_defaults(use_sdl=False)
+    parser.add_argument('--window-visible', action='store_true')
+    parser.set_defaults(window_visible=False)
     parser.set_defaults(use_lstm=False)
     args = parser.parse_args()
 
@@ -97,7 +99,8 @@ def main():
 
     def make_env():
         with env_lock:
-            return doom_env.DoomEnv()
+            return doom_env.DoomEnv(window_visible=args.window_visible,
+                                    scenario=args.scenario)
 
     n_actions = 3
 
