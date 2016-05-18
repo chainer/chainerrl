@@ -5,7 +5,8 @@ import sys
 class DoomEnv(object):
 
     def __init__(self, vizdoom_dir=os.path.expanduser('~/ViZDoom'),
-                 window_visible=True, scenario='basic', skipcount=10):
+                 window_visible=True, scenario='basic', skipcount=10,
+                 resolution_width=640):
 
         self.skipcount = skipcount
 
@@ -28,9 +29,13 @@ class DoomEnv(object):
             os.path.join(vizdoom_dir, 'scenarios', scenario + '.wad'))
 
         # Set screen settings
-        game.set_screen_resolution(ScreenResolution.RES_640X480)
+        resolutions = {640: ScreenResolution.RES_640X480,
+                       320: ScreenResolution.RES_320X240,
+                       160: ScreenResolution.RES_160X120}
+        game.set_screen_resolution(resolutions[resolution_width])
         game.set_screen_format(ScreenFormat.RGB24)
         game.set_window_visible(window_visible)
+        game.set_sound_enabled(window_visible)
 
         game.init()
         self.game = game
