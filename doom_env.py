@@ -2,12 +2,14 @@ import os
 import sys
 import time
 
+import numpy as np
+
 
 class DoomEnv(object):
 
     def __init__(self, vizdoom_dir=os.path.expanduser('~/ViZDoom'),
                  window_visible=True, scenario='basic', skipcount=10,
-                 resolution_width=640, sleep=0.0):
+                 resolution_width=640, sleep=0.0, seed=None):
 
         self.skipcount = skipcount
         self.sleep = sleep
@@ -18,6 +20,14 @@ class DoomEnv(object):
         from vizdoom import ScreenResolution
 
         game = DoomGame()
+
+        if seed is not None:
+            assert seed >= 0 and seed < 2 ** 16, \
+                "ViZDoom's random seed must be represented by unsigned int"
+        else:
+            # Use numpy's random state
+            seed = np.random.randint(0, 2 ** 16)
+        game.set_seed(seed)
 
         # Load a config file
         game.load_config(os.path.join(
