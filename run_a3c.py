@@ -93,7 +93,8 @@ def train_loop(process_idx, counter, make_env, max_score, args, agent, env,
                 test_model.reset_state()
 
                 mean, median, stdev = eval_performance(
-                    make_env, test_model, agent.phi, args.eval_n_runs)
+                    process_idx, make_env, test_model, agent.phi,
+                    args.eval_n_runs)
                 with open(os.path.join(outdir, 'scores.txt'), 'a+') as f:
                     elapsed = time.time() - start_time
                     record = (global_t, elapsed, mean, median, stdev)
