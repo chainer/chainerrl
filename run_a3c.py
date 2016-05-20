@@ -163,7 +163,7 @@ def run_a3c(processes, make_env, model_opt, phi, t_max=1, beta=1e-2,
         print('\t'.join(column_names), file=f)
 
     def run_func(process_idx):
-        env = make_env()
+        env = make_env(process_idx)
         model, opt = model_opt()
         print('run_func', process_idx)
         async.set_shared_params(model, shared_params)

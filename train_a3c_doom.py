@@ -97,7 +97,7 @@ def main():
     # so use the global lock
     env_lock = mp.Lock()
 
-    def make_env():
+    def make_env(process_idx):
         with env_lock:
             return doom_env.DoomEnv(window_visible=args.window_visible,
                                     scenario=args.scenario)
