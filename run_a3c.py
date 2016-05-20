@@ -18,12 +18,12 @@ import async
 from prepare_output_dir import prepare_output_dir
 
 
-def eval_performance(make_env, model, phi, n_runs):
+def eval_performance(process_idx, make_env, model, phi, n_runs):
     assert n_runs > 1, 'Computing stdev requires at least two runs'
     scores = []
     for i in range(n_runs):
         model.reset_state()
-        env = make_env()
+        env = make_env(process_idx, test=True)
         obs = env.reset()
         done = False
         test_r = 0
@@ -163,9 +163,8 @@ def run_a3c(processes, make_env, model_opt, phi, t_max=1, beta=1e-2,
         print('\t'.join(column_names), file=f)
 
     def run_func(process_idx):
-        env = make_env(process_idx)
+        env = make_env(process_idx, test=False)
         model, opt = model_opt()
-        print('run_func', process_idx)
         async.set_shared_params(model, shared_params)
         async.set_shared_states(opt, shared_states)
 
