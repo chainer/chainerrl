@@ -24,3 +24,7 @@ sync random_seed.py
 sync rmsprop_async.py
 sync v_function.py
 sync init_like_torch.py
+sync run_a3c.py
+sync train_a3c_doom.py
+sync doom_env.py
+sync demo_a3c_doom.py
