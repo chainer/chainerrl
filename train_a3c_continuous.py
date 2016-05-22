@@ -21,8 +21,6 @@ import env_modifiers
 
 def phi(obs):
     return obs.astype(np.float32)
-    # resized = cv2.resize(obs.image_buffer, (84, 84))
-    # return resized.transpose(2, 0, 1).astype(np.float32) / 255
 
 
 class A3CLSTMGaussian(chainer.ChainList, a3c.A3CModel):
