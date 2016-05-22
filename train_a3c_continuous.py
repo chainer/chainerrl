@@ -91,7 +91,14 @@ def main():
     if args.seed is not None:
         random_seed.set_random_seed(args.seed)
 
-    def action_filter(a):
+    def tanh_action_filter(a):
+        magnitude = (sample_env.action_space.high -
+                     sample_env.action_space.low) / 2.0
+        center = (sample_env.action_space.high +
+                  sample_env.action_space.low) / 2.0
+        return np.tanh(a) * magnitude + center
+
+    def clip_action_filter(a):
         return np.clip(a, sample_env.action_space.low,
                        sample_env.action_space.high)
 
@@ -102,7 +109,7 @@ def main():
         env = gym.make(args.env)
         timestep_limit = env.spec.timestep_limit
         env_modifiers.make_timestep_limited(env, timestep_limit)
-        env_modifiers.make_action_filtered(env, action_filter)
+        env_modifiers.make_action_filtered(env, clip_action_filter)
         if not test:
             env_modifiers.make_reward_filtered(env, reward_filter)
         if args.render and process_idx == 0 and not test:
