@@ -159,9 +159,8 @@ class A3C(object):
             self.past_values[self.t] = vout
             self.t += 1
             if self.process_idx == 0:
-                logger.debug('t:%s entropy:%s, probs:%s',
-                             self.t, pout.entropy.data, pout.probs.data)
-            return pout.action_indices[0]
+                logger.debug('t:%s r:%s pout:%s', self.t, reward, pout)
+            return pout.sampled_actions.data[0]
         else:
             self.model.reset_state()
             return None

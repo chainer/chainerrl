@@ -4,6 +4,7 @@ import multiprocessing as mp
 import os
 import sys
 import statistics
+import tempfile
 import time
 
 import chainer
@@ -27,12 +28,16 @@ def eval_performance(process_idx, make_env, model, phi, n_runs):
         obs = env.reset()
         done = False
         test_r = 0
+        t = 0
         while not done:
             s = chainer.Variable(np.expand_dims(phi(obs), 0))
             pout, _ = model.pi_and_v(s)
-            a = pout.action_indices[0]
+            a = pout.sampled_actions.data[0]
             obs, r, done, info = env.step(a)
             test_r += r
+            t += 1
+            if t >= env.spec.timestep_limit:
+                break
         scores.append(test_r)
         print('test_{}:'.format(i), test_r)
     mean = statistics.mean(scores)
@@ -131,7 +136,7 @@ def train_loop_with_profile(process_idx, counter, make_env, max_score, args,
                             agent, env, start_time, outdir):
     import cProfile
     cmd = 'train_loop(process_idx, counter, make_env, max_score, args, ' \
-        'agent, env, start_time)'
+        'agent, env, start_time, outdir)'
     cProfile.runctx(cmd, globals(), locals(),
                     'profile-{}.out'.format(os.getpid()))
 

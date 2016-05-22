@@ -6,7 +6,15 @@ import numpy as np
 
 class PolicyOutput(object):
     """Struct that holds policy output and subproducts."""
-    pass
+
+    def entropy(self):
+        raise NotImplementedError
+
+    def sampled_actions(self):
+        raise NotImplementedError
+
+    def sampled_actions_log_probs(self):
+        raise NotImplementedError
 
 
 def _sample_discrete_actions(batch_probs):
@@ -26,7 +34,7 @@ def _sample_discrete_actions(batch_probs):
     for i in range(batch_probs.shape[0]):
         histogram = np.random.multinomial(1, batch_probs[i])
         action_indices.append(int(np.nonzero(histogram)[0]))
-    return action_indices
+    return np.asarray(action_indices, dtype=np.int32)
 
 
 class SoftmaxPolicyOutput(PolicyOutput):
@@ -51,11 +59,48 @@ class SoftmaxPolicyOutput(PolicyOutput):
         return _sample_discrete_actions(self.probs.data)
 
     @cached_property
+    def sampled_actions(self):
+        return chainer.Variable(_sample_discrete_actions(self.probs.data))
+
+    @cached_property
     def sampled_actions_log_probs(self):
-        return F.select_item(
-            self.log_probs,
-            chainer.Variable(np.asarray(self.action_indices, dtype=np.int32)))
+        return F.select_item(self.log_probs, self.sampled_actions)
 
     @cached_property
     def entropy(self):
         return - F.sum(self.probs * self.log_probs, axis=1)
+
+    def __repr__(self):
+        return 'SoftmaxPolicyOutput logits:{} probs:{} entropy:{}'.format(
+            self.logits.data, self.probs.data, self.entropy.data)
+
+
+class GaussianPolicyOutput(PolicyOutput):
+
+    def __init__(self, mean, ln_var):
+        self.mean = mean
+        self.ln_var = ln_var
+
+    @cached_property
+    def sampled_actions(self):
+        return F.gaussian(self.mean, self.ln_var)
+
+    @cached_property
+    def sampled_actions_log_probs(self):
+        # log N(x|mean,var)
+        #   = -0.5log(2pi) - 0.5log(var) + (x - mean)**2 / (2*var)
+        log_probs = -0.5 * np.log(2 * np.pi) - \
+            0.5 * self.ln_var + \
+            (self.sampled_actions - self.mean) ** 2 / (2 * F.exp(self.ln_var))
+        return F.reshape(log_probs, (log_probs.data.shape[0],))
+
+    @cached_property
+    def entropy(self):
+        # Differential entropy of Gaussian is:
+        #   0.5 * (log(2 * pi * var) + 1)
+        #   = 0.5 * (log(2 * pi) + log var + 1)
+        return 0.5 * (np.log(2 * np.pi) + F.sum(self.ln_var, axis=1) + 1)
+
+    def __repr__(self):
+        return 'GaussianPolicyOutput mean:{} ln_var:{} entropy:{}'.format(
+            self.mean.data, self.ln_var.data, self.entropy.data)
