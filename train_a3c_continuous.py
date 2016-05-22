@@ -71,6 +71,7 @@ def main():
     parser.add_argument('--eval-frequency', type=int, default=10 ** 5)
     parser.add_argument('--eval-n-runs', type=int, default=10)
     parser.add_argument('--use-lstm', action='store_true')
+    parser.add_argument('--reward-scale-factor', type=float, default=1e-2)
     parser.add_argument('--render', action='store_true')
     parser.set_defaults(render=False)
     parser.set_defaults(use_lstm=False)
@@ -83,11 +84,16 @@ def main():
         return np.clip(a, sample_env.action_space.low,
                        sample_env.action_space.high)
 
+    def reward_filter(r):
+        return r * args.reward_scale_factor
+
     def make_env(process_idx, test):
         env = gym.make(args.env)
         timestep_limit = env.spec.timestep_limit
         env_modifiers.make_timestep_limited(env, timestep_limit)
         env_modifiers.make_action_filtered(env, action_filter)
+        if not test:
+            env_modifiers.make_reward_filtered(env, reward_filter)
         if args.render and process_idx == 0 and not test:
             env_modifiers.make_rendered(env)
         return env
