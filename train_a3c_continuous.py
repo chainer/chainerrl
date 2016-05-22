@@ -27,30 +27,43 @@ def phi(obs):
 
 class A3CLSTMGaussian(chainer.ChainList, a3c.A3CModel):
 
-    def __init__(self, obs_size, action_size, hidden_size=128):
-        self.head = L.Linear(obs_size, hidden_size)
-        self.lstm = L.LSTM(hidden_size, hidden_size)
-        self.pi = policy.FCGaussianPolicy(hidden_size, action_size)
-        self.v = v_function.FCVFunction(hidden_size)
-        super().__init__(self.head, self.lstm, self.pi, self.v)
+    def __init__(self, obs_size, action_size, hidden_size, lstm_size):
+        self.pi_head = L.Linear(obs_size, hidden_size)
+        self.v_head = L.Linear(obs_size, hidden_size)
+        self.pi_lstm = L.LSTM(hidden_size, lstm_size)
+        self.v_lstm = L.LSTM(hidden_size, lstm_size)
+        self.pi = policy.FCGaussianPolicy(lstm_size, action_size)
+        self.v = v_function.FCVFunction(lstm_size)
+        super().__init__(self.pi_head, self.v_head,
+                         self.pi_lstm, self.v_lstm, self.pi, self.v)
         init_like_torch(self)
 
     def pi_and_v(self, state, keep_same_state=False):
-        out = F.relu(self.head(state))
-        if keep_same_state:
-            prev_h, prev_c = self.lstm.h, self.lstm.c
-            out = self.lstm(out)
-            self.lstm.h, self.lstm.c = prev_h, prev_c
-        else:
-            out = self.lstm(out)
-        return self.pi(out), self.v(out)
+
+        def forward(head, lstm, tail):
+            h = F.relu(head(state))
+            if keep_same_state:
+                prev_h, prev_c = lstm.h, lstm.c
+                h = lstm(h)
+                lstm.h, lstm.c = prev_h, prev_c
+            else:
+                h = lstm(h)
+            return tail(h)
+
+        pout = forward(self.pi_head, self.pi_lstm, self.pi)
+        vout = forward(self.v_head, self.v_lstm, self.v)
+
+        return pout, vout
 
     def reset_state(self):
-        self.lstm.reset_state()
+        self.pi_lstm.reset_state()
+        self.v_lstm.reset_state()
 
     def unchain_backward(self):
-        self.lstm.h.unchain_backward()
-        self.lstm.c.unchain_backward()
+        self.pi_lstm.h.unchain_backward()
+        self.pi_lstm.c.unchain_backward()
+        self.v_lstm.h.unchain_backward()
+        self.v_lstm.c.unchain_backward()
 
 
 def main():
