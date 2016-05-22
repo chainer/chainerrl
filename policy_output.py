@@ -88,11 +88,16 @@ class GaussianPolicyOutput(PolicyOutput):
     @cached_property
     def sampled_actions_log_probs(self):
         # log N(x|mean,var)
-        #   = -0.5log(2pi) - 0.5log(var) + (x - mean)**2 / (2*var)
+        #   = -0.5log(2pi) - 0.5log(var) - (x - mean)**2 / (2*var)
+
+        # Since this function is intended to be used in REINFORCE-like updates,
+        # it won't backpropagate gradients through sampled actions
+        sampled_actions = chainer.Variable(self.sampled_actions.data)
+
         log_probs = -0.5 * np.log(2 * np.pi) - \
-            0.5 * self.ln_var + \
-            (self.sampled_actions - self.mean) ** 2 / (2 * F.exp(self.ln_var))
-        return F.reshape(log_probs, (log_probs.data.shape[0],))
+            0.5 * self.ln_var - \
+            ((sampled_actions - self.mean) ** 2) / (2 * F.exp(self.ln_var))
+        return F.sum(log_probs, axis=1)
 
     @cached_property
     def entropy(self):
