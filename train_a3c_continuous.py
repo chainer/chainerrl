@@ -25,7 +25,7 @@ def phi(obs):
 
 class A3CLSTMGaussian(chainer.ChainList, a3c.A3CModel):
 
-    def __init__(self, obs_size, action_size, hidden_size, lstm_size):
+    def __init__(self, obs_size, action_size, hidden_size=200, lstm_size=128):
         self.pi_head = L.Linear(obs_size, hidden_size)
         self.v_head = L.Linear(obs_size, hidden_size)
         self.pi_lstm = L.LSTM(hidden_size, lstm_size)
