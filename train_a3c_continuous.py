@@ -119,6 +119,7 @@ def main():
         return env
 
     sample_env = gym.make(args.env)
+    # timestep_limit = sample_env.spec.timestep_limit
     obs_size = np.asarray(sample_env.observation_space.shape).prod()
     action_size = np.asarray(sample_env.action_space.shape).prod()
     print(obs_size, action_size)
@@ -133,7 +134,8 @@ def main():
     run_a3c.run_a3c(args.processes, make_env, model_opt, phi, t_max=args.t_max,
                     beta=args.beta, profile=args.profile, steps=args.steps,
                     eval_frequency=args.eval_frequency,
-                    eval_n_runs=args.eval_n_runs, args=args)
+                    eval_n_runs=args.eval_n_runs,
+                    use_terminal_state_value=True, args=args)
 
 
 if __name__ == '__main__':

@@ -33,7 +33,7 @@ class A3C(object):
     def __init__(self, model, optimizer, t_max, gamma, beta=1e-2,
                  process_idx=0, clip_reward=True, phi=lambda x: x,
                  pi_loss_coef=1.0, v_loss_coef=0.5,
-                 keep_loss_scale_same=False):
+                 keep_loss_scale_same=False, use_terminal_state_value=False):
 
         # Globally shared model
         self.shared_model = model
@@ -51,6 +51,7 @@ class A3C(object):
         self.pi_loss_coef = pi_loss_coef
         self.v_loss_coef = v_loss_coef
         self.keep_loss_scale_same = keep_loss_scale_same
+        self.use_terminal_state_value = use_terminal_state_value
 
         self.t = 0
         self.t_start = 0
@@ -69,7 +70,7 @@ class A3C(object):
         if self.clip_reward:
             reward = np.clip(reward, -1, 1)
 
-        if not is_state_terminal:
+        if self.use_terminal_state_value or not is_state_terminal:
             statevar = chainer.Variable(np.expand_dims(self.phi(state), 0))
 
         self.past_rewards[self.t - 1] = reward
@@ -79,7 +80,7 @@ class A3C(object):
 
             assert self.t_start < self.t
 
-            if is_state_terminal:
+            if is_state_terminal and not self.use_terminal_state_value:
                 R = 0
             else:
                 _, vout = self.model.pi_and_v(statevar, keep_same_state=True)
