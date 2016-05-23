@@ -77,9 +77,17 @@ class SoftmaxPolicyOutput(PolicyOutput):
 
 class GaussianPolicyOutput(PolicyOutput):
 
-    def __init__(self, mean, ln_var):
+    def __init__(self, mean, ln_var=None, var=None):
         self.mean = mean
-        self.ln_var = ln_var
+
+        if ln_var is not None:
+            assert var is None
+            self.ln_var = ln_var
+            self.var = F.exp(ln_var)
+        elif var is not None:
+            assert ln_var is None
+            self.ln_var = F.log(var)
+            self.var = var
 
     @cached_property
     def sampled_actions(self):
@@ -96,7 +104,7 @@ class GaussianPolicyOutput(PolicyOutput):
 
         log_probs = -0.5 * np.log(2 * np.pi) - \
             0.5 * self.ln_var - \
-            ((sampled_actions - self.mean) ** 2) / (2 * F.exp(self.ln_var))
+            ((sampled_actions - self.mean) ** 2) / (2 * self.var)
         return F.sum(log_probs, axis=1)
 
     @cached_property
