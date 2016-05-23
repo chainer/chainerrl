@@ -30,7 +30,9 @@ class A3CLSTMGaussian(chainer.ChainList, a3c.A3CModel):
         self.v_head = L.Linear(obs_size, hidden_size)
         self.pi_lstm = L.LSTM(hidden_size, lstm_size)
         self.v_lstm = L.LSTM(hidden_size, lstm_size)
-        self.pi = policy.FCGaussianPolicy(lstm_size, action_size)
+        # self.pi = policy.FCGaussianPolicy(lstm_size, action_size)
+        self.pi = policy.LinearGaussianPolicyWithSphericalCovariance(
+            lstm_size, action_size)
         self.v = v_function.FCVFunction(lstm_size)
         super().__init__(self.pi_head, self.v_head,
                          self.pi_lstm, self.v_lstm, self.pi, self.v)
