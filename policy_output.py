@@ -104,7 +104,8 @@ class GaussianPolicyOutput(PolicyOutput):
         # Differential entropy of Gaussian is:
         #   0.5 * (log(2 * pi * var) + 1)
         #   = 0.5 * (log(2 * pi) + log var + 1)
-        return 0.5 * (np.log(2 * np.pi) + F.sum(self.ln_var, axis=1) + 1)
+        return 0.5 * self.mean.data.shape[1] * (np.log(2 * np.pi) + 1) + \
+            0.5 * F.sum(self.ln_var, axis=1)
 
     def __repr__(self):
         return 'GaussianPolicyOutput mean:{} ln_var:{} entropy:{}'.format(
