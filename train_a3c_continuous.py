@@ -75,7 +75,6 @@ def main():
     parser.add_argument('--env', type=str, default='Pendulum-v0')
     parser.add_argument('--seed', type=int, default=None)
     parser.add_argument('--outdir', type=str, default=None)
-    parser.add_argument('--scenario', type=str, default='basic')
     parser.add_argument('--t-max', type=int, default=500)
     parser.add_argument('--beta', type=float, default=1e-4)
     parser.add_argument('--profile', action='store_true')
