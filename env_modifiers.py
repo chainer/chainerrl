@@ -2,8 +2,9 @@ def make_rendered(env, *render_args, **render_kwargs):
     base_step = env._step
 
     def _step(action):
+        ret = base_step(action)
         env.render(*render_args, **render_kwargs)
-        return base_step(action)
+        return ret
 
     env._step = _step
 
