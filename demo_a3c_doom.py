@@ -19,9 +19,9 @@ def eval_single_run(env, model, phi, deterministic=False):
         pout = model.pi_and_v(s)[0]
         model.unchain_backward()
         if deterministic:
-            a = pout.most_probable_actions[0]
+            a = pout.most_probable_actions.data[0]
         else:
-            a = pout.action_indices[0]
+            a = pout.sampled_actions.data[0]
         obs, r, done, info = env.step(a)
         test_r += r
     return test_r

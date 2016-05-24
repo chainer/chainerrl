@@ -44,7 +44,8 @@ class SoftmaxPolicyOutput(PolicyOutput):
 
     @cached_property
     def most_probable_actions(self):
-        return np.argmax(self.probs.data, axis=1)
+        return chainer.Variable(
+            np.argmax(self.probs.data, axis=1).astype(np.int32))
 
     @cached_property
     def probs(self):
@@ -88,6 +89,10 @@ class GaussianPolicyOutput(PolicyOutput):
             assert ln_var is None
             self.ln_var = F.log(var)
             self.var = var
+
+    @cached_property
+    def most_probable_actions(self):
+        return self.mean
 
     @cached_property
     def sampled_actions(self):

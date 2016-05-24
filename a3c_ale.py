@@ -79,7 +79,7 @@ def eval_performance(rom, p_func, n_runs):
         while not env.is_terminal:
             s = chainer.Variable(np.expand_dims(dqn_phi(env.state), 0))
             pout = p_func(s)
-            a = pout.action_indices[0]
+            a = pout.sampled_actions.data[0]
             test_r += env.receive_action(a)
         scores.append(test_r)
         print('test_{}:'.format(i), test_r)

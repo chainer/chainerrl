@@ -23,9 +23,9 @@ def eval_performance(rom, model, deterministic=False, use_sdl=False,
         pout = model.pi_and_v(s)[0]
         model.unchain_backward()
         if deterministic:
-            a = pout.most_probable_actions[0]
+            a = pout.most_probable_actions.data[0]
         else:
-            a = pout.action_indices[0]
+            a = pout.sampled_actions.data[0]
         test_r += env.receive_action(a)
     return test_r
 

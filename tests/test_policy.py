@@ -22,11 +22,11 @@ class TestFCSoftmaxPolicy(unittest.TestCase):
         state = chainer.Variable(np.random.rand(
             batch_size, self.n_input_channels).astype(np.float32))
         pout = self.policy(state)
-        self.assertEqual(len(pout.action_indices), batch_size)
+        self.assertEqual(len(pout.sampled_actions.data), batch_size)
         self.assertEqual(pout.probs.data.shape, (batch_size, self.n_actions))
         for i in range(batch_size):
-            self.assertGreaterEqual(pout.action_indices[i], 0)
-            self.assertLess(pout.action_indices[i], self.n_actions)
+            self.assertGreaterEqual(pout.sampled_actions.data[i], 0)
+            self.assertLess(pout.sampled_actions.data[i], self.n_actions)
             # Probability must be strictly larger than zero because it was
             # actually sampled
             for a in range(self.n_actions):
