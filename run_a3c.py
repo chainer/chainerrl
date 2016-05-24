@@ -19,10 +19,9 @@ import async
 from prepare_output_dir import prepare_output_dir
 
 
-def eval_performance(process_idx, make_env, model, phi, n_runs):
+def eval_performance(process_idx, make_env, model, phi, n_runs, greedy=False):
     assert n_runs > 1, 'Computing stdev requires at least two runs'
     scores = []
-
 
     for i in range(n_runs):
         model.reset_state()
@@ -38,7 +37,10 @@ def eval_performance(process_idx, make_env, model, phi, n_runs):
         while not done:
             s = chainer.Variable(np.expand_dims(phi(obs), 0))
             pout, _ = model.pi_and_v(s)
-            a = pout.sampled_actions.data[0]
+            if greedy:
+                a = pout.most_probable_actions.data[0]
+            else:
+                a = pout.sampled_actions.data[0]
             obs, r, done, info = env.step(a)
             test_r += r
             t += 1
