@@ -22,9 +22,15 @@ from prepare_output_dir import prepare_output_dir
 def eval_performance(process_idx, make_env, model, phi, n_runs):
     assert n_runs > 1, 'Computing stdev requires at least two runs'
     scores = []
+
+
     for i in range(n_runs):
         model.reset_state()
         env = make_env(process_idx, test=True)
+        if hasattr(env, 'spec'):
+            timestep_limit = env.spec.timestep_limit
+        else:
+            timestep_limit = None
         obs = env.reset()
         done = False
         test_r = 0
@@ -36,7 +42,7 @@ def eval_performance(process_idx, make_env, model, phi, n_runs):
             obs, r, done, info = env.step(a)
             test_r += r
             t += 1
-            if t >= env.spec.timestep_limit:
+            if timestep_limit is not None and t >= timestep_limit:
                 break
         scores.append(test_r)
         print('test_{}:'.format(i), test_r)
