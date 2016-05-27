@@ -136,8 +136,8 @@ def train_loop(process_idx, counter, make_env, max_score, args, agent, env,
     if global_t == args.steps + 1:
         # Save the final model
         agent.save_model(
-            os.path.join(args.outdir, '{}_finish.h5'.format(args.steps)))
-        print('Saved the final model to {}'.format(args.outdir))
+            os.path.join(outdir, '{}_finish.h5'.format(args.steps)))
+        print('Saved the final model to {}'.format(outdir))
 
 
 def train_loop_with_profile(process_idx, counter, make_env, max_score, args,
