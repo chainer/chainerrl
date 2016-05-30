@@ -12,7 +12,7 @@ import numpy as np
 import fc_tail_q_function
 import dqn_head
 from dqn import DQN
-import ale
+from envs import ale
 import random_seed
 import replay_buffer
 from prepare_output_dir import prepare_output_dir

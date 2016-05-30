@@ -10,7 +10,7 @@ from chainer import optimizers
 import fc_tail_q_function
 import dqn_head
 import nstep_q_learning
-import ale
+from envs import ale
 import random_seed
 import async
 import rmsprop_ones
@@ -41,7 +41,7 @@ def main():
 
     outdir = prepare_output_dir(args, args.outdir)
 
-    print 'Output files are saved in {}'.format(outdir)
+    print('Output files are saved in {}'.format(outdir))
 
     n_actions = ale.ALE(args.rom).number_of_actions
 
@@ -72,7 +72,7 @@ def main():
         total_r = 0
         episode_r = 0
 
-        for i in xrange(args.steps):
+        for i in range(args.steps):
 
             total_r += env.reward
             episode_r += env.reward
@@ -93,7 +93,7 @@ def main():
                 env.receive_action(action)
 
         if process_idx == 0:
-            print logger.debug('{} pid:{}, total_r:{}'.format(outdir, os.getpid(), total_r))
+            print(logger.debug('{} pid:{}, total_r:{}'.format(outdir, os.getpid(), total_r)))
 
     async.run_async(args.processes, agent_func, env_func, run_func)
 

@@ -2,6 +2,7 @@ import os
 import tempfile
 import json
 import subprocess
+import argparse
 
 
 def prepare_output_dir(args, user_specified_dir=None):
@@ -31,7 +32,9 @@ def prepare_output_dir(args, user_specified_dir=None):
 
     # Save all the arguments
     with open(os.path.join(outdir, 'args.txt'), 'w') as f:
-        f.write(json.dumps(vars(args)))
+        if isinstance(args, argparse.Namespace):
+            args = vars(args)
+        f.write(json.dumps(args))
 
     # Save `git status`
     with open(os.path.join(outdir, 'git-status.txt'), 'w') as f:

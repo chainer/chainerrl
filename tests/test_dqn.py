@@ -6,7 +6,7 @@ import q_function
 from dqn import DQN
 import random_seed
 import replay_buffer
-from simple_abc import ABC
+from envs.simple_abc import ABC
 
 
 class TestDQN(unittest.TestCase):

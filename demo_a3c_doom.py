@@ -5,7 +5,7 @@ from chainer import serializers
 import numpy as np
 
 import random_seed
-import doom_env
+from envs import doom_env
 from train_a3c_doom import phi, A3CFF, A3CLSTM
 
 

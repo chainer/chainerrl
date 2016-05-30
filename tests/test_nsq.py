@@ -11,7 +11,7 @@ import async
 import simple_abc
 import random_seed
 import replay_buffer
-from simple_abc import ABC
+from envs.simple_abc import ABC
 
 
 class TestNSQ(unittest.TestCase):

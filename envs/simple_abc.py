@@ -44,3 +44,11 @@ class ABC(environment.EpisodicEnvironment):
     @property
     def is_terminal(self):
         return self._state == 3 or self._state == 4
+
+    def reset(self):
+        self._state = 0
+        return self.state
+
+    def step(self, action):
+        self.receive_action(action)
+        return self.state, self.reward, self.is_terminal, None

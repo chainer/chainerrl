@@ -6,7 +6,7 @@ import sys
 from PIL import Image
 import numpy as np
 
-import ale
+from envs import ale
 
 
 class TestALE(unittest.TestCase):

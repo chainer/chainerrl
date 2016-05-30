@@ -54,8 +54,8 @@ def eval_performance(process_idx, make_env, model, phi, n_runs, greedy=False):
     return mean, median, stdev
 
 
-def train_loop(process_idx, counter, make_env, max_score, args, agent, env,
-               start_time, outdir):
+def train_loop(process_idx, counter, make_env, max_score, eval_frequency,
+               eval_n_runs, agent, env, start_time, steps, outdir):
     try:
 
         total_r = 0
@@ -65,6 +65,7 @@ def train_loop(process_idx, counter, make_env, max_score, args, agent, env,
         obs = env.reset()
         r = 0
         done = False
+        base_lr = agent.optimizer.lr
 
         while True:
 
@@ -74,11 +75,10 @@ def train_loop(process_idx, counter, make_env, max_score, args, agent, env,
                 global_t = counter.value
             local_t += 1
 
-            if global_t > args.steps:
+            if global_t > steps:
                 break
 
-            agent.optimizer.lr = (
-                args.steps - global_t - 1) / args.steps * args.lr
+            agent.optimizer.lr = (steps - global_t - 1) / steps * base_lr
 
             total_r += r
             episode_r += r
@@ -97,7 +97,7 @@ def train_loop(process_idx, counter, make_env, max_score, args, agent, env,
             else:
                 obs, r, done, info = env.step(a)
 
-            if global_t % args.eval_frequency == 0:
+            if global_t % eval_frequency == 0:
                 # Evaluation
 
                 # We must use a copy of the model because test runs can change
@@ -107,7 +107,7 @@ def train_loop(process_idx, counter, make_env, max_score, args, agent, env,
 
                 mean, median, stdev = eval_performance(
                     process_idx, make_env, test_model, agent.phi,
-                    args.eval_n_runs)
+                    eval_n_runs)
                 with open(os.path.join(outdir, 'scores.txt'), 'a+') as f:
                     elapsed = time.time() - start_time
                     record = (global_t, elapsed, mean, median, stdev)
@@ -188,10 +188,13 @@ def run_a3c(processes, make_env, model_opt, phi, t_max=1, beta=1e-2,
 
         if profile:
             train_loop_with_profile(process_idx, counter, make_env, max_score,
-                                    args, agent, env, start_time,
-                                    outdir=outdir)
+                                    eval_frequency, eval_n_runs, agent, env,
+                                    start_time, steps, outdir=outdir)
         else:
             train_loop(process_idx, counter, make_env, max_score,
-                       args, agent, env, start_time, outdir=outdir)
+                       eval_frequency, eval_n_runs, agent, env, start_time,
+                       steps, outdir=outdir)
 
     async.run_async(processes, run_func)
+
+    return model, opt

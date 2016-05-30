@@ -15,7 +15,7 @@ import random_seed
 import rmsprop_async
 from init_like_torch import init_like_torch
 import run_a3c
-import doom_env
+from envs import doom_env
 
 
 def phi(obs):

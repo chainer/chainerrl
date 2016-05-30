@@ -12,7 +12,8 @@ import policy
 import v_function
 import a3c
 import async
-import simple_abc
+from envs.simple_abc import ABC
+import run_a3c
 
 
 class A3CFF(chainer.ChainList, a3c.A3CModel):
@@ -76,6 +77,9 @@ class TestA3C(unittest.TestCase):
         nproc = 8
         n_actions = 3
 
+        def make_env(process_idx, test):
+            return ABC()
+
         def model_opt():
             if use_lstm:
                 model = A3CLSTM(n_actions)
@@ -85,54 +89,13 @@ class TestA3C(unittest.TestCase):
             opt.setup(model)
             return model, opt
 
-        model, opt = model_opt()
-        counter = mp.Value('i', 0)
+        phi = lambda x: x
 
-        model_params = async.share_params_as_shared_arrays(model)
-        opt_state = async.share_states_as_shared_arrays(opt)
-
-        def run_func(process_idx):
-
-            env = simple_abc.ABC()
-
-            model, opt = model_opt()
-            async.set_shared_params(model, model_params)
-            async.set_shared_states(opt, opt_state)
-
-            opt.setup(model)
-            agent = a3c.A3C(model, opt, t_max, 0.9, beta=1e-2)
-
-            total_r = 0
-            episode_r = 0
-
-            for i in range(5000):
-
-                total_r += env.reward
-                episode_r += env.reward
-
-                action = agent.act(env.state, env.reward, env.is_terminal)
-
-                if env.is_terminal:
-                    print(('i:{} counter:{} episode_r:{}'.format(
-                        i, counter.value, episode_r)))
-                    episode_r = 0
-                    env.initialize()
-                else:
-                    env.receive_action(action)
-
-                with counter.get_lock():
-                    counter.value += 1
-
-            print(('pid:{}, counter:{}, total_r:{}'.format(
-                os.getpid(), counter.value, total_r)))
-
-            return agent
-
-        # Train
-        async.run_async(nproc, run_func)
+        model, opt = run_a3c.run_a3c(
+            nproc, make_env, model_opt, phi, t_max, steps=40000)
 
         # Test
-        env = simple_abc.ABC()
+        env = ABC()
         total_r = env.reward
 
         def pi_func(state):
@@ -144,7 +107,7 @@ class TestA3C(unittest.TestCase):
             pout = pi_func(chainer.Variable(
                 env.state.reshape((1,) + env.state.shape)))
             # Use the most probale actions for stability of test results
-            action = pout.most_probable_actions[0]
+            action = pout.most_probable_actions.data[0]
             print('state:', env.state, 'action:', action)
             print('probs', pout.probs.data)
             env.receive_action(action)

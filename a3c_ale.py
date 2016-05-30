@@ -15,7 +15,7 @@ import policy
 import v_function
 import dqn_head
 import a3c
-import ale
+from envs import ale
 import random_seed
 import async
 import rmsprop_async
