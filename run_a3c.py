@@ -133,18 +133,20 @@ def train_loop(process_idx, counter, make_env, max_score, eval_frequency,
                 outdir), file=sys.stderr)
         raise
 
-    if global_t == args.steps + 1:
+    if global_t == steps + 1:
         # Save the final model
         agent.save_model(
-            os.path.join(outdir, '{}_finish.h5'.format(args.steps)))
+            os.path.join(outdir, '{}_finish.h5'.format(steps)))
         print('Saved the final model to {}'.format(outdir))
 
 
-def train_loop_with_profile(process_idx, counter, make_env, max_score, args,
-                            agent, env, start_time, outdir):
+def train_loop_with_profile(process_idx, counter, make_env, max_score,
+                            eval_frequency, eval_n_runs, agent, env,
+                            start_time, steps, outdir):
     import cProfile
-    cmd = 'train_loop(process_idx, counter, make_env, max_score, args, ' \
-        'agent, env, start_time, outdir)'
+    cmd = 'train_loop(process_idx, counter, make_env, max_score, ' \
+        'eval_frequency, eval_n_runs, agent, env, start_time, steps, ' \
+        'outdir)'
     cProfile.runctx(cmd, globals(), locals(),
                     'profile-{}.out'.format(os.getpid()))
 
