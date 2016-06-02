@@ -153,7 +153,8 @@ def train_loop_with_profile(process_idx, counter, make_env, max_score,
 
 def run_a3c(processes, make_env, model_opt, phi, t_max=1, beta=1e-2,
             profile=False, steps=8 * 10 ** 7, eval_frequency=10 ** 6,
-            eval_n_runs=10, use_terminal_state_value=False, args={}):
+            eval_n_runs=10, use_terminal_state_value=False, gamma=0.99,
+            args={}):
 
     # Prevent numpy from using multiple threads
     os.environ['OMP_NUM_THREADS'] = '1'
@@ -184,7 +185,7 @@ def run_a3c(processes, make_env, model_opt, phi, t_max=1, beta=1e-2,
         async.set_shared_params(model, shared_params)
         async.set_shared_states(opt, shared_states)
 
-        agent = a3c.A3C(model, opt, t_max, 0.99, beta=beta,
+        agent = a3c.A3C(model, opt, t_max, gamma, beta=beta,
                         process_idx=process_idx, phi=phi,
                         use_terminal_state_value=use_terminal_state_value)
 
