@@ -1,20 +1,16 @@
 import copy
 import threading
-import unittest
 import os
-import tempfile
 from logging import getLogger
 logger = getLogger(__name__)
 
 import numpy as np
 import chainer
 import chainer.functions as F
-from chainer import optimizers, cuda, Variable
-from chainer.testing import attr
+from chainer import cuda, Variable
 from chainer import serializers
 
 import agent
-import q_function
 import copy_param
 from huber_loss import huber_loss
 
@@ -107,7 +103,7 @@ class DQN(agent.Agent):
             [elem['next_state'] for elem in experiences])
 
         batch_next_q = cuda.to_cpu(
-            self.target_q_function.forward(batch_next_state, test=True).data)
+            self.target_q_function(batch_next_state, test=True).q_values.data)
 
         batch_q_target = batch_q.copy()
 
@@ -141,7 +137,7 @@ class DQN(agent.Agent):
         # Compute Q-values for current states
         batch_state = self._batch_states(
             [elem['state'] for elem in experiences])
-        batch_q = self.q_function.forward(batch_state, test=False)
+        batch_q = self.q_function(batch_state, test=False).q_values
 
         batch_q_target = self._compute_target_values(
             experiences, gamma, cuda.to_cpu(batch_q.data))
@@ -178,7 +174,7 @@ class DQN(agent.Agent):
         self.lock.acquire()
         batch_x = self._batch_states(states)
         q_values = list(cuda.to_cpu(
-            self.q_function.forward(batch_x, test=True).data))
+            self.q_function(batch_x, test=True).q_values))
         self.lock.release()
         return q_values
 
@@ -222,11 +218,15 @@ class DQN(agent.Agent):
             reward = np.clip(reward, -1, 1)
 
         if not is_state_terminal:
-            action, q = self.q_function.sample_epsilon_greedily_with_value(
-                self._batch_states([state]), self.epsilon)
-            action = int(action[0])
+            qout = self.q_function(self._batch_states([state]), test=True)
+
+            action = qout.sample_epsilon_greedy_actions(self.epsilon)
+            q = qout.evaluate_actions(action)
+
+            action = int(action.data[0])
             if self.t % 100 == 0:
-                logger.debug('t:{} q:{}'.format(self.t, q.data))
+                logger.debug('t:{} a:{} q:{} qout:{}'.format(
+                    self.t, action, q.data, qout))
             self.t += 1
 
             # Update the target network

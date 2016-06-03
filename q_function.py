@@ -6,6 +6,8 @@ from chainer import functions as F
 from chainer import links as L
 from chainer import cuda
 
+from q_output import DiscreteQOutput
+
 
 class QFunction(object):
     pass
@@ -53,7 +55,7 @@ class StateInputQFunction(QFunction):
         return [a], q
 
 
-class FCSIQFunction(chainer.ChainList, StateInputQFunction):
+class FCSIQFunction(chainer.ChainList, QFunction):
 
     def __init__(self, n_input_channels, n_actions, n_hidden_channels,
                  n_hidden_layers):
@@ -71,10 +73,10 @@ class FCSIQFunction(chainer.ChainList, StateInputQFunction):
 
         super(FCSIQFunction, self).__init__(*layers)
 
-    def forward(self, state, test=False):
+    def __call__(self, state, test=False):
         assert isinstance(state, chainer.Variable)
         h = state
         for layer in self[:-1]:
             h = F.elu(layer(h))
         h = self[-1](h)
-        return h
+        return DiscreteQOutput(h)

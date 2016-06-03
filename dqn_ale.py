@@ -64,8 +64,8 @@ def eval_performance(rom, q_func, n_runs, gpu):
             s = np.expand_dims(dqn_phi(env.state), 0)
             if gpu >= 0:
                 s = chainer.cuda.to_gpu(s)
-            a = q_func.sample_epsilon_greedily_with_value(
-                chainer.Variable(s), 5e-2)[0][0]
+            qout = q_func(chainer.Variable(s))
+            a = qout.sample_epsilon_greedy_actions(5e-2).data[0]
             test_r += env.receive_action(a)
         scores.append(test_r)
         print('test_{}:'.format(i), test_r)

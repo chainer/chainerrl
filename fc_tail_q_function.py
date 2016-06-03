@@ -2,9 +2,10 @@ import chainer
 from chainer import links as L
 
 import q_function
+from q_output import DiscreteQOutput
 
 
-class FCTailQFunction(chainer.ChainList, q_function.StateInputQFunction):
+class FCTailQFunction(chainer.ChainList, q_function.QFunction):
 
     def __init__(self, head, head_output_size, n_actions):
 
@@ -17,6 +18,6 @@ class FCTailQFunction(chainer.ChainList, q_function.StateInputQFunction):
 
         super(FCTailQFunction, self).__init__(*layers)
 
-    def forward(self, state, test=False):
+    def __call__(self, state, test=False):
         h = self[0](state)
-        return self[1](h)
+        return DiscreteQOutput(self[1](h))

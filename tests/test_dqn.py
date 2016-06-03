@@ -1,6 +1,9 @@
 import unittest
 
+import chainer
+from chainer import cuda
 from chainer import optimizers
+import numpy as np
 
 import q_function
 from dqn import DQN
@@ -41,7 +44,8 @@ class TestDQN(unittest.TestCase):
             action = agent.act(env.state, env.reward, env.is_terminal)
 
             if env.is_terminal:
-                print(('i:{} epsilon:{} episode_r:{}'.format(i, agent.epsilon, episode_r)))
+                print(('i:{} epsilon:{} episode_r:{}'.format(
+                    i, agent.epsilon, episode_r)))
                 episode_r = 0
                 env.initialize()
             else:
@@ -52,7 +56,10 @@ class TestDQN(unittest.TestCase):
         env.initialize()
         total_r = env.reward
         while not env.is_terminal:
-            action = agent.act(env.state, env.reward, env.is_terminal)
+            s = np.expand_dims(env.state, 0)
+            if gpu >= 0:
+                s = cuda.to_gpu(s, device=gpu)
+            action = q_func(chainer.Variable(s)).greedy_actions.data[0]
             env.receive_action(action)
             total_r += env.reward
         self.assertAlmostEqual(total_r, 1)
