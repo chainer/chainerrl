@@ -42,6 +42,9 @@ class DQN(agent.Agent):
         if gpu >= 0:
             cuda.get_device(gpu).use()
             self.q_function.to_gpu(device=gpu)
+            self.xp = cuda.cupy
+        else:
+            self.xp = np
         self.target_q_function = copy.deepcopy(self.q_function)
         self.replay_buffer = replay_buffer
         self.optimizer = optimizer
@@ -97,29 +100,23 @@ class DQN(agent.Agent):
             batch = cuda.to_cpu(batch)
         return chainer.Variable(batch)
 
-    def _compute_target_values(self, experiences, gamma, batch_q):
+    def _compute_target_values(self, experiences, gamma):
 
         batch_next_state = self._batch_states(
             [elem['next_state'] for elem in experiences])
 
-        batch_next_q = cuda.to_cpu(
-            self.target_q_function(batch_next_state, test=True).q_values.data)
+        target_next_qout = self.target_q_function(batch_next_state, test=True)
+        next_q_max = target_next_qout.max
+        next_q_max.unchain_backward()
 
-        batch_q_target = batch_q.copy()
+        batch_rewards = self.xp.asarray(
+            [elem['reward'] for elem in experiences], dtype=np.float32)
 
-        # Set target values for max actions
-        for batch_idx in range(len(experiences)):
-            experience = experiences[batch_idx]
-            action = experience['action']
-            reward = experience['reward']
-            max_q = batch_next_q[batch_idx].max()
-            if experience['is_state_terminal']:
-                q_target = reward
-            else:
-                q_target = reward + self.gamma * max_q
-            batch_q_target[batch_idx, action] = q_target
+        batch_terminal = self.xp.asarray(
+            [elem['is_state_terminal'] for elem in experiences],
+            dtype=np.float32)
 
-        return batch_q_target
+        return batch_rewards + self.gamma * (1.0 - batch_terminal) * next_q_max
 
     def _compute_loss(self, experiences, gamma, errors_out=None):
         """
@@ -134,18 +131,23 @@ class DQN(agent.Agent):
         """
         assert experiences
 
+        batch_size = len(experiences)
+
         # Compute Q-values for current states
         batch_state = self._batch_states(
             [elem['state'] for elem in experiences])
-        batch_q = self.q_function(batch_state, test=False).q_values
 
-        batch_q_target = self._compute_target_values(
-            experiences, gamma, cuda.to_cpu(batch_q.data))
+        qout = self.q_function(batch_state, test=False)
+        xp = cuda.get_array_module(qout.q_values.data)
 
-        if self.gpu >= 0:
-            batch_q_target = cuda.to_gpu(batch_q_target, self.gpu)
+        batch_actions = chainer.Variable(
+            xp.asarray(
+                [elem['action'] for elem in experiences], dtype=np.int32))
+        batch_q = F.reshape(qout.evaluate_actions(
+            batch_actions), (batch_size, 1))
 
-        batch_q_target = Variable(batch_q_target)
+        batch_q_target = F.reshape(
+            self._compute_target_values(experiences, gamma), (batch_size, 1))
 
         if errors_out is not None:
             del errors_out[:]
