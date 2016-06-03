@@ -12,7 +12,6 @@ from chainer import serializers
 
 import agent
 import copy_param
-from huber_loss import huber_loss
 
 
 def _to_device(obj, gpu):
@@ -158,7 +157,8 @@ class DQN(agent.Agent):
                 errors_out.append(e)
 
         if self.clip_delta:
-            return F.sum(huber_loss(batch_q, batch_q_target, delta=1.0)) / len(experiences)
+            return F.sum(F.huber_loss(batch_q, batch_q_target, delta=1.0)) / \
+                batch_size
         else:
             return F.mean_squared_error(batch_q, batch_q_target) / 2
 
