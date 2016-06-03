@@ -117,18 +117,7 @@ class DQN(agent.Agent):
 
         return batch_rewards + self.gamma * (1.0 - batch_terminal) * next_q_max
 
-    def _compute_loss(self, experiences, gamma, errors_out=None):
-        """
-        Compute the Q-learning loss for a batch of experiences
-
-
-        Args:
-          experiences (list): see update()'s docstring
-          gamma (float): discount factor
-        Returns:
-          loss
-        """
-        assert experiences
+    def _compute_y_and_t(self, experiences, gamma):
 
         batch_size = len(experiences)
 
@@ -148,19 +137,36 @@ class DQN(agent.Agent):
         batch_q_target = F.reshape(
             self._compute_target_values(experiences, gamma), (batch_size, 1))
 
+        batch_q_target.unchain_backward()
+
+        return batch_q, batch_q_target
+
+    def _compute_loss(self, experiences, gamma, errors_out=None):
+        """
+        Compute the Q-learning loss for a batch of experiences
+
+
+        Args:
+          experiences (list): see update()'s docstring
+          gamma (float): discount factor
+        Returns:
+          loss
+        """
+        assert experiences
+
+        y, t = self._compute_y_and_t(experiences, gamma)
+
         if errors_out is not None:
             del errors_out[:]
-            delta = F.sum(
-                F.basic_math.absolute(batch_q - batch_q_target), axis=1)
+            delta = F.sum(F.basic_math.absolute(y - t), axis=1)
             delta = cuda.to_cpu(delta.data)
             for e in delta:
                 errors_out.append(e)
 
         if self.clip_delta:
-            return F.sum(F.huber_loss(batch_q, batch_q_target, delta=1.0)) / \
-                batch_size
+            return F.sum(F.huber_loss(y, t, delta=1.0)) / len(experiences)
         else:
-            return F.mean_squared_error(batch_q, batch_q_target) / 2
+            return F.mean_squared_error(y, t) / 2
 
     def compute_q_values(self, states):
         """Compute Q-values
