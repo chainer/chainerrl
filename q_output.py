@@ -13,11 +13,12 @@ class QOutput(object):
 class DiscreteQOutput(object):
     """Qfunction output for discrete action space."""
 
-    def __init__(self, q_values):
+    def __init__(self, q_values, q_values_formatter=lambda x: x):
         assert isinstance(q_values, chainer.Variable)
         self.xp = cuda.get_array_module(q_values.data)
         self.q_values = q_values
         self.n_actions = q_values.data.shape[1]
+        self.q_values_formatter = q_values_formatter
 
     @cached_property
     def greedy_actions(self):
@@ -44,7 +45,8 @@ class DiscreteQOutput(object):
 
     def __repr__(self):
         return 'DiscreteQOutput greedy_actions:{} q_values:{}'.format(
-            self.greedy_actions.data, self.q_values.data)
+            self.greedy_actions.data,
+            self.q_values_formatter(self.q_values.data))
 
 
 class ContinuousQOutput(object):
