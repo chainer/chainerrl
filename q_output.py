@@ -43,6 +43,12 @@ class DiscreteQOutput(object):
         assert isinstance(actions, chainer.Variable)
         return F.select_item(self.q_values, actions)
 
+    def compute_advantage(self, actions):
+        return self.evaluate_actions(actions) - self.max
+
+    def compute_double_advantage(self, actions, argmax_actions):
+        return self.evaluate_actions(actions) - self.evaluate_actions(argmax_actions)
+
     def __repr__(self):
         return 'DiscreteQOutput greedy_actions:{} q_values:{}'.format(
             self.greedy_actions.data,

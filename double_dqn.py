@@ -1,34 +1,27 @@
+import numpy as np
+
 import dqn
-from chainer import cuda
 
 
 class DoubleDQN(dqn.DQN):
 
-    def _compute_target_values(self, experiences, gamma, batch_q):
+    def _compute_target_values(self, experiences, gamma):
 
         batch_next_state = self._batch_states(
             [elem['next_state'] for elem in experiences])
 
-        batch_next_q_by_model = cuda.to_cpu(
-            self.q_function.forward(batch_next_state, test=True).data)
+        next_qout = self.q_function(batch_next_state, test=True)
 
-        batch_next_q_by_target_model = cuda.to_cpu(
-            self.target_q_function.forward(batch_next_state, test=True).data)
+        target_next_qout = self.target_q_function(batch_next_state, test=True)
 
-        batch_q_target = batch_q.copy()
+        next_q_max = target_next_qout.evaluate_actions(
+            next_qout.greedy_actions)
 
-        # Set target values for max actions
-        for batch_idx in xrange(len(experiences)):
-            experience = experiences[batch_idx]
-            action = experience['action']
-            reward = experience['reward']
-            max_action = batch_next_q_by_model[batch_idx].argmax()
-            max_q = batch_next_q_by_target_model[batch_idx, max_action]
-            if experience['is_state_terminal']:
-                q_target = reward
-            else:
-                q_target = reward + self.gamma * max_q
-            q_target = reward + gamma * max_q
-            batch_q_target[batch_idx, action] = q_target
+        batch_rewards = self.xp.asarray(
+            [elem['reward'] for elem in experiences], dtype=np.float32)
 
-        return batch_q_target
+        batch_terminal = self.xp.asarray(
+            [elem['is_state_terminal'] for elem in experiences],
+            dtype=np.float32)
+
+        return batch_rewards + self.gamma * (1.0 - batch_terminal) * next_q_max
