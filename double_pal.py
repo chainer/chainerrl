@@ -18,8 +18,7 @@ class DoublePAL(pal.PAL):
         qout = self.q_function(batch_state, test=False)
 
         batch_actions = Variable(
-            self.xp.asarray(
-                [elem['action'] for elem in experiences], dtype=np.int32))
+            self.xp.asarray([elem['action'] for elem in experiences]))
         batch_q = F.reshape(qout.evaluate_actions(
             batch_actions), (batch_size, 1))
 

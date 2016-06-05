@@ -13,30 +13,9 @@ class ABC(environment.EpisodicEnvironment):
 
     @property
     def state(self):
-        return np.asarray([self._state], dtype=np.float32)
-
-    @property
-    def reward(self):
-        if self._state == 3:
-            # success
-            return 1
-        elif self._state == 4:
-            return 0
-        else:
-            return 0
-
-    def receive_action(self, action):
-        if action == 0 and self._state == 0:
-            # A
-            self._state = 1
-        elif action == 1 and self._state == 1:
-            # B
-            self._state = 2
-        elif action == 2 and self._state == 2:
-            # C
-            self._state = 3
-        else:
-            self._state = 4
+        state_vec = np.zeros((5,), dtype=np.float32)
+        state_vec[self._state] = 1.0
+        return state_vec
 
     def initialize(self):
         self._state = 0
@@ -50,5 +29,23 @@ class ABC(environment.EpisodicEnvironment):
         return self.state
 
     def step(self, action):
-        self.receive_action(action)
-        return self.state, self.reward, self.is_terminal, None
+        if isinstance(action, np.ndarray):
+            if action.size > 1:
+                action = action[0]
+            action = np.around(action)
+        if action == 0 and self._state == 0:
+            # A
+            self._state = 1
+            reward = 0.1
+        elif action == 1 and self._state == 1:
+            # B
+            self._state = 2
+            reward = 0.0
+        elif action == 2 and self._state == 2:
+            # C
+            self._state = 3
+            reward = 0.9
+        else:
+            self._state = 4
+            reward = 0.0
+        return self.state, reward, self.is_terminal, None

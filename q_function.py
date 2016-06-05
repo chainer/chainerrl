@@ -7,6 +7,8 @@ from chainer import links as L
 from chainer import cuda
 
 from q_output import DiscreteQOutput
+from q_output import ContinuousQOutput
+from lower_triangular_matrix import lower_triangular_matrix
 
 
 class QFunction(object):
@@ -80,3 +82,55 @@ class FCSIQFunction(chainer.ChainList, QFunction):
             h = F.elu(layer(h))
         h = self[-1](h)
         return DiscreteQOutput(h)
+
+
+class FCSIContinuousQFunction(chainer.Chain, QFunction):
+
+    def __init__(self, n_input_channels, n_dim_action, n_hidden_channels,
+                 n_hidden_layers, action_space):
+        self.n_input_channels = n_input_channels
+        self.n_hidden_layers = n_hidden_layers
+        self.n_hidden_channels = n_hidden_channels
+        self.action_space = action_space
+
+        layers = {}
+
+        hidden_layers = []
+        assert n_hidden_layers >= 1
+        hidden_layers.append(L.Linear(n_input_channels, n_hidden_channels))
+        for i in range(n_hidden_layers - 1):
+            hidden_layers.append(
+                L.Linear(n_hidden_channels, n_hidden_channels))
+        layers['hidden_layers'] = chainer.ChainList(*hidden_layers)
+
+        layers['v'] = L.Linear(n_hidden_channels, 1)
+        layers['mu'] = L.Linear(n_hidden_channels, n_dim_action)
+        layers['mat_diag'] = L.Linear(n_hidden_channels, n_dim_action)
+        non_diag_size = n_dim_action * (n_dim_action - 1) // 2
+        if non_diag_size > 0:
+            layers['mat_non_diag'] = L.Linear(n_hidden_channels, non_diag_size)
+
+        super().__init__(**layers)
+
+    def __call__(self, state, test=False):
+        assert isinstance(state, chainer.Variable)
+        xp = cuda.get_array_module(state.data)
+        h = state
+        for layer in self.hidden_layers:
+            h = F.elu(layer(h))
+        v = self.v(h)
+        mu = self.mu(h)
+        action_scale = (self.action_space.high - self.action_space.low) / 2
+        action_scale = xp.expand_dims(xp.asarray(action_scale), axis=0)
+        action_mean = (self.action_space.high + self.action_space.low) / 2
+        action_mean = xp.expand_dims(xp.asarray(action_mean), axis=0)
+
+        mu = F.tanh(mu) * action_scale + action_mean
+        mat_diag = F.exp(self.mat_diag(h))
+        if hasattr(self, 'mat_non_diag'):
+            mat_non_diag = F.exp(self.mat_non_diag(h))
+            tril = lower_triangular_matrix(mat_diag, mat_non_diag)
+            mat = F.batch_matmul(tril, tril, transb=True)
+        else:
+            mat = F.expand_dims(mat_diag ** 2, axis=2)
+        return ContinuousQOutput(mu, mat, v, self.action_space)

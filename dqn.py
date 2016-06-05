@@ -126,11 +126,10 @@ class DQN(agent.Agent):
             [elem['state'] for elem in experiences])
 
         qout = self.q_function(batch_state, test=False)
-        xp = cuda.get_array_module(qout.q_values.data)
+        xp = cuda.get_array_module(qout.greedy_actions.data)
 
         batch_actions = chainer.Variable(
-            xp.asarray(
-                [elem['action'] for elem in experiences], dtype=np.int32))
+            xp.asarray([elem['action'] for elem in experiences]))
         batch_q = F.reshape(qout.evaluate_actions(
             batch_actions), (batch_size, 1))
 
@@ -231,7 +230,7 @@ class DQN(agent.Agent):
             action = qout.sample_epsilon_greedy_actions(self.epsilon)
             q = qout.evaluate_actions(action)
 
-            action = int(action.data[0])
+            action = cuda.to_cpu(action.data)[0]
             if self.t % 100 == 0:
                 logger.debug('t:{} a:{} q:{} qout:{}'.format(
                     self.t, action, q.data, qout))
