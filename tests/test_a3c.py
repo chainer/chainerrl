@@ -1,7 +1,6 @@
 import os
 import unittest
 import tempfile
-import multiprocessing as mp
 
 import chainer
 from chainer import optimizers
@@ -11,7 +10,6 @@ from chainer import functions as F
 import policy
 import v_function
 import a3c
-import async
 from envs.simple_abc import ABC
 import run_a3c
 
@@ -20,9 +18,9 @@ class A3CFF(chainer.ChainList, a3c.A3CModel):
 
     def __init__(self, n_actions):
         self.pi = policy.FCSoftmaxPolicy(
-            1, n_actions, n_hidden_channels=10, n_hidden_layers=2)
+            5, n_actions, n_hidden_channels=10, n_hidden_layers=2)
         self.v = v_function.FCVFunction(
-            1, n_hidden_channels=10, n_hidden_layers=2)
+            5, n_hidden_channels=10, n_hidden_layers=2)
         super().__init__(self.pi, self.v)
 
     def pi_and_v(self, state, keep_same_state=False):
@@ -32,7 +30,7 @@ class A3CFF(chainer.ChainList, a3c.A3CModel):
 class A3CLSTM(chainer.ChainList, a3c.A3CModel):
 
     def __init__(self, n_actions):
-        self.lstm = L.LSTM(1, 10)
+        self.lstm = L.LSTM(5, 10)
         self.pi = policy.FCSoftmaxPolicy(
             10, n_actions, n_hidden_channels=10, n_hidden_layers=2)
         self.v = v_function.FCVFunction(
@@ -96,22 +94,25 @@ class TestA3C(unittest.TestCase):
 
         # Test
         env = ABC()
-        total_r = env.reward
+        total_r = 0
+        obs = env.reset()
+        done = False
+        reward = 0.0
 
         def pi_func(state):
             return model.pi_and_v(state)[0]
 
         model.reset_state()
 
-        while not env.is_terminal:
+        while not done:
             pout = pi_func(chainer.Variable(
                 env.state.reshape((1,) + env.state.shape)))
             # Use the most probale actions for stability of test results
             action = pout.most_probable_actions.data[0]
             print('state:', env.state, 'action:', action)
             print('probs', pout.probs.data)
-            env.receive_action(action)
-            total_r += env.reward
+            obs, reward, done, _ = env.step(action)
+            total_r += reward
         self.assertAlmostEqual(total_r, 1)
 
     def _test_save_load(self, use_lstm):
