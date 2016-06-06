@@ -68,8 +68,7 @@ def run_dqn(agent, make_env, phi, steps, eval_n_runs, eval_frequency, gpu,
                         # Save the best model so far
                         print('The best score is updated {} -> {}'.format(
                             max_score, mean))
-                        filename = os.path.join(
-                            outdir, '{}_keyboardinterrupt.h5'.format(i))
+                        filename = os.path.join(outdir, '{}.h5'.format(i))
                         agent.save_model(filename)
                         print('Saved the current best model to {}'.format(
                             filename))
