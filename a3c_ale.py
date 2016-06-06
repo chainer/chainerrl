@@ -14,7 +14,7 @@ import numpy as np
 import policy
 import v_function
 import dqn_head
-import a3c
+from agents import a3c
 from envs import ale
 import random_seed
 import async

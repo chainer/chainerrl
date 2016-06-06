@@ -10,7 +10,7 @@ import numpy as np
 import policy
 import v_function
 import dqn_head
-import a3c
+from agents import a3c
 import random_seed
 import rmsprop_async
 from init_like_torch import init_like_torch

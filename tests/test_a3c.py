@@ -9,7 +9,7 @@ from chainer import functions as F
 
 import policy
 import v_function
-import a3c
+from agents import a3c
 from envs.simple_abc import ABC
 import run_a3c
 

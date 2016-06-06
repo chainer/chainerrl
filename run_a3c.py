@@ -13,7 +13,7 @@ from chainer import functions as F
 import cv2
 import numpy as np
 
-import a3c
+from agents import a3c
 import random_seed
 import async
 from prepare_output_dir import prepare_output_dir
