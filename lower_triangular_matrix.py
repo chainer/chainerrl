@@ -41,7 +41,7 @@ class LowerTriangularMatrix(function.Function):
 
     @property
     def label(self):
-        return 'Transpose'
+        return 'LowerTriangularMatrix'
 
     def forward_cpu(self, inputs):
         diag, non_diag = inputs
@@ -50,9 +50,6 @@ class LowerTriangularMatrix(function.Function):
         y = np.zeros((batch_size, n, n), dtype=np.float32)
         _set_batch_non_diagonal(y, non_diag)
         _set_batch_diagonal(y, diag)
-        # print('diag', diag)
-        # print('non_diag', non_diag)
-        # print('y', y)
         return y,
 
     def forward_gpu(self, inputs):
