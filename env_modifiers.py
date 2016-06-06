@@ -1,12 +1,18 @@
 def make_rendered(env, *render_args, **render_kwargs):
-    base_step = env._step
+    base_step = env.step
+    base_close = env.close
 
-    def _step(action):
+    def step(action):
         ret = base_step(action)
         env.render(*render_args, **render_kwargs)
         return ret
 
-    env._step = _step
+    def close():
+        env.render(*render_args, close=True, **render_kwargs)
+        base_close()
+
+    env.step = step
+    env.close = close
 
 
 def make_timestep_limited(env, timestep_limit):
