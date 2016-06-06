@@ -9,7 +9,7 @@ from chainer import optimizers
 
 import fc_tail_q_function
 import dqn_head
-import nstep_q_learning
+from agents import nstep_q_learning
 from envs import ale
 import random_seed
 import async

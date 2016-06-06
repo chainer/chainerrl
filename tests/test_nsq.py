@@ -6,7 +6,7 @@ import chainer
 from chainer import optimizers
 
 import q_function
-import nstep_q_learning
+from agents import nstep_q_learning
 import async
 import simple_abc
 import random_seed
