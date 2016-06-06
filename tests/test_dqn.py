@@ -1,4 +1,4 @@
-from dqn import DQN
+from agents.dqn import DQN
 import replay_buffer
 from test_dqn_like import _TestDQNLike
 

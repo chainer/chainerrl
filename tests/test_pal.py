@@ -1,4 +1,4 @@
-from pal import PAL
+from agents.pal import PAL
 import replay_buffer
 from test_dqn_like import _TestDQNLike
 

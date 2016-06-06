@@ -115,7 +115,8 @@ class DQN(agent.Agent):
             [elem['is_state_terminal'] for elem in experiences],
             dtype=np.float32)
 
-        return batch_rewards + self.gamma * (1.0 - batch_terminal) * next_q_max
+        # return batch_rewards + self.gamma * (1.0 - batch_terminal) * next_q_max
+        return batch_rewards + self.gamma * next_q_max
 
     def _compute_y_and_t(self, experiences, gamma):
 
@@ -226,6 +227,7 @@ class DQN(agent.Agent):
 
         if not is_state_terminal:
             qout = self.q_function(self._batch_states([state]), test=True)
+            print(qout)
 
             action = qout.sample_epsilon_greedy_actions(self.epsilon)
             q = qout.evaluate_actions(action)

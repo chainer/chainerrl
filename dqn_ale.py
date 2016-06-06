@@ -11,7 +11,7 @@ import numpy as np
 
 import fc_tail_q_function
 import dqn_head
-from dqn import DQN
+from agents.dqn import DQN
 from envs import ale
 import random_seed
 import replay_buffer

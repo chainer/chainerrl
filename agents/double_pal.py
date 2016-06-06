@@ -3,7 +3,7 @@ import numpy as np
 from chainer import Variable
 from chainer import functions as F
 
-import pal
+from . import pal
 
 
 class DoublePAL(pal.PAL):

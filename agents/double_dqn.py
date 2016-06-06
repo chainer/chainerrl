@@ -1,6 +1,6 @@
 import numpy as np
 
-import dqn
+from . import dqn
 
 
 class DoubleDQN(dqn.DQN):
