@@ -7,7 +7,7 @@ import gym
 import numpy as np
 
 sys.path.append('../drill')
-from dqn import DQN
+from agents.dqn import DQN
 import random_seed
 import replay_buffer
 from prepare_output_dir import prepare_output_dir
