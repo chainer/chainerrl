@@ -56,14 +56,54 @@ class DiscreteQOutput(object):
 
 
 class ContinuousQOutput(object):
-    """Qfunction output for continuous action space."""
+    """Qfunction output for continuous action space.
 
-    # TODO(fujita) implement
+    See: http://arxiv.org/abs/1603.00748
+    """
+
+    def __init__(self, mu, mat, v, action_space):
+        self.xp = cuda.get_array_module(mu.data)
+        self.mu = mu
+        self.mat = mat
+        self.v = v
+        self.action_space = action_space
+
+        self.batch_size = self.mu.data.shape[0]
 
     @cached_property
     def greedy_actions(self):
-        raise NotImplementedError
+        return self.mu
 
     @cached_property
     def max(self):
-        raise NotImplementedError
+        return F.reshape(self.v, (self.batch_size,))
+
+    def sample_epsilon_greedy_actions(self, epsilon):
+        assert self.mu.data.shape[0] == 1, \
+            "This method doesn't support batch computation"
+        if np.random.random() < epsilon:
+            sample = self.action_space.sample().astype(np.float32)
+            sample = np.expand_dims(sample, axis=0)
+            if self.xp == cuda.cupy:
+                sample = cuda.to_gpu(sample)
+            return chainer.Variable(sample)
+        else:
+            return self.greedy_actions
+
+    def evaluate_actions(self, actions):
+        assert isinstance(actions, chainer.Variable)
+        u_minus_mu = actions - self.mu
+        a = - 0.5 * \
+            F.batch_matmul(F.batch_matmul(
+                u_minus_mu, self.mat, transa=True), u_minus_mu)
+        return F.reshape(a, (self.batch_size,)) + F.reshape(self.v, (self.batch_size,))
+
+    def compute_advantage(self, actions):
+        return self.evaluate_actions(actions) - self.max
+
+    def compute_double_advantage(self, actions, argmax_actions):
+        return self.evaluate_actions(actions) - self.evaluate_actions(argmax_actions)
+
+    def __repr__(self):
+        return 'ContinuousQOutput greedy_actions:{} v:{}'.format(
+            self.greedy_actions.data, self.v.data)
