@@ -5,7 +5,7 @@ Drill is a deep reinforcement learning library, still work-in-progress.
 ## Requirements
 
 - Python 3.5.1+
-- Chainer 1.8.0+
+- Chainer 1.8.2+
 
 ## Agents
 
