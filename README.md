@@ -16,7 +16,7 @@ Following agents have been implemented:
 
 ## Environments
 
-Environments that support OpenAI Gym's interface can be used.
+Environments that support OpenAI Gym's interface (`reset`, `step` and `close` functions) can be used.
 
 Additionally, following environments have been implemented in this library:
 - ALE (https://github.com/mgbellemare/Arcade-Learning-Environment)
