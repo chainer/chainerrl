@@ -11,10 +11,17 @@ Drill is a deep reinforcement learning library, still work-in-progress.
 
 Following agents have been implemented: 
 - A3C
-- Asynchronous N-step Q-learning
-- DQN
+- Asynchronous N-step Q-learning (work-in-progress)
+- DQN (including Double DQN, Persistent Advantage Learning (PAL), Double PAL)
 
 ## Environments
 
-Following environments have been implemented:
+Environments that support OpenAI Gym's interface can be used.
+
+Additionally, following environments have been implemented in this library:
 - ALE (https://github.com/mgbellemare/Arcade-Learning-Environment)
+- VizDoom
+
+## How to use
+
+Please see the examples: `train_a3c_*.py` for A3C, `train_dqn_*.py` for DQN.
