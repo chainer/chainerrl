@@ -1,16 +1,15 @@
 import argparse
-import multiprocessing as mp
+import sys
 
 import chainer
 from chainer import links as L
 from chainer import functions as F
-import cv2
 import gym
 import numpy as np
 
+sys.path.append('..')
 import policy
 import v_function
-import dqn_head
 from agents import a3c
 import random_seed
 import rmsprop_async
@@ -31,7 +30,8 @@ class A3CLSTMGaussian(chainer.ChainList, a3c.A3CModel):
         self.pi_lstm = L.LSTM(hidden_size, lstm_size)
         self.v_lstm = L.LSTM(hidden_size, lstm_size)
         # self.pi = policy.FCGaussianPolicy(lstm_size, action_size)
-        self.pi = policy.LinearGaussianPolicyWithSphericalCovariance(
+        # self.pi = policy.LinearGaussianPolicyWithSphericalCovariance(
+        self.pi = policy.LinearGaussianPolicyWithDiagonalCovariance(
             lstm_size, action_size)
         self.v = v_function.FCVFunction(lstm_size)
         super().__init__(self.pi_head, self.v_head,
@@ -75,7 +75,7 @@ def main():
     parser.add_argument('--env', type=str, default='Pendulum-v0')
     parser.add_argument('--seed', type=int, default=None)
     parser.add_argument('--outdir', type=str, default=None)
-    parser.add_argument('--t-max', type=int, default=500)
+    parser.add_argument('--t-max', type=int, default=10 ** 8)
     parser.add_argument('--beta', type=float, default=1e-4)
     parser.add_argument('--profile', action='store_true')
     parser.add_argument('--steps', type=int, default=8 * 10 ** 7)
@@ -84,9 +84,12 @@ def main():
     parser.add_argument('--eval-n-runs', type=int, default=10)
     parser.add_argument('--use-lstm', action='store_true')
     parser.add_argument('--reward-scale-factor', type=float, default=1e-3)
+    parser.add_argument('--rmsprop-epsilon', type=float, default=1e-1)
     parser.add_argument('--render', action='store_true')
+    parser.add_argument('--use-terminal-state-value', action='store_true')
     parser.set_defaults(render=False)
     parser.set_defaults(use_lstm=False)
+    parser.set_defaults(use_terminal_state_value=False)
     args = parser.parse_args()
 
     if args.seed is not None:
@@ -125,7 +128,8 @@ def main():
 
     def model_opt():
         model = A3CLSTMGaussian(obs_size, action_size)
-        opt = rmsprop_async.RMSpropAsync(lr=args.lr, eps=1e-1, alpha=0.99)
+        opt = rmsprop_async.RMSpropAsync(
+            lr=args.lr, eps=args.rmsprop_epsilon, alpha=0.99)
         opt.setup(model)
         opt.add_hook(chainer.optimizer.GradientClipping(40))
         return model, opt
@@ -134,7 +138,8 @@ def main():
                     beta=args.beta, profile=args.profile, steps=args.steps,
                     eval_frequency=args.eval_frequency,
                     eval_n_runs=args.eval_n_runs,
-                    use_terminal_state_value=True, args=args)
+                    use_terminal_state_value=args.use_terminal_state_value,
+                    args=args)
 
 
 if __name__ == '__main__':

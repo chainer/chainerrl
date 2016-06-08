@@ -6,7 +6,7 @@ from chainer import cuda
 import gym
 import numpy as np
 
-sys.path.append('../drill')
+sys.path.append('..')
 from agents.dqn import DQN
 import random_seed
 import replay_buffer

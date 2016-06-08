@@ -9,6 +9,7 @@ from chainer import optimizers
 from chainer import functions as F
 import numpy as np
 
+sys.path.append('..')
 import fc_tail_q_function
 import dqn_head
 from agents.dqn import DQN

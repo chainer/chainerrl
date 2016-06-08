@@ -1,12 +1,13 @@
 import argparse
 import multiprocessing as mp
+import sys
 
 import chainer
 from chainer import links as L
-from chainer import functions as F
 import cv2
 import numpy as np
 
+sys.path.append('..')
 import policy
 import v_function
 import dqn_head
