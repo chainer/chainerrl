@@ -1,10 +1,12 @@
 import argparse
 import os
+import sys
 
 import numpy as np
 import chainer
 from chainer import serializers
 
+sys.path.append('..')
 import ale
 import random_seed
 from dqn_phi import dqn_phi

@@ -1,9 +1,11 @@
 import argparse
+import sys
 
 import chainer
 from chainer import serializers
 import numpy as np
 
+sys.path.append('..')
 import random_seed
 from envs import doom_env
 from train_a3c_doom import phi, A3CFF, A3CLSTM

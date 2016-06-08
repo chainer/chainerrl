@@ -1,25 +1,25 @@
 import argparse
+import sys
 
 import chainer
 from chainer import serializers
 import gym
 import numpy as np
 
+sys.path.append('..')
 import random_seed
-from train_a3c_continuous import phi, A3CLSTMGaussian
 import env_modifiers
+import q_function
 
 
 def eval_single_run(env, model, phi):
-    model.reset_state()
     test_r = 0
     obs = env.reset()
     done = False
     while not done:
         s = chainer.Variable(np.expand_dims(phi(obs), 0))
-        pout = model.pi_and_v(s)[0]
-        model.unchain_backward()
-        a = pout.sampled_actions.data[0]
+        qout = model(s)
+        a = qout.greedy_actions.data[0]
         obs, r, done, info = env.step(a)
         test_r += r
     return test_r
@@ -50,13 +50,17 @@ def main():
     obs_size = np.asarray(env.observation_space.shape).prod()
     action_size = np.asarray(env.action_space.shape).prod()
 
-    model = A3CLSTMGaussian(obs_size, action_size)
-    serializers.load_hdf5(args.model, model)
+    q_func = q_function.FCSIContinuousQFunction(
+        obs_size, action_size, 100, 2, env.action_space)
+    serializers.load_hdf5(args.model, q_func)
 
     scores = []
 
+    def phi(obs):
+        return obs.astype(np.float32)
+
     for i in range(args.n_runs):
-        score = eval_single_run(env, model, phi)
+        score = eval_single_run(env, q_func, phi)
         print('Run {}: {}'.format(i, score))
         scores.append(score)
     print('Average: {}'.format(sum(scores) / args.n_runs))
