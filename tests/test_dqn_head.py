@@ -5,10 +5,10 @@ import chainer
 from chainer import optimizers
 from chainer import functions as F
 
-import dqn_head
+from links import dqn_head
 import policy
-import fc_tail_q_function
-import fc_tail_v_function
+from links import fc_tail_q_function
+from links import fc_tail_v_function
 
 
 def generate_different_two_states():

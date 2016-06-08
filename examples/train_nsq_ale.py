@@ -6,11 +6,10 @@ from logging import getLogger
 logger = getLogger(__name__)
 
 import chainer
-from chainer import optimizers
 
 sys.path.append('..')
-import fc_tail_q_function
-import dqn_head
+from links import fc_tail_q_function
+from links import dqn_head
 from agents import nstep_q_learning
 from envs import ale
 import random_seed

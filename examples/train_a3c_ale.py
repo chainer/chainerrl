@@ -14,7 +14,7 @@ import numpy as np
 sys.path.append('..')
 import policy
 import v_function
-import dqn_head
+from links import dqn_head
 from agents import a3c
 from envs import ale
 import random_seed

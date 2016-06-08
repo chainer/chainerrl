@@ -4,13 +4,12 @@ import numpy
 
 import chainer
 from chainer import cuda
-from chainer import functions
 from chainer import gradient_check
 from chainer import testing
 from chainer.testing import attr
 
-from lower_triangular_matrix import lower_triangular_matrix
-from lower_triangular_matrix import LowerTriangularMatrix
+from functions.lower_triangular_matrix import lower_triangular_matrix
+from functions.lower_triangular_matrix import LowerTriangularMatrix
 
 
 class TestLowerTriangularMatrix(unittest.TestCase):

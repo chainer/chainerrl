@@ -1,8 +1,8 @@
 import chainer
 from chainer import functions as F
 
-from wn_convolution_2d import WNConvolution2D
-from wn_linear import WNLinear
+from links.wn_convolution_2d import WNConvolution2D
+from links.wn_linear import WNLinear
 
 
 class WNNIPSDQNHead(chainer.ChainList):

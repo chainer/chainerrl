@@ -1,7 +1,7 @@
 import chainer
 from chainer import links as L
 
-import crelu
+from functions import crelu
 
 
 class NatureDQNHeadCReLU(chainer.ChainList):

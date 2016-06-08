@@ -10,14 +10,15 @@ from chainer import functions as F
 import numpy as np
 
 sys.path.append('..')
-import fc_tail_q_function
-import dqn_head
+from links import fc_tail_q_function
+from links import dqn_head
+from links import dqn_head_crelu
 from agents.dqn import DQN
 from envs import ale
 import random_seed
 import replay_buffer
 from prepare_output_dir import prepare_output_dir
-import oplu
+from functions import oplu
 from init_like_torch import init_like_torch
 from dqn_phi import dqn_phi
 
@@ -44,7 +45,7 @@ def parse_arch(arch, n_actions, activation):
         return fc_tail_q_function.FCTailQFunction(
             head, 512, n_actions=n_actions)
     if arch == 'nature_crelu':
-        head = dqn_head.NatureDQNHeadCReLU()
+        head = dqn_head_crelu.NatureDQNHeadCReLU()
         return fc_tail_q_function.FCTailQFunction(
             head, 512, n_actions=n_actions)
     elif arch == 'nips':

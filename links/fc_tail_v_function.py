@@ -2,7 +2,7 @@ import chainer
 from chainer import links as L
 
 import v_function
-from wn_linear import WNLinear
+from links.wn_linear import WNLinear
 
 
 class FCTailVFunction(chainer.ChainList, v_function.VFunction):

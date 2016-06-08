@@ -2,7 +2,7 @@ import chainer
 from chainer import links as L
 
 import policy
-from wn_linear import WNLinear
+from links.wn_linear import WNLinear
 
 
 class FCTailPolicy(chainer.ChainList, policy.SoftmaxPolicy):

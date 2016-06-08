@@ -8,7 +8,7 @@ from chainer import cuda
 
 from q_output import DiscreteQOutput
 from q_output import ContinuousQOutput
-from lower_triangular_matrix import lower_triangular_matrix
+from functions.lower_triangular_matrix import lower_triangular_matrix
 
 
 class QFunction(object):
