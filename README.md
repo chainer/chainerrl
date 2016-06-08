@@ -24,4 +24,4 @@ Additionally, following environments have been implemented in this library:
 
 ## How to use
 
-Please see the examples: `train_a3c_*.py` for A3C, `train_dqn_*.py` for DQN.
+Please see the examples in the `examples` directory.
