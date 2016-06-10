@@ -33,7 +33,7 @@ def eval_performance(make_env, q_func, phi, n_runs, gpu):
 
 
 def run_dqn(agent, make_env, phi, steps, eval_n_runs, eval_frequency, gpu,
-            outdir, final_exploration_steps):
+            outdir):
 
     env = make_env()
 
@@ -52,23 +52,24 @@ def run_dqn(agent, make_env, phi, steps, eval_n_runs, eval_frequency, gpu,
     obs = env.reset()
     r = 0
     done = False
-    for i in range(steps):
 
+    t = 0
+    while t < steps:
         try:
-            if i % eval_frequency == 0:
+            if t % eval_frequency == 0:
                 # Test performance
                 mean, median, stdev = eval_performance(
                     make_env, agent.q_function, phi, eval_n_runs, gpu)
                 with open(os.path.join(outdir, 'scores.txt'), 'a+') as f:
                     elapsed = time.time() - start_time
-                    record = (i, elapsed, mean, median, stdev)
+                    record = (t, elapsed, mean, median, stdev)
                     print('\t'.join(str(x) for x in record), file=f)
                 if mean > max_score:
                     if max_score is not None:
                         # Save the best model so far
                         print('The best score is updated {} -> {}'.format(
                             max_score, mean))
-                        filename = os.path.join(outdir, '{}.h5'.format(i))
+                        filename = os.path.join(outdir, '{}.h5'.format(t))
                         agent.save_model(filename)
                         print('Saved the current best model to {}'.format(
                             filename))
@@ -78,12 +79,9 @@ def run_dqn(agent, make_env, phi, steps, eval_n_runs, eval_frequency, gpu,
 
             action = agent.act(obs, r, done)
 
-            if agent.epsilon >= 0.1:
-                agent.epsilon -= 0.9 / final_exploration_steps
-
             if done:
-                print('{} i:{} episode_idx:{} epsilon:{} episode_r:{}'.format(
-                    outdir, i, episode_idx, agent.epsilon, episode_r))
+                print('{} t:{} episode_idx:{} explorer:{} episode_r:{}'.format(
+                    outdir, t, episode_idx, agent.explorer, episode_r))
                 episode_r = 0
                 episode_idx += 1
                 obs = env.reset()
@@ -91,10 +89,11 @@ def run_dqn(agent, make_env, phi, steps, eval_n_runs, eval_frequency, gpu,
                 done = False
             else:
                 obs, r, done, info = env.step(action)
+                t += 1
         except KeyboardInterrupt:
             # Save the current model before being killed
             agent.save_model(os.path.join(
-                outdir, '{}_keyboardinterrupt.h5'.format(i)))
+                outdir, '{}_keyboardinterrupt.h5'.format(t)))
             print('Saved the current model to {}'.format(outdir),
                   file=sys.stderr)
             raise

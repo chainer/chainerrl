@@ -28,10 +28,11 @@ class DQN(agent.Agent):
     """DQN = QNetwork + Optimizer
     """
 
-    def __init__(self, q_function, optimizer, replay_buffer, gamma, epsilon,
-                 gpu=-1, replay_start_size=50000, minibatch_size=32,
-                 update_frequency=1, target_update_frequency=10000,
-                 clip_delta=True, clip_reward=True, phi=lambda x: x):
+    def __init__(self, q_function, optimizer, replay_buffer, gamma,
+                 explorer, gpu=-1, replay_start_size=50000,
+                 minibatch_size=32, update_frequency=1,
+                 target_update_frequency=10000, clip_delta=True,
+                 clip_reward=True, phi=lambda x: x):
         """
         Args:
           replay_start_size (int): if replay buffer's size is less than replay_start_size, skip updating
@@ -48,7 +49,7 @@ class DQN(agent.Agent):
         self.replay_buffer = replay_buffer
         self.optimizer = optimizer
         self.gamma = gamma
-        self.epsilon = epsilon
+        self.explorer = explorer
         self.gpu = gpu
         assert minibatch_size <= replay_start_size
         self.replay_start_size = replay_start_size
@@ -227,10 +228,11 @@ class DQN(agent.Agent):
         if not is_state_terminal:
             qout = self.q_function(self._batch_states([state]), test=True)
 
-            action = qout.sample_epsilon_greedy_actions(self.epsilon)
-            q = qout.evaluate_actions(action)
+            action = self.explorer.select_action(
+                self.t, lambda: cuda.to_cpu(qout.greedy_actions.data[0]))
+            action_var = chainer.Variable(self.xp.asarray([action]))
+            q = qout.evaluate_actions(action_var)
 
-            action = cuda.to_cpu(action.data)[0]
             if self.t % 100 == 0:
                 logger.debug('t:{} a:{} q:{} qout:{}'.format(
                     self.t, action, q.data, qout))

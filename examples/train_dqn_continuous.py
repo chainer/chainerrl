@@ -15,6 +15,7 @@ from init_like_torch import init_like_torch
 import q_function
 import env_modifiers
 import run_dqn
+from explorers.epsilon_greedy import LinearDecayEpsilonGreedy
 
 
 def main():
@@ -28,6 +29,8 @@ def main():
     parser.add_argument('--gpu', type=int, default=0)
     parser.add_argument('--final-exploration-steps',
                         type=int, default=10 ** 6)
+    parser.add_argument('--start-epsilon', type=float, default=1.0)
+    parser.add_argument('--end-epsilon', type=float, default=0.1)
     parser.add_argument('--model', type=str, default='')
     parser.add_argument('--steps', type=int, default=10 ** 7)
     parser.add_argument('--replay-start-size', type=int, default=10 ** 4)
@@ -98,8 +101,11 @@ def main():
     def phi(obs):
         return obs.astype(np.float32)
 
+    explorer = LinearDecayEpsilonGreedy(
+        args.start_epsilon, args.end_epsilon, args.final_exploration_steps,
+        lambda: action_space.sample().astype(np.float32))
     agent = DQN(q_func, opt, rbuf, gpu=args.gpu, gamma=args.gamma,
-                epsilon=0.1, replay_start_size=args.replay_start_size,
+                explorer=explorer, replay_start_size=args.replay_start_size,
                 target_update_frequency=args.target_update_frequency,
                 update_frequency=args.update_frequency,
                 phi=phi, minibatch_size=args.minibatch_size)
@@ -110,8 +116,7 @@ def main():
     run_dqn.run_dqn(
         agent=agent, make_env=make_env, phi=phi, steps=args.steps,
         eval_n_runs=args.eval_n_runs, eval_frequency=args.eval_frequency,
-        gpu=args.gpu, outdir=args.outdir,
-        final_exploration_steps=args.final_exploration_steps)
+        gpu=args.gpu, outdir=args.outdir)
 
 
 if __name__ == '__main__':

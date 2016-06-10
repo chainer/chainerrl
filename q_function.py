@@ -133,4 +133,4 @@ class FCSIContinuousQFunction(chainer.Chain, QFunction):
             mat = F.batch_matmul(tril, tril, transb=True)
         else:
             mat = F.expand_dims(mat_diag ** 2, axis=2)
-        return ContinuousQOutput(mu, mat, v, self.action_space)
+        return ContinuousQOutput(mu, mat, v)

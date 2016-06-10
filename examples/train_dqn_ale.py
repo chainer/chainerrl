@@ -21,6 +21,7 @@ from prepare_output_dir import prepare_output_dir
 from functions import oplu
 from init_like_torch import init_like_torch
 from dqn_phi import dqn_phi
+from explorers.epsilon_greedy import LinearDecayEpsilonGreedy
 
 
 def parse_activation(activation_str):
@@ -126,8 +127,10 @@ def main():
 
     rbuf = replay_buffer.ReplayBuffer(10 ** 6)
 
+    explorer = LinearDecayEpsilonGreedy(1.0, 0.1, args.final_exploration_frames,
+                                        lambda: np.random.randint(n_actions))
     agent = DQN(q_func, opt, rbuf, gpu=args.gpu, gamma=0.99,
-                epsilon=1.0, replay_start_size=args.replay_start_size,
+                explorer=explorer, replay_start_size=args.replay_start_size,
                 target_update_frequency=args.target_update_frequency,
                 clip_delta=args.clip_delta,
                 update_frequency=args.update_frequency,
@@ -177,12 +180,9 @@ def main():
 
             action = agent.act(env.state, env.reward, env.is_terminal)
 
-            if agent.epsilon >= 0.1:
-                agent.epsilon -= 0.9 / args.final_exploration_frames
-
             if env.is_terminal:
-                print('{} i:{} episode_idx:{} epsilon:{} episode_r:{}'.format(
-                    args.outdir, i, episode_idx, agent.epsilon, episode_r))
+                print('{} i:{} episode_idx:{} explorer:{} episode_r:{}'.format(
+                    args.outdir, i, episode_idx, agent.explorer, episode_r))
                 episode_r = 0
                 episode_idx += 1
                 env.initialize()

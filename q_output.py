@@ -61,12 +61,11 @@ class ContinuousQOutput(object):
     See: http://arxiv.org/abs/1603.00748
     """
 
-    def __init__(self, mu, mat, v, action_space):
+    def __init__(self, mu, mat, v):
         self.xp = cuda.get_array_module(mu.data)
         self.mu = mu
         self.mat = mat
         self.v = v
-        self.action_space = action_space
 
         self.batch_size = self.mu.data.shape[0]
 
@@ -77,18 +76,6 @@ class ContinuousQOutput(object):
     @cached_property
     def max(self):
         return F.reshape(self.v, (self.batch_size,))
-
-    def sample_epsilon_greedy_actions(self, epsilon):
-        assert self.mu.data.shape[0] == 1, \
-            "This method doesn't support batch computation"
-        if np.random.random() < epsilon:
-            sample = self.action_space.sample().astype(np.float32)
-            sample = np.expand_dims(sample, axis=0)
-            if self.xp == cuda.cupy:
-                sample = cuda.to_gpu(sample)
-            return chainer.Variable(sample)
-        else:
-            return self.greedy_actions
 
     def evaluate_actions(self, actions):
         assert isinstance(actions, chainer.Variable)
