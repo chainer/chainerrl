@@ -4,7 +4,6 @@ import time
 
 import chainer
 import numpy as np
-import gc
 
 
 def eval_performance(make_env, q_func, phi, n_runs, gpu):
@@ -94,8 +93,7 @@ def run_dqn(agent, make_env, phi, steps, eval_n_runs, eval_frequency, gpu,
             # Save the current model before being killed
             agent.save_model(os.path.join(
                 outdir, '{}_keyboardinterrupt.h5'.format(t)))
-            print('Saved the current model to {}'.format(outdir),
-                  file=sys.stderr)
+            print('Saved the current model to {}'.format(outdir))
             raise
 
     # Save the final model
