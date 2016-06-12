@@ -76,7 +76,6 @@ def main():
     sample_env = gym.make(args.env)
     # timestep_limit = sample_env.spec.timestep_limit
     obs_size = np.asarray(sample_env.observation_space.shape).prod()
-    obs_space = sample_env.observation_space
     action_size = np.asarray(sample_env.action_space.shape).prod()
     action_space = sample_env.action_space
     print(obs_size, action_size)
@@ -109,6 +108,7 @@ def main():
                 target_update_frequency=args.target_update_frequency,
                 update_frequency=args.update_frequency,
                 phi=phi, minibatch_size=args.minibatch_size)
+    agent.logger.setLevel(logging.DEBUG)
 
     if len(args.model) > 0:
         agent.load_model(args.model)
