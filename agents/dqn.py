@@ -12,8 +12,6 @@ from chainer import serializers
 import agent
 import copy_param
 
-logger = getLogger(__name__)
-
 
 def _to_device(obj, gpu):
     if isinstance(obj, tuple):
@@ -33,7 +31,8 @@ class DQN(agent.Agent):
                  explorer, gpu=-1, replay_start_size=50000,
                  minibatch_size=32, update_frequency=1,
                  target_update_frequency=10000, clip_delta=True,
-                 clip_reward=True, phi=lambda x: x):
+                 clip_reward=True, phi=lambda x: x,
+                 logger=getLogger(__name__)):
         """
         Args:
           replay_start_size (int): if replay buffer's size is less than
@@ -62,6 +61,7 @@ class DQN(agent.Agent):
         self.clip_delta = clip_delta
         self.clip_reward = clip_reward
         self.phi = phi
+        self.logger = logger
 
         self.t = 0
         self.last_state = None
@@ -225,6 +225,8 @@ class DQN(agent.Agent):
 
     def act(self, state, reward, is_state_terminal):
 
+        self.logger.debug('t:%s r:%s', self.t, reward)
+
         if self.clip_reward:
             reward = np.clip(reward, -1, 1)
 
@@ -236,9 +238,8 @@ class DQN(agent.Agent):
             action_var = chainer.Variable(self.xp.asarray([action]))
             q = qout.evaluate_actions(action_var)
 
-            if self.t % 100 == 0:
-                logger.debug('t:{} a:{} q:{} qout:{}'.format(
-                    self.t, action, q.data, qout))
+            self.logger.debug('t:%s a:%s q:%s qout:%s',
+                              self.t, action, q.data, qout)
             self.t += 1
 
             # Update the target network
@@ -246,7 +247,7 @@ class DQN(agent.Agent):
             # process specific counter instead. So i_target should be set
             # x-times smaller, where x is the number of processes
             if self.t % self.target_update_frequency == 0:
-                print('sync')
+                self.logger.debug('sync')
                 copy_param.copy_param(self.target_q_function, self.q_function)
 
         if self.last_state is not None:
