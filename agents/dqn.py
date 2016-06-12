@@ -2,16 +2,17 @@ import copy
 import threading
 import os
 from logging import getLogger
-logger = getLogger(__name__)
 
 import numpy as np
 import chainer
 import chainer.functions as F
-from chainer import cuda, Variable
+from chainer import cuda
 from chainer import serializers
 
 import agent
 import copy_param
+
+logger = getLogger(__name__)
 
 
 def _to_device(obj, gpu):
@@ -35,8 +36,10 @@ class DQN(agent.Agent):
                  clip_reward=True, phi=lambda x: x):
         """
         Args:
-          replay_start_size (int): if replay buffer's size is less than replay_start_size, skip updating
-          target_update_frequency (int): frequency of updating target Q function
+          replay_start_size (int): if replay buffer's size is less than
+            replay_start_size, skip updating
+          target_update_frequency (int): frequency of updating target Q
+            function
         """
         self.q_function = q_function
         if gpu >= 0:
