@@ -223,6 +223,19 @@ class DQN(agent.Agent):
         serializers.save_hdf5(model_filename + '.opt', self.optimizer)
         self.lock.release()
 
+    def select_action(self, state):
+        qout = self.q_function(self._batch_states([state]), test=True)
+
+        action = self.explorer.select_action(
+            self.t, lambda: cuda.to_cpu(qout.greedy_actions.data)[0])
+        action_var = chainer.Variable(self.xp.asarray([action]))
+        q = qout.evaluate_actions(action_var)
+
+        self.logger.debug('t:%s a:%s q:%s qout:%s',
+                          self.t, action, q.data, qout)
+
+        return action
+
     def act(self, state, reward, is_state_terminal):
 
         self.logger.debug('t:%s r:%s', self.t, reward)
@@ -231,15 +244,7 @@ class DQN(agent.Agent):
             reward = np.clip(reward, -1, 1)
 
         if not is_state_terminal:
-            qout = self.q_function(self._batch_states([state]), test=True)
-
-            action = self.explorer.select_action(
-                self.t, lambda: cuda.to_cpu(qout.greedy_actions.data)[0])
-            action_var = chainer.Variable(self.xp.asarray([action]))
-            q = qout.evaluate_actions(action_var)
-
-            self.logger.debug('t:%s a:%s q:%s qout:%s',
-                              self.t, action, q.data, qout)
+            action = self.select_action(state)
             self.t += 1
 
             # Update the target network
