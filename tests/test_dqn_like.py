@@ -10,6 +10,7 @@ import numpy as np
 import q_function
 import random_seed
 from envs.simple_abc import ABC
+from explorers.epsilon_greedy import LinearDecayEpsilonGreedy
 
 
 class _TestDQNLike(unittest.TestCase):
@@ -28,18 +29,35 @@ class _TestDQNLike(unittest.TestCase):
         return q_function.FCSIContinuousQFunction(
             5, n_dim_action, 20, 2, action_space)
 
-    def make_agent(self, gpu, q_func, opt):
+    def make_discrete_explorer(self):
+        return LinearDecayEpsilonGreedy(
+            1.0, 0.1, 1000, lambda: np.random.randint(3))
+
+    def make_continuous_explorer(self):
+        return LinearDecayEpsilonGreedy(
+            1.0, 0.1, 1000,
+            lambda: np.random.uniform(
+                low=-0.49, high=2.49, size=2).astype(np.float32))
+
+    def make_agent(self, gpu, q_func, explorer, opt):
         raise NotImplementedError
 
-    def _test_abc(self, gpu, q_func):
+    def _test_abc(self, gpu, discrete=True):
 
         random_seed.set_random_seed(0)
+
+        if discrete:
+            q_func = self.make_discrete_q_func()
+            explorer = self.make_discrete_explorer()
+        else:
+            q_func = self.make_continuous_q_func()
+            explorer = self.make_continuous_explorer()
 
         opt = optimizers.RMSpropGraves(
             lr=2e-3, alpha=0.95, momentum=0.95, eps=1e-4)
         opt.setup(q_func)
 
-        agent = self.make_agent(gpu, q_func, opt)
+        agent = self.make_agent(gpu, q_func, explorer, opt)
 
         env = ABC()
 
@@ -58,8 +76,8 @@ class _TestDQNLike(unittest.TestCase):
             action = agent.act(obs, reward, done)
 
             if done:
-                print(('i:{} epsilon:{} episode_r:{}'.format(
-                    i, agent.epsilon, episode_r)))
+                print(('i:{} explorer:{} episode_r:{}'.format(
+                    i, agent.explorer, episode_r)))
                 episode_r = 0
                 obs = env.reset()
                 done = False
@@ -68,7 +86,6 @@ class _TestDQNLike(unittest.TestCase):
                 obs, reward, done, _ = env.step(action)
 
         # Test
-        agent.epsilon = 0.0
         total_r = 0.0
         obs = env.reset()
         done = False
@@ -85,13 +102,13 @@ class _TestDQNLike(unittest.TestCase):
         self.assertAlmostEqual(total_r, 1)
 
     def test_abc_discrete_gpu(self):
-        self._test_abc(0, self.make_discrete_q_func())
+        self._test_abc(0, discrete=True)
 
     def test_abc_continuous_gpu(self):
-        self._test_abc(0, self.make_continuous_q_func())
+        self._test_abc(0, discrete=False)
 
     def test_abc_discrete_cpu(self):
-        self._test_abc(-1, self.make_discrete_q_func())
+        self._test_abc(-1, discrete=True)
 
     def test_abc_continuous_cpu(self):
-        self._test_abc(-1, self.make_continuous_q_func())
+        self._test_abc(-1, discrete=False)
