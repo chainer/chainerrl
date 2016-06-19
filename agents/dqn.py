@@ -234,7 +234,7 @@ class DQN(agent.Agent):
             qout = self.q_function(self._batch_states([state]), test=True)
 
             action = self.explorer.select_action(
-                self.t, lambda: cuda.to_cpu(qout.greedy_actions.data[0]))
+                self.t, lambda: cuda.to_cpu(qout.greedy_actions.data)[0])
             action_var = chainer.Variable(self.xp.asarray([action]))
             q = qout.evaluate_actions(action_var)
 
