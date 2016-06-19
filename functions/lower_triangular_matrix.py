@@ -36,7 +36,7 @@ def _non_diagonal_idx_array(batch_size, n):
         start=0, stop=batch_size * n * n, step=n * n, dtype=np.int32).reshape(
         (batch_size, 1))
     idx = np.ravel_multi_index(
-        np.tril_indices(n, -1), (n, n)).reshape((1, n)).astype(np.int32)
+        np.tril_indices(n, -1), (n, n)).reshape((1, -1)).astype(np.int32)
     return cuda.to_gpu(idx + idx_offsets)
 
 

@@ -12,11 +12,17 @@ from functions.lower_triangular_matrix import lower_triangular_matrix
 from functions.lower_triangular_matrix import LowerTriangularMatrix
 
 
+@testing.parameterize(
+    {'n': 1},
+    {'n': 2},
+    {'n': 3},
+    {'n': 4},
+    {'n': 5},
+)
 class TestLowerTriangularMatrix(unittest.TestCase):
 
     def setUp(self):
         self.batch_size = 5
-        self.n = 3
         self.diag = numpy.random.uniform(
             0.1, 1, (self.batch_size, self.n)).astype(numpy.float32)
         non_diag_size = self.n * (self.n - 1) // 2
