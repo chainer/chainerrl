@@ -5,6 +5,7 @@ from chainer import optimizers
 from chainer import cuda
 import gym
 import numpy as np
+from gym import spaces
 
 sys.path.append('..')
 from agents.dqn import DQN
@@ -63,7 +64,8 @@ def main():
         env = gym.make(args.env)
         timestep_limit = env.spec.timestep_limit
         env_modifiers.make_timestep_limited(env, timestep_limit)
-        env_modifiers.make_action_filtered(env, clip_action_filter)
+        if isinstance(env.action_space, spaces.Box):
+            env_modifiers.make_action_filtered(env, clip_action_filter)
         env_modifiers.make_reward_filtered(env, reward_filter)
         if args.render:
             env_modifiers.make_rendered(env)
@@ -76,16 +78,19 @@ def main():
     sample_env = gym.make(args.env)
     # timestep_limit = sample_env.spec.timestep_limit
     obs_size = np.asarray(sample_env.observation_space.shape).prod()
-    action_size = np.asarray(sample_env.action_space.shape).prod()
     action_space = sample_env.action_space
-    print(obs_size, action_size)
     del sample_env
 
     args.outdir = prepare_output_dir(args, args.outdir)
     print('Output files are saved in {}'.format(args.outdir))
 
-    q_func = q_function.FCSIContinuousQFunction(
-        obs_size, action_size, 100, 2, action_space)
+    if isinstance(action_space, spaces.Box):
+        action_size = np.asarray(action_space.shape).prod()
+        q_func = q_function.FCSIContinuousQFunction(
+            obs_size, action_size, 100, 2, action_space)
+    else:
+        n_actions = action_space.n
+        q_func = q_function.FCSIQFunction(obs_size, n_actions, 100, 2)
     init_like_torch(q_func)
 
     # Use the same hyper parameters as the Nature paper's
@@ -100,9 +105,15 @@ def main():
     def phi(obs):
         return obs.astype(np.float32)
 
+    def random_action():
+        a = action_space.sample()
+        if isinstance(a, np.ndarray):
+            a = a.astype(np.float32)
+        return a
+
     explorer = LinearDecayEpsilonGreedy(
         args.start_epsilon, args.end_epsilon, args.final_exploration_steps,
-        lambda: action_space.sample().astype(np.float32))
+        random_action)
     agent = DQN(q_func, opt, rbuf, gpu=args.gpu, gamma=args.gamma,
                 explorer=explorer, replay_start_size=args.replay_start_size,
                 target_update_frequency=args.target_update_frequency,
