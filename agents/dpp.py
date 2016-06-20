@@ -64,3 +64,17 @@ class DPP(DQN):
         t.unchain_backward()
 
         return batch_q, t
+
+
+class DPPL(DPP):
+    """Dynamic Policy Programming."""
+
+    def _l_operator(self, qout):
+        return F.logsumexp(self.eta * qout.q_values, axis=1) / self.eta
+
+
+class DPPGreedy(DPP):
+    """Dynamic Policy Programming."""
+
+    def _l_operator(self, qout):
+        return qout.max
