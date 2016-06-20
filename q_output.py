@@ -49,6 +49,9 @@ class DiscreteQOutput(object):
     def compute_double_advantage(self, actions, argmax_actions):
         return self.evaluate_actions(actions) - self.evaluate_actions(argmax_actions)
 
+    def compute_expectation(self, beta):
+        return F.sum(F.softmax(beta * self.q_values) * self.q_values, axis=1)
+
     def __repr__(self):
         return 'DiscreteQOutput greedy_actions:{} q_values:{}'.format(
             self.greedy_actions.data,
