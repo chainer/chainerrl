@@ -13,14 +13,16 @@ class DPP(DQN):
         self.eta = kwargs.pop('eta', 1.0)
         super().__init__(*args, **kwargs)
 
+    def _l_operator(self, qout):
+        return qout.compute_expectation(self.eta)
+
     def _compute_target_values(self, experiences, gamma):
 
         batch_next_state = self._batch_states(
             [elem['next_state'] for elem in experiences])
 
         target_next_qout = self.target_q_function(batch_next_state, test=True)
-        next_q_expect = target_next_qout.compute_expectation(self.eta)
-        next_q_expect.unchain_backward()
+        next_q_expect = self._l_operator(target_next_qout)
 
         batch_rewards = chainer.Variable(self.xp.asarray(
             [elem['reward'] for elem in experiences], dtype=np.float32))
@@ -46,13 +48,19 @@ class DPP(DQN):
         batch_q = F.reshape(qout.evaluate_actions(
             batch_actions), (batch_size, 1))
 
+        # Compute target values
         target_qout = self.target_q_function(batch_state, test=True)
-        batch_q_expect = F.reshape(
-            target_qout.compute_expectation(self.eta), (batch_size, 1))
-        batch_q_expect.unchain_backward()
+
+        target_q = F.reshape(target_qout.evaluate_actions(
+            batch_actions), (batch_size, 1))
+
+        target_q_expect = F.reshape(
+            self._l_operator(target_qout), (batch_size, 1))
 
         batch_q_target = F.reshape(
             self._compute_target_values(experiences, gamma), (batch_size, 1))
-        batch_q_target.unchain_backward()
 
-        return batch_q, (batch_q_target - batch_q_expect)
+        t = target_q + batch_q_target - target_q_expect
+        t.unchain_backward()
+
+        return batch_q, t
