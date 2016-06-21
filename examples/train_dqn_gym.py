@@ -9,9 +9,6 @@ from gym import spaces
 
 sys.path.append('..')
 from agents.dqn import DQN
-from agents.dpp import DPP
-from agents.dpp import DPPL
-from agents.dpp import DPPGreedy
 import random_seed
 import replay_buffer
 from prepare_output_dir import prepare_output_dir
@@ -20,7 +17,6 @@ import q_function
 import env_modifiers
 import run_dqn
 from explorers.epsilon_greedy import LinearDecayEpsilonGreedy
-from nonbias_weight_decay import NonbiasWeightDecay
 
 
 def main():
@@ -97,12 +93,12 @@ def main():
         q_func = q_function.FCSIQFunction(obs_size, n_actions, 100, 2)
     init_like_torch(q_func)
 
-    # opt = optimizers.Adam(alpha=5e-4, eps=1e-1)
+    # Use the same hyper parameters as the Nature paper's
+    # opt = optimizers.RMSpropGraves(
+    #     lr=2.5e-4, alpha=0.95, momentum=0.95, eps=1e-2)
     opt = optimizers.Adam()
 
     opt.setup(q_func)
-
-    # opt.add_hook(NonbiasWeightDecay(1e-5))
 
     rbuf = replay_buffer.ReplayBuffer(5 * 10 ** 5)
 
@@ -118,15 +114,12 @@ def main():
     explorer = LinearDecayEpsilonGreedy(
         args.start_epsilon, args.end_epsilon, args.final_exploration_steps,
         random_action)
-    agent = DPPGreedy(q_func, opt, rbuf, gpu=args.gpu, gamma=args.gamma,
-    # agent = DPPL(q_func, opt, rbuf, gpu=args.gpu, gamma=args.gamma, eta=1e5,
-    # agent = DPP(q_func, opt, rbuf, gpu=args.gpu, gamma=args.gamma, eta=1,
-    # agent = DQN(q_func, opt, rbuf, gpu=args.gpu, gamma=args.gamma,
+    agent = DQN(q_func, opt, rbuf, gpu=args.gpu, gamma=args.gamma,
                 explorer=explorer, replay_start_size=args.replay_start_size,
                 target_update_frequency=args.target_update_frequency,
                 update_frequency=args.update_frequency,
                 phi=phi, minibatch_size=args.minibatch_size)
-    # agent.logger.setLevel(logging.DEBUG)
+    agent.logger.setLevel(logging.DEBUG)
 
     if len(args.model) > 0:
         agent.load_model(args.model)
