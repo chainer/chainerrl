@@ -6,7 +6,7 @@ from chainer.utils import type_check
 
 class ScaleGrad(chainer.Function):
 
-    def __init__(self, scale=1.0):
+    def __init__(self, scale):
         self.scale = scale
 
     def check_type_forward(self, in_types):
