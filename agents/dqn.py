@@ -224,15 +224,17 @@ class DQN(agent.Agent):
         self.lock.release()
 
     def select_action(self, state):
-        qout = self.q_function(self._batch_states([state]), test=True)
 
-        action = self.explorer.select_action(
-            self.t, lambda: cuda.to_cpu(qout.greedy_actions.data)[0])
-        action_var = chainer.Variable(self.xp.asarray([action]))
-        q = qout.evaluate_actions(action_var)
+        def greedy_action():
+            qout = self.q_function(self._batch_states([state]), test=True)
+            action = cuda.to_cpu(qout.greedy_actions.data)[0]
+            action_var = chainer.Variable(self.xp.asarray([action]))
+            q = qout.evaluate_actions(action_var)
+            self.logger.debug('t:%s a:%s q:%s qout:%s',
+                              self.t, action, q.data, qout)
+            return action
 
-        self.logger.debug('t:%s a:%s q:%s qout:%s',
-                          self.t, action, q.data, qout)
+        action = self.explorer.select_action(self.t, greedy_action)
 
         return action
 
