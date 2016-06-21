@@ -135,13 +135,13 @@ class LinearGaussianPolicyWithDiagonalCovariance(chainer.ChainList, GaussianPoli
         self.action_size = action_size
 
         self.mean_layer = L.Linear(n_input_channels, action_size)
-        self.var_layer = L.Linear(n_input_channels, 1)
+        self.var_layer = L.Linear(n_input_channels, action_size)
 
         super().__init__(self.mean_layer, self.var_layer)
 
     def compute_mean_and_var(self, x):
-        # mean = self.mean_layer(x)
-        mean = F.tanh(self.mean_layer(x)) * 2.0
+        mean = self.mean_layer(x)
+        # mean = F.tanh(self.mean_layer(x)) * 2.0
         var = F.softplus(self.var_layer(x))
         return mean, var
 
@@ -160,7 +160,7 @@ class LinearGaussianPolicyWithSphericalCovariance(chainer.ChainList, GaussianPol
         super().__init__(self.mean_layer, self.var_layer)
 
     def compute_mean_and_var(self, x):
-        # mean = self.mean_layer(x)
-        mean = F.tanh(self.mean_layer(x)) * 2.0
+        mean = self.mean_layer(x)
+        # mean = F.tanh(self.mean_layer(x)) * 2.0
         var = F.softplus(F.broadcast_to(self.var_layer(x), mean.data.shape))
         return mean, var

@@ -1,6 +1,7 @@
 import os
 import statistics
 import time
+import logging
 
 import chainer
 import numpy as np
@@ -19,7 +20,7 @@ def eval_performance(make_env, q_func, phi, n_runs, gpu):
             if gpu >= 0:
                 s = chainer.cuda.to_gpu(s)
             qout = q_func(chainer.Variable(s), test=True)
-            a = qout.greedy_actions.data[0]
+            a = chainer.cuda.to_cpu(qout.greedy_actions.data)[0]
             obs, r, done, info = env.step(a)
             test_r += r
         scores.append(test_r)
@@ -81,6 +82,7 @@ def run_dqn(agent, make_env, phi, steps, eval_n_runs, eval_frequency, gpu,
             if done:
                 print('{} t:{} episode_idx:{} explorer:{} episode_r:{}'.format(
                     outdir, t, episode_idx, agent.explorer, episode_r))
+                agent.act(obs, r, done)
                 episode_r = 0
                 episode_idx += 1
                 obs = env.reset()

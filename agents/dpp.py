@@ -30,6 +30,7 @@ class DPP(DQN):
         batch_non_terminal = chainer.Variable(self.xp.asarray(
             [not elem['is_state_terminal'] for elem in experiences],
             dtype=np.float32))
+        print(batch_non_terminal.data)
 
         return batch_rewards + self.gamma * batch_non_terminal * next_q_expect
 
@@ -74,7 +75,7 @@ class DPPL(DPP):
 
 
 class DPPGreedy(DPP):
-    """Dynamic Policy Programming."""
+    """Dynamic Policy Programming with eta = infinity."""
 
     def _l_operator(self, qout):
         return qout.max

@@ -6,6 +6,9 @@ import sys
 import statistics
 import tempfile
 import time
+from typing import Callable
+from typing import Any
+from typing import Tuple
 
 import chainer
 from chainer import links as L
@@ -154,7 +157,26 @@ def train_loop_with_profile(process_idx, counter, make_env, max_score,
 def run_a3c(processes, make_env, model_opt, phi, t_max=1, beta=1e-2,
             profile=False, steps=8 * 10 ** 7, eval_frequency=10 ** 6,
             eval_n_runs=10, use_terminal_state_value=False, gamma=0.99,
-            args={}):
+            clip_reward=True, args={}):
+    """
+    Train an A3C model for a given environment.
+
+    Args:
+      processes: number of processes
+      make_env: callable (process_idx, test) -> env
+      model_opt: callable () -> (model, optimizer)
+      phi: callable (observation) -> numpy.ndarray
+      t_max: number of steps of returns
+      beta: scaling factor for the entropy regularization term
+      profile: profile if True
+      steps: total number of training steps
+      eval_frequency: steps after which evaluation is done
+      use_terminal_state_value: use terminal states' values for update if True
+      gamma: discount factor
+      args: program arguments
+    Returns:
+      None
+    """
 
     # Prevent numpy from using multiple threads
     os.environ['OMP_NUM_THREADS'] = '1'
@@ -187,7 +209,8 @@ def run_a3c(processes, make_env, model_opt, phi, t_max=1, beta=1e-2,
 
         agent = a3c.A3C(model, opt, t_max, gamma, beta=beta,
                         process_idx=process_idx, phi=phi,
-                        use_terminal_state_value=use_terminal_state_value)
+                        use_terminal_state_value=use_terminal_state_value,
+                        clip_reward=clip_reward)
 
         if profile:
             train_loop_with_profile(process_idx, counter, make_env, max_score,
