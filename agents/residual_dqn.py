@@ -25,7 +25,6 @@ class ResidualDQN(DQN):
 
         target_next_qout = self.q_function(batch_next_state, test=False)
         next_q_max = target_next_qout.max
-        next_q_max.unchain_backward()
 
         batch_rewards = self.xp.asarray(
             [elem['reward'] for elem in experiences], dtype=np.float32)
