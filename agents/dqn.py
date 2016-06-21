@@ -27,6 +27,13 @@ class DQN(agent.Agent):
     """DQN = QNetwork + Optimizer
     """
 
+    def sync_target_network(self):
+        if self.target_q_function is None:
+            self.target_q_function = copy.deepcopy(self.q_function)
+        else:
+            self.logger.debug('sync')
+            copy_param.copy_param(self.target_q_function, self.q_function)
+
     def __init__(self, q_function, optimizer, replay_buffer, gamma,
                  explorer, gpu=-1, replay_start_size=50000,
                  minibatch_size=32, update_frequency=1,
@@ -47,7 +54,6 @@ class DQN(agent.Agent):
             self.xp = cuda.cupy
         else:
             self.xp = np
-        self.target_q_function = copy.deepcopy(self.q_function)
         self.replay_buffer = replay_buffer
         self.optimizer = optimizer
         self.gamma = gamma
@@ -67,6 +73,9 @@ class DQN(agent.Agent):
         self.last_state = None
         self.last_action = None
         self.lock = threading.Lock()
+
+        self.target_q_function = None
+        self.sync_target_network()
 
     def update(self, experiences, errors_out=None):
         """Update the model from experiences
@@ -197,7 +206,7 @@ class DQN(agent.Agent):
 
     def _load_model_without_lock(self, model_filename):
         serializers.load_hdf5(model_filename, self.q_function)
-        copy_param.copy_param(self.target_q_function, self.q_function)
+        self.sync_target_network()
         opt_filename = model_filename + '.opt'
         if os.path.exists(opt_filename):
             print('WARNING: {0} was not found, so loaded only a model'.format(
@@ -254,8 +263,7 @@ class DQN(agent.Agent):
             # process specific counter instead. So i_target should be set
             # x-times smaller, where x is the number of processes
             if self.t % self.target_update_frequency == 0:
-                self.logger.debug('sync')
-                copy_param.copy_param(self.target_q_function, self.q_function)
+                self.sync_target_network()
 
         if self.last_state is not None:
             assert self.last_action is not None
