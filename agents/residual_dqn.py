@@ -23,7 +23,7 @@ class ResidualDQN(DQN):
         batch_next_state = self._batch_states(
             [elem['next_state'] for elem in experiences])
 
-        target_next_qout = self.q_function(batch_next_state, test=True)
+        target_next_qout = self.q_function(batch_next_state, test=False)
         next_q_max = target_next_qout.max
         next_q_max.unchain_backward()
 
