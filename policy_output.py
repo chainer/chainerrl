@@ -1,3 +1,11 @@
+from __future__ import division
+from __future__ import unicode_literals
+from __future__ import print_function
+from __future__ import absolute_import
+from builtins import range
+from builtins import int
+from future import standard_library
+standard_library.install_aliases()
 import chainer
 from chainer import functions as F
 from cached_property import cached_property
