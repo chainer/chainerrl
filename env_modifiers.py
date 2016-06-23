@@ -22,21 +22,19 @@ def make_rendered(env, *render_args, **render_kwargs):
 
 
 def make_timestep_limited(env, timestep_limit):
-    t = 1
+    t = [1]
     old__step = env._step
     old__reset = env._reset
 
     def _step(action):
-        nonlocal t
         observation, reward, done, info = old__step(action)
-        if t >= timestep_limit:
+        if t[0] >= timestep_limit:
             done = True
-        t += 1
+        t[0] += 1
         return observation, reward, done, info
 
     def _reset():
-        nonlocal t
-        t = 1
+        t[0] = 1
         return old__reset()
 
     env._step = _step
