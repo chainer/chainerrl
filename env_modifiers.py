@@ -1,3 +1,9 @@
+from __future__ import unicode_literals
+from __future__ import print_function
+from __future__ import division
+from __future__ import absolute_import
+from future import standard_library
+standard_library.install_aliases()
 def make_rendered(env, *render_args, **render_kwargs):
     base_step = env.step
     base_close = env.close

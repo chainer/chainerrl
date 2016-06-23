@@ -4,10 +4,7 @@ from __future__ import division
 from __future__ import absolute_import
 from future import standard_library
 standard_library.install_aliases()
-import random
-import numpy as np
+class ExplorationStrategy(object):
 
-
-def set_random_seed(seed):
-    random.seed(seed)
-    np.random.seed(seed)
+    def select_action(self, t, greedy_action_func):
+        pass

@@ -1,4 +1,10 @@
-import functools
+from __future__ import unicode_literals
+from __future__ import print_function
+from __future__ import division
+from __future__ import absolute_import
+from future import standard_library
+standard_library.install_aliases()
+import fastcache
 import numpy as np
 
 from chainer import cuda
@@ -20,7 +26,7 @@ def _set_batch_diagonal_cpu(array, diag_val):
     array[:, rows, cols] = diag_val
 
 
-@functools.lru_cache()
+@fastcache.clru_cache()
 def _diagonal_idx_array(batch_size, n):
     idx_offsets = np.arange(
         start=0, stop=batch_size * n * n, step=n * n, dtype=np.int32).reshape(
@@ -30,7 +36,7 @@ def _diagonal_idx_array(batch_size, n):
     return cuda.to_gpu(idx + idx_offsets)
 
 
-@functools.lru_cache()
+@fastcache.clru_cache()
 def _non_diagonal_idx_array(batch_size, n):
     idx_offsets = np.arange(
         start=0, stop=batch_size * n * n, step=n * n, dtype=np.int32).reshape(
