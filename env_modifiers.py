@@ -23,22 +23,22 @@ def make_rendered(env, *render_args, **render_kwargs):
 
 def make_timestep_limited(env, timestep_limit):
     t = [1]
-    old__step = env._step
-    old__reset = env._reset
+    old_step = env.step
+    old_reset = env.reset
 
-    def _step(action):
-        observation, reward, done, info = old__step(action)
+    def step(action):
+        observation, reward, done, info = old_step(action)
         if t[0] >= timestep_limit:
             done = True
         t[0] += 1
         return observation, reward, done, info
 
-    def _reset():
+    def reset():
         t[0] = 1
-        return old__reset()
+        return old_reset()
 
-    env._step = _step
-    env._reset = _reset
+    env.step = step
+    env.reset = reset
 
 
 def make_action_filtered(env, action_filter):
@@ -51,11 +51,11 @@ def make_action_filtered(env, action_filter):
 
 
 def make_reward_filtered(env, reward_filter):
-    old__step = env._step
+    old_step = env.step
 
-    def _step(action):
-        observation, reward, done, info = old__step(action)
+    def step(action):
+        observation, reward, done, info = old_step(action)
         reward = reward_filter(reward)
         return observation, reward, done, info
 
-    env._step = _step
+    env.step = step
