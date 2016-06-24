@@ -15,11 +15,10 @@ import chainer
 import numpy as np
 
 
-def eval_performance(make_env, q_func, phi, n_runs, gpu):
+def eval_performance(env, q_func, phi, n_runs, gpu):
     assert n_runs > 1, 'Computing stdev requires at least two runs'
     scores = []
     for i in range(n_runs):
-        env = make_env()
         obs = env.reset()
         done = False
         test_r = 0
@@ -33,59 +32,96 @@ def eval_performance(make_env, q_func, phi, n_runs, gpu):
             test_r += r
         scores.append(test_r)
         print('test_{}:'.format(i), test_r)
-        env.close()
     mean = statistics.mean(scores)
     median = statistics.median(scores)
     stdev = statistics.stdev(scores)
     return mean, median, stdev
 
 
-def run_dqn(agent, make_env, phi, steps, eval_n_runs, eval_frequency, gpu,
-            outdir):
+def record_stats(outdir, t, start_time, mean, median, stdev):
+    with open(os.path.join(outdir, 'scores.txt'), 'a+') as f:
+        elapsed = time.time() - start_time
+        record = (t, elapsed, mean, median, stdev)
+        print('\t'.join(str(x) for x in record), file=f)
 
-    env = make_env()
+
+def update_best_model(agent, outdir, t, old_max_score, new_max_score):
+    # Save the best model so far
+    print('The best score is updated {} -> {}'.format(
+        old_max_score, new_max_score))
+    filename = os.path.join(outdir, '{}.h5'.format(t))
+    agent.save_model(filename)
+    print('Saved the current best model to {}'.format(
+        filename))
+
+
+class Evaluator(object):
+
+    def __init__(self, reuse_env, make_env, n_runs, phi, gpu, eval_frequency,
+                 outdir):
+        self.max_score = np.finfo(np.float32).min
+        self.start_time = time.time()
+        self.eval_after_this_episode = False
+        self.reuse_env = reuse_env
+        self.make_env = make_env
+        self.n_runs = n_runs
+        self.phi = phi
+        self.gpu = gpu
+        self.eval_frequency = eval_frequency
+        self.outdir = outdir
+
+    def evaluate_and_update_max_score(self, env, t, agent):
+        mean, median, stdev = eval_performance(
+            env, agent.q_function, self.phi, self.n_runs, self.gpu)
+        record_stats(self.outdir, t, self.start_time, mean, median, stdev)
+        if mean > self.max_score:
+            update_best_model(agent, self.outdir, t, self.max_score, mean)
+            self.max_score = mean
+
+    def step(self, t, done, env, agent):
+        if self.reuse_env:
+            if t % self.eval_frequency == 0:
+                self.eval_after_this_episode = True
+            if self.eval_after_this_episode and done:
+                # Eval with the existing env
+                self.evaluate_and_update_max_score(env, t, agent)
+                self.eval_after_this_episode = False
+        else:
+            if t % self.eval_frequency == 0:
+                # Eval with a new env
+                self.evaluate_and_update_max_score(
+                    self.make_env(True), t, agent)
+
+
+def run_dqn(agent, make_env, phi, steps, eval_n_runs, eval_frequency, gpu,
+            outdir, reuse_env=False):
+
+    env = make_env(False)
 
     episode_r = 0
 
     episode_idx = 0
-    max_score = np.finfo(np.float32).min
 
     # Write a header line first
     with open(os.path.join(outdir, 'scores.txt'), 'a+') as f:
         column_names = ('steps', 'elapsed', 'mean', 'median', 'stdev')
         print('\t'.join(column_names), file=f)
 
-    start_time = time.time()
-
     obs = env.reset()
     r = 0
     done = False
 
     t = 0
+
+    evaluator = Evaluator(
+        reuse_env=reuse_env, make_env=make_env, n_runs=eval_n_runs, phi=phi,
+        gpu=gpu, eval_frequency=eval_frequency, outdir=outdir)
+
     while t < steps:
         try:
-            if t % eval_frequency == 0:
-                # Test performance
-                mean, median, stdev = eval_performance(
-                    make_env, agent.q_function, phi, eval_n_runs, gpu)
-                with open(os.path.join(outdir, 'scores.txt'), 'a+') as f:
-                    elapsed = time.time() - start_time
-                    record = (t, elapsed, mean, median, stdev)
-                    print('\t'.join(str(x) for x in record), file=f)
-                if mean > max_score:
-                    if max_score is not None:
-                        # Save the best model so far
-                        print('The best score is updated {} -> {}'.format(
-                            max_score, mean))
-                        filename = os.path.join(outdir, '{}.h5'.format(t))
-                        agent.save_model(filename)
-                        print('Saved the current best model to {}'.format(
-                            filename))
-                    max_score = mean
-
             episode_r += r
-
             action = agent.act(obs, r, done)
+            evaluator.step(t, done, env, agent)
 
             if done:
                 print('{} t:{} episode_idx:{} explorer:{} episode_r:{}'.format(
