@@ -80,7 +80,7 @@ class Evaluator(object):
 
     def step(self, t, done, env, agent):
         if self.reuse_env:
-            if t % self.eval_frequency == 0:
+            if t > 0 and t % self.eval_frequency == 0:
                 self.eval_after_this_episode = True
             if self.eval_after_this_episode and done:
                 # Eval with the existing env
