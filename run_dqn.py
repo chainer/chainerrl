@@ -94,7 +94,7 @@ class Evaluator(object):
 
 
 def run_dqn(agent, make_env, phi, steps, eval_n_runs, eval_frequency, gpu,
-            outdir, reuse_env=False):
+            outdir, reuse_env=False, max_episode_len=None):
 
     env = make_env(False)
 
@@ -117,23 +117,29 @@ def run_dqn(agent, make_env, phi, steps, eval_n_runs, eval_frequency, gpu,
         reuse_env=reuse_env, make_env=make_env, n_runs=eval_n_runs, phi=phi,
         gpu=gpu, eval_frequency=eval_frequency, outdir=outdir)
 
+    episode_len = 0
     while t < steps:
         try:
             episode_r += r
             action = agent.act(obs, r, done)
             evaluator.step(t, done, env, agent)
 
-            if done:
+            if done or episode_len == max_episode_len:
                 print('{} t:{} episode_idx:{} explorer:{} episode_r:{}'.format(
                     outdir, t, episode_idx, agent.explorer, episode_r))
+                if episode_len == max_episode_len:
+                    agent.stop_current_episode()
                 episode_r = 0
                 episode_idx += 1
+                episode_len = 0
                 obs = env.reset()
                 r = 0
                 done = False
             else:
                 obs, r, done, info = env.step(action)
                 t += 1
+                episode_len += 1
+
         except KeyboardInterrupt:
             # Save the current model before being killed
             agent.save_model(os.path.join(

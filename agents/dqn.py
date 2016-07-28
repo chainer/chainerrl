@@ -294,3 +294,7 @@ class DQN(agent.Agent):
             self.update(experiences)
 
         return self.last_action
+
+    def stop_current_episode(self):
+        self.last_state = None
+        self.last_action = None
