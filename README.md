@@ -17,6 +17,8 @@ Following agents have been implemented:
 - Asynchronous N-step Q-learning (work-in-progress)
 - DQN (including Double DQN, Persistent Advantage Learning (PAL), Double PAL)
 
+Q-function based agents can utilize Normalized Advantage Functions (NAFs) to tackle continuous-action problems as well as DQN-like discrete output networks.
+
 ## Environments
 
 Environments that support OpenAI Gym's interface (`reset`, `step` and `close` functions) can be used.
