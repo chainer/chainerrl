@@ -76,21 +76,23 @@ class _TestDQNLike(unittest.TestCase):
         reward = 0.0
 
         # Train
-        for i in range(5000):
+        t = 0
+        while t < 5000:
             episode_r += reward
             total_r += reward
 
-            action = agent.act(obs, reward, done)
-
             if done:
-                print(('i:{} explorer:{} episode_r:{}'.format(
-                    i, agent.explorer, episode_r)))
+                agent.observe_terminal(obs, reward)
+                print(('t:{} explorer:{} episode_r:{}'.format(
+                    t, agent.explorer, episode_r)))
                 episode_r = 0
                 obs = env.reset()
                 done = False
                 reward = 0.0
             else:
+                action = agent.act(obs, reward)
                 obs, reward, done, _ = env.step(action)
+                t += 1
 
         # Test
         total_r = 0.0

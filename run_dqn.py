@@ -15,14 +15,15 @@ import chainer
 import numpy as np
 
 
-def eval_performance(env, q_func, phi, n_runs, gpu):
+def eval_performance(env, q_func, phi, n_runs, gpu, max_episode_len=None):
     assert n_runs > 1, 'Computing stdev requires at least two runs'
     scores = []
     for i in range(n_runs):
         obs = env.reset()
         done = False
         test_r = 0
-        while not done:
+        t = 0
+        while not (done or t == max_episode_len):
             s = np.expand_dims(phi(obs), 0)
             if gpu >= 0:
                 s = chainer.cuda.to_gpu(s)
@@ -30,6 +31,7 @@ def eval_performance(env, q_func, phi, n_runs, gpu):
             a = qout.greedy_actions.data[0]
             obs, r, done, info = env.step(a)
             test_r += r
+            t += 1
         scores.append(test_r)
         print('test_{}:'.format(i), test_r)
     mean = statistics.mean(scores)
@@ -57,44 +59,36 @@ def update_best_model(agent, outdir, t, old_max_score, new_max_score):
 
 class Evaluator(object):
 
-    def __init__(self, reuse_env, make_env, n_runs, phi, gpu, eval_frequency,
-                 outdir):
+    def __init__(self, n_runs, phi, gpu, eval_frequency,
+                 outdir, max_episode_len=None):
         self.max_score = np.finfo(np.float32).min
         self.start_time = time.time()
         self.eval_after_this_episode = False
-        self.reuse_env = reuse_env
-        self.make_env = make_env
         self.n_runs = n_runs
         self.phi = phi
         self.gpu = gpu
         self.eval_frequency = eval_frequency
         self.outdir = outdir
+        self.max_episode_len = max_episode_len
+        self.prev_eval_t = 0
 
     def evaluate_and_update_max_score(self, env, t, agent):
         mean, median, stdev = eval_performance(
-            env, agent.q_function, self.phi, self.n_runs, self.gpu)
+            env, agent.q_function, self.phi, self.n_runs, self.gpu,
+            max_episode_len=self.max_episode_len)
         record_stats(self.outdir, t, self.start_time, mean, median, stdev)
         if mean > self.max_score:
             update_best_model(agent, self.outdir, t, self.max_score, mean)
             self.max_score = mean
 
-    def step(self, t, done, env, agent):
-        if self.reuse_env:
-            if t > 0 and t % self.eval_frequency == 0:
-                self.eval_after_this_episode = True
-            if self.eval_after_this_episode and done:
-                # Eval with the existing env
-                self.evaluate_and_update_max_score(env, t, agent)
-                self.eval_after_this_episode = False
-        else:
-            if t % self.eval_frequency == 0:
-                # Eval with a new env
-                self.evaluate_and_update_max_score(
-                    self.make_env(True), t, agent)
+    def evaluate_if_necessary(self, t, env, agent):
+        if t >= self.prev_eval_t + self.eval_frequency:
+            self.evaluate_and_update_max_score(env, t, agent)
+            self.prev_eval_t = t
 
 
 def run_dqn(agent, make_env, phi, steps, eval_n_runs, eval_frequency, gpu,
-            outdir, reuse_env=False, max_episode_len=None):
+            outdir, max_episode_len=None):
 
     env = make_env(False)
 
@@ -113,22 +107,24 @@ def run_dqn(agent, make_env, phi, steps, eval_n_runs, eval_frequency, gpu,
 
     t = 0
 
-    evaluator = Evaluator(
-        reuse_env=reuse_env, make_env=make_env, n_runs=eval_n_runs, phi=phi,
-        gpu=gpu, eval_frequency=eval_frequency, outdir=outdir)
+    evaluator = Evaluator(n_runs=eval_n_runs, phi=phi, gpu=gpu,
+                          eval_frequency=eval_frequency, outdir=outdir,
+                          max_episode_len=max_episode_len)
 
     episode_len = 0
     while t < steps:
         try:
             episode_r += r
-            action = agent.act(obs, r, done)
-            evaluator.step(t, done, env, agent)
 
             if done or episode_len == max_episode_len:
+                if done:
+                    agent.observe_terminal(obs, r)
+                else:
+                    agent.stop_current_episode()
                 print('{} t:{} episode_idx:{} explorer:{} episode_r:{}'.format(
                     outdir, t, episode_idx, agent.explorer, episode_r))
-                if episode_len == max_episode_len:
-                    agent.stop_current_episode()
+                evaluator.evaluate_if_necessary(t, env, agent)
+                # Start a new episode
                 episode_r = 0
                 episode_idx += 1
                 episode_len = 0
@@ -136,6 +132,7 @@ def run_dqn(agent, make_env, phi, steps, eval_n_runs, eval_frequency, gpu,
                 r = 0
                 done = False
             else:
+                action = agent.act(obs, r)
                 obs, r, done, info = env.step(action)
                 t += 1
                 episode_len += 1

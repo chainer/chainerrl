@@ -253,23 +253,24 @@ class DQN(agent.Agent):
 
         return action
 
-    def act(self, state, reward, is_state_terminal):
+    def act(self, state, reward):
+        """
+        Observe a current state and a reward, then choose an action.
+
+        This function must be called every time step exept at terminal states.
+        """
 
         self.logger.debug('t:%s r:%s', self.t, reward)
 
         if self.clip_reward:
             reward = np.clip(reward, -1, 1)
 
-        if not is_state_terminal:
-            action = self.select_action(state)
-            self.t += 1
+        action = self.select_action(state)
+        self.t += 1
 
-            # Update the target network
-            # Global counter T is used in the original paper, but here we use
-            # process specific counter instead. So i_target should be set
-            # x-times smaller, where x is the number of processes
-            if self.t % self.target_update_frequency == 0:
-                self.sync_target_network()
+        # Update the target network
+        if self.t % self.target_update_frequency == 0:
+            self.sync_target_network()
 
         if self.last_state is not None:
             assert self.last_action is not None
@@ -279,14 +280,10 @@ class DQN(agent.Agent):
                 action=self.last_action,
                 reward=reward,
                 next_state=state,
-                is_state_terminal=is_state_terminal)
+                is_state_terminal=False)
 
-        if not is_state_terminal:
-            self.last_state = state
-            self.last_action = action
-        else:
-            self.last_state = None
-            self.last_action = None
+        self.last_state = state
+        self.last_action = action
 
         if len(self.replay_buffer) >= self.replay_start_size and \
                 self.t % self.update_frequency == 0:
@@ -295,6 +292,35 @@ class DQN(agent.Agent):
 
         return self.last_action
 
+    def observe_terminal(self, state, reward):
+        """
+        Observe a terminal state and a reward.
+
+        This function must be called once when an episode terminates.
+        """
+
+        if self.clip_reward:
+            reward = np.clip(reward, -1, 1)
+
+        assert self.last_state is not None
+        assert self.last_action is not None
+
+        # Add a transition to the replay buffer
+        self.replay_buffer.append(
+            state=self.last_state,
+            action=self.last_action,
+            reward=reward,
+            next_state=state,
+            is_state_terminal=True)
+
+        self.last_state = None
+        self.last_action = None
+
     def stop_current_episode(self):
+        """
+        Stop the current episode.
+
+        This function must be called once when an episode is stopped.
+        """
         self.last_state = None
         self.last_action = None
