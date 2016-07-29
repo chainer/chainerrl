@@ -4,11 +4,13 @@ from __future__ import division
 from __future__ import absolute_import
 from future import standard_library
 standard_library.install_aliases()
+
 import os
 import tempfile
 import json
 import subprocess
 import argparse
+import datetime
 
 
 def prepare_output_dir(args, user_specified_dir=None):
@@ -25,16 +27,19 @@ def prepare_output_dir(args, user_specified_dir=None):
       args: dict that describes command-line arguments
       user_specified_dir: directory path
     """
+    time_str = datetime.datetime.now().strftime('%Y%m%d%H%M%S%f')
     if user_specified_dir is not None:
         if os.path.exists(user_specified_dir):
             if not os.path.isdir(user_specified_dir):
                 raise RuntimeError(
                     '{} is not a directory'.format(user_specified_dir))
+        outdir = os.path.join(user_specified_dir, time_str)
+        if os.path.exists(outdir):
+            raise RuntimeError('{} exists'.format(outdir))
         else:
-            os.makedirs(user_specified_dir)
-        outdir = user_specified_dir
+            os.makedirs(outdir)
     else:
-        outdir = tempfile.mkdtemp()
+        outdir = tempfile.mkdtemp(prefix=time_str)
 
     # Save all the arguments
     with open(os.path.join(outdir, 'args.txt'), 'w') as f:
