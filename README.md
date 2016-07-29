@@ -6,6 +6,9 @@ Drill is a deep reinforcement learning library, still work-in-progress.
 
 - Python 3.5.1+
 - Chainer 1.8.2+
+- cached-property
+- fastcache
+- h5py
 
 ## Agents
 
