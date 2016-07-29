@@ -9,6 +9,8 @@ Drill is a deep reinforcement learning library, still work-in-progress.
 - cached-property
 - fastcache
 - h5py
+- statistics
+- future
 
 ## Agents
 
