@@ -14,6 +14,8 @@ import time
 import chainer
 import numpy as np
 
+from agents.dqn import DQN
+
 
 def eval_performance(env, q_func, phi, n_runs, gpu, max_episode_len=None):
     assert n_runs > 1, 'Computing stdev requires at least two runs'
@@ -88,7 +90,9 @@ class Evaluator(object):
 
 
 def run_dqn(agent, make_env, phi, steps, eval_n_runs, eval_frequency, gpu,
-            outdir, max_episode_len=None):
+            outdir, max_episode_len=None, step_offset=0):
+
+    assert isinstance(agent, DQN)
 
     env = make_env(False)
 
@@ -105,11 +109,13 @@ def run_dqn(agent, make_env, phi, steps, eval_n_runs, eval_frequency, gpu,
     r = 0
     done = False
 
-    t = 0
+    t = step_offset
+    agent.t = step_offset
 
     evaluator = Evaluator(n_runs=eval_n_runs, phi=phi, gpu=gpu,
                           eval_frequency=eval_frequency, outdir=outdir,
                           max_episode_len=max_episode_len)
+    evaluator.prev_eval_t = step_offset - step_offset % eval_frequency
 
     episode_len = 0
     while t < steps:
