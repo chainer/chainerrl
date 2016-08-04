@@ -34,7 +34,9 @@ def eval_performance(env, q_func, phi, n_runs, gpu, max_episode_len=None):
             obs, r, done, info = env.step(a)
             test_r += r
             t += 1
-        scores.append(test_r)
+        # As mixing float and numpy float causes errors in statistics
+        # functions, here every score is cast to float.
+        scores.append(float(test_r))
         print('test_{}:'.format(i), test_r)
     mean = statistics.mean(scores)
     median = statistics.median(scores)
