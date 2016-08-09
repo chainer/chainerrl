@@ -17,7 +17,7 @@ Drill is a deep reinforcement learning library, still work-in-progress.
 Following agents have been implemented: 
 - A3C
 - Asynchronous N-step Q-learning (work-in-progress)
-- DQN (including Double DQN, Persistent Advantage Learning (PAL), Double PAL)
+- DQN (including Double DQN, Persistent Advantage Learning (PAL), Double PAL, Dynamic Policy Programming (DPP))
 
 Q-function based agents can utilize Normalized Advantage Functions (NAFs) to tackle continuous-action problems as well as DQN-like discrete output networks.
 
