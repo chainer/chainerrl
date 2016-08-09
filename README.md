@@ -15,7 +15,7 @@ Drill is a deep reinforcement learning library, still work-in-progress.
 ## Agents
 
 Following agents have been implemented: 
-- A3C
+- A3C (Asynchronous Advantage Actor-Critic)
 - Asynchronous N-step Q-learning (work-in-progress)
 - DQN (including Double DQN, Persistent Advantage Learning (PAL), Double PAL, Dynamic Policy Programming (DPP))
 
