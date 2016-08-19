@@ -95,11 +95,17 @@ class FCSIQFunction(chainer.ChainList, QFunction):
 class FCSIContinuousQFunction(chainer.Chain, QFunction):
 
     def __init__(self, n_input_channels, n_dim_action, n_hidden_channels,
-                 n_hidden_layers, action_space):
+                 n_hidden_layers, action_space=None):
         self.n_input_channels = n_input_channels
         self.n_hidden_layers = n_hidden_layers
         self.n_hidden_channels = n_hidden_channels
+
         self.action_space = action_space
+        if self.action_space is not None:
+            self.action_scale = (self.action_space.high - self.action_space.low) / 2
+            self.action_scale = xp.expand_dims(xp.asarray(action_scale), axis=0)
+            self.action_mean = (self.action_space.high + self.action_space.low) / 2
+            self.action_mean = xp.expand_dims(xp.asarray(action_mean), axis=0)
 
         layers = {}
 
@@ -128,12 +134,10 @@ class FCSIContinuousQFunction(chainer.Chain, QFunction):
             h = F.elu(layer(h))
         v = self.v(h)
         mu = self.mu(h)
-        action_scale = (self.action_space.high - self.action_space.low) / 2
-        action_scale = xp.expand_dims(xp.asarray(action_scale), axis=0)
-        action_mean = (self.action_space.high + self.action_space.low) / 2
-        action_mean = xp.expand_dims(xp.asarray(action_mean), axis=0)
 
-        mu = F.tanh(mu) * action_scale + action_mean
+        if self.action_space is not None:
+            mu = F.tanh(mu) * self.action_scale + self.action_mean
+
         mat_diag = F.exp(self.mat_diag(h))
         if hasattr(self, 'mat_non_diag'):
             mat_non_diag = F.exp(self.mat_non_diag(h))
