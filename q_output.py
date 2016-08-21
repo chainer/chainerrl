@@ -3,7 +3,13 @@ from __future__ import print_function
 from __future__ import division
 from __future__ import absolute_import
 from future import standard_library
+from future.utils import with_metaclass
 standard_library.install_aliases()
+
+from abc import ABCMeta
+from abc import abstractmethod
+from abc import abstractproperty
+
 from cached_property import cached_property
 import chainer
 from chainer import functions as F
@@ -11,12 +17,31 @@ from chainer import cuda
 import numpy as np
 
 
-class QOutput(object):
-    """Struct that holds Q-function output and subproducts."""
-    pass
+class QOutput(with_metaclass(ABCMeta, object)):
+    """Struct that holds state-fixed Q-functions and its subproducts.
+
+    Every operation it supports is done in a batch manner.
+    """
+
+    @abstractproperty
+    def greedy_actions(self):
+        """Get argmax_a Q(s,a)."""
+        raise NotImplementedError()
+
+    @abstractproperty
+    def max(self):
+        """Evaluate max Q(s,a)."""
+        raise NotImplementedError()
 
 
-class DiscreteQOutput(object):
+    @abstractmethod
+    def evaluate_actions(self, actions):
+        """Evaluate Q(s,a) with a = given actions."""
+        raise NotImplementedError()
+
+
+
+class DiscreteQOutput(QOutput):
     """Qfunction output for discrete action space."""
 
     def __init__(self, q_values, q_values_formatter=lambda x: x):
@@ -64,7 +89,7 @@ class DiscreteQOutput(object):
             self.q_values_formatter(self.q_values.data))
 
 
-class ContinuousQOutput(object):
+class ContinuousQOutput(QOutput):
     """Qfunction output for continuous action space.
 
     See: http://arxiv.org/abs/1603.00748
