@@ -71,6 +71,18 @@ class ContinuousQOutput(object):
     """
 
     def __init__(self, mu, mat, v):
+        """
+        Define a Q(s,a) with A(s,a) in a quadratic form.
+
+        Q(s,a) = V(s,a) + A(s,a)
+        A(s,a) = -1/2 (u - mu(s))^T P(s) (u - mu(s))
+
+        Args:
+          mu (chainer.Variable): mu(s), actions that maximize A(s,a)
+          mat (chainer.Variable): P(s), coefficient matrices of A(s,a).
+            It must be positive definite.
+          v (chainer.Variable): V(s), values of s
+        """
         self.xp = cuda.get_array_module(mu.data)
         self.mu = mu
         self.mat = mat
