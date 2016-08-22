@@ -153,7 +153,7 @@ def run_dqn(agent, make_env, phi, steps, eval_n_runs, eval_frequency, gpu,
                 t += 1
                 episode_len += 1
 
-        except KeyboardInterrupt:
+        except:
             # Save the current model before being killed
             agent.save_model(os.path.join(
                 outdir, '{}_keyboardinterrupt.h5'.format(t)))
