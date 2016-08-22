@@ -25,6 +25,7 @@ from functions import oplu
 from init_like_torch import init_like_torch
 from dqn_phi import dqn_phi
 from explorers.epsilon_greedy import LinearDecayEpsilonGreedy
+from explorers.epsilon_greedy import ConstantEpsilonGreedy
 import run_dqn
 
 
@@ -127,10 +128,12 @@ def main():
     if len(args.model) > 0:
         agent.load_model(args.model)
 
+    eval_explorer = ConstantEpsilonGreedy(
+        5e-2, lambda: np.random.randint(n_actions))
     run_dqn.run_dqn(
         agent=agent, make_env=make_env, phi=dqn_phi, steps=args.steps,
         eval_n_runs=args.eval_n_runs, eval_frequency=args.eval_frequency,
-        gpu=args.gpu, outdir=args.outdir)
+        gpu=args.gpu, outdir=args.outdir, eval_explorer=eval_explorer)
 
 if __name__ == '__main__':
     main()

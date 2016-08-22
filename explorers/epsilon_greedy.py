@@ -4,6 +4,7 @@ from __future__ import print_function
 from __future__ import absolute_import
 from future import standard_library
 standard_library.install_aliases()
+
 import numpy as np
 
 
@@ -15,10 +16,28 @@ def select_action_epsilon_greedily(epsilon, random_action_func,
         return greedy_action_func()
 
 
+class ConstantEpsilonGreedy(object):
+
+    def __init__(self, epsilon, random_action_func):
+        assert epsilon >= 0 and epsilon <= 1
+        self.epsilon = epsilon
+        self.random_action_func = random_action_func
+
+    def select_action(self, t, greedy_action_func):
+        return select_action_epsilon_greedily(
+            self.epsilon, self.random_action_func, greedy_action_func)
+
+    def __repr__(self):
+        return 'ConstantEpsilonGreedy(epsilon={})'.format(self.epsilon)
+
+
 class LinearDecayEpsilonGreedy(object):
 
     def __init__(self, start_epsilon, end_epsilon,
                  decay_steps, random_action_func):
+        assert start_epsilon >= 0 and start_epsilon <= 1
+        assert end_epsilon >= 0 and end_epsilon <= 1
+        assert decay_steps >= 0
         self.start_epsilon = start_epsilon
         self.end_epsilon = end_epsilon
         self.decay_steps = decay_steps

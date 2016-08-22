@@ -17,7 +17,8 @@ import numpy as np
 from agents.dqn import DQN
 
 
-def eval_performance(env, q_func, phi, n_runs, gpu, max_episode_len=None):
+def eval_performance(env, q_func, phi, n_runs, gpu, max_episode_len=None,
+                     explorer=None):
     assert n_runs > 1, 'Computing stdev requires at least two runs'
     scores = []
     for i in range(n_runs):
@@ -26,11 +27,16 @@ def eval_performance(env, q_func, phi, n_runs, gpu, max_episode_len=None):
         test_r = 0
         t = 0
         while not (done or t == max_episode_len):
-            s = np.expand_dims(phi(obs), 0)
-            if gpu >= 0:
-                s = chainer.cuda.to_gpu(s)
-            qout = q_func(chainer.Variable(s), test=True)
-            a = qout.greedy_actions.data[0]
+            def greedy_action_func():
+                s = np.expand_dims(phi(obs), 0)
+                if gpu >= 0:
+                    s = chainer.cuda.to_gpu(s)
+                qout = q_func(chainer.Variable(s), test=True)
+                return qout.greedy_actions.data[0]
+            if explorer is not None:
+                a = explorer.select_action(t, greedy_action_func)
+            else:
+                a = greedy_action_func()
             obs, r, done, info = env.step(a)
             test_r += r
             t += 1
@@ -64,7 +70,7 @@ def update_best_model(agent, outdir, t, old_max_score, new_max_score):
 class Evaluator(object):
 
     def __init__(self, n_runs, phi, gpu, eval_frequency,
-                 outdir, max_episode_len=None):
+                 outdir, max_episode_len=None, explorer=None):
         self.max_score = np.finfo(np.float32).min
         self.start_time = time.time()
         self.eval_after_this_episode = False
@@ -74,12 +80,13 @@ class Evaluator(object):
         self.eval_frequency = eval_frequency
         self.outdir = outdir
         self.max_episode_len = max_episode_len
+        self.explorer = explorer
         self.prev_eval_t = 0
 
     def evaluate_and_update_max_score(self, env, t, agent):
         mean, median, stdev = eval_performance(
             env, agent.q_function, self.phi, self.n_runs, self.gpu,
-            max_episode_len=self.max_episode_len)
+            max_episode_len=self.max_episode_len, explorer=self.explorer)
         record_stats(self.outdir, t, self.start_time, mean, median, stdev)
         if mean > self.max_score:
             update_best_model(agent, self.outdir, t, self.max_score, mean)
@@ -92,7 +99,7 @@ class Evaluator(object):
 
 
 def run_dqn(agent, make_env, phi, steps, eval_n_runs, eval_frequency, gpu,
-            outdir, max_episode_len=None, step_offset=0):
+            outdir, max_episode_len=None, step_offset=0, eval_explorer=None):
 
     assert isinstance(agent, DQN)
 
@@ -116,7 +123,8 @@ def run_dqn(agent, make_env, phi, steps, eval_n_runs, eval_frequency, gpu,
 
     evaluator = Evaluator(n_runs=eval_n_runs, phi=phi, gpu=gpu,
                           eval_frequency=eval_frequency, outdir=outdir,
-                          max_episode_len=max_episode_len)
+                          max_episode_len=max_episode_len,
+                          explorer=eval_explorer)
     evaluator.prev_eval_t = step_offset - step_offset % eval_frequency
 
     episode_len = 0
