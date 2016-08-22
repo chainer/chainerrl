@@ -139,7 +139,7 @@ class FCSIContinuousQFunction(chainer.Chain, QFunction):
 
         mat_diag = F.exp(self.mat_diag(h))
         if hasattr(self, 'mat_non_diag'):
-            mat_non_diag = F.exp(self.mat_non_diag(h))
+            mat_non_diag = self.mat_non_diag(h)
             tril = lower_triangular_matrix(mat_diag, mat_non_diag)
             mat = F.batch_matmul(tril, tril, transb=True)
         else:
