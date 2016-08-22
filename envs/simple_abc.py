@@ -4,11 +4,13 @@ from __future__ import division
 from __future__ import absolute_import
 from future import standard_library
 standard_library.install_aliases()
+
 import numpy as np
-import environment
+
+import env
 
 
-class ABC(environment.EpisodicEnvironment):
+class ABC(env.Env):
     """Very simple toy problem.
 
     If the agent can choose actions 0, 1, 2 exactly in this order, it will receive reward 1. Otherwise, if it failed to do so, the environment is terminated with reward 0.
@@ -55,3 +57,6 @@ class ABC(environment.EpisodicEnvironment):
             self._state = 4
             reward = 0.0
         return self.state, reward, self.is_terminal, None
+
+    def close(self):
+        pass

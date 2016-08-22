@@ -11,8 +11,9 @@ import time
 
 import numpy as np
 
+import env
 
-class DoomEnv(object):
+class DoomEnv(env.Env):
 
     def __init__(self, vizdoom_dir=os.path.expanduser('~/ViZDoom'),
                  window_visible=True, scenario='basic', skipcount=10,
@@ -74,3 +75,6 @@ class DoomEnv(object):
         r /= 100
         time.sleep(self.sleep * self.skipcount)
         return self.game.get_state(), r, self.game.is_episode_finished(), None
+
+    def close(self):
+        pass

@@ -13,10 +13,10 @@ import numpy as np
 from ale_python_interface import ALEInterface
 import cv2
 
-import environment
+import env
 
 
-class ALE(environment.EpisodicEnvironment):
+class ALE(env.Env):
     """Arcade Learning Environment.
     """
 
@@ -166,3 +166,14 @@ class ALE(environment.EpisodicEnvironment):
 
         self.lives_lost = False
         self.lives = self.ale.lives()
+
+    def reset(self):
+        self.initialize()
+        return self.state
+
+    def step(self, action):
+        self.receive_action(action)
+        return self.state, self.reward, self.is_terminal, {}
+
+    def close(self):
+        pass
