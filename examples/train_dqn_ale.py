@@ -2,18 +2,12 @@ from __future__ import print_function
 from __future__ import division
 from __future__ import unicode_literals
 from __future__ import absolute_import
-from builtins import range
-from builtins import open
 from builtins import str
 from future import standard_library
 standard_library.install_aliases()
 import argparse
-import os
-import statistics
 import sys
-import time
 
-import chainer
 from chainer import optimizers
 from chainer import functions as F
 import numpy as np
@@ -31,6 +25,7 @@ from functions import oplu
 from init_like_torch import init_like_torch
 from dqn_phi import dqn_phi
 from explorers.epsilon_greedy import LinearDecayEpsilonGreedy
+import run_dqn
 
 
 def parse_activation(activation_str):
@@ -66,27 +61,6 @@ def parse_arch(arch, n_actions, activation):
         raise RuntimeError('Not supported architecture: {}'.format(arch))
 
 
-def eval_performance(rom, q_func, n_runs, gpu):
-    assert n_runs > 1, 'Computing stdev requires at least two runs'
-    scores = []
-    for i in range(n_runs):
-        env = ale.ALE(rom, treat_life_lost_as_terminal=False)
-        test_r = 0
-        while not env.is_terminal:
-            s = np.expand_dims(dqn_phi(env.state), 0)
-            if gpu >= 0:
-                s = chainer.cuda.to_gpu(s)
-            qout = q_func(chainer.Variable(s))
-            a = qout.sample_epsilon_greedy_actions(5e-2).data[0]
-            test_r += env.receive_action(a)
-        scores.append(test_r)
-        print('test_{}:'.format(i), test_r)
-    mean = statistics.mean(scores)
-    median = statistics.median(scores)
-    stdev = statistics.stdev(scores)
-    return mean, median, stdev
-
-
 def main():
     import logging
     logging.basicConfig(level=logging.DEBUG)
@@ -107,6 +81,7 @@ def main():
     parser.add_argument('--replay-start-size', type=int, default=5 * 10 ** 4)
     parser.add_argument('--target-update-frequency',
                         type=int, default=10 ** 4)
+    parser.add_argument('--eval-frequency', type=int, default=10 ** 5)
     parser.add_argument('--update-frequency', type=int, default=1)
     parser.add_argument('--activation', type=str, default='relu')
     parser.add_argument('--eval-n-runs', type=int, default=10)
@@ -117,6 +92,9 @@ def main():
 
     if args.seed is not None:
         random_seed.set_random_seed(args.seed)
+
+    def make_env(test):
+        return ale.ALE(args.rom, use_sdl=args.use_sdl)
 
     args.outdir = prepare_output_dir(args, args.outdir)
 
@@ -136,7 +114,8 @@ def main():
 
     rbuf = replay_buffer.ReplayBuffer(10 ** 6)
 
-    explorer = LinearDecayEpsilonGreedy(1.0, 0.1, args.final_exploration_frames,
+    explorer = LinearDecayEpsilonGreedy(1.0, 0.1,
+                                        args.final_exploration_frames,
                                         lambda: np.random.randint(n_actions))
     agent = DQN(q_func, opt, rbuf, gpu=args.gpu, gamma=0.99,
                 explorer=explorer, replay_start_size=args.replay_start_size,
@@ -148,67 +127,10 @@ def main():
     if len(args.model) > 0:
         agent.load_model(args.model)
 
-    env = ale.ALE(args.rom, use_sdl=args.use_sdl)
-
-    episode_r = 0
-
-    episode_idx = 0
-    max_score = np.finfo(np.float32).min
-
-    # Write a header line first
-    with open(os.path.join(args.outdir, 'scores.txt'), 'a+') as f:
-        column_names = ('steps', 'elapsed', 'mean', 'median', 'stdev')
-        print('\t'.join(column_names), file=f)
-
-    start_time = time.time()
-
-    for i in range(args.steps):
-
-        try:
-            if i % (args.steps / 100) == 0:
-                # Test performance
-                mean, median, stdev = eval_performance(
-                    args.rom, agent.q_function, args.eval_n_runs, args.gpu)
-                with open(os.path.join(args.outdir, 'scores.txt'), 'a+') as f:
-                    elapsed = time.time() - start_time
-                    record = (i, elapsed, mean, median, stdev)
-                    print('\t'.join(str(x) for x in record), file=f)
-                if mean > max_score:
-                    if max_score is not None:
-                        # Save the best model so far
-                        print('The best score is updated {} -> {}'.format(
-                            max_score, mean))
-                        filename = os.path.join(
-                            args.outdir, '{}_keyboardinterrupt.h5'.format(i))
-                        agent.save_model(filename)
-                        print('Saved the current best model to {}'.format(
-                            filename))
-                    max_score = mean
-
-            episode_r += env.reward
-
-            action = agent.act(env.state, env.reward, env.is_terminal)
-
-            if env.is_terminal:
-                print('{} i:{} episode_idx:{} explorer:{} episode_r:{}'.format(
-                    args.outdir, i, episode_idx, agent.explorer, episode_r))
-                episode_r = 0
-                episode_idx += 1
-                env.initialize()
-            else:
-                env.receive_action(action)
-        except KeyboardInterrupt:
-            # Save the current model before being killed
-            agent.save_model(os.path.join(
-                args.outdir, '{}_keyboardinterrupt.h5'.format(i)))
-            print('Saved the current model to {}'.format(
-                args.outdir), file=sys.stderr)
-            raise
-
-    # Save the final model
-    agent.save_model(os.path.join(
-        args.outdir, '{}_finish.h5'.format(args.steps)))
-    print('Saved the current model to {}'.format(args.outdir))
+    run_dqn.run_dqn(
+        agent=agent, make_env=make_env, phi=dqn_phi, steps=args.steps,
+        eval_n_runs=args.eval_n_runs, eval_frequency=args.eval_frequency,
+        gpu=args.gpu, outdir=args.outdir)
 
 if __name__ == '__main__':
     main()
