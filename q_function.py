@@ -66,6 +66,7 @@ class StateInputQFunction(QFunction):
 
 
 class FCSIQFunction(chainer.ChainList, QFunction):
+    """Fully-connected state-input (discrete) Q-function."""
 
     def __init__(self, n_input_channels, n_actions, n_hidden_channels,
                  n_hidden_layers):
@@ -93,13 +94,26 @@ class FCSIQFunction(chainer.ChainList, QFunction):
 
 
 class FCSIContinuousQFunction(chainer.Chain, QFunction):
+    """Fully-connected state-input continuous Q-function."""
 
     def __init__(self, n_input_channels, n_dim_action, n_hidden_channels,
-                 n_hidden_layers, action_space=None):
+                 n_hidden_layers, action_space=None, scale_mu=False):
+        """
+        Args:
+          n_input_channels: number of input channels
+          n_dim_action: number of dimensions of action space
+          n_hidden_channels: number of hidden channels
+          n_hidden_layers: number of hidden layers
+          scale_mu (bool): scale mu by applying tanh if True
+          action_space: action_space, only necessary if scale_mu=True
+        """
+
         self.n_input_channels = n_input_channels
         self.n_hidden_layers = n_hidden_layers
         self.n_hidden_channels = n_hidden_channels
 
+        assert (not scale_mu) or (action_space is not None)
+        self.scale_mu = scale_mu
         self.action_space = action_space
 
         layers = {}
@@ -130,7 +144,7 @@ class FCSIContinuousQFunction(chainer.Chain, QFunction):
         v = self.v(h)
         mu = self.mu(h)
 
-        if self.action_space is not None:
+        if self.scale_mu:
             action_scale = (self.action_space.high - self.action_space.low) / 2
             action_scale = xp.expand_dims(xp.asarray(action_scale), axis=0)
             action_mean = (self.action_space.high + self.action_space.low) / 2
