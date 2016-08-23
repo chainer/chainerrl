@@ -3,9 +3,12 @@ from __future__ import unicode_literals
 from __future__ import print_function
 from __future__ import absolute_import
 from future import standard_library
+from future.utils import with_metaclass
 standard_library.install_aliases()
 
 import numpy as np
+
+import explorer
 
 
 def select_action_epsilon_greedily(epsilon, random_action_func,
@@ -16,7 +19,8 @@ def select_action_epsilon_greedily(epsilon, random_action_func,
         return greedy_action_func()
 
 
-class ConstantEpsilonGreedy(object):
+class ConstantEpsilonGreedy(explorer.Explorer):
+    """Epsilon-greedy with constant epsilon."""
 
     def __init__(self, epsilon, random_action_func):
         assert epsilon >= 0 and epsilon <= 1
@@ -31,7 +35,8 @@ class ConstantEpsilonGreedy(object):
         return 'ConstantEpsilonGreedy(epsilon={})'.format(self.epsilon)
 
 
-class LinearDecayEpsilonGreedy(object):
+class LinearDecayEpsilonGreedy(explorer.Explorer):
+    """Epsilon-greedy with linearyly decayed epsilon"""
 
     def __init__(self, start_epsilon, end_epsilon,
                  decay_steps, random_action_func):
