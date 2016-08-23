@@ -6,6 +6,9 @@ from future import standard_library
 standard_library.install_aliases()
 
 import numpy as np
+import gym
+gym.undo_logger_setup()
+from gym import spaces
 
 import env
 
@@ -16,8 +19,14 @@ class ABC(env.Env):
     If the agent can choose actions 0, 1, 2 exactly in this order, it will receive reward 1. Otherwise, if it failed to do so, the environment is terminated with reward 0.
     """
 
-    def __init__(self):
-        self.initialize()
+    def __init__(self, discrete=True):
+        if discrete:
+            self.action_space = spaces.Discrete(3)
+        else:
+            n_dim_action = 2
+            self.action_space = spaces.Box(
+                low=np.asarray([-0.49] * n_dim_action, dtype=np.float32),
+                high=np.asarray([2.49] * n_dim_action, dtype=np.float32))
 
     @property
     def state(self):

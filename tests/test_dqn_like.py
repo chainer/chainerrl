@@ -10,8 +10,6 @@ import unittest
 import chainer
 from chainer import cuda
 from chainer import optimizers
-# import gym
-from gym import spaces
 import numpy as np
 
 import q_function
@@ -25,26 +23,13 @@ class _TestDQNLike(unittest.TestCase):
     def setUp(self):
         pass
 
-    def make_discrete_q_func(self):
+    def make_discrete_q_func(self, env):
         return q_function.FCSIQFunction(5, 3, 10, 2)
 
-    def make_continuous_q_func(self):
+    def make_continuous_q_func(self, env):
         n_dim_action = 2
-        action_space = spaces.Box(
-            low=np.asarray([-0.49] * n_dim_action, dtype=np.float32),
-            high=np.asarray([2.49] * n_dim_action, dtype=np.float32))
         return q_function.FCSIContinuousQFunction(
-            5, n_dim_action, 20, 2, action_space)
-
-    def make_discrete_explorer(self):
-        return LinearDecayEpsilonGreedy(
-            1.0, 0.1, 1000, lambda: np.random.randint(3))
-
-    def make_continuous_explorer(self):
-        return LinearDecayEpsilonGreedy(
-            1.0, 0.1, 1000,
-            lambda: np.random.uniform(
-                low=-0.49, high=2.49, size=2).astype(np.float32))
+            5, n_dim_action, 20, 2, env.action_space)
 
     def make_agent(self, gpu, q_func, explorer, opt):
         raise NotImplementedError
@@ -53,20 +38,29 @@ class _TestDQNLike(unittest.TestCase):
 
         random_seed.set_random_seed(0)
 
-        if discrete:
-            q_func = self.make_discrete_q_func()
-            explorer = self.make_discrete_explorer()
-        else:
-            q_func = self.make_continuous_q_func()
-            explorer = self.make_continuous_explorer()
+        env = ABC(discrete=discrete)
 
-        opt = optimizers.RMSpropGraves(
-            lr=1e-4, alpha=0.95, momentum=0.95, eps=1e-2)
+        if discrete:
+            q_func = self.make_discrete_q_func(env)
+        else:
+            q_func = self.make_continuous_q_func(env)
+
+        def random_action_func():
+            a = env.action_space.sample()
+            if not discrete:
+                return a.astype(np.float32)
+            else:
+                return a
+
+
+        explorer = LinearDecayEpsilonGreedy(
+            1.0, 0.1, 1000, random_action_func)
+
+        opt = optimizers.Adam()
         opt.setup(q_func)
 
         agent = self.make_agent(gpu, q_func, explorer, opt)
 
-        env = ABC()
 
         total_r = 0
         episode_r = 0
@@ -113,11 +107,11 @@ class _TestDQNLike(unittest.TestCase):
     def test_abc_discrete_gpu(self):
         self._test_abc(0, discrete=True)
 
-    # def test_abc_continuous_gpu(self):
-    #     self._test_abc(0, discrete=False)
-    #
-    # def test_abc_discrete_cpu(self):
-    #     self._test_abc(-1, discrete=True)
-    #
-    # def test_abc_continuous_cpu(self):
-    #     self._test_abc(-1, discrete=False)
+    def test_abc_continuous_gpu(self):
+        self._test_abc(0, discrete=False)
+
+    def test_abc_discrete_cpu(self):
+        self._test_abc(-1, discrete=True)
+
+    def test_abc_continuous_cpu(self):
+        self._test_abc(-1, discrete=False)
