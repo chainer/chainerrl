@@ -15,4 +15,5 @@ class TestDoubleDQN(_TestDQNLike):
         rbuf = replay_buffer.ReplayBuffer(10 ** 5)
         return DoubleDQN(q_func, opt, rbuf, gpu=gpu, gamma=0.9,
                          explorer=explorer, replay_start_size=100,
-                         target_update_frequency=100)
+                         target_update_frequency=100,
+                         minibatch_size=100)
