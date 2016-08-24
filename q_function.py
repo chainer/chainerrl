@@ -97,7 +97,7 @@ class FCSIContinuousQFunction(chainer.Chain, QFunction):
     """Fully-connected state-input continuous Q-function."""
 
     def __init__(self, n_input_channels, n_dim_action, n_hidden_channels,
-                 n_hidden_layers, action_space=None, scale_mu=False):
+                 n_hidden_layers, action_space=None, scale_mu=True):
         """
         Args:
           n_input_channels: number of input channels
