@@ -8,6 +8,8 @@ import copy
 import threading
 import os
 from logging import getLogger
+import concurrent.futures
+from concurrent.futures import ThreadPoolExecutor
 
 import numpy as np
 import chainer
@@ -39,7 +41,8 @@ class DQN(agent.Agent):
                  target_update_frequency=10000, clip_delta=True,
                  clip_reward=True, phi=lambda x: x,
                  target_update_method='hard',
-                 soft_update_tau=1e-2,
+                 soft_update_tau=1e-2, async_update=False,
+                 n_times_update=1,
                  logger=getLogger(__name__)):
         """
         Args:
@@ -72,12 +75,17 @@ class DQN(agent.Agent):
         self.phi = phi
         self.target_update_method = target_update_method
         self.soft_update_tau = soft_update_tau
+        self.async_update = async_update
+        self.n_times_update = n_times_update
         self.logger = logger
 
         self.t = 0
         self.last_state = None
         self.last_action = None
         self.lock = threading.Lock()
+        if self.async_update:
+            self.update_executor = ThreadPoolExecutor(max_workers=1)
+            self.update_future = None
 
         self.target_q_function = None
         self.sync_target_network()
@@ -275,6 +283,10 @@ class DQN(agent.Agent):
 
         self.logger.debug('t:%s r:%s', self.t, reward)
 
+        if self.async_update and self.update_future:
+            self.update_future.result()
+            self.update_future = None
+
         if self.clip_reward:
             reward = np.clip(reward, -1, 1)
 
@@ -300,8 +312,14 @@ class DQN(agent.Agent):
 
         if len(self.replay_buffer) >= self.replay_start_size and \
                 self.t % self.update_frequency == 0:
-            experiences = self.replay_buffer.sample(self.minibatch_size)
-            self.update(experiences)
+            def update_func():
+                for _ in range(self.n_times_update):
+                    experiences = self.replay_buffer.sample(self.minibatch_size)
+                    self.update(experiences)
+            if self.async_update:
+                self.update_future = self.update_executor.submit(update_func)
+            else:
+                update_func()
 
         return self.last_action
 
@@ -317,6 +335,10 @@ class DQN(agent.Agent):
 
         assert self.last_state is not None
         assert self.last_action is not None
+
+        if self.async_update and self.update_future:
+            self.update_future.result()
+            self.update_future = None
 
         # Add a transition to the replay buffer
         self.replay_buffer.append(
