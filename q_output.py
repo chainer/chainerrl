@@ -33,12 +33,10 @@ class QOutput(with_metaclass(ABCMeta, object)):
         """Evaluate max Q(s,a)."""
         raise NotImplementedError()
 
-
     @abstractmethod
     def evaluate_actions(self, actions):
         """Evaluate Q(s,a) with a = given actions."""
         raise NotImplementedError()
-
 
 
 class DiscreteQOutput(QOutput):
@@ -95,7 +93,7 @@ class ContinuousQOutput(QOutput):
     See: http://arxiv.org/abs/1603.00748
     """
 
-    def __init__(self, mu, mat, v):
+    def __init__(self, mu, mat, v, min_action=None, max_action=None):
         """
         Define a Q(s,a) with A(s,a) in a quadratic form.
 
@@ -107,21 +105,35 @@ class ContinuousQOutput(QOutput):
           mat (chainer.Variable): P(s), coefficient matrices of A(s,a).
             It must be positive definite.
           v (chainer.Variable): V(s), values of s
+          min_action (ndarray): mininum action, not batched
+          max_action (ndarray): maximum action, not batched
         """
         self.xp = cuda.get_array_module(mu.data)
         self.mu = mu
         self.mat = mat
         self.v = v
+        self.min_action = self.xp.asarray(min_action)
+        self.max_action = self.xp.asarray(max_action)
 
         self.batch_size = self.mu.data.shape[0]
 
     @cached_property
     def greedy_actions(self):
-        return self.mu
+        a = self.mu
+        if self.min_action is not None:
+            a = F.maximum(
+                self.xp.broadcast_to(self.min_action, a.data.shape), a)
+        if self.max_action is not None:
+            a = F.minimum(
+                self.xp.broadcast_to(self.max_action, a.data.shape), a)
+        return a
 
     @cached_property
     def max(self):
-        return F.reshape(self.v, (self.batch_size,))
+        if self.min_action is None and self.max_action is None:
+            return F.reshape(self.v, (self.batch_size,))
+        else:
+            return self.evaluate_actions(self.greedy_actions)
 
     def evaluate_actions(self, actions):
         assert isinstance(actions, chainer.Variable)
