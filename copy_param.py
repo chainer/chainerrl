@@ -20,8 +20,8 @@ def soft_copy_param(target_link, source_link, tau):
     """
     target_params = dict(target_link.namedparams())
     for param_name, param in source_link.namedparams():
-        target_params[param_name].data[:] *= tau
-        target_params[param_name].data[:] += (1 - tau) * param.data
+        target_params[param_name].data[:] *= (1 - tau)
+        target_params[param_name].data[:] += tau * param.data
 
 
 def copy_grad(target_link, source_link):

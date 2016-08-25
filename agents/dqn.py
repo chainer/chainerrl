@@ -39,7 +39,7 @@ class DQN(agent.Agent):
                  target_update_frequency=10000, clip_delta=True,
                  clip_reward=True, phi=lambda x: x,
                  target_update_method='hard',
-                 soft_update_tau=0.99,
+                 soft_update_tau=1e-2,
                  logger=getLogger(__name__)):
         """
         Args:
