@@ -33,18 +33,13 @@ class DQN(agent.Agent):
     """DQN = QNetwork + Optimizer
     """
 
-    def sync_target_network(self):
-        if self.target_q_function is None:
-            self.target_q_function = copy.deepcopy(self.q_function)
-        else:
-            self.logger.debug('sync')
-            copy_param.copy_param(self.target_q_function, self.q_function)
-
     def __init__(self, q_function, optimizer, replay_buffer, gamma,
                  explorer, gpu=-1, replay_start_size=50000,
                  minibatch_size=32, update_frequency=1,
                  target_update_frequency=10000, clip_delta=True,
                  clip_reward=True, phi=lambda x: x,
+                 target_update_method='hard',
+                 soft_update_tau=0.99,
                  logger=getLogger(__name__)):
         """
         Args:
@@ -52,6 +47,8 @@ class DQN(agent.Agent):
             replay_start_size, skip updating
           target_update_frequency (int): frequency of updating target Q
             function
+          target_update_method (str): 'hard' or 'soft'.
+          soft_update_tau (float): tau of soft target update.
         """
         self.q_function = q_function
         if gpu >= 0:
@@ -73,6 +70,8 @@ class DQN(agent.Agent):
         self.clip_delta = clip_delta
         self.clip_reward = clip_reward
         self.phi = phi
+        self.target_update_method = target_update_method
+        self.soft_update_tau = soft_update_tau
         self.logger = logger
 
         self.t = 0
@@ -82,6 +81,20 @@ class DQN(agent.Agent):
 
         self.target_q_function = None
         self.sync_target_network()
+
+    def sync_target_network(self):
+        """Synchronize target network with current network."""
+        if self.target_q_function is None:
+            self.target_q_function = copy.deepcopy(self.q_function)
+        else:
+            if self.target_update_method == 'hard':
+                self.logger.debug('sync')
+                copy_param.copy_param(self.target_q_function, self.q_function)
+            elif self.target_update_method == 'soft':
+                copy_param.soft_copy_param(self.target_q_function, self.q_function, self.soft_update_tau)
+            else:
+                raise RuntimeError('Unknown target update method: {}'.format(
+                    self.target_update_method))
 
     def update(self, experiences, errors_out=None):
         """Update the model from experiences

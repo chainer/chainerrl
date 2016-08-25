@@ -32,3 +32,21 @@ class TestCopyParam(unittest.TestCase):
         b_out_new = list(b(s).data.ravel())
         self.assertEqual(a_out_new, b_out)
         self.assertEqual(b_out_new, b_out)
+
+    def test_soft_copy_param(self):
+        a = L.Linear(1, 5)
+        b = L.Linear(1, 5)
+
+        a.W.data[:] = 0.5
+        b.W.data[:] = 1
+
+        # a = a * 0.9 + b * (1 - 0.9)
+        copy_param.soft_copy_param(target_link=a, source_link=b, tau=0.9)
+
+        np.testing.assert_almost_equal(a.W.data, np.full(a.W.data.shape, 0.55))
+        np.testing.assert_almost_equal(b.W.data, np.full(b.W.data.shape, 1.0))
+
+        copy_param.soft_copy_param(target_link=a, source_link=b, tau=0.9)
+
+        np.testing.assert_almost_equal(a.W.data, np.full(a.W.data.shape, 0.595))
+        np.testing.assert_almost_equal(b.W.data, np.full(b.W.data.shape, 1.0))
