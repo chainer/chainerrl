@@ -33,7 +33,7 @@ class ReplayBuffer(object):
     def sample(self, n):
         """Sample n unique samples from this replay buffer
         """
-        assert len(self.memory) > 0
+        assert len(self.memory) >= n
         return random.sample(self.memory, n)
 
     def __len__(self):
