@@ -213,7 +213,6 @@ class FCDeterministicPolicy(chainer.ChainList, Policy):
             action_scale = xp.expand_dims(xp.asarray(action_scale), axis=0)
             action_mean = (self.max_action + self.min_action) / 2
             action_mean = xp.expand_dims(xp.asarray(action_mean), axis=0)
-            print('scale:', action_scale, 'mean', action_mean)
             a = F.tanh(a) * action_scale + action_mean
 
         if self.truncate_or_scale == 'truncate':
