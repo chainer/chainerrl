@@ -136,7 +136,6 @@ class ContinuousQOutput(QOutput):
             return self.evaluate_actions(self.greedy_actions)
 
     def evaluate_actions(self, actions):
-        assert isinstance(actions, chainer.Variable)
         u_minus_mu = actions - self.mu
         a = - 0.5 * \
             F.batch_matmul(F.batch_matmul(

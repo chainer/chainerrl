@@ -129,16 +129,8 @@ class DQN(agent.Agent):
     def _batch_states(self, states):
         """Generate an input batch array from a list of states
         """
-        if not states:
-            return []
         states = [self.phi(s) for s in states]
-        xp = cuda.get_array_module(states[0])
-        batch = xp.asarray(states)
-        if self.gpu >= 0:
-            batch = cuda.to_gpu(batch, device=self.gpu)
-        else:
-            batch = cuda.to_cpu(batch)
-        return chainer.Variable(batch)
+        return self.xp.asarray(states)
 
     def _compute_target_values(self, experiences, gamma):
 
@@ -167,10 +159,9 @@ class DQN(agent.Agent):
             [elem['state'] for elem in experiences])
 
         qout = self.q_function(batch_state, test=False)
-        xp = cuda.get_array_module(qout.greedy_actions.data)
 
-        batch_actions = chainer.Variable(
-            xp.asarray([elem['action'] for elem in experiences]))
+        batch_actions = self.xp.asarray(
+                [elem['action'] for elem in experiences])
         batch_q = F.reshape(qout.evaluate_actions(
             batch_actions), (batch_size, 1))
 
