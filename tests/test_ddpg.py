@@ -35,7 +35,7 @@ class TestDDPG(unittest.TestCase):
                                        action_size=n_dim_action,
                                        min_action=env.action_space.low,
                                        max_action=env.action_space.high,
-                                       truncate_or_scale='scale')
+                                       bound_action=True)
 
         q_func = FCSAQFunction(n_dim_obs=5,
                                n_dim_action=n_dim_action,
