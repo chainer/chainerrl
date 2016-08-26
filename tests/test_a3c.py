@@ -113,10 +113,10 @@ class TestA3C(unittest.TestCase):
 
         while not done:
             pout = pi_func(chainer.Variable(
-                env.state.reshape((1,) + env.state.shape)))
+                obs.reshape((1,) + obs.shape)))
             # Use the most probale actions for stability of test results
             action = pout.most_probable_actions.data[0]
-            print('state:', env.state, 'action:', action)
+            print('state:', obs, 'action:', action)
             print('probs', pout.probs.data)
             obs, reward, done, _ = env.step(action)
             total_r += reward

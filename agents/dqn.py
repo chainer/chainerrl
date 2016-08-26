@@ -53,10 +53,11 @@ class DQN(agent.Agent):
           target_update_method (str): 'hard' or 'soft'.
           soft_update_tau (float): tau of soft target update.
         """
-        self.q_function = q_function
+        self.model = q_function
+        self.q_function = q_function  # For backward compatibility
         if gpu >= 0:
             cuda.get_device(gpu).use()
-            self.q_function.to_gpu(device=gpu)
+            self.model.to_gpu(device=gpu)
             self.xp = cuda.cupy
         else:
             self.xp = np
@@ -88,19 +89,20 @@ class DQN(agent.Agent):
             self.update_executor.submit(lambda: cuda.get_device(gpu).use()).result()
             self.update_future = None
 
-        self.target_q_function = None
+        self.target_model = None
         self.sync_target_network()
+        self.target_q_function = self.target_model  # For backward compatibility
 
     def sync_target_network(self):
         """Synchronize target network with current network."""
-        if self.target_q_function is None:
-            self.target_q_function = copy.deepcopy(self.q_function)
+        if self.target_model is None:
+            self.target_model = copy.deepcopy(self.model)
         else:
             if self.target_update_method == 'hard':
                 self.logger.debug('sync')
-                copy_param.copy_param(self.target_q_function, self.q_function)
+                copy_param.copy_param(self.target_model, self.model)
             elif self.target_update_method == 'soft':
-                copy_param.soft_copy_param(self.target_q_function, self.q_function, self.soft_update_tau)
+                copy_param.soft_copy_param(self.target_model, self.model, self.soft_update_tau)
             else:
                 raise RuntimeError('Unknown target update method: {}'.format(
                     self.target_update_method))
@@ -137,7 +139,7 @@ class DQN(agent.Agent):
         batch_next_state = self._batch_states(
             [elem['next_state'] for elem in experiences])
 
-        target_next_qout = self.target_q_function(batch_next_state, test=True)
+        target_next_qout = self.target_model(batch_next_state, test=True)
         next_q_max = target_next_qout.max
         next_q_max.unchain_backward()
 
@@ -158,7 +160,7 @@ class DQN(agent.Agent):
         batch_state = self._batch_states(
             [elem['state'] for elem in experiences])
 
-        qout = self.q_function(batch_state, test=False)
+        qout = self.model(batch_state, test=False)
 
         batch_actions = self.xp.asarray(
                 [elem['action'] for elem in experiences])
@@ -213,7 +215,7 @@ class DQN(agent.Agent):
         self.lock.acquire()
         batch_x = self._batch_states(states)
         q_values = list(cuda.to_cpu(
-            self.q_function(batch_x, test=True).q_values))
+            self.model(batch_x, test=True).q_values))
         self.lock.release()
         return q_values
 
@@ -224,7 +226,7 @@ class DQN(agent.Agent):
             model.to_cpu()
 
     def _load_model_without_lock(self, model_filename):
-        serializers.load_hdf5(model_filename, self.q_function)
+        serializers.load_hdf5(model_filename, self.model)
         self.sync_target_network()
         opt_filename = model_filename + '.opt'
         if os.path.exists(opt_filename):
@@ -247,14 +249,14 @@ class DQN(agent.Agent):
         This function is thread-safe.
         """
         self.lock.acquire()
-        serializers.save_hdf5(model_filename, self.q_function)
+        serializers.save_hdf5(model_filename, self.model)
         serializers.save_hdf5(model_filename + '.opt', self.optimizer)
         self.lock.release()
 
     def select_action(self, state):
 
         def greedy_action():
-            qout = self.q_function(self._batch_states([state]), test=True)
+            qout = self.model(self._batch_states([state]), test=True)
             action = cuda.to_cpu(qout.greedy_actions.data)[0]
             action_var = chainer.Variable(self.xp.asarray([action]))
             q = qout.evaluate_actions(action_var)

@@ -10,6 +10,7 @@ from logging import getLogger
 logger = getLogger(__name__)
 
 import chainer
+from chainer import cuda
 from chainer import functions as F
 from chainer import links as L
 
@@ -172,3 +173,56 @@ class LinearGaussianPolicyWithSphericalCovariance(chainer.ChainList, GaussianPol
         mean = F.tanh(self.mean_layer(x)) * 2.0
         var = F.softplus(F.broadcast_to(self.var_layer(x), mean.data.shape))
         return mean, var
+
+
+class FCDeterministicPolicy(chainer.ChainList, Policy):
+
+    def __init__(self, n_input_channels, n_hidden_layers,
+                 n_hidden_channels, action_size,
+                 min_action=None, max_action=None, truncate_or_scale=None):
+        self.n_input_channels = n_input_channels
+        self.n_hidden_layers = n_hidden_layers
+        self.n_hidden_channels = n_hidden_channels
+        self.action_size = action_size
+        self.min_action = min_action
+        self.max_action = max_action
+        self.truncate_or_scale = truncate_or_scale
+
+        layers = []
+        if n_hidden_layers > 0:
+            layers.append(L.Linear(n_input_channels, n_hidden_channels))
+            for i in range(n_hidden_layers - 1):
+                layers.append(L.Linear(n_hidden_channels, n_hidden_channels))
+            layers.append(L.Linear(n_hidden_channels, self.action_size))
+        else:
+            layers.append(L.Linear(n_input_channels, self.action_size))
+
+        super().__init__(*layers)
+
+    def __call__(self, state):
+        h = state
+        for layer in self[:-1]:
+            h = F.relu(layer(h))
+        a = self[-1](h)
+        xp = cuda.get_array_module(a.data)
+
+        if self.truncate_or_scale == 'scale':
+            assert self.min_action is not None
+            assert self.max_action is not None
+            action_scale = (self.max_action - self.min_action) / 2
+            action_scale = xp.expand_dims(xp.asarray(action_scale), axis=0)
+            action_mean = (self.max_action + self.min_action) / 2
+            action_mean = xp.expand_dims(xp.asarray(action_mean), axis=0)
+            print('scale:', action_scale, 'mean', action_mean)
+            a = F.tanh(a) * action_scale + action_mean
+
+        if self.truncate_or_scale == 'truncate':
+            assert self.min_action is not None or self.max_action is not None
+            if self.min_action is not None:
+                a = F.maximum(
+                    self.xp.broadcast_to(xp.asarray(self.min_action), a.data.shape), a)
+            if self.max_action is not None:
+                a = F.minimum(
+                    self.xp.broadcast_to(xp.asarray(self.max_action), a.data.shape), a)
+
+        return a

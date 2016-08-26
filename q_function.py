@@ -82,7 +82,6 @@ class FCSIQFunction(chainer.ChainList, QFunction):
         super(FCSIQFunction, self).__init__(*layers)
 
     def __call__(self, state, test=False):
-        assert isinstance(state, chainer.Variable)
         h = state
         for layer in self[:-1]:
             h = F.elu(layer(h))
@@ -156,3 +155,39 @@ class FCSIContinuousQFunction(chainer.Chain, QFunction):
             mat = F.expand_dims(mat_diag ** 2, axis=2)
         return ContinuousQOutput(mu, mat, v, min_action=self.action_space.low,
                                  max_action=self.action_space.high)
+
+
+class FCSAQFunction(chainer.ChainList, QFunction):
+    """Fully-connected (s,a)-input continuous Q-function."""
+
+    def __init__(self, n_dim_obs, n_dim_action, n_hidden_channels,
+                 n_hidden_layers):
+        """
+        Args:
+          n_dim_obs: number of dimensions of observation space
+          n_dim_action: number of dimensions of action space
+          n_hidden_channels: number of hidden channels
+          n_hidden_layers: number of hidden layers
+        """
+
+        self.n_input_channels = n_dim_obs + n_dim_action
+        self.n_hidden_layers = n_hidden_layers
+        self.n_hidden_channels = n_hidden_channels
+
+        layers = []
+        assert self.n_hidden_layers >= 1
+        layers.append(
+            L.Linear(self.n_input_channels, self.n_hidden_channels))
+        for i in range(self.n_hidden_layers - 1):
+            layers.append(
+                L.Linear(self.n_hidden_channels, self.n_hidden_channels))
+        layers.append(L.Linear(self.n_hidden_channels, 1))
+        super().__init__(*layers)
+
+    def __call__(self, state, action, test=False):
+        h = F.concat((state, action), axis=1)
+        for layer in self[:-1]:
+            h = F.relu(layer(h))
+        h = self[-1](h)
+        return h
+

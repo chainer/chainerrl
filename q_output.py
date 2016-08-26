@@ -69,7 +69,6 @@ class DiscreteQOutput(QOutput):
             return self.greedy_actions
 
     def evaluate_actions(self, actions):
-        assert isinstance(actions, chainer.Variable)
         return F.select_item(self.q_values, actions)
 
     def compute_advantage(self, actions):
