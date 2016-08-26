@@ -17,7 +17,7 @@ import numpy as np
 from agents.dqn import DQN
 
 
-def eval_performance(env, q_func, phi, n_runs, gpu, max_episode_len=None,
+def eval_performance(env, agent, n_runs, gpu, max_episode_len=None,
                      explorer=None):
     assert n_runs > 1, 'Computing stdev requires at least two runs'
     scores = []
@@ -28,11 +28,7 @@ def eval_performance(env, q_func, phi, n_runs, gpu, max_episode_len=None,
         t = 0
         while not (done or t == max_episode_len):
             def greedy_action_func():
-                s = np.expand_dims(phi(obs), 0)
-                if gpu >= 0:
-                    s = chainer.cuda.to_gpu(s)
-                qout = q_func(chainer.Variable(s), test=True)
-                return qout.greedy_actions.data[0]
+                return agent.select_greedy_action(obs)
             if explorer is not None:
                 a = explorer.select_action(t, greedy_action_func)
             else:
@@ -69,13 +65,12 @@ def update_best_model(agent, outdir, t, old_max_score, new_max_score):
 
 class Evaluator(object):
 
-    def __init__(self, n_runs, phi, gpu, eval_frequency,
+    def __init__(self, n_runs, gpu, eval_frequency,
                  outdir, max_episode_len=None, explorer=None):
         self.max_score = np.finfo(np.float32).min
         self.start_time = time.time()
         self.eval_after_this_episode = False
         self.n_runs = n_runs
-        self.phi = phi
         self.gpu = gpu
         self.eval_frequency = eval_frequency
         self.outdir = outdir
@@ -85,7 +80,7 @@ class Evaluator(object):
 
     def evaluate_and_update_max_score(self, env, t, agent):
         mean, median, stdev = eval_performance(
-            env, agent.q_function, self.phi, self.n_runs, self.gpu,
+            env, agent, self.n_runs, self.gpu,
             max_episode_len=self.max_episode_len, explorer=self.explorer)
         record_stats(self.outdir, t, self.start_time, mean, median, stdev)
         if mean > self.max_score:
@@ -121,7 +116,7 @@ def run_dqn(agent, make_env, phi, steps, eval_n_runs, eval_frequency, gpu,
     t = step_offset
     agent.t = step_offset
 
-    evaluator = Evaluator(n_runs=eval_n_runs, phi=phi, gpu=gpu,
+    evaluator = Evaluator(n_runs=eval_n_runs, gpu=gpu,
                           eval_frequency=eval_frequency, outdir=outdir,
                           max_episode_len=max_episode_len,
                           explorer=eval_explorer)

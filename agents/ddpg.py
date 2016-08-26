@@ -10,6 +10,7 @@ import numpy as np
 import chainer.links as L
 import chainer.functions as F
 from chainer import cuda
+from chainer import serializers
 
 from . import dqn
 
@@ -79,18 +80,41 @@ class DDPG(dqn.DQN):
         actor_loss.backward()
         self.actor_optimizer.update()
 
+    def select_greedy_action(self, state):
+
+        s = self._batch_states([state])
+        action = self.policy(s)
+        # Q is not needed here, but log it just for information
+        q = self.q_function(s, action)
+        self.logger.debug('t:%s a:%s q:%s',
+                          self.t, action.data[0], q.data)
+        return cuda.to_cpu(action.data[0])
+
     def select_action(self, state):
+        return self.explorer.select_action(
+                self.t, lambda: self.select_greedy_action(state))
 
-        def greedy_action():
-            s = self._batch_states([state])
-            action = self.policy(s)
-            # Q is not needed here, but log it just for information
-            q = self.q_function(s, action)
-            self.logger.debug('t:%s a:%s q:%s',
-                              self.t, action.data[0], q.data)
-            return cuda.to_cpu(action.data[0])
+    def save_model(self, model_filename):
+        """Save a network model to a file."""
 
-        action = self.explorer.select_action(self.t, greedy_action)
+        serializers.save_hdf5(model_filename, self.model)
+        serializers.save_hdf5(model_filename + '.opt.actor',
+                              self.actor_optimizer)
+        serializers.save_hdf5(model_filename + '.opt.critic',
+                              self.critic_optimizer)
 
-        return action
+    def load_model(self, model_filename):
+        """Load a network model form a file."""
 
+        serializers.load_hdf5(model_filename, self.model)
+        self.sync_target_network()
+
+        actor_opt_filename = model_filename + '.opt.actor'
+        if os.path.exists(actor_opt_filename):
+            print('WARNING: {0} was not found'.format(actor_opt_filename))
+            serializers.load_hdf5(actor_opt_filename, self.actor_optimizer)
+
+        critic_opt_filename = model_filename + '.opt.critic'
+        if os.path.exists(critic_opt_filename):
+            print('WARNING: {0} was not found'.format(critic_opt_filename))
+            serializers.load_hdf5(critic_opt_filename, self.critic_optimizer)

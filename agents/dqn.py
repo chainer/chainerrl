@@ -253,20 +253,18 @@ class DQN(agent.Agent):
         serializers.save_hdf5(model_filename + '.opt', self.optimizer)
         self.lock.release()
 
-    def select_action(self, state):
-
-        def greedy_action():
-            qout = self.model(self._batch_states([state]), test=True)
-            action = cuda.to_cpu(qout.greedy_actions.data)[0]
-            action_var = chainer.Variable(self.xp.asarray([action]))
-            q = qout.evaluate_actions(action_var)
-            self.logger.debug('t:%s a:%s q:%s qout:%s',
-                              self.t, action, q.data, qout)
-            return action
-
-        action = self.explorer.select_action(self.t, greedy_action)
-
+    def select_greedy_action(self, state):
+        qout = self.model(self._batch_states([state]), test=True)
+        action = cuda.to_cpu(qout.greedy_actions.data)[0]
+        action_var = chainer.Variable(self.xp.asarray([action]))
+        q = qout.evaluate_actions(action_var)
+        self.logger.debug('t:%s a:%s q:%s qout:%s',
+                          self.t, action, q.data, qout)
         return action
+
+    def select_action(self, state):
+        return self.explorer.select_action(
+                self.t, lambda: self.select_greedy_action(state))
 
     def act(self, state, reward):
         """
