@@ -1,4 +1,5 @@
-from __future__ import unicode_literals
+# This caused an error in py2 because cupy expect non-unicode str
+# from __future__ import unicode_literals
 from __future__ import print_function
 from __future__ import division
 from __future__ import absolute_import
