@@ -85,6 +85,7 @@ class DQN(agent.Agent):
         self.lock = threading.Lock()
         if self.async_update:
             self.update_executor = ThreadPoolExecutor(max_workers=1)
+            self.update_executor.submit(lambda: cuda.get_device(gpu).use()).result()
             self.update_future = None
 
         self.target_q_function = None
