@@ -6,6 +6,8 @@ from future import standard_library
 from builtins import super
 standard_library.install_aliases()
 
+import os
+
 import numpy as np
 import chainer.links as L
 import chainer.functions as F
