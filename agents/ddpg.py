@@ -85,9 +85,9 @@ class DDPG(dqn.DQN):
     def select_greedy_action(self, state):
 
         s = self._batch_states([state])
-        action = self.policy(s)
+        action = self.policy(s, test=True)
         # Q is not needed here, but log it just for information
-        q = self.q_function(s, action)
+        q = self.q_function(s, action, test=True)
         self.logger.debug('t:%s a:%s q:%s',
                           self.t, action.data[0], q.data)
         return cuda.to_cpu(action.data[0])

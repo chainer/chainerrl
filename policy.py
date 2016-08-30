@@ -212,7 +212,7 @@ class FCDeterministicPolicy(chainer.ChainList, Policy):
 
         super().__init__(*layers)
 
-    def __call__(self, state):
+    def __call__(self, state, test=False):
         h = state
         for layer in self[:-1]:
             h = F.relu(layer(h))
