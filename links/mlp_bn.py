@@ -35,11 +35,13 @@ class LinearBN(chainer.Chain):
 class MLPBN(chainer.Chain):
     """Multi-Layer Perceptron with BatchNormalization."""
 
-    def __init__(self, in_size, out_size, hidden_sizes, normalize_input=True):
+    def __init__(self, in_size, out_size, hidden_sizes, normalize_input=True,
+                 normalize_output=False):
         self.in_size = in_size
         self.out_size = out_size
         self.hidden_sizes = hidden_sizes
         self.normalize_input = normalize_input
+        self.normalize_output = normalize_output
 
         layers = {}
 
@@ -57,6 +59,10 @@ class MLPBN(chainer.Chain):
         else:
             layers['output'] = L.Linear(in_size, out_size)
 
+        if normalize_output:
+            layers['output_bn'] = L.BatchNormalization(out_size)
+            layers['output_bn'].avg_var[:] = 1
+
         super().__init__(**layers)
 
     def __call__(self, x, test=False):
@@ -67,5 +73,8 @@ class MLPBN(chainer.Chain):
         if self.hidden_sizes:
             for l in self.hidden_layers:
                 h = F.relu(l(h, test=test))
-        return self.output(h)
+        h = self.output(h)
+        if self.normalize_output:
+            h = self.output_bn(h, test=test)
+        return h
 
