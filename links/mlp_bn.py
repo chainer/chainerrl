@@ -64,7 +64,8 @@ class MLPBN(chainer.Chain):
         assert test or x.shape[0] > 1
         if self.normalize_input:
             h = self.input_bn(h, test=test)
-        for l in self.hidden_layers:
-            h = F.relu(l(h, test=test))
+        if self.hidden_sizes:
+            for l in self.hidden_layers:
+                h = F.relu(l(h, test=test))
         return self.output(h)
 
