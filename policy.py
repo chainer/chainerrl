@@ -15,6 +15,7 @@ from chainer import functions as F
 from chainer import links as L
 
 import policy_output
+from links.mlp_bn import MLPBN
 
 
 class Policy(object):
@@ -175,6 +176,18 @@ class LinearGaussianPolicyWithSphericalCovariance(chainer.ChainList, GaussianPol
         return mean, var
 
 
+def bound_action_by_tanh(action, min_action, max_action):
+    assert isinstance(action, chainer.Variable)
+    assert min_action is not None
+    assert max_action is not None
+    xp = cuda.get_array_module(action.data)
+    action_scale = (max_action - min_action) / 2
+    action_scale = xp.expand_dims(xp.asarray(action_scale), axis=0)
+    action_mean = (max_action + min_action) / 2
+    action_mean = xp.expand_dims(xp.asarray(action_mean), axis=0)
+    return F.tanh(action) * action_scale + action_mean
+
+
 class FCDeterministicPolicy(chainer.ChainList, Policy):
 
     def __init__(self, n_input_channels, n_hidden_layers,
@@ -207,12 +220,36 @@ class FCDeterministicPolicy(chainer.ChainList, Policy):
         xp = cuda.get_array_module(a.data)
 
         if self.bound_action:
-            assert self.min_action is not None
-            assert self.max_action is not None
-            action_scale = (self.max_action - self.min_action) / 2
-            action_scale = xp.expand_dims(xp.asarray(action_scale), axis=0)
-            action_mean = (self.max_action + self.min_action) / 2
-            action_mean = xp.expand_dims(xp.asarray(action_mean), axis=0)
-            a = F.tanh(a) * action_scale + action_mean
+            a = bound_action_by_tanh(a, self.min_action, self.max_action)
+
+        return a
+
+
+class FCBNDeterministicPolicy(MLPBN, Policy):
+
+    def __init__(self, n_input_channels, n_hidden_layers,
+                 n_hidden_channels, action_size,
+                 min_action=None, max_action=None, bound_action=True,
+                 normalize_input=True):
+        self.n_input_channels = n_input_channels
+        self.n_hidden_layers = n_hidden_layers
+        self.n_hidden_channels = n_hidden_channels
+        self.action_size = action_size
+        self.min_action = min_action
+        self.max_action = max_action
+        self.bound_action = bound_action
+        self.normalize_input = normalize_input
+
+        super().__init__(
+            in_size=self.n_input_channels,
+            out_size=self.action_size,
+            hidden_sizes=[self.n_hidden_channels] * self.n_hidden_layers,
+            normalize_input=self.normalize_input)
+
+    def __call__(self, state, test=False):
+        a = super().__call__(state, test=test)
+
+        if self.bound_action:
+            a = bound_action_by_tanh(a, self.min_action, self.max_action)
 
         return a
