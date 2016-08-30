@@ -111,7 +111,7 @@ class TestDDPG(unittest.TestCase):
             s = np.expand_dims(obs, 0)
             if gpu >= 0:
                 s = cuda.to_gpu(s, device=gpu)
-            action = policy(chainer.Variable(s)).data[0]
+            action = policy(chainer.Variable(s), test=True).data[0]
             if isinstance(action, cuda.cupy.ndarray):
                 action = cuda.to_cpu(action)
             obs, reward, done, _ = env.step(action)
