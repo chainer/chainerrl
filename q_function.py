@@ -14,6 +14,7 @@ from chainer import functions as F
 from chainer import links as L
 from chainer import cuda
 
+from links.mlp_bn import MLPBN
 from q_output import DiscreteQOutput
 from q_output import ContinuousQOutput
 from functions.lower_triangular_matrix import lower_triangular_matrix
@@ -190,4 +191,31 @@ class FCSAQFunction(chainer.ChainList, QFunction):
             h = F.relu(layer(h))
         h = self[-1](h)
         return h
+
+
+class FCBNSAQFunction(MLPBN, QFunction):
+    """Fully-connected (s,a)-input continuous Q-function."""
+
+    def __init__(self, n_dim_obs, n_dim_action, n_hidden_channels,
+                 n_hidden_layers, normalize_input=True):
+        """
+        Args:
+          n_dim_obs: number of dimensions of observation space
+          n_dim_action: number of dimensions of action space
+          n_hidden_channels: number of hidden channels
+          n_hidden_layers: number of hidden layers
+        """
+
+        self.n_input_channels = n_dim_obs + n_dim_action
+        self.n_hidden_layers = n_hidden_layers
+        self.n_hidden_channels = n_hidden_channels
+        self.normalize_input = normalize_input
+        super().__init__(
+            in_size=self.n_input_channels, out_size=1,
+            hidden_sizes=[self.n_hidden_channels] * self.n_hidden_layers,
+            normalize_input=self.normalize_input)
+
+    def __call__(self, state, action, test=False):
+        h = F.concat((state, action), axis=1)
+        return super().__call__(h, test=test)
 
