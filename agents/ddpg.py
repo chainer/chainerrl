@@ -58,29 +58,27 @@ class DDPG(dqn.DQN):
             dtype=np.float32)
 
         # Update Q-function
-        next_actions = self.target_policy(batch_next_state)
-        next_q = self.target_q_function(batch_next_state, next_actions,
-                                        test=True)
+        def compute_critic_loss():
+            next_actions = self.target_policy(batch_next_state, test=True)
+            next_q = self.target_q_function(batch_next_state, next_actions,
+                                            test=True)
 
-        target_q = batch_rewards + self.gamma * (1.0 - batch_terminal) * next_q
-        target_q.unchain_backward()
+            target_q = batch_rewards + self.gamma * (1.0 - batch_terminal) * next_q
+            target_q.unchain_backward()
 
-        predict_q = self.q_function(batch_state, batch_actions, test=False)
+            predict_q = self.q_function(batch_state, batch_actions, test=False)
 
-        critic_loss = F.mean_squared_error(target_q, predict_q)
+            return F.mean_squared_error(target_q, predict_q)
 
-        self.critic_optimizer.zero_grads()
-        critic_loss.backward()
-        self.critic_optimizer.update()
+        def compute_actor_loss():
+            q = self.q_function(batch_state,
+                                self.policy(batch_state, test=False),
+                                test=True)
+            # Since we want to maximize Q, loss is negation of Q
+            return - F.sum(q) / batch_size
 
-        # Update policy
-        q = self.q_function(batch_state, self.policy(batch_state))
-        # Since we want to maximize Q, loss is negation of Q
-        actor_loss = - F.sum(q) / batch_size
-
-        self.actor_optimizer.zero_grads()
-        actor_loss.backward()
-        self.actor_optimizer.update()
+        self.critic_optimizer.update(compute_critic_loss)
+        self.actor_optimizer.update(compute_actor_loss)
 
     def select_greedy_action(self, state):
 
