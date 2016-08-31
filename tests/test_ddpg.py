@@ -14,7 +14,9 @@ from chainer import optimizers
 import numpy as np
 
 from q_function import FCSAQFunction
+from q_function import FCBNLateActionSAQFunction
 from policy import FCDeterministicPolicy
+from policy import FCBNDeterministicPolicy
 import random_seed
 from envs.simple_abc import ABC
 from explorers.epsilon_greedy import LinearDecayEpsilonGreedy
@@ -29,7 +31,7 @@ class TestDDPG(unittest.TestCase):
 
     def make_model(self, env):
         n_dim_action = env.action_space.low.size
-        policy = FCDeterministicPolicy(n_input_channels=5,
+        policy = FCBNDeterministicPolicy(n_input_channels=5,
                                        n_hidden_layers=2,
                                        n_hidden_channels=10,
                                        action_size=n_dim_action,
@@ -37,7 +39,7 @@ class TestDDPG(unittest.TestCase):
                                        max_action=env.action_space.high,
                                        bound_action=True)
 
-        q_func = FCSAQFunction(n_dim_obs=5,
+        q_func = FCBNLateActionSAQFunction(n_dim_obs=5,
                                n_dim_action=n_dim_action,
                                n_hidden_layers=2,
                                n_hidden_channels=10)
