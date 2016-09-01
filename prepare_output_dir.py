@@ -13,7 +13,7 @@ import argparse
 import datetime
 
 
-def prepare_output_dir(args, user_specified_dir=None):
+def prepare_output_dir(args, user_specified_dir=None, argv=None):
     """Prepare output directory.
 
     An output directory is created if it does not exist. Then the following
@@ -66,5 +66,9 @@ def prepare_output_dir(args, user_specified_dir=None):
     # Save `git diff`
     with open(os.path.join(outdir, 'git-diff.txt'), 'w') as f:
         f.write(subprocess.getoutput('git diff'))
+
+    if argv is not None:
+        with open(os.path.join(outdir, 'command.txt'), 'w') as f:
+            f.write(' '.join(argv))
 
     return outdir
