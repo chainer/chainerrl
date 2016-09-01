@@ -47,8 +47,13 @@ def prepare_output_dir(args, user_specified_dir=None):
             args = vars(args)
         f.write(json.dumps(args))
 
+    # Save all the environment variables
     with open(os.path.join(outdir, 'environ.txt'), 'w') as f:
         f.write(json.dumps(dict(os.environ)))
+
+    # Save `git rev-parse HEAD` (SHA of the current commit)
+    with open(os.path.join(outdir, 'git-head.txt'), 'w') as f:
+        f.write(subprocess.getoutput('git rev-parse HEAD'))
 
     # Save `git status`
     with open(os.path.join(outdir, 'git-status.txt'), 'w') as f:
