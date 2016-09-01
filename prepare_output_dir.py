@@ -47,6 +47,9 @@ def prepare_output_dir(args, user_specified_dir=None):
             args = vars(args)
         f.write(json.dumps(args))
 
+    with open(os.path.join(outdir, 'environ.txt'), 'w') as f:
+        f.write(json.dumps(dict(os.environ)))
+
     # Save `git status`
     with open(os.path.join(outdir, 'git-status.txt'), 'w') as f:
         f.write(subprocess.getoutput('git status'))
