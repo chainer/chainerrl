@@ -46,26 +46,26 @@ class GaussianPolicy(Policy):
     compute_mean_and_var.
     """
 
-    def compute_mean_and_ln_var(self, x):
+    def compute_mean_and_ln_var(self, x, test=False):
         """
         Returns:
           tuple of two ~chainer.Variable: mean and log variance
         """
         raise NotImplementedError
 
-    def compute_mean_and_var(self, x):
+    def compute_mean_and_var(self, x, test=False):
         """
         Returns:
           tuple of two ~chainer.Variable: mean and variance
         """
         raise NotImplementedError
 
-    def __call__(self, x):
+    def __call__(self, x, test=False):
         try:
-            mean, ln_var = self.compute_mean_and_ln_var(x)
+            mean, ln_var = self.compute_mean_and_ln_var(x, test=test)
             return policy_output.GaussianPolicyOutput(mean, ln_var=ln_var)
         except NotImplementedError:
-            mean, var = self.compute_mean_and_var(x)
+            mean, var = self.compute_mean_and_var(x, test=test)
             return policy_output.GaussianPolicyOutput(mean, var=var)
 
 
@@ -98,16 +98,32 @@ class FCSoftmaxPolicy(chainer.ChainList, SoftmaxPolicy):
         return h
 
 
+def bound_action_by_tanh(action, min_action, max_action):
+    assert isinstance(action, chainer.Variable)
+    assert min_action is not None
+    assert max_action is not None
+    xp = cuda.get_array_module(action.data)
+    action_scale = (max_action - min_action) / 2
+    action_scale = xp.expand_dims(xp.asarray(action_scale), axis=0)
+    action_mean = (max_action + min_action) / 2
+    action_mean = xp.expand_dims(xp.asarray(action_mean), axis=0)
+    return F.tanh(action) * action_scale + action_mean
+
+
 class FCGaussianPolicy(chainer.ChainList, GaussianPolicy):
     """Gaussian policy that consists of FC layers and rectifiers"""
 
     def __init__(self, n_input_channels, action_size,
-                 n_hidden_layers=0, n_hidden_channels=None):
+                 n_hidden_layers=0, n_hidden_channels=None,
+                 min_action=None, max_action=None, bound_mean=True):
 
         self.n_input_channels = n_input_channels
         self.action_size = action_size
         self.n_hidden_layers = n_hidden_layers
         self.n_hidden_channels = n_hidden_channels
+        self.min_action = min_action
+        self.max_action = max_action
+        self.bound_mean = bound_mean
 
         self.hidden_layers = []
         if n_hidden_layers > 0:
@@ -125,14 +141,15 @@ class FCGaussianPolicy(chainer.ChainList, GaussianPolicy):
         super().__init__(
             self.mean_layer, self.ln_var_layer, *self.hidden_layers)
 
-    def compute_mean_and_ln_var(self, x):
+    def compute_mean_and_ln_var(self, x, test=False):
         h = x
         for layer in self.hidden_layers:
             h = F.relu(layer(h))
-        mean = self.mean_layer(x)
-        # mean = F.tanh(self.mean_layer(x)) * 2.0
-        # ln_var = self.ln_var_layer(x)
-        ln_var = F.log(F.softplus(self.ln_var_layer(x)))
+        mean = self.mean_layer(h)
+        if self.bound_mean:
+            mean = bound_action_by_tanh(mean, self.min_action, self.max_action)
+        # ln_var = self.ln_var_layer(h)
+        ln_var = F.log(F.softplus(self.ln_var_layer(h)))
         return mean, ln_var
 
 
@@ -149,7 +166,7 @@ class LinearGaussianPolicyWithDiagonalCovariance(chainer.ChainList, GaussianPoli
 
         super().__init__(self.mean_layer, self.var_layer)
 
-    def compute_mean_and_var(self, x):
+    def compute_mean_and_var(self, x, test=False):
         # mean = self.mean_layer(x)
         mean = F.tanh(self.mean_layer(x)) * 2.0
         var = F.softplus(self.var_layer(x))
@@ -169,23 +186,11 @@ class LinearGaussianPolicyWithSphericalCovariance(chainer.ChainList, GaussianPol
 
         super().__init__(self.mean_layer, self.var_layer)
 
-    def compute_mean_and_var(self, x):
+    def compute_mean_and_var(self, x, test=False):
         # mean = self.mean_layer(x)
         mean = F.tanh(self.mean_layer(x)) * 2.0
         var = F.softplus(F.broadcast_to(self.var_layer(x), mean.data.shape))
         return mean, var
-
-
-def bound_action_by_tanh(action, min_action, max_action):
-    assert isinstance(action, chainer.Variable)
-    assert min_action is not None
-    assert max_action is not None
-    xp = cuda.get_array_module(action.data)
-    action_scale = (max_action - min_action) / 2
-    action_scale = xp.expand_dims(xp.asarray(action_scale), axis=0)
-    action_mean = (max_action + min_action) / 2
-    action_mean = xp.expand_dims(xp.asarray(action_mean), axis=0)
-    return F.tanh(action) * action_scale + action_mean
 
 
 class FCDeterministicPolicy(chainer.ChainList, Policy):
