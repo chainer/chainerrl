@@ -87,7 +87,7 @@ def main():
     action_space = sample_env.action_space
     del sample_env
 
-    args.outdir = prepare_output_dir(args, args.outdir)
+    args.outdir = prepare_output_dir(args, args.outdir, argv=sys.argv)
     print('Output files are saved in {}'.format(args.outdir))
 
     if isinstance(action_space, spaces.Box):
