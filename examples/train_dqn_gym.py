@@ -66,7 +66,7 @@ def main():
     def reward_filter(r):
         return r * args.reward_scale_factor
 
-    def make_env():
+    def make_env(test):
         env = gym.make(args.env)
         timestep_limit = env.spec.timestep_limit
         env_modifiers.make_timestep_limited(env, timestep_limit)
