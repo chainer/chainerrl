@@ -10,6 +10,7 @@ import os
 from logging import getLogger
 import concurrent.futures
 from concurrent.futures import ThreadPoolExecutor
+from itertools import zip_longest
 
 import numpy as np
 import chainer
@@ -88,7 +89,7 @@ class DQN(agent.Agent):
             self.update_executor = ThreadPoolExecutor(max_workers=1)
             self.update_executor.submit(lambda: cuda.get_device(gpu).use()).result()
             self.update_future = None
-
+        self.episodic_update = True
         self.target_model = None
         self.sync_target_network()
         self.target_q_function = self.target_model  # For backward compatibility
@@ -128,11 +129,54 @@ class DQN(agent.Agent):
         loss.backward()
         self.optimizer.update()
 
+    def update_from_episodes(self, episodes, errors_out=None):
+        loss = 0
+        sorted_episodes = list(reversed(sorted(episodes, key=len)))
+        for i in range(len(sorted_episodes[0])):
+            transitions = []
+            for epi in sorted_episodes:
+                if len(epi) <= i:
+                    break
+                transitions.append(epi[0])
+            batch = self._batch_transitions(transitions)
+            if i == 0:
+                self.target_model(batch['states'])
+            loss += self._compute_loss(
+                transitions, self.gamma, errors_out=errors_out,
+                normalize_loss=False)
+        n_total_transitions = sum(len(epi) for epi in episodes)
+        loss /= n_total_transitions
+        self.optimizer.zero_grads()
+        loss.backward()
+        self.optimizer.update()
+
     def _batch_states(self, states):
         """Generate an input batch array from a list of states
         """
         states = [self.phi(s) for s in states]
         return self.xp.asarray(states)
+
+    def _batch_transitions(self, transitions):
+
+        batch_states = self._batch_states(
+            [elem['state'] for elem in transitions])
+
+        batch_actions = self.xp.asarray(
+                [elem['action'] for elem in transitions])
+
+        batch_next_states = self._batch_states(
+            [elem['next_state'] for elem in transitions])
+
+        batch_rewards = self.xp.asarray(
+            [elem['reward'] for elem in transitions], dtype=np.float32)
+
+        batch_terminals = self.xp.asarray(
+            [elem['is_state_terminal'] for elem in transitions],
+            dtype=np.float32)
+
+        return dict(states=batch_states, action=batch_actions,
+                    rewards=batch_rewards, next_states=batch_next_states,
+                    terminals=batch_terminals)
 
     def _compute_target_values(self, experiences, gamma):
 
@@ -174,7 +218,8 @@ class DQN(agent.Agent):
 
         return batch_q, batch_q_target
 
-    def _compute_loss(self, experiences, gamma, errors_out=None):
+    def _compute_loss(self, experiences, gamma, errors_out=None,
+                      normalize_loss=True):
         """
         Compute the Q-learning loss for a batch of experiences
 
@@ -197,9 +242,15 @@ class DQN(agent.Agent):
                 errors_out.append(e)
 
         if self.clip_delta:
-            return F.sum(F.huber_loss(y, t, delta=1.0)) / len(experiences)
+            if normalize_loss:
+                return F.sum(F.huber_loss(y, t, delta=1.0)) / len(experiences)
+            else:
+                return F.sum(F.huber_loss(y, t, delta=1.0))
         else:
-            return F.mean_squared_error(y, t) / 2
+            if normalize_loss:
+                return F.mean_squared_error(y, t) / 2
+            else:
+                return (y - t) ** 2 / 2
 
     def compute_q_values(self, states):
         """Compute Q-values
@@ -306,6 +357,8 @@ class DQN(agent.Agent):
                 self.t % self.update_frequency == 0:
             def update_func():
                 for _ in range(self.n_times_update):
+                    if self.episodic_update:
+                        episodes = self.replay_buffer.sample_episodes(self.minibatch_size)
                     experiences = self.replay_buffer.sample(self.minibatch_size)
                     self.update(experiences)
             if self.async_update:
