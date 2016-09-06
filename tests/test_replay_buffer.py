@@ -74,3 +74,12 @@ class TestReplayBuffer(unittest.TestCase):
 
         # Now it has two transitions again
         self.assertEqual(len(rbuf), 2)
+
+        # And sampled transitions are exactly what I added!
+        s2 = rbuf.sample(2)
+        if s2[0]['state'] == 0:
+            self.assertEqual(s2[0], trans1)
+            self.assertEqual(s2[1], trans2)
+        else:
+            self.assertEqual(s2[0], trans2)
+            self.assertEqual(s2[1], trans1)
