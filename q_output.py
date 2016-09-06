@@ -111,8 +111,8 @@ class ContinuousQOutput(QOutput):
         self.mu = mu
         self.mat = mat
         self.v = v
-        self.min_action = self.xp.asarray(min_action)
-        self.max_action = self.xp.asarray(max_action)
+        self.min_action = self.xp.asarray(min_action, dtype=np.float32)
+        self.max_action = self.xp.asarray(max_action, dtype=np.float32)
 
         self.batch_size = self.mu.data.shape[0]
 
