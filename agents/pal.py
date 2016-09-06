@@ -41,7 +41,7 @@ class PAL(dqn.DQN):
 
         target_next_qout = self.target_q_function(batch_next_state, test=True)
         next_q_max = target_next_qout.max
-        next_q_max.unchain_backward()
+        next_q_max.creator = None
 
         batch_rewards = self.xp.asarray(
             [elem['reward'] for elem in experiences], dtype=np.float32)
@@ -60,6 +60,6 @@ class PAL(dqn.DQN):
 
         batch_q = F.reshape(batch_q, (batch_size, 1))
         tpal_q = F.reshape(tpal_q, (batch_size, 1))
-        tpal_q.unchain_backward()
+        tpal_q.creator = None
 
         return batch_q, tpal_q

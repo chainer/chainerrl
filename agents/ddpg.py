@@ -64,7 +64,7 @@ class DDPG(dqn.DQN):
                                             test=True)
 
             target_q = batch_rewards + self.gamma * (1.0 - batch_terminal) * next_q
-            target_q.unchain_backward()
+            target_q.creator = None
 
             predict_q = self.q_function(batch_state, batch_actions, test=False)
 

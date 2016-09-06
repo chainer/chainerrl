@@ -68,7 +68,7 @@ class DPP(DQN):
             self._compute_target_values(experiences, gamma), (batch_size, 1))
 
         t = target_q + batch_q_target - target_q_expect
-        t.unchain_backward()
+        t.creator = None
 
         return batch_q, t
 

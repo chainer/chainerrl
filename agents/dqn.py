@@ -141,7 +141,7 @@ class DQN(agent.Agent):
 
         target_next_qout = self.target_model(batch_next_state, test=True)
         next_q_max = target_next_qout.max
-        next_q_max.unchain_backward()
+        next_q_max.creator = None
 
         batch_rewards = self.xp.asarray(
             [elem['reward'] for elem in experiences], dtype=np.float32)
@@ -170,7 +170,7 @@ class DQN(agent.Agent):
         batch_q_target = F.reshape(
             self._compute_target_values(experiences, gamma), (batch_size, 1))
 
-        batch_q_target.unchain_backward()
+        batch_q_target.creator = None
 
         return batch_q, batch_q_target
 
