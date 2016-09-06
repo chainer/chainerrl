@@ -15,6 +15,7 @@ import chainer
 import numpy as np
 
 from agents.dqn import DQN
+from ask_yes_no import ask_yes_no
 
 
 def eval_performance(env, agent, n_runs, gpu, max_episode_len=None,
@@ -53,14 +54,17 @@ def record_stats(outdir, t, start_time, mean, median, stdev):
         print('\t'.join(str(x) for x in record), file=f)
 
 
+def save_agent_model(agent, t, outdir, suffix=''):
+    filename = os.path.join(outdir, '{}{}.h5'.format(t, suffix))
+    agent.save_model(filename)
+    print('Saved the current model to {}'.format(filename))
+
+
 def update_best_model(agent, outdir, t, old_max_score, new_max_score):
     # Save the best model so far
     print('The best score is updated {} -> {}'.format(
         old_max_score, new_max_score))
-    filename = os.path.join(outdir, '{}.h5'.format(t))
-    agent.save_model(filename)
-    print('Saved the current best model to {}'.format(
-        filename))
+    save_agent_model(agent, t, outdir)
 
 
 class Evaluator(object):
@@ -91,6 +95,18 @@ class Evaluator(object):
         if t >= self.prev_eval_t + self.eval_frequency:
             self.evaluate_and_update_max_score(env, t, agent)
             self.prev_eval_t = t
+
+
+def save_agent_replay_buffer(agent, t, outdir, suffix=''):
+    filename = os.path.join(outdir, '{}{}.replay.pkl'.format(t, suffix))
+    agent.replay_buffer.save(filename)
+    print('Saved the current replay buffer to {}'.format(filename))
+
+
+def ask_and_save_agent_replay_buffer(agent, t, outdir, suffix=''):
+    if hasattr(agent, 'replay_buffer') and \
+            ask_yes_no('Replay buffer has {} transitions. Do you save them to a file?'.format(len(agent.replay_buffer))):
+        save_agent_replay_buffer(agent, t, outdir, suffix=suffix)
 
 
 def run_dqn(agent, make_env, phi, steps, eval_n_runs, eval_frequency, gpu,
@@ -150,12 +166,11 @@ def run_dqn(agent, make_env, phi, steps, eval_n_runs, eval_frequency, gpu,
 
         except:
             # Save the current model before being killed
-            agent.save_model(os.path.join(
-                outdir, '{}_keyboardinterrupt.h5'.format(t)))
-            print('Saved the current model to {}'.format(outdir))
+            save_agent_model(agent, t, outdir, suffix='_except')
+            ask_and_save_agent_replay_buffer(
+                agent, t, outdir, suffix='_except')
             raise
 
     # Save the final model
-    agent.save_model(os.path.join(
-        outdir, '{}_finish.h5'.format(steps)))
-    print('Saved the current model to {}'.format(outdir))
+    save_agent_model(agent, t, outdir, suffix='_finish')
+    ask_and_save_agent_replay_buffer(agent, t, outdir, suffix='_finish')
