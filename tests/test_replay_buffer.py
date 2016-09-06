@@ -5,6 +5,8 @@ from __future__ import absolute_import
 from builtins import dict
 from future import standard_library
 standard_library.install_aliases()
+import os
+import tempfile
 import unittest
 
 import replay_buffer
@@ -39,3 +41,36 @@ class TestReplayBuffer(unittest.TestCase):
         else:
             self.assertEqual(s2[0], trans2)
             self.assertEqual(s2[1], trans1)
+
+    def test_save_and_load(self):
+
+        tempdir = tempfile.mkdtemp()
+
+        rbuf = replay_buffer.ReplayBuffer(100)
+
+        # Add two transitions
+        trans1 = dict(state=0, action=1, reward=2, next_state=3,
+                      next_action=4, is_state_terminal=True)
+        rbuf.append(**trans1)
+        trans2 = dict(state=1, action=1, reward=2, next_state=3,
+                      next_action=4, is_state_terminal=True)
+        rbuf.append(**trans2)
+
+        # Now it has two transitions
+        self.assertEqual(len(rbuf), 2)
+
+        # Save
+        filename = os.path.join(tempdir, 'rbuf.pkl')
+        rbuf.save(filename)
+
+        # Initialize rbuf
+        rbuf = replay_buffer.ReplayBuffer(100)
+
+        # Of course it has no transition yet
+        self.assertEqual(len(rbuf), 0)
+
+        # Load the previously saved buffer
+        rbuf.load(filename)
+
+        # Now it has two transitions again
+        self.assertEqual(len(rbuf), 2)

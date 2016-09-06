@@ -7,6 +7,7 @@ from future import standard_library
 standard_library.install_aliases()
 from collections import deque
 import random
+import cPickle as pickle
 
 
 class ReplayBuffer(object):
@@ -38,3 +39,11 @@ class ReplayBuffer(object):
 
     def __len__(self):
         return len(self.memory)
+
+    def save(self, filename):
+        with open(filename, 'w') as f:
+            pickle.dump(self.memory, f)
+
+    def load(self, filename):
+        with open(filename) as f:
+            self.memory = pickle.load(f)
