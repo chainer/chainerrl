@@ -10,6 +10,7 @@ import os
 from logging import getLogger
 import concurrent.futures
 from concurrent.futures import ThreadPoolExecutor
+from future.utils import native
 
 import numpy as np
 import chainer
@@ -55,6 +56,11 @@ class DQN(agent.Agent):
         """
         self.model = q_function
         self.q_function = q_function  # For backward compatibility
+
+        # Future's builtins.int is a new type that inherit long, but Chainer
+        # 1.15 only accepts int and long, so here we should use a native type.
+        gpu = native(gpu)
+
         if gpu >= 0:
             cuda.get_device(gpu).use()
             self.model.to_gpu(device=gpu)
