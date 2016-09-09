@@ -5,6 +5,7 @@ from __future__ import absolute_import
 from builtins import super
 from future import standard_library
 standard_library.install_aliases()
+
 import numpy as np
 
 from chainer import Variable
@@ -14,8 +15,18 @@ from . import dqn
 
 
 class PAL(dqn.DQN):
+    """Persistent Advantage Learning.
+
+    See: http://arxiv.org/abs/1512.04860.
+    """
 
     def __init__(self, *args, **kwargs):
+        """
+        Args:
+          alpha (float): Weight of (persistent) advantages.
+
+        For other arguments, see DQN.
+        """
         super().__init__(*args, **kwargs)
         self.alpha = kwargs.get('alpha', 0.9)
 
