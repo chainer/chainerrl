@@ -4,12 +4,17 @@ from __future__ import division
 from __future__ import absolute_import
 from future import standard_library
 standard_library.install_aliases()
+
 import numpy as np
 
 from . import dqn
 
 
 class DoubleDQN(dqn.DQN):
+    """Double DQN.
+
+    See: http://arxiv.org/abs/1509.06461.
+    """
 
     def _compute_target_values(self, experiences, gamma):
 
