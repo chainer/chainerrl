@@ -4,7 +4,12 @@ from __future__ import print_function
 from __future__ import absolute_import
 from builtins import super
 from future import standard_library
+from future.utils import with_metaclass
 standard_library.install_aliases()
+
+from abc import ABCMeta
+from abc import abstractmethod
+
 import chainer
 import chainer.functions as F
 from chainer import cuda
@@ -13,15 +18,15 @@ import numpy as np
 from agents.dqn import DQN
 
 
-class DPP(DQN):
-    """Dynamic Policy Programming."""
+class AbstractDPP(with_metaclass(ABCMeta, DQN)):
+    """Dynamic Policy Programming.
 
-    def __init__(self, *args, **kwargs):
-        self.eta = kwargs.pop('eta', 1.0)
-        super().__init__(*args, **kwargs)
+    See: https://arxiv.org/abs/1004.2027.
+    """
 
+    @abstractmethod
     def _l_operator(self, qout):
-        return qout.compute_expectation(self.eta)
+        raise NotImplementedError()
 
     def _compute_target_values(self, experiences, gamma):
 
@@ -73,15 +78,44 @@ class DPP(DQN):
         return batch_q, t
 
 
-class DPPL(DPP):
-    """Dynamic Policy Programming."""
+class DPP(AbstractDPP):
+    """Dynamic Policy Programming with softmax operator."""
+
+    def __init__(self, *args, **kwargs):
+        """
+        Args:
+          eta (float): Positive constant.
+
+        For other arguments, see DQN.
+        """
+        self.eta = kwargs.pop('eta', 1.0)
+        super().__init__(*args, **kwargs)
+
+    def _l_operator(self, qout):
+        return qout.compute_expectation(self.eta)
+
+
+class DPPL(AbstractDPP):
+    """Dynamic Policy Programming with L operator."""
+
+    def __init__(self, *args, **kwargs):
+        """
+        Args:
+          eta (float): Positive constant.
+
+        For other arguments, see DQN.
+        """
+        self.eta = kwargs.pop('eta', 1.0)
+        super().__init__(*args, **kwargs)
 
     def _l_operator(self, qout):
         return F.logsumexp(self.eta * qout.q_values, axis=1) / self.eta
 
 
-class DPPGreedy(DPP):
-    """Dynamic Policy Programming."""
+class DPPGreedy(AbstractDPP):
+    """Dynamic Policy Programming with max operator.
+
+    This algorithm corresponds to DPP with eta = infinity."""
 
     def _l_operator(self, qout):
         return qout.max
