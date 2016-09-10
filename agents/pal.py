@@ -23,7 +23,8 @@ class PAL(dqn.DQN):
     def __init__(self, *args, **kwargs):
         """
         Args:
-          alpha (float): Weight of (persistent) advantages.
+          alpha (float): Weight of (persistent) advantages. Convergence
+            is guaranteed only for alpha in [0, 1).
 
         For other arguments, see DQN.
         """
