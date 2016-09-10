@@ -24,10 +24,10 @@ class _TestDQNLike(unittest.TestCase):
         pass
 
     def make_discrete_q_func(self, env):
-        return q_function.FCSIQFunction(5, 3, 10, 2)
+        return q_function.FCSIQFunction(5, 3, 10, env.action_space.n)
 
     def make_continuous_q_func(self, env):
-        n_dim_action = 2
+        n_dim_action = env.action_space.low.size
         return q_function.FCSIContinuousQFunction(
             5, n_dim_action, 20, 2, env.action_space)
 
@@ -52,7 +52,6 @@ class _TestDQNLike(unittest.TestCase):
             else:
                 return a
 
-
         explorer = LinearDecayEpsilonGreedy(
             1.0, 0.1, 1000, random_action_func)
 
@@ -60,7 +59,6 @@ class _TestDQNLike(unittest.TestCase):
         opt.setup(q_func)
 
         agent = self.make_agent(gpu, q_func, explorer, opt)
-
 
         total_r = 0
         episode_r = 0
