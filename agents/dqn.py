@@ -43,7 +43,8 @@ class DQN(agent.Agent):
                  clip_reward=True, phi=lambda x: x,
                  target_update_method='hard',
                  soft_update_tau=1e-2, async_update=False,
-                 n_times_update=1,
+                 n_times_update=1, average_q_decay=0.999,
+                 average_loss_decay=0.99,
                  logger=getLogger(__name__)):
         """
         Args:
@@ -92,12 +93,17 @@ class DQN(agent.Agent):
         self.lock = threading.Lock()
         if self.async_update:
             self.update_executor = ThreadPoolExecutor(max_workers=1)
-            self.update_executor.submit(lambda: cuda.get_device(gpu).use()).result()
+            self.update_executor.submit(
+                lambda: cuda.get_device(gpu).use()).result()
             self.update_future = None
 
         self.target_model = None
         self.sync_target_network()
         self.target_q_function = self.target_model  # For backward compatibility
+        self.average_q = 0
+        self.average_q_decay = average_q_decay
+        self.average_loss = 0
+        self.average_loss_decay = average_loss_decay
 
     def sync_target_network(self):
         """Synchronize target network with current network."""
@@ -108,7 +114,8 @@ class DQN(agent.Agent):
                 self.logger.debug('sync')
                 copy_param.copy_param(self.target_model, self.model)
             elif self.target_update_method == 'soft':
-                copy_param.soft_copy_param(self.target_model, self.model, self.soft_update_tau)
+                copy_param.soft_copy_param(
+                    self.target_model, self.model, self.soft_update_tau)
             else:
                 raise RuntimeError('Unknown target update method: {}'.format(
                     self.target_update_method))
@@ -130,6 +137,11 @@ class DQN(agent.Agent):
         """
         loss = self._compute_loss(
             experiences, self.gamma, errors_out=errors_out)
+
+        # Update stats
+        self.average_loss *= self.average_loss_decay
+        self.average_loss += (1 - self.average_loss_decay) * float(loss.data)
+
         self.optimizer.zero_grads()
         loss.backward()
         self.optimizer.update()
@@ -169,7 +181,7 @@ class DQN(agent.Agent):
         qout = self.model(batch_state, test=False)
 
         batch_actions = self.xp.asarray(
-                [elem['action'] for elem in experiences])
+            [elem['action'] for elem in experiences])
         batch_q = F.reshape(qout.evaluate_actions(
             batch_actions), (batch_size, 1))
 
@@ -263,14 +275,18 @@ class DQN(agent.Agent):
         qout = self.model(self._batch_states([state]), test=True)
         action = cuda.to_cpu(qout.greedy_actions.data)[0]
         action_var = chainer.Variable(self.xp.asarray([action]))
-        q = qout.evaluate_actions(action_var)
-        self.logger.debug('t:%s a:%s q:%s qout:%s',
-                          self.t, action, q.data, qout)
+        q = float(qout.evaluate_actions(action_var).data)
+
+        # Update stats
+        self.average_q *= self.average_q_decay
+        self.average_q += (1 - self.average_q_decay) * q
+
+        self.logger.debug('t:%s a:%s q:%s qout:%s', self.t, action, q, qout)
         return action
 
     def select_action(self, state):
         return self.explorer.select_action(
-                self.t, lambda: self.select_greedy_action(state))
+            self.t, lambda: self.select_greedy_action(state))
 
     def act(self, state, reward):
         """
@@ -312,7 +328,8 @@ class DQN(agent.Agent):
                 self.t % self.update_frequency == 0:
             def update_func():
                 for _ in range(self.n_times_update):
-                    experiences = self.replay_buffer.sample(self.minibatch_size)
+                    experiences = self.replay_buffer.sample(
+                        self.minibatch_size)
                     self.update(experiences)
             if self.async_update:
                 self.update_future = self.update_executor.submit(update_func)
@@ -357,3 +374,9 @@ class DQN(agent.Agent):
         """
         self.last_state = None
         self.last_action = None
+
+    def get_stats_keys(self):
+        return ('average_q', 'average_loss')
+
+    def get_stats_values(self):
+        return (self.average_q, self.average_loss)

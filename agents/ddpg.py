@@ -34,6 +34,9 @@ class DDPG(dqn.DQN):
         self.actor_optimizer = actor_optimizer
         self.critic_optimizer = critic_optimizer
 
+        self.average_actor_loss = 0.0
+        self.average_critic_loss = 0.0
+
     def update(self, experiences, errors_out=None):
         """Update the model from experiences
         """
@@ -45,7 +48,7 @@ class DDPG(dqn.DQN):
             [elem['state'] for elem in experiences])
 
         batch_actions = self.xp.asarray(
-                [elem['action'] for elem in experiences])
+            [elem['action'] for elem in experiences])
 
         batch_next_state = self._batch_states(
             [elem['next_state'] for elem in experiences])
@@ -63,19 +66,34 @@ class DDPG(dqn.DQN):
             next_q = self.target_q_function(batch_next_state, next_actions,
                                             test=True)
 
-            target_q = batch_rewards + self.gamma * (1.0 - batch_terminal) * next_q
+            target_q = batch_rewards + self.gamma * \
+                (1.0 - batch_terminal) * next_q
             target_q.creator = None
 
             predict_q = self.q_function(batch_state, batch_actions, test=False)
 
-            return F.mean_squared_error(target_q, predict_q)
+            loss = F.mean_squared_error(target_q, predict_q)
+
+            # Update stats
+            self.average_critic_loss *= self.average_loss_decay
+            self.average_critic_loss += ((1 - self.average_loss_decay) *
+                                         float(loss.data))
+
+            return loss
 
         def compute_actor_loss():
             q = self.q_function(batch_state,
                                 self.policy(batch_state, test=False),
                                 test=True)
             # Since we want to maximize Q, loss is negation of Q
-            return - F.sum(q) / batch_size
+            loss = - F.sum(q) / batch_size
+
+            # Update stats
+            self.average_actor_loss *= self.average_loss_decay
+            self.average_actor_loss += ((1 - self.average_loss_decay) *
+                                        float(loss.data))
+
+            return loss
 
         self.critic_optimizer.update(compute_critic_loss)
         self.actor_optimizer.update(compute_actor_loss)
@@ -86,13 +104,18 @@ class DDPG(dqn.DQN):
         action = self.policy(s, test=True)
         # Q is not needed here, but log it just for information
         q = self.q_function(s, action, test=True)
+
+        # Update stats
+        self.average_q *= self.average_q_decay
+        self.average_q += (1 - self.average_q_decay) * float(q.data)
+
         self.logger.debug('t:%s a:%s q:%s',
                           self.t, action.data[0], q.data)
         return cuda.to_cpu(action.data[0])
 
     def select_action(self, state):
         return self.explorer.select_action(
-                self.t, lambda: self.select_greedy_action(state))
+            self.t, lambda: self.select_greedy_action(state))
 
     def save_model(self, model_filename):
         """Save a network model to a file."""
@@ -118,3 +141,9 @@ class DDPG(dqn.DQN):
         if os.path.exists(critic_opt_filename):
             print('WARNING: {0} was not found'.format(critic_opt_filename))
             serializers.load_hdf5(critic_opt_filename, self.critic_optimizer)
+
+    def get_stats_keys(self):
+        return ('average_q', 'average_actor_loss', 'average_critic_loss')
+
+    def get_stats_values(self):
+        return (self.average_q, self.average_actor_loss, self.average_critic_loss)

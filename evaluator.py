@@ -43,11 +43,9 @@ def eval_performance(env, agent, n_runs, max_episode_len=None,
     return mean, median, stdev
 
 
-def record_stats(outdir, t, start_time, mean, median, stdev):
+def record_stats(outdir, values):
     with open(os.path.join(outdir, 'scores.txt'), 'a+') as f:
-        elapsed = time.time() - start_time
-        record = (t, elapsed, mean, median, stdev)
-        print('\t'.join(str(x) for x in record), file=f)
+        print('\t'.join(str(x) for x in values), file=f)
 
 
 def save_agent_model(agent, t, outdir, suffix=''):
@@ -65,9 +63,10 @@ def update_best_model(agent, outdir, t, old_max_score, new_max_score):
 
 class Evaluator(object):
 
-    def __init__(self, env, n_runs, eval_frequency,
+    def __init__(self, agent, env, n_runs, eval_frequency,
                  outdir, max_episode_len=None, explorer=None,
                  step_offset=0):
+        self.agent = agent
         self.env = env
         self.max_score = np.finfo(np.float32).min
         self.start_time = time.time()
@@ -82,19 +81,23 @@ class Evaluator(object):
 
         # Write a header line first
         with open(os.path.join(self.outdir, 'scores.txt'), 'a+') as f:
-            column_names = ('steps', 'elapsed', 'mean', 'median', 'stdev')
+            column_names = (('steps', 'elapsed', 'mean', 'median', 'stdev') +
+                            self.agent.get_stats_keys())
             print('\t'.join(column_names), file=f)
 
-    def evaluate_and_update_max_score(self, t, agent):
+    def evaluate_and_update_max_score(self, t):
         mean, median, stdev = eval_performance(
-            self.env, agent, self.n_runs,
+            self.env, self.agent, self.n_runs,
             max_episode_len=self.max_episode_len, explorer=self.explorer)
-        record_stats(self.outdir, t, self.start_time, mean, median, stdev)
+        elapsed = time.time() - self.start_time
+        values = (t, elapsed, mean, median, stdev) + \
+            self.agent.get_stats_values()
+        record_stats(self.outdir, values)
         if mean > self.max_score:
-            update_best_model(agent, self.outdir, t, self.max_score, mean)
+            update_best_model(self.agent, self.outdir, t, self.max_score, mean)
             self.max_score = mean
 
-    def evaluate_if_necessary(self, t, agent):
+    def evaluate_if_necessary(self, t):
         if t >= self.prev_eval_t + self.eval_frequency:
-            self.evaluate_and_update_max_score(t, agent)
+            self.evaluate_and_update_max_score(t)
             self.prev_eval_t = t - t % self.eval_frequency

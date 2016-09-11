@@ -39,6 +39,9 @@ class PGT(dqn.DQN):
         self.critic_optimizer = critic_optimizer
         self.beta = beta
 
+        self.average_actor_loss = 0.0
+        self.average_critic_loss = 0.0
+
     def update(self, experiences, errors_out=None):
         """Update the model from experiences
         """
@@ -75,7 +78,14 @@ class PGT(dqn.DQN):
 
             predict_q = self.q_function(batch_state, batch_actions, test=False)
 
-            return F.mean_squared_error(target_q, predict_q)
+            loss = F.mean_squared_error(target_q, predict_q)
+
+            # Update stats
+            self.average_critic_loss *= self.average_loss_decay
+            self.average_critic_loss += ((1 - self.average_loss_decay) *
+                                         float(loss.data))
+
+            return loss
 
         def compute_actor_loss():
             pout = self.policy(batch_state, test=False)
@@ -85,8 +95,15 @@ class PGT(dqn.DQN):
                 batch_state, pout.most_probable_actions, test=True)
             advantage = F.reshape(q - v, (batch_size,))
             advantage = chainer.Variable(advantage.data)
-            return - F.sum(advantage * log_probs + self.beta * pout.entropy) \
+            loss = - F.sum(advantage * log_probs + self.beta * pout.entropy) \
                 / batch_size
+
+            # Update stats
+            self.average_actor_loss *= self.average_loss_decay
+            self.average_actor_loss += ((1 - self.average_loss_decay) *
+                                        float(loss.data))
+
+            return loss
 
         self.critic_optimizer.update(compute_critic_loss)
         self.actor_optimizer.update(compute_actor_loss)
@@ -97,6 +114,11 @@ class PGT(dqn.DQN):
         action = self.policy(s, test=True).sampled_actions
         # Q is not needed here, but log it just for information
         q = self.q_function(s, action, test=True)
+
+        # Update stats
+        self.average_q *= self.average_q_decay
+        self.average_q += (1 - self.average_q_decay) * float(q.data)
+
         self.logger.debug('t:%s a:%s q:%s',
                           self.t, action.data[0], q.data)
         return cuda.to_cpu(action.data[0])
@@ -129,3 +151,9 @@ class PGT(dqn.DQN):
         if os.path.exists(critic_opt_filename):
             print('WARNING: {0} was not found'.format(critic_opt_filename))
             serializers.load_hdf5(critic_opt_filename, self.critic_optimizer)
+
+    def get_stats_keys(self):
+        return ('average_q', 'average_actor_loss', 'average_critic_loss')
+
+    def get_stats_values(self):
+        return (self.average_q, self.average_actor_loss, self.average_critic_loss)

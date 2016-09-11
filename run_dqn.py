@@ -57,7 +57,7 @@ def run_dqn_with_evaluation(agent, env, steps, outdir, max_episode_len=None,
                 print('{} t:{} episode_idx:{} explorer:{} episode_r:{}'.format(
                     outdir, t, episode_idx, agent.explorer, episode_r))
                 if evaluator is not None:
-                    evaluator.evaluate_if_necessary(t, agent)
+                    evaluator.evaluate_if_necessary(t)
                 # Start a new episode
                 episode_r = 0
                 episode_idx += 1
@@ -105,7 +105,8 @@ def run_dqn(agent, env, steps, eval_n_runs, eval_frequency,
     if eval_env is None:
         eval_env = env
 
-    evaluator = Evaluator(n_runs=eval_n_runs,
+    evaluator = Evaluator(agent=agent,
+                          n_runs=eval_n_runs,
                           eval_frequency=eval_frequency, outdir=outdir,
                           max_episode_len=max_episode_len,
                           explorer=eval_explorer,
