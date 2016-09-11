@@ -23,7 +23,7 @@ class ABC(env.Env):
         if discrete:
             self.action_space = spaces.Discrete(3)
         else:
-            n_dim_action = 1
+            n_dim_action = 2
             self.action_space = spaces.Box(
                 low=np.asarray([-0.49] * n_dim_action, dtype=np.float32),
                 high=np.asarray([2.49] * n_dim_action, dtype=np.float32))
