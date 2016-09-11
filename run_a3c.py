@@ -168,15 +168,11 @@ def run_async_agent(processes, make_env, model_opt, make_agent,
     """
     Args:
       processes (int): Number of processes.
-      make_env (function): Function as follows:
-        def make_env(process_idx, test):
-          return env
-      model_opt: Function as follows:
-        def model_opt():
-          return models, optimizers
-      make_agent (function): Function as follows:
-        def make_agent(process_idx, model, optimizer):
-          return some_agent
+      make_env (callable): (process_idx, test) -> env
+      model_opt (callable): () -> (models, optimizers)
+      make_agent (callable): (process_idx, models, optimizers) -> agent
+      profile (bool): Profile if set True
+      steps (int): Number of global time steps for training
     """
 
     # Prevent numpy from using multiple threads
