@@ -83,10 +83,9 @@ def run_dqn_with_evaluation(agent, env, steps, outdir, max_episode_len=None,
     ask_and_save_agent_replay_buffer(agent, t, outdir, suffix='_finish')
 
 
-def run_dqn(
-        agent, env, phi, steps, eval_n_runs, eval_frequency,
-        outdir, max_episode_len=None, step_offset=0, eval_explorer=None,
-        eval_env=None):
+def run_dqn(agent, env, steps, eval_n_runs, eval_frequency,
+            outdir, max_episode_len=None, step_offset=0, eval_explorer=None,
+            eval_env=None):
     """
     Run a DQN-like agent.
 

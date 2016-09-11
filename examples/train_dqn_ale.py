@@ -83,7 +83,7 @@ def main():
     parser.add_argument('--target-update-frequency',
                         type=int, default=10 ** 4)
     parser.add_argument('--eval-frequency', type=int, default=10 ** 5)
-    parser.add_argument('--update-frequency', type=int, default=1)
+    parser.add_argument('--update-frequency', type=int, default=4)
     parser.add_argument('--activation', type=str, default='relu')
     parser.add_argument('--eval-n-runs', type=int, default=10)
     parser.add_argument('--no-clip-delta',
@@ -94,14 +94,15 @@ def main():
     if args.seed is not None:
         random_seed.set_random_seed(args.seed)
 
-    def make_env(test):
-        return ale.ALE(args.rom, use_sdl=args.use_sdl)
+    env = ale.ALE(args.rom, use_sdl=args.use_sdl)
+    eval_env = ale.ALE(args.rom, use_sdl=args.use_sdl,
+                       treat_life_lost_as_terminal=False)
 
     args.outdir = prepare_output_dir(args, args.outdir)
 
     print('Output files are saved in {}'.format(args.outdir))
 
-    n_actions = ale.ALE(args.rom).number_of_actions
+    n_actions = env.number_of_actions
     activation = parse_activation(args.activation)
     q_func = parse_arch(args.arch, n_actions, activation)
     init_like_torch(q_func)
@@ -131,9 +132,10 @@ def main():
     eval_explorer = ConstantEpsilonGreedy(
         5e-2, lambda: np.random.randint(n_actions))
     run_dqn.run_dqn(
-        agent=agent, make_env=make_env, phi=dqn_phi, steps=args.steps,
+        agent=agent, env=env, steps=args.steps,
         eval_n_runs=args.eval_n_runs, eval_frequency=args.eval_frequency,
-        gpu=args.gpu, outdir=args.outdir, eval_explorer=eval_explorer)
+        outdir=args.outdir, eval_explorer=eval_explorer,
+        eval_env=eval_env)
 
 if __name__ == '__main__':
     main()
