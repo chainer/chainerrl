@@ -123,7 +123,7 @@ def main():
 
     def make_env(process_idx, test):
         return ale.ALE(args.rom, use_sdl=args.use_sdl,
-                       treat_life_lost_as_terminal=test)
+                       treat_life_lost_as_terminal=not test)
 
     run_a3c.run_a3c(
         args.processes, make_env, model_opt, phi=dqn_phi, t_max=args.t_max,
