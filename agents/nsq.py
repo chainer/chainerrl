@@ -54,7 +54,7 @@ class NSQ(object):
         copy_param.copy_param(target_link=self.q_function,
                               source_link=self.shared_q_function)
 
-    def act(self, t, state, reward, is_state_terminal):
+    def act(self, state, reward, is_state_terminal):
 
         if self.clip_reward:
             reward = np.clip(reward, -1, 1)
