@@ -29,6 +29,26 @@ def set_shared_params(a, b):
                 shared_param, dtype=param.data.dtype).reshape(param.data.shape)
 
 
+def make_params_not_shared(a):
+    """
+    Args:
+      a (chainer.Link): link whose params are to be made not shared
+    """
+    assert isinstance(a, chainer.Link)
+    for param in a.params():
+        param.data = param.data.copy()
+
+
+def assert_params_not_shared(a, b):
+    assert isinstance(a, chainer.Link)
+    assert isinstance(b, chainer.Link)
+    a_params = dict(a.namedparams())
+    b_params = dict(b.namedparams())
+    for name, a_param in a_params.items():
+        b_param = b_params[name]
+        assert a_param.data.ctypes.data != b_param.data.ctypes.data
+
+
 def set_shared_states(a, b):
     assert isinstance(a, chainer.Optimizer)
     assert hasattr(a, 'target'), 'Optimizer.setup must be called first'

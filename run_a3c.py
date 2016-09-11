@@ -23,6 +23,7 @@ import cv2
 import numpy as np
 
 from agents import a3c
+from agents import nsq
 import random_seed
 import async
 from prepare_output_dir import prepare_output_dir
@@ -160,10 +161,23 @@ def train_loop_with_profile(process_idx, counter, make_env, max_score,
                     'profile-{}.out'.format(os.getpid()))
 
 
-def run_a3c(processes, make_env, model_opt, phi, t_max=1, beta=1e-2,
-            profile=False, steps=8 * 10 ** 7, eval_frequency=10 ** 6,
-            eval_n_runs=10, use_terminal_state_value=False, gamma=0.99,
-            args={}):
+def run_async_agent(processes, make_env, model_opt, make_agent,
+                    profile=False, steps=8 * 10 ** 7, eval_frequency=10 ** 6,
+                    eval_n_runs=10, gamma=0.99,
+                    args={}):
+    """
+    Args:
+      processes (int): Number of processes.
+      make_env (function): Function as follows:
+        def make_env(process_idx, test):
+          return env
+      model_opt: Function as follows:
+        def model_opt():
+          return models, optimizers
+      make_agent (function): Function as follows:
+        def make_agent(process_idx, model, optimizer):
+          return some_agent
+    """
 
     # Prevent numpy from using multiple threads
     os.environ['OMP_NUM_THREADS'] = '1'
@@ -172,12 +186,12 @@ def run_a3c(processes, make_env, model_opt, phi, t_max=1, beta=1e-2,
 
     print('Output files are saved in {}'.format(outdir))
 
-    n_actions = 20 * 20
+    models, opts = model_opt()
 
-    model, opt = model_opt()
-
-    shared_params = async.share_params_as_shared_arrays(model)
-    shared_states = async.share_states_as_shared_arrays(opt)
+    shared_params = tuple(async.share_params_as_shared_arrays(model)
+                          for model in models)
+    shared_states = tuple(async.share_states_as_shared_arrays(opt)
+                          for opt in opts)
 
     max_score = mp.Value('f', np.finfo(np.float32).min)
     counter = mp.Value('l', 0)
@@ -190,13 +204,15 @@ def run_a3c(processes, make_env, model_opt, phi, t_max=1, beta=1e-2,
 
     def run_func(process_idx):
         env = make_env(process_idx, test=False)
-        model, opt = model_opt()
-        async.set_shared_params(model, shared_params)
-        async.set_shared_states(opt, shared_states)
+        models, opts = model_opt()
 
-        agent = a3c.A3C(model, opt, t_max, gamma, beta=beta,
-                        process_idx=process_idx, phi=phi,
-                        use_terminal_state_value=use_terminal_state_value)
+        for model, shared_param in zip(models, shared_params):
+            async.set_shared_params(model, shared_param)
+
+        for opt, shared_state in zip(opts, shared_states):
+            async.set_shared_states(opt, shared_state)
+
+        agent = make_agent(process_idx, models, opts)
 
         if profile:
             train_loop_with_profile(process_idx, counter, make_env, max_score,
@@ -209,4 +225,39 @@ def run_a3c(processes, make_env, model_opt, phi, t_max=1, beta=1e-2,
 
     async.run_async(processes, run_func)
 
-    return model, opt
+    return models, opts
+
+
+def run_a3c(processes, make_env, model_opt, phi, t_max=1, beta=1e-2,
+            profile=False, steps=8 * 10 ** 7, eval_frequency=10 ** 6,
+            eval_n_runs=10, use_terminal_state_value=False, gamma=0.99,
+            args={}):
+
+    def make_agent(process_idx, models, opts):
+        assert len(models) == 1
+        assert len(opts) == 1
+        return a3c.A3C(models[0], opts[0], t_max, gamma, beta=beta,
+                       process_idx=process_idx, phi=phi,
+                       use_terminal_state_value=use_terminal_state_value)
+
+    return run_async_agent(processes, make_env, model_opt, make_agent,
+                           profile=profile, steps=steps, eval_frequency=eval_frequency,
+                           eval_n_runs=eval_n_runs, gamma=gamma, args=args)
+
+
+def run_nsq(processes, make_env, model_opt, phi, t_max=1, beta=1e-2,
+            profile=False, steps=8 * 10 ** 7, eval_frequency=10 ** 6,
+            eval_n_runs=10, use_terminal_state_value=False, gamma=0.99,
+            i_target=100,
+            explorers=[], args={}):
+
+    def make_agent(process_idx, models, opts):
+        assert len(models) == 2
+        q_func, target_q_func = models
+        assert len(opts) == 1
+        return nsq.NSQ(process_idx, q_func, target_q_func, opts[0], t_max, gamma,
+                       i_target=i_target, explorer=explorers[process_idx])
+
+    return run_async_agent(processes, make_env, model_opt, make_agent,
+                           profile=profile, steps=steps, eval_frequency=eval_frequency,
+                           eval_n_runs=eval_n_runs, gamma=gamma, args=args)
