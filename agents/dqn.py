@@ -248,9 +248,10 @@ class DQN(agent.Agent):
         self.sync_target_network()
         opt_filename = model_filename + '.opt'
         if os.path.exists(opt_filename):
+            serializers.load_hdf5(model_filename + '.opt', self.optimizer)
+        else:
             print('WARNING: {0} was not found, so loaded only a model'.format(
                 opt_filename))
-            serializers.load_hdf5(model_filename + '.opt', self.optimizer)
 
     def load_model(self, model_filename):
         """Load a network model form a file

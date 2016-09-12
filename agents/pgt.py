@@ -144,13 +144,15 @@ class PGT(dqn.DQN):
 
         actor_opt_filename = model_filename + '.opt.actor'
         if os.path.exists(actor_opt_filename):
-            print('WARNING: {0} was not found'.format(actor_opt_filename))
             serializers.load_hdf5(actor_opt_filename, self.actor_optimizer)
+        else:
+            print('WARNING: {0} was not found'.format(actor_opt_filename))
 
         critic_opt_filename = model_filename + '.opt.critic'
         if os.path.exists(critic_opt_filename):
-            print('WARNING: {0} was not found'.format(critic_opt_filename))
             serializers.load_hdf5(critic_opt_filename, self.critic_optimizer)
+        else:
+            print('WARNING: {0} was not found'.format(critic_opt_filename))
 
     def get_stats_keys(self):
         return ('average_q', 'average_actor_loss', 'average_critic_loss')
