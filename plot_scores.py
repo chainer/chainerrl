@@ -7,6 +7,8 @@ standard_library.install_aliases()
 import argparse
 import os
 
+import matplotlib
+matplotlib.use('Agg')  # Needed to run without X-server
 import matplotlib.pyplot as plt
 import pandas as pd
 
