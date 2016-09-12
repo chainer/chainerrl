@@ -45,6 +45,7 @@ class DQN(agent.Agent):
                  soft_update_tau=1e-2, async_update=False,
                  n_times_update=1, average_q_decay=0.999,
                  average_loss_decay=0.99,
+                 batch_accumulator='mean',
                  logger=getLogger(__name__)):
         """
         Args:
@@ -85,6 +86,8 @@ class DQN(agent.Agent):
         self.soft_update_tau = soft_update_tau
         self.async_update = async_update
         self.n_times_update = n_times_update
+        self.batch_accumulator = batch_accumulator
+        assert batch_accumulator in ('mean', 'sum')
         self.logger = logger
 
         self.t = 0
@@ -215,9 +218,18 @@ class DQN(agent.Agent):
                 errors_out.append(e)
 
         if self.clip_delta:
-            return F.sum(F.huber_loss(y, t, delta=1.0)) / len(experiences)
+            loss_sum = F.sum(F.huber_loss(y, t, delta=1.0))
+            if self.batch_accumulator == 'mean':
+                loss = loss_sum / len(experiences)
+            elif self.batch_accumulator == 'sum':
+                loss = loss_sum
         else:
-            return F.mean_squared_error(y, t) / 2
+            loss_mean = F.mean_squared_error(y, t) / 2
+            if self.batch_accumulator == 'mean':
+                loss = loss_mean
+            elif self.batch_accumulator == 'sum':
+                loss = loss_mean * len(experiences)
+        return loss
 
     def compute_q_values(self, states):
         """Compute Q-values
