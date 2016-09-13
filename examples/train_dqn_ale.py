@@ -109,7 +109,7 @@ def main():
 
     # Use the same hyper parameters as the Nature paper's
     opt = optimizers.RMSpropGraves(
-        lr=2.5e-4, alpha=0.95, momentum=0.95, eps=1e-2)
+        lr=2.5e-4, alpha=0.95, momentum=0.0, eps=1e-2)
 
     opt.setup(q_func)
     # opt.add_hook(chainer.optimizer.GradientClipping(1.0))
@@ -124,7 +124,7 @@ def main():
                 target_update_frequency=args.target_update_frequency,
                 clip_delta=args.clip_delta,
                 update_frequency=args.update_frequency,
-                phi=dqn_phi)
+                batch_accumulator='sum', phi=dqn_phi)
 
     if len(args.model) > 0:
         agent.load_model(args.model)
