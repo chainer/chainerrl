@@ -37,66 +37,59 @@ class DDPG(dqn.DQN):
         self.average_actor_loss = 0.0
         self.average_critic_loss = 0.0
 
+    # Update Q-function
+    def compute_critic_loss(self, batch):
+
+        batch_next_state = batch['next_state']
+        batch_rewards = batch['reward']
+        batch_terminal = batch['is_state_terminal']
+        batch_state = batch['state']
+        batch_actions = batch['action']
+
+        next_actions = self.target_policy(batch_next_state, test=True)
+        next_q = self.target_q_function(batch_next_state, next_actions,
+                                        test=True)
+
+        target_q = batch_rewards + self.gamma * \
+            (1.0 - batch_terminal) * next_q
+        target_q.creator = None
+
+        predict_q = self.q_function(batch_state, batch_actions, test=False)
+
+        loss = F.mean_squared_error(target_q, predict_q)
+
+        # Update stats
+        self.average_critic_loss *= self.average_loss_decay
+        self.average_critic_loss += ((1 - self.average_loss_decay) *
+                                     float(loss.data))
+
+        return loss
+
+    def compute_actor_loss(self, batch):
+
+        batch_state = batch['state']
+
+        batch_size = batch_state.shape[0]
+
+        q = self.q_function(batch_state,
+                            self.policy(batch_state, test=False),
+                            test=True)
+        # Since we want to maximize Q, loss is negation of Q
+        loss = - F.sum(q) / batch_size
+
+        # Update stats
+        self.average_actor_loss *= self.average_loss_decay
+        self.average_actor_loss += ((1 - self.average_loss_decay) *
+                                    float(loss.data))
+        return loss
+
     def update(self, experiences, errors_out=None):
         """Update the model from experiences
         """
 
-        batch_size = len(experiences)
-
-        # Store necessary data in arrays
-        batch_state = self._batch_states(
-            [elem['state'] for elem in experiences])
-
-        batch_actions = self.xp.asarray(
-            [elem['action'] for elem in experiences])
-
-        batch_next_state = self._batch_states(
-            [elem['next_state'] for elem in experiences])
-
-        batch_rewards = self.xp.asarray(
-            [[elem['reward']] for elem in experiences], dtype=np.float32)
-
-        batch_terminal = self.xp.asarray(
-            [[elem['is_state_terminal']] for elem in experiences],
-            dtype=np.float32)
-
-        # Update Q-function
-        def compute_critic_loss():
-            next_actions = self.target_policy(batch_next_state, test=True)
-            next_q = self.target_q_function(batch_next_state, next_actions,
-                                            test=True)
-
-            target_q = batch_rewards + self.gamma * \
-                (1.0 - batch_terminal) * next_q
-            target_q.creator = None
-
-            predict_q = self.q_function(batch_state, batch_actions, test=False)
-
-            loss = F.mean_squared_error(target_q, predict_q)
-
-            # Update stats
-            self.average_critic_loss *= self.average_loss_decay
-            self.average_critic_loss += ((1 - self.average_loss_decay) *
-                                         float(loss.data))
-
-            return loss
-
-        def compute_actor_loss():
-            q = self.q_function(batch_state,
-                                self.policy(batch_state, test=False),
-                                test=True)
-            # Since we want to maximize Q, loss is negation of Q
-            loss = - F.sum(q) / batch_size
-
-            # Update stats
-            self.average_actor_loss *= self.average_loss_decay
-            self.average_actor_loss += ((1 - self.average_loss_decay) *
-                                        float(loss.data))
-
-            return loss
-
-        self.critic_optimizer.update(compute_critic_loss)
-        self.actor_optimizer.update(compute_actor_loss)
+        batch = dqn.batch_experiences(experiences, self.xp, self.phi)
+        self.critic_optimizer.update(lambda: self.compute_critic_loss(batch))
+        self.actor_optimizer.update(lambda: self.compute_actor_loss(batch))
 
     def select_greedy_action(self, state):
 

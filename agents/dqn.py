@@ -32,6 +32,19 @@ def _to_device(obj, gpu):
             return cuda.to_cpu(obj)
 
 
+def batch_experiences(experiences, xp, phi):
+    return {
+        'state': xp.asarray([phi(elem['state']) for elem in experiences]),
+        'action': xp.asarray([elem['action'] for elem in experiences]),
+        'reward': xp.asarray(
+            [[elem['reward']] for elem in experiences], dtype=np.float32),
+        'next_state': xp.asarray(
+            [phi(elem['next_state']) for elem in experiences]),
+        'is_state_terminal': xp.asarray(
+            [[elem['is_state_terminal']] for elem in experiences],
+            dtype=np.float32)}
+
+
 class DQN(agent.Agent):
     """DQN = QNetwork + Optimizer
     """
