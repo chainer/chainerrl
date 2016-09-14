@@ -15,6 +15,7 @@ from chainer import cuda
 from chainer import serializers
 
 from . import dqn
+import copy_param
 
 
 class DDPG(dqn.DQN):
@@ -114,6 +115,7 @@ class DDPG(dqn.DQN):
         """Save a network model to a file."""
 
         serializers.save_hdf5(model_filename, self.model)
+        serializers.save_hdf5(model_filename + '.target', self.target_model)
         serializers.save_hdf5(model_filename + '.opt.actor',
                               self.actor_optimizer)
         serializers.save_hdf5(model_filename + '.opt.critic',
@@ -123,7 +125,15 @@ class DDPG(dqn.DQN):
         """Load a network model form a file."""
 
         serializers.load_hdf5(model_filename, self.model)
-        self.sync_target_network()
+
+        # Load target model
+        target_filename = model_filename + '.target'
+        if os.path.exists(target_filename):
+            serializers.load_hdf5(target_filename, self.target_model)
+        else:
+            print('WARNING: {0} was not found'.format(target_filename))
+            copy_param.copy_param(target_link=self.target_model,
+                                  source_link=self.model)
 
         actor_opt_filename = model_filename + '.opt.actor'
         if os.path.exists(actor_opt_filename):

@@ -6,6 +6,8 @@ from builtins import range
 from builtins import super
 from future import standard_library
 standard_library.install_aliases()
+import os
+import tempfile
 import unittest
 
 import chainer
@@ -13,13 +15,12 @@ from chainer import cuda
 from chainer import optimizers
 import numpy as np
 
-from q_function import FCSAQFunction
 from q_function import FCBNLateActionSAQFunction
-from policy import FCDeterministicPolicy
 from policy import FCBNDeterministicPolicy
 import random_seed
 from envs.simple_abc import ABC
 from explorers.epsilon_greedy import LinearDecayEpsilonGreedy
+from explorers.epsilon_greedy import ConstantEpsilonGreedy
 import replay_buffer
 from agents.ddpg import DDPG
 
@@ -27,26 +28,28 @@ from agents.ddpg import DDPG
 class TestDDPG(unittest.TestCase):
 
     def setUp(self):
-        pass
+        self.tmpdir = tempfile.mkdtemp()
+        self.model_filename = os.path.join(self.tmpdir, 'model.h5')
+        self.rbuf_filename = os.path.join(self.tmpdir, 'rbuf.pkl')
 
     def make_model(self, env):
         n_dim_action = env.action_space.low.size
         policy = FCBNDeterministicPolicy(n_input_channels=5,
-                                       n_hidden_layers=2,
-                                       n_hidden_channels=10,
-                                       action_size=n_dim_action,
-                                       min_action=env.action_space.low,
-                                       max_action=env.action_space.high,
-                                       bound_action=True)
+                                         n_hidden_layers=2,
+                                         n_hidden_channels=10,
+                                         action_size=n_dim_action,
+                                         min_action=env.action_space.low,
+                                         max_action=env.action_space.high,
+                                         bound_action=True)
 
         q_func = FCBNLateActionSAQFunction(n_dim_obs=5,
-                               n_dim_action=n_dim_action,
-                               n_hidden_layers=2,
-                               n_hidden_channels=10)
+                                           n_dim_action=n_dim_action,
+                                           n_hidden_layers=2,
+                                           n_hidden_channels=10)
 
         return chainer.Chain(policy=policy, q_function=q_func)
 
-    def _test_abc(self, gpu):
+    def _test_abc(self, gpu, steps=5000, load_model=False):
 
         import logging
         logging.basicConfig(level=logging.DEBUG)
@@ -59,8 +62,11 @@ class TestDDPG(unittest.TestCase):
             a = env.action_space.sample()
             return a.astype(np.float32)
 
-        explorer = LinearDecayEpsilonGreedy(
-            1.0, 0.1, 1000, random_action_func)
+        if load_model:
+            explorer = ConstantEpsilonGreedy(0.1, random_action_func)
+        else:
+            explorer = LinearDecayEpsilonGreedy(
+                1.0, 0.1, 1000, random_action_func)
 
         model = self.make_model(env)
         policy = model['policy']
@@ -75,8 +81,15 @@ class TestDDPG(unittest.TestCase):
         rbuf = replay_buffer.ReplayBuffer(10 ** 5)
 
         agent = DDPG(model, actor_opt, critic_opt, rbuf, gpu=gpu, gamma=0.9,
-                explorer=explorer, replay_start_size=100,
-                target_update_method='soft', target_update_frequency=1)
+                     explorer=explorer, replay_start_size=100,
+                     target_update_method='soft', target_update_frequency=1)
+
+        if load_model:
+            print('Load model from', self.model_filename)
+            agent.load_model(self.model_filename)
+            print('Load replay buffer from', self.rbuf_filename)
+            rbuf.load(self.rbuf_filename)
+        print('Size of replay buffer', len(rbuf))
 
         total_r = 0
         episode_r = 0
@@ -87,7 +100,7 @@ class TestDDPG(unittest.TestCase):
 
         # Train
         t = 0
-        while t < 5000:
+        while t < steps:
             episode_r += reward
             total_r += reward
 
@@ -120,8 +133,17 @@ class TestDDPG(unittest.TestCase):
             total_r += reward
         self.assertAlmostEqual(total_r, 1)
 
+        # Save
+        agent.save_model(self.model_filename)
+        rbuf.save(self.rbuf_filename)
+
     def test_abc_continuous_gpu(self):
-        self._test_abc(0)
+        self._test_abc(0, steps=1000, load_model=False)
+        os.remove(self.model_filename + '.target')
+        self._test_abc(0, steps=500, load_model=True)
+        self._test_abc(0, steps=0, load_model=True)
 
     def test_abc_continuous_cpu(self):
-        self._test_abc(-1)
+        self._test_abc(-1, steps=1000, load_model=False)
+        self._test_abc(-1, steps=500, load_model=True)
+        self._test_abc(-1, steps=0, load_model=True)
