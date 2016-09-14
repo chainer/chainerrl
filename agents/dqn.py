@@ -270,6 +270,16 @@ class DQN(agent.Agent):
 
     def _load_model_without_lock(self, model_filename):
         serializers.load_hdf5(model_filename, self.model)
+
+        # Load target model
+        target_filename = model_filename + '.target'
+        if os.path.exists(target_filename):
+            serializers.load_hdf5(target_filename, self.target_model)
+        else:
+            print('WARNING: {0} was not found'.format(target_filename))
+            copy_param.copy_param(target_link=self.target_model,
+                                  source_link=self.model)
+
         self.sync_target_network()
         opt_filename = model_filename + '.opt'
         if os.path.exists(opt_filename):
@@ -294,6 +304,7 @@ class DQN(agent.Agent):
         """
         self.lock.acquire()
         serializers.save_hdf5(model_filename, self.model)
+        serializers.save_hdf5(model_filename + '.target', self.target_model)
         serializers.save_hdf5(model_filename + '.opt', self.optimizer)
         self.lock.release()
 
