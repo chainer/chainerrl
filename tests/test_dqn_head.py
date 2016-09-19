@@ -76,21 +76,21 @@ class _TestDQNHead(unittest.TestCase):
         opt = self.create_optimizer()
         opt.setup(q_func)
         a, b = generate_different_two_states()
-        action = np.random.randint(n_actions)
+        action = np.random.randint(n_actions, size=(1,)).astype(np.int32)
         for _ in range(1000):
             # a
             q_func.zerograds()
-            loss = (q_func(a, [action]) - 1.0) ** 2 / 2
+            loss = (q_func(a).evaluate_actions(action) - 1.0) ** 2 / 2
             loss.backward()
             opt.update()
             # b
             q_func.zerograds()
-            loss = (q_func(b, [action]) - 0.0) ** 2 / 2
+            loss = (q_func(b).evaluate_actions(action) - 0.0) ** 2 / 2
             loss.backward()
             opt.update()
 
-        qa = float(q_func(a, [action]).data)
-        qb = float(q_func(b, [action]).data)
+        qa = float(q_func(a).evaluate_actions(action).data)
+        qb = float(q_func(b).evaluate_actions(action).data)
         print((qa, qb))
         self.assertAlmostEqual(qa, 1.0, places=3)
         self.assertAlmostEqual(qb, 0.0, places=3)

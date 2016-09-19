@@ -5,6 +5,7 @@ from __future__ import absolute_import
 from builtins import super
 from future import standard_library
 standard_library.install_aliases()
+
 import numpy as np
 
 from chainer import Variable
@@ -14,8 +15,19 @@ from . import dqn
 
 
 class PAL(dqn.DQN):
+    """Persistent Advantage Learning.
+
+    See: http://arxiv.org/abs/1512.04860.
+    """
 
     def __init__(self, *args, **kwargs):
+        """
+        Args:
+          alpha (float): Weight of (persistent) advantages. Convergence
+            is guaranteed only for alpha in [0, 1).
+
+        For other arguments, see DQN.
+        """
         super().__init__(*args, **kwargs)
         self.alpha = kwargs.get('alpha', 0.9)
 
@@ -41,7 +53,7 @@ class PAL(dqn.DQN):
 
         target_next_qout = self.target_q_function(batch_next_state, test=True)
         next_q_max = target_next_qout.max
-        next_q_max.unchain_backward()
+        next_q_max.creator = None
 
         batch_rewards = self.xp.asarray(
             [elem['reward'] for elem in experiences], dtype=np.float32)
@@ -60,6 +72,6 @@ class PAL(dqn.DQN):
 
         batch_q = F.reshape(batch_q, (batch_size, 1))
         tpal_q = F.reshape(tpal_q, (batch_size, 1))
-        tpal_q.unchain_backward()
+        tpal_q.creator = None
 
         return batch_q, tpal_q

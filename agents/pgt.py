@@ -9,21 +9,24 @@ standard_library.install_aliases()
 import os
 
 import numpy as np
-import chainer.links as L
+import chainer
 import chainer.functions as F
 from chainer import cuda
 from chainer import serializers
 
 from . import dqn
-import copy_param
 
 
-class DDPG(dqn.DQN):
-    """Deep Deterministic Policy Gradients.
+class PGT(dqn.DQN):
+    """Policy Gradient Theorem.
+
+    This algorithm optimizes a Q-function and a stochastic policy based on
+    policy gradients computed by the policy gradient theorem. Unlike DDPG and
+    SVG(0), it does not use value grdients.
     """
 
     def __init__(self, model, actor_optimizer, critic_optimizer, replay_buffer,
-                 gamma, explorer, **kwargs):
+                 gamma, explorer, beta=1e-2, **kwargs):
         super().__init__(model, None, replay_buffer, gamma, explorer, **kwargs)
 
         # Aliases for convenience
@@ -34,68 +37,81 @@ class DDPG(dqn.DQN):
 
         self.actor_optimizer = actor_optimizer
         self.critic_optimizer = critic_optimizer
+        self.beta = beta
 
         self.average_actor_loss = 0.0
         self.average_critic_loss = 0.0
-
-    # Update Q-function
-    def compute_critic_loss(self, batch):
-
-        batch_next_state = batch['next_state']
-        batch_rewards = batch['reward']
-        batch_terminal = batch['is_state_terminal']
-        batch_state = batch['state']
-        batch_actions = batch['action']
-
-        next_actions = self.target_policy(batch_next_state, test=True)
-        next_q = self.target_q_function(batch_next_state, next_actions,
-                                        test=True)
-
-        target_q = batch_rewards + self.gamma * \
-            (1.0 - batch_terminal) * next_q
-        target_q.creator = None
-
-        predict_q = self.q_function(batch_state, batch_actions, test=False)
-
-        loss = F.mean_squared_error(target_q, predict_q)
-
-        # Update stats
-        self.average_critic_loss *= self.average_loss_decay
-        self.average_critic_loss += ((1 - self.average_loss_decay) *
-                                     float(loss.data))
-
-        return loss
-
-    def compute_actor_loss(self, batch):
-
-        batch_state = batch['state']
-
-        batch_size = batch_state.shape[0]
-
-        q = self.q_function(batch_state,
-                            self.policy(batch_state, test=False),
-                            test=True)
-        # Since we want to maximize Q, loss is negation of Q
-        loss = - F.sum(q) / batch_size
-
-        # Update stats
-        self.average_actor_loss *= self.average_loss_decay
-        self.average_actor_loss += ((1 - self.average_loss_decay) *
-                                    float(loss.data))
-        return loss
 
     def update(self, experiences, errors_out=None):
         """Update the model from experiences
         """
 
-        batch = dqn.batch_experiences(experiences, self.xp, self.phi)
-        self.critic_optimizer.update(lambda: self.compute_critic_loss(batch))
-        self.actor_optimizer.update(lambda: self.compute_actor_loss(batch))
+        batch_size = len(experiences)
+
+        # Store necessary data in arrays
+        batch_state = self._batch_states(
+            [elem['state'] for elem in experiences])
+
+        batch_actions = self.xp.asarray(
+            [elem['action'] for elem in experiences])
+
+        batch_next_state = self._batch_states(
+            [elem['next_state'] for elem in experiences])
+
+        batch_rewards = self.xp.asarray(
+            [[elem['reward']] for elem in experiences], dtype=np.float32)
+
+        batch_terminal = self.xp.asarray(
+            [[elem['is_state_terminal']] for elem in experiences],
+            dtype=np.float32)
+
+        # Update Q-function
+        def compute_critic_loss():
+            next_actions = self.target_policy(
+                batch_next_state, test=True).sampled_actions
+            next_q = self.target_q_function(batch_next_state, next_actions,
+                                            test=True)
+
+            target_q = batch_rewards + self.gamma * \
+                (1.0 - batch_terminal) * next_q
+            target_q.creator = None
+
+            predict_q = self.q_function(batch_state, batch_actions, test=False)
+
+            loss = F.mean_squared_error(target_q, predict_q)
+
+            # Update stats
+            self.average_critic_loss *= self.average_loss_decay
+            self.average_critic_loss += ((1 - self.average_loss_decay) *
+                                         float(loss.data))
+
+            return loss
+
+        def compute_actor_loss():
+            pout = self.policy(batch_state, test=False)
+            q = self.q_function(batch_state, pout.sampled_actions, test=True)
+            log_probs = pout.sampled_actions_log_probs
+            v = self.q_function(
+                batch_state, pout.most_probable_actions, test=True)
+            advantage = F.reshape(q - v, (batch_size,))
+            advantage = chainer.Variable(advantage.data)
+            loss = - F.sum(advantage * log_probs + self.beta * pout.entropy) \
+                / batch_size
+
+            # Update stats
+            self.average_actor_loss *= self.average_loss_decay
+            self.average_actor_loss += ((1 - self.average_loss_decay) *
+                                        float(loss.data))
+
+            return loss
+
+        self.critic_optimizer.update(compute_critic_loss)
+        self.actor_optimizer.update(compute_actor_loss)
 
     def select_greedy_action(self, state):
 
         s = self._batch_states([state])
-        action = self.policy(s, test=True)
+        action = self.policy(s, test=True).sampled_actions
         # Q is not needed here, but log it just for information
         q = self.q_function(s, action, test=True)
 
@@ -115,7 +131,6 @@ class DDPG(dqn.DQN):
         """Save a network model to a file."""
 
         serializers.save_hdf5(model_filename, self.model)
-        serializers.save_hdf5(model_filename + '.target', self.target_model)
         serializers.save_hdf5(model_filename + '.opt.actor',
                               self.actor_optimizer)
         serializers.save_hdf5(model_filename + '.opt.critic',
@@ -125,15 +140,7 @@ class DDPG(dqn.DQN):
         """Load a network model form a file."""
 
         serializers.load_hdf5(model_filename, self.model)
-
-        # Load target model
-        target_filename = model_filename + '.target'
-        if os.path.exists(target_filename):
-            serializers.load_hdf5(target_filename, self.target_model)
-        else:
-            print('WARNING: {0} was not found'.format(target_filename))
-            copy_param.copy_param(target_link=self.target_model,
-                                  source_link=self.model)
+        self.sync_target_network()
 
         actor_opt_filename = model_filename + '.opt.actor'
         if os.path.exists(actor_opt_filename):

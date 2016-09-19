@@ -94,9 +94,9 @@ class FCSIQFunction(chainer.ChainList, QFunction):
 def scale_by_tanh(x, low, high):
     xp = cuda.get_array_module(x.data)
     scale = (high - low) / 2
-    scale = xp.expand_dims(xp.asarray(scale), axis=0)
+    scale = xp.expand_dims(xp.asarray(scale, dtype=np.float32), axis=0)
     mean = (high + low) / 2
-    mean = xp.expand_dims(xp.asarray(mean), axis=0)
+    mean = xp.expand_dims(xp.asarray(mean, dtype=np.float32), axis=0)
     return F.tanh(x) * scale + mean
 
 

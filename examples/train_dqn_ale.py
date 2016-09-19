@@ -16,7 +16,10 @@ sys.path.append('..')
 from links import fc_tail_q_function
 from links import dqn_head
 from links import dqn_head_crelu
+from links.dueling_dqn import DuelingDQN
 from agents.dqn import DQN
+from agents.double_dqn import DoubleDQN
+from agents.pal import PAL
 from envs import ale
 import random_seed
 import replay_buffer
@@ -58,8 +61,14 @@ def parse_arch(arch, n_actions, activation):
         head = dqn_head.NIPSDQNHead(activation=activation)
         return fc_tail_q_function.FCTailQFunction(
             head, 256, n_actions=n_actions)
+    elif arch == 'dueling':
+        return DuelingDQN(n_actions)
     else:
         raise RuntimeError('Not supported architecture: {}'.format(arch))
+
+
+def parse_agent(agent):
+    return {'DQN': DQN, 'DoubleDQN': DoubleDQN, 'PAL': PAL}[agent]
 
 
 def main():
@@ -77,38 +86,41 @@ def main():
                         type=int, default=10 ** 6)
     parser.add_argument('--model', type=str, default='')
     parser.add_argument('--arch', type=str, default='nature',
-                        choices=['nature', 'nips', 'nature_crelu'])
+                        choices=['nature', 'nips', 'nature_crelu', 'dueling'])
     parser.add_argument('--steps', type=int, default=10 ** 7)
     parser.add_argument('--replay-start-size', type=int, default=5 * 10 ** 4)
     parser.add_argument('--target-update-frequency',
                         type=int, default=10 ** 4)
     parser.add_argument('--eval-frequency', type=int, default=10 ** 5)
-    parser.add_argument('--update-frequency', type=int, default=1)
+    parser.add_argument('--update-frequency', type=int, default=4)
     parser.add_argument('--activation', type=str, default='relu')
     parser.add_argument('--eval-n-runs', type=int, default=10)
     parser.add_argument('--no-clip-delta',
                         dest='clip_delta', action='store_false')
     parser.set_defaults(clip_delta=True)
+    parser.add_argument('--agent', type=str, default='DQN',
+                        choices=['DQN', 'DoubleDQN', 'PAL'])
     args = parser.parse_args()
 
     if args.seed is not None:
         random_seed.set_random_seed(args.seed)
 
-    def make_env(test):
-        return ale.ALE(args.rom, use_sdl=args.use_sdl)
+    env = ale.ALE(args.rom, use_sdl=args.use_sdl)
+    eval_env = ale.ALE(args.rom, use_sdl=args.use_sdl,
+                       treat_life_lost_as_terminal=False)
 
     args.outdir = prepare_output_dir(args, args.outdir)
 
     print('Output files are saved in {}'.format(args.outdir))
 
-    n_actions = ale.ALE(args.rom).number_of_actions
+    n_actions = env.number_of_actions
     activation = parse_activation(args.activation)
     q_func = parse_arch(args.arch, n_actions, activation)
     init_like_torch(q_func)
 
     # Use the same hyper parameters as the Nature paper's
     opt = optimizers.RMSpropGraves(
-        lr=2.5e-4, alpha=0.95, momentum=0.95, eps=1e-2)
+        lr=2.5e-4, alpha=0.95, momentum=0.0, eps=1e-2)
 
     opt.setup(q_func)
     # opt.add_hook(chainer.optimizer.GradientClipping(1.0))
@@ -118,12 +130,13 @@ def main():
     explorer = LinearDecayEpsilonGreedy(1.0, 0.1,
                                         args.final_exploration_frames,
                                         lambda: np.random.randint(n_actions))
-    agent = DQN(q_func, opt, rbuf, gpu=args.gpu, gamma=0.99,
-                explorer=explorer, replay_start_size=args.replay_start_size,
-                target_update_frequency=args.target_update_frequency,
-                clip_delta=args.clip_delta,
-                update_frequency=args.update_frequency,
-                phi=dqn_phi)
+    Agent = parse_agent(args.agent)
+    agent = Agent(q_func, opt, rbuf, gpu=args.gpu, gamma=0.99,
+                  explorer=explorer, replay_start_size=args.replay_start_size,
+                  target_update_frequency=args.target_update_frequency,
+                  clip_delta=args.clip_delta,
+                  update_frequency=args.update_frequency,
+                  batch_accumulator='sum', phi=dqn_phi)
 
     if len(args.model) > 0:
         agent.load_model(args.model)
@@ -131,9 +144,10 @@ def main():
     eval_explorer = ConstantEpsilonGreedy(
         5e-2, lambda: np.random.randint(n_actions))
     run_dqn.run_dqn(
-        agent=agent, make_env=make_env, phi=dqn_phi, steps=args.steps,
+        agent=agent, env=env, steps=args.steps,
         eval_n_runs=args.eval_n_runs, eval_frequency=args.eval_frequency,
-        gpu=args.gpu, outdir=args.outdir, eval_explorer=eval_explorer)
+        outdir=args.outdir, eval_explorer=eval_explorer,
+        eval_env=eval_env)
 
 if __name__ == '__main__':
     main()

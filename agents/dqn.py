@@ -11,6 +11,7 @@ from logging import getLogger
 import concurrent.futures
 from concurrent.futures import ThreadPoolExecutor
 from itertools import zip_longest
+from future.utils import native
 
 import numpy as np
 import chainer
@@ -32,6 +33,19 @@ def _to_device(obj, gpu):
             return cuda.to_cpu(obj)
 
 
+def batch_experiences(experiences, xp, phi):
+    return {
+        'state': xp.asarray([phi(elem['state']) for elem in experiences]),
+        'action': xp.asarray([elem['action'] for elem in experiences]),
+        'reward': xp.asarray(
+            [[elem['reward']] for elem in experiences], dtype=np.float32),
+        'next_state': xp.asarray(
+            [phi(elem['next_state']) for elem in experiences]),
+        'is_state_terminal': xp.asarray(
+            [[elem['is_state_terminal']] for elem in experiences],
+            dtype=np.float32)}
+
+
 class DQN(agent.Agent):
     """DQN = QNetwork + Optimizer
     """
@@ -43,7 +57,9 @@ class DQN(agent.Agent):
                  clip_reward=True, phi=lambda x: x,
                  target_update_method='hard',
                  soft_update_tau=1e-2, async_update=False,
-                 n_times_update=1,
+                 n_times_update=1, average_q_decay=0.999,
+                 average_loss_decay=0.99,
+                 batch_accumulator='mean',
                  logger=getLogger(__name__)):
         """
         Args:
@@ -56,6 +72,11 @@ class DQN(agent.Agent):
         """
         self.model = q_function
         self.q_function = q_function  # For backward compatibility
+
+        # Future's builtins.int is a new type that inherit long, but Chainer
+        # 1.15 only accepts int and long, so here we should use a native type.
+        gpu = native(gpu)
+
         if gpu >= 0:
             cuda.get_device(gpu).use()
             self.model.to_gpu(device=gpu)
@@ -79,6 +100,8 @@ class DQN(agent.Agent):
         self.soft_update_tau = soft_update_tau
         self.async_update = async_update
         self.n_times_update = n_times_update
+        self.batch_accumulator = batch_accumulator
+        assert batch_accumulator in ('mean', 'sum')
         self.logger = logger
 
         self.t = 0
@@ -87,12 +110,17 @@ class DQN(agent.Agent):
         self.lock = threading.Lock()
         if self.async_update:
             self.update_executor = ThreadPoolExecutor(max_workers=1)
-            self.update_executor.submit(lambda: cuda.get_device(gpu).use()).result()
+            self.update_executor.submit(
+                lambda: cuda.get_device(gpu).use()).result()
             self.update_future = None
         self.episodic_update = True
         self.target_model = None
         self.sync_target_network()
         self.target_q_function = self.target_model  # For backward compatibility
+        self.average_q = 0
+        self.average_q_decay = average_q_decay
+        self.average_loss = 0
+        self.average_loss_decay = average_loss_decay
 
     def sync_target_network(self):
         """Synchronize target network with current network."""
@@ -103,7 +131,8 @@ class DQN(agent.Agent):
                 self.logger.debug('sync')
                 copy_param.copy_param(self.target_model, self.model)
             elif self.target_update_method == 'soft':
-                copy_param.soft_copy_param(self.target_model, self.model, self.soft_update_tau)
+                copy_param.soft_copy_param(
+                    self.target_model, self.model, self.soft_update_tau)
             else:
                 raise RuntimeError('Unknown target update method: {}'.format(
                     self.target_update_method))
@@ -125,6 +154,11 @@ class DQN(agent.Agent):
         """
         loss = self._compute_loss(
             experiences, self.gamma, errors_out=errors_out)
+
+        # Update stats
+        self.average_loss *= self.average_loss_decay
+        self.average_loss += (1 - self.average_loss_decay) * float(loss.data)
+
         self.optimizer.zero_grads()
         loss.backward()
         self.optimizer.update()
@@ -185,7 +219,7 @@ class DQN(agent.Agent):
 
         target_next_qout = self.target_model(batch_next_state, test=True)
         next_q_max = target_next_qout.max
-        next_q_max.unchain_backward()
+        next_q_max.creator = None
 
         batch_rewards = self.xp.asarray(
             [elem['reward'] for elem in experiences], dtype=np.float32)
@@ -207,14 +241,14 @@ class DQN(agent.Agent):
         qout = self.model(batch_state, test=False)
 
         batch_actions = self.xp.asarray(
-                [elem['action'] for elem in experiences])
+            [elem['action'] for elem in experiences])
         batch_q = F.reshape(qout.evaluate_actions(
             batch_actions), (batch_size, 1))
 
         batch_q_target = F.reshape(
             self._compute_target_values(experiences, gamma), (batch_size, 1))
 
-        batch_q_target.unchain_backward()
+        batch_q_target.creator = None
 
         return batch_q, batch_q_target
 
@@ -242,15 +276,18 @@ class DQN(agent.Agent):
                 errors_out.append(e)
 
         if self.clip_delta:
-            if normalize_loss:
-                return F.sum(F.huber_loss(y, t, delta=1.0)) / len(experiences)
-            else:
-                return F.sum(F.huber_loss(y, t, delta=1.0))
+            loss_sum = F.sum(F.huber_loss(y, t, delta=1.0))
+            if self.batch_accumulator == 'mean':
+                loss = loss_sum / len(experiences)
+            elif self.batch_accumulator == 'sum':
+                loss = loss_sum
         else:
-            if normalize_loss:
-                return F.mean_squared_error(y, t) / 2
-            else:
-                return (y - t) ** 2 / 2
+            loss_mean = F.mean_squared_error(y, t) / 2
+            if self.batch_accumulator == 'mean':
+                loss = loss_mean
+            elif self.batch_accumulator == 'sum':
+                loss = loss_mean * len(experiences)
+        return loss
 
     def compute_q_values(self, states):
         """Compute Q-values
@@ -278,12 +315,23 @@ class DQN(agent.Agent):
 
     def _load_model_without_lock(self, model_filename):
         serializers.load_hdf5(model_filename, self.model)
+
+        # Load target model
+        target_filename = model_filename + '.target'
+        if os.path.exists(target_filename):
+            serializers.load_hdf5(target_filename, self.target_model)
+        else:
+            print('WARNING: {0} was not found'.format(target_filename))
+            copy_param.copy_param(target_link=self.target_model,
+                                  source_link=self.model)
+
         self.sync_target_network()
         opt_filename = model_filename + '.opt'
         if os.path.exists(opt_filename):
+            serializers.load_hdf5(model_filename + '.opt', self.optimizer)
+        else:
             print('WARNING: {0} was not found, so loaded only a model'.format(
                 opt_filename))
-            serializers.load_hdf5(model_filename + '.opt', self.optimizer)
 
     def load_model(self, model_filename):
         """Load a network model form a file
@@ -301,6 +349,7 @@ class DQN(agent.Agent):
         """
         self.lock.acquire()
         serializers.save_hdf5(model_filename, self.model)
+        serializers.save_hdf5(model_filename + '.target', self.target_model)
         serializers.save_hdf5(model_filename + '.opt', self.optimizer)
         self.lock.release()
 
@@ -308,14 +357,18 @@ class DQN(agent.Agent):
         qout = self.model(self._batch_states([state]), test=True)
         action = cuda.to_cpu(qout.greedy_actions.data)[0]
         action_var = chainer.Variable(self.xp.asarray([action]))
-        q = qout.evaluate_actions(action_var)
-        self.logger.debug('t:%s a:%s q:%s qout:%s',
-                          self.t, action, q.data, qout)
+        q = float(qout.evaluate_actions(action_var).data)
+
+        # Update stats
+        self.average_q *= self.average_q_decay
+        self.average_q += (1 - self.average_q_decay) * q
+
+        self.logger.debug('t:%s a:%s q:%s qout:%s', self.t, action, q, qout)
         return action
 
     def select_action(self, state):
         return self.explorer.select_action(
-                self.t, lambda: self.select_greedy_action(state))
+            self.t, lambda: self.select_greedy_action(state))
 
     def act(self, state, reward):
         """
@@ -404,3 +457,9 @@ class DQN(agent.Agent):
         """
         self.last_state = None
         self.last_action = None
+
+    def get_stats_keys(self):
+        return ('average_q', 'average_loss')
+
+    def get_stats_values(self):
+        return (self.average_q, self.average_loss)

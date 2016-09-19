@@ -8,6 +8,8 @@ standard_library.install_aliases()
 from collections import deque
 import random
 
+import six.moves.cPickle as pickle
+
 
 class ReplayBuffer(object):
 
@@ -38,6 +40,14 @@ class ReplayBuffer(object):
 
     def __len__(self):
         return len(self.memory)
+
+    def save(self, filename):
+        with open(filename, 'wb') as f:
+            pickle.dump(self.memory, f)
+
+    def load(self, filename):
+        with open(filename, 'rb') as f:
+            self.memory = pickle.load(f)
 
 
 class EpisodicReplayBuffer(object):
@@ -88,3 +98,11 @@ class EpisodicReplayBuffer(object):
 
     def __len__(self):
         return len(self.memory)
+
+    def save(self, filename):
+        with open(filename, 'wb') as f:
+            pickle.dump(self.memory, f)
+
+    def load(self, filename):
+        with open(filename, 'rb') as f:
+            self.memory = pickle.load(f)

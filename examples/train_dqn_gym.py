@@ -66,7 +66,7 @@ def main():
     def reward_filter(r):
         return r * args.reward_scale_factor
 
-    def make_env(test):
+    def make_env():
         env = gym.make(args.env)
         timestep_limit = env.spec.timestep_limit
         env_modifiers.make_timestep_limited(env, timestep_limit)
@@ -81,11 +81,10 @@ def main():
         env.__exit__ = __exit__
         return env
 
-    sample_env = gym.make(args.env)
+    env = make_env()
     # timestep_limit = sample_env.spec.timestep_limit
-    obs_size = np.asarray(sample_env.observation_space.shape).prod()
-    action_space = sample_env.action_space
-    del sample_env
+    obs_size = np.asarray(env.observation_space.shape).prod()
+    action_space = env.action_space
 
     args.outdir = prepare_output_dir(args, args.outdir, argv=sys.argv)
     print('Output files are saved in {}'.format(args.outdir))
@@ -131,9 +130,9 @@ def main():
         agent.load_model(args.model)
 
     run_dqn.run_dqn(
-        agent=agent, make_env=make_env, phi=phi, steps=args.steps,
+        agent=agent, env=env, steps=args.steps,
         eval_n_runs=args.eval_n_runs, eval_frequency=args.eval_frequency,
-        gpu=args.gpu, outdir=args.outdir)
+        outdir=args.outdir)
 
 
 if __name__ == '__main__':

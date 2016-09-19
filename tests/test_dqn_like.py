@@ -2,9 +2,10 @@ from __future__ import print_function
 from __future__ import unicode_literals
 from __future__ import division
 from __future__ import absolute_import
-from builtins import range
 from future import standard_library
 standard_library.install_aliases()
+import os
+import tempfile
 import unittest
 
 import chainer
@@ -16,25 +17,28 @@ import q_function
 import random_seed
 from envs.simple_abc import ABC
 from explorers.epsilon_greedy import LinearDecayEpsilonGreedy
+from explorers.epsilon_greedy import ConstantEpsilonGreedy
 
 
 class _TestDQNLike(unittest.TestCase):
 
     def setUp(self):
-        pass
+        self.tmpdir = tempfile.mkdtemp()
+        self.model_filename = os.path.join(self.tmpdir, 'model.h5')
+        self.rbuf_filename = os.path.join(self.tmpdir, 'rbuf.pkl')
 
     def make_discrete_q_func(self, env):
-        return q_function.FCSIQFunction(5, 3, 10, 2)
+        return q_function.FCSIQFunction(5, 3, 10, env.action_space.n)
 
     def make_continuous_q_func(self, env):
-        n_dim_action = 2
+        n_dim_action = env.action_space.low.size
         return q_function.FCSIContinuousQFunction(
             5, n_dim_action, 20, 2, env.action_space)
 
     def make_agent(self, gpu, q_func, explorer, opt):
         raise NotImplementedError
 
-    def _test_abc(self, gpu, discrete=True):
+    def _test_abc(self, gpu, discrete=True, steps=5000, load_model=False):
 
         random_seed.set_random_seed(0)
 
@@ -52,15 +56,21 @@ class _TestDQNLike(unittest.TestCase):
             else:
                 return a
 
-
-        explorer = LinearDecayEpsilonGreedy(
-            1.0, 0.1, 1000, random_action_func)
+        if load_model:
+            explorer = ConstantEpsilonGreedy(0.1, random_action_func)
+        else:
+            explorer = LinearDecayEpsilonGreedy(
+                1.0, 0.1, 1000, random_action_func)
 
         opt = optimizers.Adam()
         opt.setup(q_func)
 
         agent = self.make_agent(gpu, q_func, explorer, opt)
 
+        if load_model:
+            print('Load model from', self.model_filename)
+            agent.load_model(self.model_filename)
+            agent.replay_buffer.load(self.rbuf_filename)
 
         total_r = 0
         episode_r = 0
@@ -104,14 +114,20 @@ class _TestDQNLike(unittest.TestCase):
             total_r += reward
         self.assertAlmostEqual(total_r, 1)
 
+        # Save
+        agent.save_model(self.model_filename)
+        agent.replay_buffer.save(self.rbuf_filename)
+
     def test_abc_discrete_gpu(self):
-        self._test_abc(0, discrete=True)
+        self._test_abc(0, discrete=True, steps=1000)
+        self._test_abc(0, discrete=True, steps=500, load_model=True)
 
     def test_abc_continuous_gpu(self):
-        self._test_abc(0, discrete=False)
+        self._test_abc(0, discrete=False, steps=1000)
 
     def test_abc_discrete_cpu(self):
-        self._test_abc(-1, discrete=True)
+        self._test_abc(-1, discrete=True, steps=1000)
 
     def test_abc_continuous_cpu(self):
-        self._test_abc(-1, discrete=False)
+        self._test_abc(-1, discrete=False, steps=1000)
+        self._test_abc(-1, discrete=False, steps=500, load_model=True)

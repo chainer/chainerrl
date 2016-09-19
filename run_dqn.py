@@ -2,112 +2,40 @@ from __future__ import print_function
 from __future__ import unicode_literals
 from __future__ import division
 from __future__ import absolute_import
-from builtins import range
-from builtins import open
-from builtins import str
 from future import standard_library
 standard_library.install_aliases()
 import os
-import statistics
-import time
-
-import chainer
-import numpy as np
 
 from agents.dqn import DQN
+from ask_yes_no import ask_yes_no
+from evaluator import Evaluator
 
 
-def eval_performance(env, agent, n_runs, gpu, max_episode_len=None,
-                     explorer=None):
-    assert n_runs > 1, 'Computing stdev requires at least two runs'
-    scores = []
-    for i in range(n_runs):
-        obs = env.reset()
-        done = False
-        test_r = 0
-        t = 0
-        while not (done or t == max_episode_len):
-            def greedy_action_func():
-                return agent.select_greedy_action(obs)
-            if explorer is not None:
-                a = explorer.select_action(t, greedy_action_func)
-            else:
-                a = greedy_action_func()
-            obs, r, done, info = env.step(a)
-            test_r += r
-            t += 1
-        # As mixing float and numpy float causes errors in statistics
-        # functions, here every score is cast to float.
-        scores.append(float(test_r))
-        print('test_{}:'.format(i), test_r)
-    mean = statistics.mean(scores)
-    median = statistics.median(scores)
-    stdev = statistics.stdev(scores)
-    return mean, median, stdev
-
-
-def record_stats(outdir, t, start_time, mean, median, stdev):
-    with open(os.path.join(outdir, 'scores.txt'), 'a+') as f:
-        elapsed = time.time() - start_time
-        record = (t, elapsed, mean, median, stdev)
-        print('\t'.join(str(x) for x in record), file=f)
-
-
-def update_best_model(agent, outdir, t, old_max_score, new_max_score):
-    # Save the best model so far
-    print('The best score is updated {} -> {}'.format(
-        old_max_score, new_max_score))
-    filename = os.path.join(outdir, '{}.h5'.format(t))
+def save_agent_model(agent, t, outdir, suffix=''):
+    filename = os.path.join(outdir, '{}{}.h5'.format(t, suffix))
     agent.save_model(filename)
-    print('Saved the current best model to {}'.format(
-        filename))
+    print('Saved the current model to {}'.format(filename))
 
 
-class Evaluator(object):
-
-    def __init__(self, n_runs, gpu, eval_frequency,
-                 outdir, max_episode_len=None, explorer=None):
-        self.max_score = np.finfo(np.float32).min
-        self.start_time = time.time()
-        self.eval_after_this_episode = False
-        self.n_runs = n_runs
-        self.gpu = gpu
-        self.eval_frequency = eval_frequency
-        self.outdir = outdir
-        self.max_episode_len = max_episode_len
-        self.explorer = explorer
-        self.prev_eval_t = 0
-
-    def evaluate_and_update_max_score(self, env, t, agent):
-        mean, median, stdev = eval_performance(
-            env, agent, self.n_runs, self.gpu,
-            max_episode_len=self.max_episode_len, explorer=self.explorer)
-        record_stats(self.outdir, t, self.start_time, mean, median, stdev)
-        if mean > self.max_score:
-            update_best_model(agent, self.outdir, t, self.max_score, mean)
-            self.max_score = mean
-
-    def evaluate_if_necessary(self, t, env, agent):
-        if t >= self.prev_eval_t + self.eval_frequency:
-            self.evaluate_and_update_max_score(env, t, agent)
-            self.prev_eval_t = t
+def save_agent_replay_buffer(agent, t, outdir, suffix=''):
+    filename = os.path.join(outdir, '{}{}.replay.pkl'.format(t, suffix))
+    agent.replay_buffer.save(filename)
+    print('Saved the current replay buffer to {}'.format(filename))
 
 
-def run_dqn(agent, make_env, phi, steps, eval_n_runs, eval_frequency, gpu,
-            outdir, max_episode_len=None, step_offset=0, eval_explorer=None):
+def ask_and_save_agent_replay_buffer(agent, t, outdir, suffix=''):
+    if hasattr(agent, 'replay_buffer') and \
+            ask_yes_no('Replay buffer has {} transitions. Do you save them to a file?'.format(len(agent.replay_buffer))):
+        save_agent_replay_buffer(agent, t, outdir, suffix=suffix)
+
+
+def run_dqn_with_evaluation(agent, env, steps, outdir, max_episode_len=None,
+                            step_offset=0, evaluator=None):
 
     assert isinstance(agent, DQN)
 
-    env = make_env(False)
-
     episode_r = 0
-
     episode_idx = 0
-
-    # Write a header line first
-    with open(os.path.join(outdir, 'scores.txt'), 'a+') as f:
-        column_names = ('steps', 'elapsed', 'mean', 'median', 'stdev')
-        print('\t'.join(column_names), file=f)
 
     obs = env.reset()
     r = 0
@@ -115,12 +43,6 @@ def run_dqn(agent, make_env, phi, steps, eval_n_runs, eval_frequency, gpu,
 
     t = step_offset
     agent.t = step_offset
-
-    evaluator = Evaluator(n_runs=eval_n_runs, gpu=gpu,
-                          eval_frequency=eval_frequency, outdir=outdir,
-                          max_episode_len=max_episode_len,
-                          explorer=eval_explorer)
-    evaluator.prev_eval_t = step_offset - step_offset % eval_frequency
 
     episode_len = 0
     while t < steps:
@@ -134,7 +56,8 @@ def run_dqn(agent, make_env, phi, steps, eval_n_runs, eval_frequency, gpu,
                     agent.stop_current_episode()
                 print('{} t:{} episode_idx:{} explorer:{} episode_r:{}'.format(
                     outdir, t, episode_idx, agent.explorer, episode_r))
-                evaluator.evaluate_if_necessary(t, env, agent)
+                if evaluator is not None:
+                    evaluator.evaluate_if_necessary(t)
                 # Start a new episode
                 episode_r = 0
                 episode_idx += 1
@@ -150,12 +73,46 @@ def run_dqn(agent, make_env, phi, steps, eval_n_runs, eval_frequency, gpu,
 
         except:
             # Save the current model before being killed
-            agent.save_model(os.path.join(
-                outdir, '{}_keyboardinterrupt.h5'.format(t)))
-            print('Saved the current model to {}'.format(outdir))
+            save_agent_model(agent, t, outdir, suffix='_except')
+            ask_and_save_agent_replay_buffer(
+                agent, t, outdir, suffix='_except')
             raise
 
     # Save the final model
-    agent.save_model(os.path.join(
-        outdir, '{}_finish.h5'.format(steps)))
-    print('Saved the current model to {}'.format(outdir))
+    save_agent_model(agent, t, outdir, suffix='_finish')
+    ask_and_save_agent_replay_buffer(agent, t, outdir, suffix='_finish')
+
+
+def run_dqn(agent, env, steps, eval_n_runs, eval_frequency,
+            outdir, max_episode_len=None, step_offset=0, eval_explorer=None,
+            eval_env=None):
+    """
+    Run a DQN-like agent.
+
+    Args:
+      agent: Agent.
+      env: Environment.
+      steps (int): Number of total time steps for training.
+      eval_n_runs (int): Number of runs for each time of evaluation.
+      eval_frequency (int): Interval of evaluation.
+      outdir (str): Path to the directory to output things.
+      max_episode_len (int): Maximum episode length.
+      step_offset (int): Time step from which training starts.
+      eval_explorer: Explorer used for evaluation.
+      eval_env: Environment used for evaluation.
+    """
+
+    if eval_env is None:
+        eval_env = env
+
+    evaluator = Evaluator(agent=agent,
+                          n_runs=eval_n_runs,
+                          eval_frequency=eval_frequency, outdir=outdir,
+                          max_episode_len=max_episode_len,
+                          explorer=eval_explorer,
+                          env=eval_env,
+                          step_offset=step_offset)
+
+    run_dqn_with_evaluation(
+        agent, env, steps, outdir, max_episode_len=max_episode_len,
+        step_offset=step_offset, evaluator=evaluator)

@@ -3,7 +3,10 @@ from __future__ import print_function
 from __future__ import division
 from __future__ import absolute_import
 from future import standard_library
+from builtins import range
 standard_library.install_aliases()
+
+
 def make_rendered(env, *render_args, **render_kwargs):
     base_step = env.step
     base_close = env.close
@@ -57,5 +60,25 @@ def make_reward_filtered(env, reward_filter):
         observation, reward, done, info = old_step(action)
         reward = reward_filter(reward)
         return observation, reward, done, info
+
+    env.step = step
+
+
+def make_action_repeated(env, n_times):
+    """Repeat received actions.
+
+    - Rewards are accumulated while repeating.
+    - Only latest observations are returned.
+    """
+    old_step = env.step
+
+    def step(action):
+        r_total = 0
+        for _ in range(n_times):
+            obs, r, done, info = old_step(action)
+            r_total += r
+            if done:
+                break
+        return obs, r_total, done, info
 
     env.step = step
