@@ -16,7 +16,10 @@ sys.path.append('..')
 from links import fc_tail_q_function
 from links import dqn_head
 from links import dqn_head_crelu
+from links.dueling_dqn import DuelingDQN
 from agents.dqn import DQN
+from agents.double_dqn import DoubleDQN
+from agents.pal import PAL
 from envs import ale
 import random_seed
 import replay_buffer
@@ -58,8 +61,14 @@ def parse_arch(arch, n_actions, activation):
         head = dqn_head.NIPSDQNHead(activation=activation)
         return fc_tail_q_function.FCTailQFunction(
             head, 256, n_actions=n_actions)
+    elif arch == 'dueling':
+        return DuelingDQN(n_actions)
     else:
         raise RuntimeError('Not supported architecture: {}'.format(arch))
+
+
+def parse_agent(agent):
+    return {'DQN': DQN, 'DoubleDQN': DoubleDQN, 'PAL': PAL}[agent]
 
 
 def main():
@@ -77,7 +86,7 @@ def main():
                         type=int, default=10 ** 6)
     parser.add_argument('--model', type=str, default='')
     parser.add_argument('--arch', type=str, default='nature',
-                        choices=['nature', 'nips', 'nature_crelu'])
+                        choices=['nature', 'nips', 'nature_crelu', 'dueling'])
     parser.add_argument('--steps', type=int, default=10 ** 7)
     parser.add_argument('--replay-start-size', type=int, default=5 * 10 ** 4)
     parser.add_argument('--target-update-frequency',
@@ -89,6 +98,8 @@ def main():
     parser.add_argument('--no-clip-delta',
                         dest='clip_delta', action='store_false')
     parser.set_defaults(clip_delta=True)
+    parser.add_argument('--agent', type=str, default='DQN',
+                        choices=['DQN', 'DoubleDQN', 'PAL'])
     args = parser.parse_args()
 
     if args.seed is not None:
@@ -119,12 +130,13 @@ def main():
     explorer = LinearDecayEpsilonGreedy(1.0, 0.1,
                                         args.final_exploration_frames,
                                         lambda: np.random.randint(n_actions))
-    agent = DQN(q_func, opt, rbuf, gpu=args.gpu, gamma=0.99,
-                explorer=explorer, replay_start_size=args.replay_start_size,
-                target_update_frequency=args.target_update_frequency,
-                clip_delta=args.clip_delta,
-                update_frequency=args.update_frequency,
-                batch_accumulator='sum', phi=dqn_phi)
+    Agent = parse_agent(args.agent)
+    agent = Agent(q_func, opt, rbuf, gpu=args.gpu, gamma=0.99,
+                  explorer=explorer, replay_start_size=args.replay_start_size,
+                  target_update_frequency=args.target_update_frequency,
+                  clip_delta=args.clip_delta,
+                  update_frequency=args.update_frequency,
+                  batch_accumulator='sum', phi=dqn_phi)
 
     if len(args.model) > 0:
         agent.load_model(args.model)
