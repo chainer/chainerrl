@@ -59,7 +59,7 @@ class EpisodicReplayBuffer(object):
         self.capacity = capacity
 
     def append(self, state, action, reward, next_state=None, next_action=None,
-               is_state_terminal=False, new_episode=False):
+               is_state_terminal=False):
         """Append a transition to this replay buffer
         Args:
           state: s_t
@@ -72,17 +72,9 @@ class EpisodicReplayBuffer(object):
         experience = dict(state=state, action=action, reward=reward,
                           next_state=next_state, next_action=next_action,
                           is_state_terminal=is_state_terminal)
-        self.memory.append(experience)
         self.current_episode.append(experience)
-        if new_episode and self.current_episode:
-            self.episodic_memory.append(self.current_episode)
-            self.memory.extend(self.current_episode)
-            self.current_episode = []
-            if len(self.memory) > self.capacity:
-                discarded_episode = self.episodic_memory.popleft()
-                for _ in range(discarded_episode):
-                    self.memory.popleft()
-                assert self.memory <= self.capacity
+        if is_state_terminal:
+            self.stop_current_episode()
 
     def sample(self, n):
         """Sample n unique samples from this replay buffer
@@ -106,3 +98,15 @@ class EpisodicReplayBuffer(object):
     def load(self, filename):
         with open(filename, 'rb') as f:
             self.memory = pickle.load(f)
+
+    def stop_current_episode(self):
+        if self.current_episode:
+            self.episodic_memory.append(self.current_episode)
+            self.memory.extend(self.current_episode)
+            self.current_episode = []
+            if len(self.memory) > self.capacity:
+                discarded_episode = self.episodic_memory.popleft()
+                for _ in range(len(discarded_episode)):
+                    self.memory.popleft()
+                assert self.memory <= self.capacity
+        assert not self.current_episode
