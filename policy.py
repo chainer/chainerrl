@@ -16,6 +16,7 @@ from chainer import links as L
 
 import policy_output
 from links.mlp_bn import MLPBN
+from links.mlp import MLP
 
 
 class Policy(object):
@@ -23,6 +24,15 @@ class Policy(object):
 
     def __call__(self, state):
         raise NotImplementedError
+
+    def push_state(self):
+        pass
+
+    def pop_state(self):
+        pass
+
+    def reset_state(self):
+        pass
 
 
 class SoftmaxPolicy(Policy):
@@ -228,6 +238,50 @@ class FCDeterministicPolicy(chainer.ChainList, Policy):
             a = bound_action_by_tanh(a, self.min_action, self.max_action)
 
         return a
+
+
+class FCLSTMDeterministicPolicy(chainer.Chain, Policy):
+
+    def __init__(self, n_input_channels, n_hidden_layers,
+                 n_hidden_channels, action_size,
+                 min_action=None, max_action=None, bound_action=True):
+
+        self.n_input_channels = n_input_channels
+        self.n_hidden_layers = n_hidden_layers
+        self.n_hidden_channels = n_hidden_channels
+        self.action_size = action_size
+        self.min_action = min_action
+        self.max_action = max_action
+        self.bound_action = bound_action
+
+        self.state_stack = []
+        super().__init__(
+            fc=MLP(in_size=self.n_input_channels, out_size=n_hidden_channels,
+                   hidden_sizes=[self.n_hidden_channels] * self.n_hidden_layers),
+            lstm=L.LSTM(n_hidden_channels, n_hidden_channels),
+            out=L.Linear(n_hidden_channels, self.action_size)
+        )
+
+    def __call__(self, x, test=False):
+        h = F.relu(self.fc(x, test=test))
+        h = F.relu(self.lstm(h))
+        a = self.out(h)
+        if self.bound_action:
+            a = bound_action_by_tanh(a, self.min_action, self.max_action)
+        return a
+
+    def push_state(self):
+        self.state_stack.append((self.lstm.h, self.lstm.c))
+        self.lstm.reset_state()
+
+    def pop_state(self):
+        assert len(self.state_stack) > 0
+        h, c = self.state_stack.pop()
+        if h is not None and c is not None:
+            self.lstm.set_state(c=c, h=h)
+
+    def reset_state(self):
+        self.lstm.reset_state()
 
 
 class FCBNDeterministicPolicy(MLPBN, Policy):

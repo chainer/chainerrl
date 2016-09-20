@@ -39,6 +39,8 @@ def batch_experiences(experiences, xp, phi):
             [[elem['reward']] for elem in experiences], dtype=np.float32),
         'next_state': xp.asarray(
             [phi(elem['next_state']) for elem in experiences]),
+        'next_action': xp.asarray(
+            [phi(elem['next_action']) for elem in experiences]),
         'is_state_terminal': xp.asarray(
             [[elem['is_state_terminal']] for elem in experiences],
             dtype=np.float32)}
@@ -179,6 +181,9 @@ class DQN(agent.Agent):
         loss.backward()
         self.optimizer.update()
 
+    def input_initial_batch_to_target_model(self, batch):
+        self.target_model(batch['state'])
+
     def update_from_episodes(self, episodes, errors_out=None):
         self.model.push_state()
         self.target_model.push_state()
@@ -194,7 +199,7 @@ class DQN(agent.Agent):
                 transitions.append(ep[i])
             batch = batch_experiences(transitions, xp=self.xp, phi=self.phi)
             if i == 0:
-                self.target_model(batch['state'])
+                self.input_initial_batch_target_model(batch)
             loss += self._compute_loss(transitions, self.gamma)
         loss /= max_epi_len
         self.optimizer.zero_grads()
@@ -409,6 +414,7 @@ class DQN(agent.Agent):
                 action=self.last_action,
                 reward=reward,
                 next_state=state,
+                next_action=action,
                 is_state_terminal=False)
 
         self.last_state = state
@@ -441,6 +447,7 @@ class DQN(agent.Agent):
             action=self.last_action,
             reward=reward,
             next_state=state,
+            next_action=self.last_action,
             is_state_terminal=True)
 
         self.last_state = None

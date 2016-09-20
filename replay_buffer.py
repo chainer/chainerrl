@@ -49,6 +49,9 @@ class ReplayBuffer(object):
         with open(filename, 'rb') as f:
             self.memory = pickle.load(f)
 
+    def stop_current_episode(self):
+        pass
+
 
 class EpisodicReplayBuffer(object):
 

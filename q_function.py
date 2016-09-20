@@ -32,6 +32,12 @@ class QFunction(object):
     def reset_state(self):
         pass
 
+    def push_and_keep_state(self):
+        pass
+
+    def update_state(self, x, a, test=False):
+        pass
+
 
 class StateInputQFunction(QFunction):
     """
@@ -312,6 +318,56 @@ class FCSAQFunction(chainer.ChainList, QFunction):
             h = F.relu(layer(h))
         h = self[-1](h)
         return h
+
+
+class FCLSTMSAQFunction(chainer.Chain, QFunction):
+    """Fully-connected (s,a)-input continuous Q-function."""
+
+    def __init__(self, n_dim_obs, n_dim_action, n_hidden_channels,
+                 n_hidden_layers):
+        """
+        Args:
+          n_dim_obs: number of dimensions of observation space
+          n_dim_action: number of dimensions of action space
+          n_hidden_channels: number of hidden channels
+          n_hidden_layers: number of hidden layers
+        """
+
+        self.n_input_channels = n_dim_obs + n_dim_action
+        self.n_hidden_layers = n_hidden_layers
+        self.n_hidden_channels = n_hidden_channels
+        self.state_stack = []
+        super().__init__(
+            fc=MLP(in_size=self.n_input_channels, out_size=n_hidden_channels,
+                   hidden_sizes=[self.n_hidden_channels] * self.n_hidden_layers),
+            lstm=L.LSTM(n_hidden_channels, n_hidden_channels),
+            out=L.Linear(n_hidden_channels, 1)
+        )
+
+    def __call__(self, x, a, test=False):
+        h = F.concat((x, a), axis=1)
+        h = F.relu(self.fc(h, test=test))
+        h = F.relu(self.lstm(h))
+        return self.out(h)
+
+    def push_state(self):
+        self.state_stack.append((self.lstm.h, self.lstm.c))
+        self.lstm.reset_state()
+
+    def pop_state(self):
+        assert len(self.state_stack) > 0
+        h, c = self.state_stack.pop()
+        if h is not None and c is not None:
+            self.lstm.set_state(c=c, h=h)
+
+    def reset_state(self):
+        self.lstm.reset_state()
+
+    def push_and_keep_state(self):
+        self.state_stack.append((self.lstm.h, self.lstm.c))
+
+    def update_state(self, x, a, test=False):
+        self(x, a, test=test)
 
 
 class FCBNSAQFunction(MLPBN, QFunction):

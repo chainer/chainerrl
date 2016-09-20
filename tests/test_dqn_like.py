@@ -21,9 +21,10 @@ from envs.simple_abc import ABC
 from explorers.epsilon_greedy import LinearDecayEpsilonGreedy
 import replay_buffer
 import run_dqn
+from test_training import _TestTraining
 
 
-class _TestDQNLike(unittest.TestCase):
+class _TestDQNLike(_TestTraining):
 
     def setUp(self):
         self.tmpdir = tempfile.mkdtemp()
@@ -55,8 +56,7 @@ class _TestDQNLike(unittest.TestCase):
         opt = self.make_optimizer(env, q_func)
         explorer = self.make_explorer(env)
         rbuf = self.make_replay_buffer(env)
-        agent = self.make_agent(env=env, q_func=q_func,
-                                opt=opt, explorer=explorer, rbuf=rbuf, gpu=gpu)
+        agent = self.make_agent(env=env, gpu=gpu)
 
         if load_model:
             print('Load model from', self.model_filename)
@@ -98,6 +98,18 @@ class _TestDQNLike(unittest.TestCase):
 
 
 class _TestDQNOnABC(_TestDQNLike):
+
+    def make_agent(self, env, gpu):
+        q_func = self.make_q_func(env)
+        opt = self.make_optimizer(env, q_func)
+        explorer = self.make_explorer(env)
+        rbuf = self.make_replay_buffer(env)
+        return self.make_dqn_agent(env=env, q_func=q_func,
+                                   opt=opt, explorer=explorer, rbuf=rbuf,
+                                   gpu=gpu)
+
+    def make_dqn_agent(self, env, q_func, opt, explorer, rbuf, gpu):
+        raise NotImplementedError()
 
     def make_explorer(self, env):
         def random_action_func():
