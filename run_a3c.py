@@ -29,7 +29,7 @@ import async
 from prepare_output_dir import prepare_output_dir
 
 
-def eval_performance(process_idx, make_env, model, phi, n_runs, greedy=False):
+def eval_performance(process_idx, make_env, model, phi, n_runs, greedy=False, max_episode_len=None):
     assert n_runs > 1, 'Computing stdev requires at least two runs'
     scores = []
 
@@ -44,7 +44,7 @@ def eval_performance(process_idx, make_env, model, phi, n_runs, greedy=False):
         done = False
         test_r = 0
         t = 0
-        while not done:
+        while not (done or t == max_episode_len):
             s = chainer.Variable(np.expand_dims(phi(obs), 0))
             pout, _ = model.pi_and_v(s)
             if greedy:
@@ -122,7 +122,7 @@ def train_loop(process_idx, counter, make_env, max_score, eval_frequency,
     
                     mean, median, stdev = eval_performance(
                         process_idx, make_env, test_model, agent.phi,
-                        eval_n_runs)
+                        eval_n_runs, max_episode_len=max_episode_len)
                     with open(os.path.join(outdir, 'scores.txt'), 'a+') as f:
                         elapsed = time.time() - start_time
                         record = (global_t, elapsed, mean, median, stdev)
