@@ -54,8 +54,11 @@ class ReplayBuffer(object):
 
 
 def random_subseq(seq, subseq_len):
-    i = np.random.randint(0, len(seq) - subseq_len + 1)
-    return seq[i:i + subseq_len]
+    if len(seq) <= subseq_len:
+        return seq
+    else:
+        i = np.random.randint(0, len(seq) - subseq_len + 1)
+        return seq[i:i + subseq_len]
 
 
 class EpisodicReplayBuffer(object):
