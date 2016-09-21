@@ -183,7 +183,7 @@ def run_async_agent(processes, make_env, model_opt, make_agent,
     # Prevent numpy from using multiple threads
     os.environ['OMP_NUM_THREADS'] = '1'
 
-    outdir = prepare_output_dir(args, None)
+    outdir = prepare_output_dir(args, args.outdir, argv=sys.argv)
 
     print('Output files are saved in {}'.format(outdir))
 
