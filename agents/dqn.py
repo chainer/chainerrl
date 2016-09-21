@@ -78,6 +78,7 @@ class DQN(agent.Agent):
                  n_times_update=1, average_q_decay=0.999,
                  average_loss_decay=0.99,
                  batch_accumulator='mean', episodic_update=False,
+                 episodic_update_len=None,
                  logger=getLogger(__name__)):
         """
         Args:
@@ -132,6 +133,7 @@ class DQN(agent.Agent):
                 lambda: cuda.get_device(gpu).use()).result()
             self.update_future = None
         self.episodic_update = episodic_update
+        self.episodic_update_len = episodic_update_len
         self.target_model = None
         self.sync_target_network()
         self.target_q_function = self.target_model  # For backward compatibility
@@ -371,7 +373,7 @@ class DQN(agent.Agent):
             for _ in range(self.n_times_update):
                 if self.episodic_update:
                     episodes = self.replay_buffer.sample_episodes(
-                        self.minibatch_size)
+                        self.minibatch_size, self.episodic_update_len)
                     self.update_from_episodes(episodes)
                 else:
                     experiences = self.replay_buffer.sample(
