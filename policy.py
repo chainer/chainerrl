@@ -34,6 +34,13 @@ class Policy(object):
     def reset_state(self):
         pass
 
+    def update_state(self, x, test=False):
+        """Update its state so that it reflects x and a.
+
+        Unlike __call__, stateless QFunctions would do nothing.
+        """
+        pass
+
 
 class SoftmaxPolicy(Policy):
     """Abstract softmax policy class."""
@@ -281,6 +288,9 @@ class FCLSTMDeterministicPolicy(chainer.Chain, Policy):
 
     def reset_state(self):
         self.lstm.reset_state()
+
+    def update_state(self, x, test=False):
+        self.__call__(x, test=test)
 
 
 class FCBNDeterministicPolicy(MLPBN, Policy):
