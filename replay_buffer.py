@@ -8,6 +8,7 @@ standard_library.install_aliases()
 from collections import deque
 import random
 
+import numpy as np
 import six.moves.cPickle as pickle
 
 
