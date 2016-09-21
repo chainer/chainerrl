@@ -65,7 +65,7 @@ def eval_performance(process_idx, make_env, model, phi, n_runs, greedy=False):
 
 
 def train_loop(process_idx, counter, make_env, max_score, eval_frequency,
-               eval_n_runs, agent, env, start_time, steps, outdir):
+               eval_n_runs, agent, env, start_time, steps, outdir, max_episode_len=None):
     try:
 
         total_r = 0
@@ -76,26 +76,18 @@ def train_loop(process_idx, counter, make_env, max_score, eval_frequency,
         r = 0
         done = False
         base_lr = agent.optimizer.lr
+        episode_len = 0
 
         while True:
-
-            # Get and increment the global counter
-            with counter.get_lock():
-                counter.value += 1
-                global_t = counter.value
-            local_t += 1
-
-            if global_t > steps:
-                break
-
-            agent.optimizer.lr = (steps - global_t - 1) / steps * base_lr
 
             total_r += r
             episode_r += r
 
-            a = agent.act(obs, r, done)
-
-            if done:
+            if done or episode_len == max_episode_len:
+                if done:
+                    agent.observe_terminal(obs, r)
+                else:
+                    agent.stop_current_episode()
                 if process_idx == 0:
                     print('{} global_t:{} local_t:{} lr:{} r:{}'.format(
                         outdir, global_t, local_t, agent.optimizer.lr,
@@ -105,34 +97,47 @@ def train_loop(process_idx, counter, make_env, max_score, eval_frequency,
                 r = 0
                 done = False
             else:
+	        a = agent.act(obs, r)
                 obs, r, done, info = env.step(a)
 
-            if global_t % eval_frequency == 0:
-                # Evaluation
+                # Get and increment the global counter
+                with counter.get_lock():
+                    counter.value += 1
+                    global_t = counter.value
+                local_t += 1
+                episode_len += 1
 
-                # We must use a copy of the model because test runs can change
-                # the hidden states of the model
-                test_model = copy.deepcopy(agent.model)
-                test_model.reset_state()
+                if global_t > steps:
+                    break
 
-                mean, median, stdev = eval_performance(
-                    process_idx, make_env, test_model, agent.phi,
-                    eval_n_runs)
-                with open(os.path.join(outdir, 'scores.txt'), 'a+') as f:
-                    elapsed = time.time() - start_time
-                    record = (global_t, elapsed, mean, median, stdev)
-                    print('\t'.join(str(x) for x in record), file=f)
-                with max_score.get_lock():
-                    if mean > max_score.value:
-                        # Save the best model so far
-                        print('The best score is updated {} -> {}'.format(
-                            max_score.value, mean))
-                        filename = os.path.join(
-                            outdir, '{}.h5'.format(global_t))
-                        agent.save_model(filename)
-                        print('Saved the current best model to {}'.format(
-                            filename))
-                        max_score.value = mean
+                agent.optimizer.lr = (steps - global_t - 1) / steps * base_lr
+
+                if global_t % eval_frequency == 0:
+                    # Evaluation
+    
+                    # We must use a copy of the model because test runs can change
+                    # the hidden states of the model
+                    test_model = copy.deepcopy(agent.model)
+                    test_model.reset_state()
+    
+                    mean, median, stdev = eval_performance(
+                        process_idx, make_env, test_model, agent.phi,
+                        eval_n_runs)
+                    with open(os.path.join(outdir, 'scores.txt'), 'a+') as f:
+                        elapsed = time.time() - start_time
+                        record = (global_t, elapsed, mean, median, stdev)
+                        print('\t'.join(str(x) for x in record), file=f)
+                    with max_score.get_lock():
+                        if mean > max_score.value:
+                            # Save the best model so far
+                            print('The best score is updated {} -> {}'.format(
+                                max_score.value, mean))
+                            filename = os.path.join(
+                                outdir, '{}.h5'.format(global_t))
+                            agent.save_model(filename)
+                            print('Saved the current best model to {}'.format(
+                                filename))
+                            max_score.value = mean
 
     except KeyboardInterrupt:
         if process_idx == 0:
@@ -152,18 +157,18 @@ def train_loop(process_idx, counter, make_env, max_score, eval_frequency,
 
 def train_loop_with_profile(process_idx, counter, make_env, max_score,
                             eval_frequency, eval_n_runs, agent, env,
-                            start_time, steps, outdir):
+                            start_time, steps, outdir, max_episode_len=None):
     import cProfile
     cmd = 'train_loop(process_idx, counter, make_env, max_score, ' \
         'eval_frequency, eval_n_runs, agent, env, start_time, steps, ' \
-        'outdir)'
+        'outdir, max_episode_len)'
     cProfile.runctx(cmd, globals(), locals(),
                     'profile-{}.out'.format(os.getpid()))
 
 
 def run_async_agent(processes, make_env, model_opt, make_agent,
                     profile=False, steps=8 * 10 ** 7, eval_frequency=10 ** 6,
-                    eval_n_runs=10, gamma=0.99,
+                    eval_n_runs=10, gamma=0.99, max_episode_len=None,
                     args={}):
     """
     Args:
@@ -217,7 +222,7 @@ def run_async_agent(processes, make_env, model_opt, make_agent,
         else:
             train_loop(process_idx, counter, make_env, max_score,
                        eval_frequency, eval_n_runs, agent, env, start_time,
-                       steps, outdir=outdir)
+                       steps, outdir=outdir, max_episode_len=None)
 
     async.run_async(processes, run_func)
 
@@ -227,7 +232,7 @@ def run_async_agent(processes, make_env, model_opt, make_agent,
 def run_a3c(processes, make_env, model_opt, phi, t_max=1, beta=1e-2,
             profile=False, steps=8 * 10 ** 7, eval_frequency=10 ** 6,
             eval_n_runs=10, use_terminal_state_value=False, gamma=0.99,
-            args={}):
+            max_episode_len=None, args={}):
 
     def make_agent(process_idx, models, opts):
         assert len(models) == 1
@@ -238,7 +243,8 @@ def run_a3c(processes, make_env, model_opt, phi, t_max=1, beta=1e-2,
 
     return run_async_agent(processes, make_env, model_opt, make_agent,
                            profile=profile, steps=steps, eval_frequency=eval_frequency,
-                           eval_n_runs=eval_n_runs, gamma=gamma, args=args)
+                           eval_n_runs=eval_n_runs, gamma=gamma,
+                           max_episode_len=max_episode_len, args=args)
 
 
 def run_nsq(processes, make_env, model_opt, phi, t_max=1, beta=1e-2,

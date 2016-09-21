@@ -76,106 +76,121 @@ class A3C(object):
         copy_param.copy_param(target_link=self.model,
                               source_link=self.shared_model)
 
-    def act(self, state, reward, is_state_terminal):
+    def update(self, statevar):
+        assert self.t_start < self.t
+
+        if statevar is None:
+            R = 0
+        else:
+            _, vout = self.model.pi_and_v(statevar, keep_same_state=True)
+            R = float(vout.data)
+
+        pi_loss = 0
+        v_loss = 0
+        for i in reversed(range(self.t_start, self.t)):
+            R *= self.gamma
+            R += self.past_rewards[i]
+            v = self.past_values[i]
+            if self.process_idx == 0:
+                logger.debug('s:%s v:%s R:%s',
+                             self.past_states[i].data.sum(), v.data, R)
+            advantage = R - v
+            # Accumulate gradients of policy
+            log_prob = self.past_action_log_prob[i]
+            entropy = self.past_action_entropy[i]
+
+            # Log probability is increased proportionally to advantage
+            pi_loss -= log_prob * float(advantage.data)
+            # Entropy is maximized
+            pi_loss -= self.beta * entropy
+            # Accumulate gradients of value function
+
+            v_loss += (v - R) ** 2 / 2
+
+        if self.pi_loss_coef != 1.0:
+            pi_loss *= self.pi_loss_coef
+
+        if self.v_loss_coef != 1.0:
+            v_loss *= self.v_loss_coef
+
+        # Normalize the loss of sequences truncated by terminal states
+        if self.keep_loss_scale_same and \
+                self.t - self.t_start < self.t_max:
+            factor = self.t_max / (self.t - self.t_start)
+            pi_loss *= factor
+            v_loss *= factor
+
+        if self.process_idx == 0:
+            logger.debug('pi_loss:%s v_loss:%s', pi_loss.data, v_loss.data)
+
+        total_loss = pi_loss + F.reshape(v_loss, pi_loss.data.shape)
+
+        # Compute gradients using thread-specific model
+        self.model.zerograds()
+        total_loss.backward()
+        # Copy the gradients to the globally shared model
+        self.shared_model.zerograds()
+        copy_param.copy_grad(
+            target_link=self.shared_model, source_link=self.model)
+        # Update the globally shared model
+        if self.process_idx == 0:
+            norm = self.optimizer.compute_grads_norm()
+            logger.debug('grad norm:%s', norm)
+        self.optimizer.update()
+        if self.process_idx == 0:
+            logger.debug('update')
+
+        self.sync_parameters()
+        self.model.unchain_backward()
+
+        self.past_action_log_prob = {}
+        self.past_action_entropy = {}
+        self.past_states = {}
+        self.past_rewards = {}
+        self.past_values = {}
+
+        self.t_start = self.t
+
+
+    def act(self, state, reward):
 
         if self.clip_reward:
             reward = np.clip(reward, -1, 1)
 
-        if self.use_terminal_state_value or not is_state_terminal:
-            statevar = chainer.Variable(np.expand_dims(self.phi(state), 0))
+        statevar = chainer.Variable(np.expand_dims(self.phi(state), 0))
 
         self.past_rewards[self.t - 1] = reward
 
-        if (is_state_terminal and self.t_start < self.t) \
-                or self.t - self.t_start == self.t_max:
+        if self.t - self.t_start == self.t_max:
+            self.update(statevar)
 
-            assert self.t_start < self.t
+        self.past_states[self.t] = statevar
+        pout, vout = self.model.pi_and_v(statevar)
+        self.past_action_log_prob[self.t] = pout.sampled_actions_log_probs
+        self.past_action_entropy[self.t] = pout.entropy
+        self.past_values[self.t] = vout
+        self.t += 1
+        if self.process_idx == 0:
+            logger.debug('t:%s r:%s pout:%s', self.t, reward, pout)
+        return pout.sampled_actions.data[0]
 
-            if is_state_terminal and not self.use_terminal_state_value:
-                R = 0
-            else:
-                _, vout = self.model.pi_and_v(statevar, keep_same_state=True)
-                R = float(vout.data)
+    def observe_terminal(self, state, reward):
+        if self.clip_reward:
+            reward = np.clip(reward, -1, 1)
 
-            pi_loss = 0
-            v_loss = 0
-            for i in reversed(range(self.t_start, self.t)):
-                R *= self.gamma
-                R += self.past_rewards[i]
-                v = self.past_values[i]
-                if self.process_idx == 0:
-                    logger.debug('s:%s v:%s R:%s',
-                                 self.past_states[i].data.sum(), v.data, R)
-                advantage = R - v
-                # Accumulate gradients of policy
-                log_prob = self.past_action_log_prob[i]
-                entropy = self.past_action_entropy[i]
+        self.past_rewards[self.t - 1] = reward
+        self.update(None)
 
-                # Log probability is increased proportionally to advantage
-                pi_loss -= log_prob * float(advantage.data)
-                # Entropy is maximized
-                pi_loss -= self.beta * entropy
-                # Accumulate gradients of value function
+        self.model.reset_state()
 
-                v_loss += (v - R) ** 2 / 2
-
-            if self.pi_loss_coef != 1.0:
-                pi_loss *= self.pi_loss_coef
-
-            if self.v_loss_coef != 1.0:
-                v_loss *= self.v_loss_coef
-
-            # Normalize the loss of sequences truncated by terminal states
-            if self.keep_loss_scale_same and \
-                    self.t - self.t_start < self.t_max:
-                factor = self.t_max / (self.t - self.t_start)
-                pi_loss *= factor
-                v_loss *= factor
-
-            if self.process_idx == 0:
-                logger.debug('pi_loss:%s v_loss:%s', pi_loss.data, v_loss.data)
-
-            total_loss = pi_loss + F.reshape(v_loss, pi_loss.data.shape)
-
-            # Compute gradients using thread-specific model
-            self.model.zerograds()
-            total_loss.backward()
-            # Copy the gradients to the globally shared model
-            self.shared_model.zerograds()
-            copy_param.copy_grad(
-                target_link=self.shared_model, source_link=self.model)
-            # Update the globally shared model
-            if self.process_idx == 0:
-                norm = self.optimizer.compute_grads_norm()
-                logger.debug('grad norm:%s', norm)
-            self.optimizer.update()
-            if self.process_idx == 0:
-                logger.debug('update')
-
-            self.sync_parameters()
-            self.model.unchain_backward()
-
-            self.past_action_log_prob = {}
-            self.past_action_entropy = {}
-            self.past_states = {}
-            self.past_rewards = {}
-            self.past_values = {}
-
-            self.t_start = self.t
-
-        if not is_state_terminal:
-            self.past_states[self.t] = statevar
-            pout, vout = self.model.pi_and_v(statevar)
-            self.past_action_log_prob[self.t] = pout.sampled_actions_log_probs
-            self.past_action_entropy[self.t] = pout.entropy
-            self.past_values[self.t] = vout
-            self.t += 1
-            if self.process_idx == 0:
-                logger.debug('t:%s r:%s pout:%s', self.t, reward, pout)
-            return pout.sampled_actions.data[0]
-        else:
-            self.model.reset_state()
-            return None
+    def stop_current_episode(self):
+        self.past_action_log_prob = {}
+        self.past_action_entropy = {}
+        self.past_states = {}
+        self.past_rewards = {}
+        self.past_values = {}
+        self.t_start = self.t
+        self.model.reset_state()
 
     def load_model(self, model_filename):
         """Load a network model form a file
