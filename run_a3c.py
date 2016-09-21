@@ -96,6 +96,7 @@ def train_loop(process_idx, counter, make_env, max_score, eval_frequency,
                 obs = env.reset()
                 r = 0
                 done = False
+                episode_len = 0
             else:
 	        a = agent.act(obs, r)
                 obs, r, done, info = env.step(a)
@@ -218,11 +219,12 @@ def run_async_agent(processes, make_env, model_opt, make_agent,
         if profile:
             train_loop_with_profile(process_idx, counter, make_env, max_score,
                                     eval_frequency, eval_n_runs, agent, env,
-                                    start_time, steps, outdir=outdir)
+                                    start_time, steps, outdir=outdir,
+                                    max_episode_len=max_episode_len)
         else:
             train_loop(process_idx, counter, make_env, max_score,
                        eval_frequency, eval_n_runs, agent, env, start_time,
-                       steps, outdir=outdir, max_episode_len=None)
+                       steps, outdir=outdir, max_episode_len=max_episode_len)
 
     async.run_async(processes, run_func)
 
