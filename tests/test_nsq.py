@@ -5,20 +5,16 @@ from __future__ import absolute_import
 from builtins import range
 from future import standard_library
 standard_library.install_aliases()
-import os
+import copy
 import unittest
 
-import numpy as np
-import chainer
 from chainer import optimizers
+import numpy as np
 
 import q_function
-from agents import nstep_q_learning
-import async
-import simple_abc
-import random_seed
-import replay_buffer
 from envs.simple_abc import ABC
+import run_a3c
+from explorers.epsilon_greedy import ConstantEpsilonGreedy
 
 
 class TestNSQ(unittest.TestCase):
@@ -33,51 +29,44 @@ class TestNSQ(unittest.TestCase):
     def _test_abc(self, t_max):
 
         nproc = 8
+        n_actions = 3
 
-        def agent_func(process_idx):
-            n_actions = 3
-            q_func = q_function.FCSIQFunction(1, n_actions, 10, 2)
+        def make_env(process_idx, test):
+            return ABC()
+
+        def model_opt():
+            q_func = q_function.FCSIQFunction(5, n_actions, 10, 2)
             opt = optimizers.RMSprop(1e-3, eps=1e-2)
             opt.setup(q_func)
-            return nstep_q_learning.NStepQLearning(q_func, opt, t_max,
-                                                   0.9, 0.1,
-                                                   i_target=10)
+            target_q_func = copy.deepcopy(q_func)
+            return (q_func, target_q_func), (opt,)
 
-        def env_func(process_idx):
-            return simple_abc.ABC()
+        def phi(x):
+            return x
 
-        def run_func(process_idx, agent, env):
-            total_r = 0
-            episode_r = 0
+        def random_action_func():
+            return np.random.randint(n_actions)
 
-            for i in range(5000):
+        explorers = [ConstantEpsilonGreedy(
+            i / 10, random_action_func) for i in range(nproc)]
 
-                total_r += env.reward
-                episode_r += env.reward
+        models, opts = run_a3c.run_nsq(
+            nproc, make_env, model_opt, phi, t_max, steps=40000,
+            explorers=explorers)
 
-                action = agent.act(env.state, env.reward, env.is_terminal)
-
-                if env.is_terminal:
-                    print(('i:{} episode_r:{}'.format(i, episode_r)))
-                    episode_r = 0
-                    env.initialize()
-                else:
-                    env.receive_action(action)
-
-            print(('pid:{}, total_r:{}'.format(os.getpid(), total_r)))
-
-            return agent
-
-        # Train
-        final_agent = async.run_async(nproc, agent_func, env_func, run_func)
+        q_func, _ = models
 
         # Test
-        env = env_func(0)
-        total_r = env.reward
-        while not env.is_terminal:
-            action = final_agent.q_function.sample_greedily_with_value(
-                env.state.reshape((1,) + env.state.shape))[0][0]
-            print(('state:', env.state, 'action:', action))
-            env.receive_action(action)
-            total_r += env.reward
+        env = make_env(0, True)
+        total_r = 0
+        obs = env.reset()
+        done = False
+        r = 0.0
+
+        while not done:
+            qout = q_func(np.expand_dims(obs, 0))
+            action = qout.greedy_actions.data[0]
+            print(('state:', obs, 'action:', action))
+            obs, r, done, _ = env.step(action)
+            total_r += r
         self.assertAlmostEqual(total_r, 1)

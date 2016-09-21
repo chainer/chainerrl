@@ -5,35 +5,43 @@ from __future__ import absolute_import
 from builtins import range
 from future import standard_library
 standard_library.install_aliases()
-import copy
 from logging import getLogger
 logger = getLogger(__name__)
+import copy
+import os
 
 import numpy as np
 import chainer
 from chainer import functions as F
+from chainer import serializers
 
-import agent
 import copy_param
+import async
 
 
-class NStepQLearning(agent.Agent):
+class NSQ(object):
     """N-step Q-Learning.
 
     See http://arxiv.org/abs/1602.01783
     """
 
-    def __init__(self, q_function, optimizer, t_max, gamma, epsilon, i_target,
+    def __init__(self, process_idx, q_function, target_q_function, optimizer,
+                 t_max, gamma, i_target, explorer,
                  clip_reward=True):
-        # Globally shared model
+
+        self.process_idx = process_idx
+
         self.shared_q_function = q_function
-        # Thread specific model
-        self.q_function = copy.deepcopy(q_function)
-        self.target_q_function = copy.deepcopy(q_function)
+        self.target_q_function = target_q_function
+        self.q_function = copy.deepcopy(self.shared_q_function)
+
+        async.assert_params_not_shared(self.shared_q_function, self.q_function)
+
         self.optimizer = optimizer
+
         self.t_max = t_max
         self.gamma = gamma
-        self.epsilon = epsilon
+        self.explorer = explorer
         self.i_target = i_target
         self.clip_reward = clip_reward
         self.t = 0
@@ -43,7 +51,8 @@ class NStepQLearning(agent.Agent):
         self.past_rewards = {}
 
     def sync_parameters(self):
-        copy_param.copy_param(self.q_function, self.shared_q_function)
+        copy_param.copy_param(target_link=self.q_function,
+                              source_link=self.shared_q_function)
 
     def act(self, state, reward, is_state_terminal):
 
@@ -63,8 +72,7 @@ class NStepQLearning(agent.Agent):
             if is_state_terminal:
                 R = 0
             else:
-                R = float(
-                    self.target_q_function.sample_greedily_with_value(state)[1].data)
+                R = float(self.target_q_function(state).max.data)
 
             loss = 0
             for i in reversed(range(self.t_start, self.t)):
@@ -104,8 +112,10 @@ class NStepQLearning(agent.Agent):
 
         if not is_state_terminal:
             self.past_states[self.t] = state
-            action, q = self.q_function.sample_epsilon_greedily_with_value(
-                state, self.epsilon)
+            qout = self.q_function(state)
+            action = self.explorer.select_action(
+                self.t, lambda: qout.greedy_actions.data[0])
+            q = qout.evaluate_actions(np.asarray([action]))
             if self.t % 100 == 0:
                 logger.debug('q:%s', q.data)
             self.past_action_values[self.t] = q
@@ -119,14 +129,25 @@ class NStepQLearning(agent.Agent):
                 logger.debug('self.t:%s', self.t)
                 copy_param.copy_param(self.target_q_function, self.q_function)
 
-            return action[0]
+            return action
         else:
             return None
 
-    @property
-    def links(self):
-        return [self.shared_q_function, self.target_q_function]
+    def load_model(self, model_filename):
+        """Load a network model form a file
+        """
+        serializers.load_hdf5(model_filename, self.shared_q_function)
+        # TODO(fujita): Save/load a target model separately for resuming
+        serializers.load_hdf5(model_filename, self.target_q_function)
+        self.sync_parameters()
+        opt_filename = model_filename + '.opt'
+        if os.path.exists(opt_filename):
+            print('WARNING: {0} was not found, so loaded only a model'.format(
+                opt_filename))
+            serializers.load_hdf5(model_filename + '.opt', self.optimizer)
 
-    @property
-    def optimizers(self):
-        return [self.optimizer]
+    def save_model(self, model_filename):
+        """Save a network model to a file
+        """
+        serializers.save_hdf5(model_filename, self.q_function)
+        serializers.save_hdf5(model_filename + '.opt', self.optimizer)

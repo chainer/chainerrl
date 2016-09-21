@@ -15,6 +15,7 @@ from chainer import serializers
 from chainer import functions as F
 
 import copy_param
+import async
 
 logger = getLogger(__name__)
 
@@ -42,13 +43,16 @@ class A3C(object):
                  pi_loss_coef=1.0, v_loss_coef=0.5,
                  keep_loss_scale_same=False, use_terminal_state_value=False):
 
+        assert isinstance(model, A3CModel)
         # Globally shared model
         self.shared_model = model
 
         # Thread specific model
         self.model = copy.deepcopy(self.shared_model)
+        async.assert_params_not_shared(self.shared_model, self.model)
 
         self.optimizer = optimizer
+
         self.t_max = t_max
         self.gamma = gamma
         self.beta = beta

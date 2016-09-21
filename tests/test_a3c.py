@@ -92,12 +92,15 @@ class TestA3C(unittest.TestCase):
                 model = A3CFF(n_actions)
             opt = optimizers.RMSprop(1e-3, eps=1e-2)
             opt.setup(model)
-            return model, opt
+            return (model,), (opt,)
 
-        phi = lambda x: x
+        def phi(x):
+            return x
 
-        model, opt = run_a3c.run_a3c(
+        models, opts = run_a3c.run_a3c(
             nproc, make_env, model_opt, phi, t_max, steps=40000)
+
+        model, = models
 
         # Test
         env = ABC()

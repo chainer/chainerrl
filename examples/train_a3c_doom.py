@@ -120,7 +120,7 @@ def main():
         opt = rmsprop_async.RMSpropAsync(lr=args.lr, eps=1e-1, alpha=0.99)
         opt.setup(model)
         opt.add_hook(chainer.optimizer.GradientClipping(40))
-        return model, opt
+        return (model,), (opt,)
 
     run_a3c.run_a3c(args.processes, make_env, model_opt, phi, t_max=args.t_max,
                     beta=args.beta, profile=args.profile, steps=args.steps,
