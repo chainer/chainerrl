@@ -36,6 +36,10 @@ class QFunction(object):
         pass
 
     def update_state(self, x, a, test=False):
+        """Update its state so that it reflects x and a.
+
+        Unlike __call__, stateless QFunctions would do nothing.
+        """
         pass
 
 
@@ -352,6 +356,7 @@ class FCLSTMSAQFunction(chainer.Chain, QFunction):
 
     def push_state(self):
         self.state_stack.append((self.lstm.h, self.lstm.c))
+        assert len(self.state_stack) <= 2
         self.lstm.reset_state()
 
     def pop_state(self):
@@ -365,9 +370,10 @@ class FCLSTMSAQFunction(chainer.Chain, QFunction):
 
     def push_and_keep_state(self):
         self.state_stack.append((self.lstm.h, self.lstm.c))
+        assert len(self.state_stack) <= 2
 
     def update_state(self, x, a, test=False):
-        self(x, a, test=test)
+        self.__call__(x, a, test=test)
 
 
 class FCBNSAQFunction(MLPBN, QFunction):

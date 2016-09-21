@@ -275,7 +275,6 @@ class FCLSTMDeterministicPolicy(chainer.Chain, Policy):
         self.lstm.reset_state()
 
     def pop_state(self):
-        assert len(self.state_stack) > 0
         h, c = self.state_stack.pop()
         if h is not None and c is not None:
             self.lstm.set_state(c=c, h=h)

@@ -60,9 +60,14 @@ class DDPG(dqn.DQN):
     # Update Q-function
     def compute_critic_loss(self, batch):
         """
-        target_q_function must have seen s_t and a_t
-        target_policy must have seen s_t
-        q_function must have seen s_{t-1}
+        Preconditions:
+          target_q_function must have seen up to s_t and a_t.
+          target_policy must have seen up to s_t.
+          q_function must have seen up to s_{t-1}.
+        Postconditions:
+          target_q_function must have seen up to s_{t+1} and a_{t+1}.
+          target_policy must have seen up to s_{t+1}.
+          q_function must have seen up to s_t.
         """
 
         batch_next_state = batch['next_state']
@@ -75,6 +80,8 @@ class DDPG(dqn.DQN):
         # Target policy observes s_{t+1}
         next_actions = self.target_policy(batch_next_state, test=True)
 
+        # Q(s_{t+1}, mu(a_{t+1})) is evaluated.
+        # This should not affect the internal state of Q.
         self.target_q_function.push_and_keep_state()
         next_q = self.target_q_function(batch_next_state, next_actions,
                                         test=True)
@@ -102,20 +109,32 @@ class DDPG(dqn.DQN):
 
     def compute_actor_loss(self, batch):
         """
-        q_function must have seen s_{t-1}
-        policy must have seen s_{t-1}
+        Preconditions:
+          q_function must have seen up to s_{t-1} and s_{t-1}.
+          policy must have seen up to s_{t-1}.
+        Preconditions:
+          q_function must have seen up to s_t and s_t.
+          policy must have seen up to s_t.
         """
 
         batch_state = batch['state']
+        batch_action = batch['action']
         batch_size = batch_state.shape[0]
 
         # Estimated policy observes s_t
         onpolicy_actions = self.policy(batch_state, test=False)
 
-        # Estimated Q-function must have not seen s_t so far
-        # self.q_function.push_and_keep_state()
+        # Q(s_t, mu(s_t)) is evaluated.
+        # This should not affect the internal state of Q.
+        self.q_function.push_and_keep_state()
         q = self.q_function(batch_state, onpolicy_actions, test=True)
-        # self.q_function.pop_state()
+        self.q_function.pop_state()
+
+        # import copy
+        # q = copy.deepcopy(self.q_function)(batch_state, onpolicy_actions, test=True)
+
+        # Estimated Q-function observes s_t and a_t
+        self.q_function.update_state(batch_state, batch_action, test=False)
 
         # Since we want to maximize Q, loss is negation of Q
         loss = - F.sum(q) / batch_size
@@ -135,37 +154,8 @@ class DDPG(dqn.DQN):
         self.actor_optimizer.update(lambda: self.compute_actor_loss(batch))
 
     def update_from_episodes(self, episodes, errors_out=None):
-        self.model.push_state()
-        self.target_model.push_state()
-
         sorted_episodes = list(reversed(sorted(episodes, key=len)))
         max_epi_len = len(sorted_episodes[0])
-
-        # actor_loss = 0
-        # critic_loss = 0
-        # for i in range(max_epi_len):
-        #     transitions = []
-        #     for ep in sorted_episodes:
-        #         if len(ep) <= i:
-        #             break
-        #         transitions.append(ep[i])
-        #     batch = dqn.batch_experiences(transitions, xp=self.xp, phi=self.phi)
-        #     if i == 0:
-        #         self.input_initial_batch_target_model(batch)
-        #
-        #     actor_loss += self.compute_actor_loss(batch)
-        #     critic_loss += self.compute_critic_loss(batch)
-        #
-        # actor_loss /= max_epi_len
-        # critic_loss /= max_epi_len
-        # self.actor_optimizer.zero_grads()
-        # actor_loss.backward()
-        # self.critic_optimizer.zero_grads()
-        # critic_loss.backward()
-        # # self.actor_optimizer.update(lambda: actor_loss / max_epi_len)
-        # # self.critic_optimizer.update(lambda: critic_loss / max_epi_len)
-        # self.actor_optimizer.update()
-        # self.critic_optimizer.update()
 
         # Precompute all the input batches
         batches = []
@@ -178,7 +168,16 @@ class DDPG(dqn.DQN):
             batch = dqn.batch_experiences(transitions, xp=self.xp, phi=self.phi)
             batches.append(batch)
 
+        # Backup current states
+        self.model.push_state()
+        self.target_model.push_state()
+
         self.input_initial_batch_target_model(batches[0])
+
+        assert self.q_function.lstm.h is None
+        assert self.policy.lstm.h is None
+        assert self.target_q_function.lstm.h is not None
+        assert self.target_policy.lstm.h is not None
 
         # Update critic through time
         critic_loss = 0
@@ -186,8 +185,14 @@ class DDPG(dqn.DQN):
             critic_loss += self.compute_critic_loss(batch)
         self.critic_optimizer.update(lambda: critic_loss / max_epi_len)
 
+        # Reset states before updating actor
         self.model.reset_state()
         self.target_model.reset_state()
+
+        assert self.q_function.lstm.h is None
+        assert self.policy.lstm.h is None
+        assert self.target_q_function.lstm.h is None
+        assert self.target_policy.lstm.h is None
 
         # Update actor through time
         actor_loss = 0
@@ -195,15 +200,12 @@ class DDPG(dqn.DQN):
             actor_loss += self.compute_actor_loss(batch)
         self.actor_optimizer.update(lambda: actor_loss / max_epi_len)
 
-        # actor_loss /= max_epi_len
-        # self.actor_optimizer.zero_grads()
-        # actor_loss.backward()
-        # self.critic_optimizer.zero_grads()
-        # critic_loss.backward()
-        # # self.actor_optimizer.update(lambda: actor_loss / max_epi_len)
-        # self.actor_optimizer.update()
-        # self.critic_optimizer.update()
+        assert self.q_function.lstm.h is not None
+        assert self.policy.lstm.h is not None
+        assert self.target_q_function.lstm.h is None
+        assert self.target_policy.lstm.h is None
 
+        # Backup current states
         self.model.pop_state()
         self.target_model.pop_state()
 

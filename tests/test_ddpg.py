@@ -39,7 +39,7 @@ class _TestDDPGOnABC(_TestTraining):
         actor_opt = optimizers.Adam(alpha=1e-4)
         actor_opt.setup(policy)
 
-        critic_opt = optimizers.Adam(alpha=1e-3)
+        critic_opt = optimizers.Adam(alpha=2e-3)
         critic_opt.setup(q_func)
 
         explorer = self.make_explorer(env)
@@ -59,7 +59,7 @@ class _TestDDPGOnABC(_TestTraining):
                 return a.astype(np.float32)
             else:
                 return a
-        return LinearDecayEpsilonGreedy(1.0, 0.1, 1000, random_action_func)
+        return LinearDecayEpsilonGreedy(1.0, 0.2, 1000, random_action_func)
 
     def make_optimizer(self, env, q_func):
         opt = optimizers.Adam()
