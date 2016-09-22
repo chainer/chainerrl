@@ -148,8 +148,8 @@ class FCGaussianPolicy(chainer.ChainList, GaussianPolicy):
         mean = self.mean_layer(h)
         if self.bound_mean:
             mean = bound_action_by_tanh(mean, self.min_action, self.max_action)
-        ln_var = self.ln_var_layer(h)
-        # ln_var = F.log(F.softplus(self.ln_var_layer(h)))
+        # ln_var = self.ln_var_layer(h)
+        ln_var = F.log(F.softplus(self.ln_var_layer(h)))
         return mean, ln_var
 
 
