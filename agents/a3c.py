@@ -170,9 +170,10 @@ class A3C(object):
         self.past_action_entropy[self.t] = pout.entropy
         self.past_values[self.t] = vout
         self.t += 1
+        action = pout.sampled_actions.data[0]
         if self.process_idx == 0:
-            logger.debug('t:%s r:%s pout:%s', self.t, reward, pout)
-        return pout.sampled_actions.data[0]
+            logger.debug('t:%s r:%s a:%s pout:%s', self.t, reward, action, pout)
+        return action
 
     def observe_terminal(self, state, reward):
         if self.clip_reward:
