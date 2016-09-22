@@ -184,13 +184,14 @@ class A3C(object):
 
         self.model.reset_state()
 
-    def stop_current_episode(self):
-        self.past_action_log_prob = {}
-        self.past_action_entropy = {}
-        self.past_states = {}
-        self.past_rewards = {}
-        self.past_values = {}
-        self.t_start = self.t
+    def stop_current_episode(self, state, reward):
+        if self.clip_reward:
+            reward = np.clip(reward, -1, 1)
+
+        self.past_rewards[self.t - 1] = reward
+        statevar = chainer.Variable(np.expand_dims(self.phi(state), 0))
+        self.update(statevar)
+
         self.model.reset_state()
 
     def load_model(self, model_filename):

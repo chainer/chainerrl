@@ -19,7 +19,8 @@ class ABC(env.Env):
     If the agent can choose actions 0, 1, 2 exactly in this order, it will receive reward 1. Otherwise, if it failed to do so, the environment is terminated with reward 0.
     """
 
-    def __init__(self, discrete=True):
+    def __init__(self, discrete=True, episodic=True):
+        self.episodic = episodic
         if discrete:
             self.action_space = spaces.Discrete(3)
         else:
@@ -37,6 +38,8 @@ class ABC(env.Env):
         self._state = 0
 
     def is_terminal(self):
+        if not self.episodic:
+            return False
         return self._state == 3 or self._state == 4
 
     def reset(self):
@@ -60,9 +63,13 @@ class ABC(env.Env):
             # C
             self._state = 3
             reward = 0.9
+            if not self.episodic:
+                self._state = 0
         else:
             self._state = 4
             reward = 0.0
+            if not self.episodic:
+                self._state = 0
         return self.observe(), reward, self.is_terminal(), None
 
     def close(self):

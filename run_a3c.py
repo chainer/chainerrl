@@ -87,7 +87,7 @@ def train_loop(process_idx, counter, make_env, max_score, eval_frequency,
                 if done:
                     agent.observe_terminal(obs, r)
                 else:
-                    agent.stop_current_episode()
+                    agent.stop_current_episode(obs, r)
                 if process_idx == 0:
                     print('{} global_t:{} local_t:{} lr:{} r:{}'.format(
                         outdir, global_t, local_t, agent.optimizer.lr,
@@ -167,7 +167,7 @@ def train_loop_with_profile(process_idx, counter, make_env, max_score,
                     'profile-{}.out'.format(os.getpid()))
 
 
-def run_async_agent(processes, make_env, model_opt, make_agent,
+def run_async_agent(outdir, processes, make_env, model_opt, make_agent,
                     profile=False, steps=8 * 10 ** 7, eval_frequency=10 ** 6,
                     eval_n_runs=10, gamma=0.99, max_episode_len=None,
                     args={}):
@@ -183,8 +183,6 @@ def run_async_agent(processes, make_env, model_opt, make_agent,
 
     # Prevent numpy from using multiple threads
     os.environ['OMP_NUM_THREADS'] = '1'
-
-    outdir = args.outdir
 
     models, opts = model_opt()
 
@@ -229,7 +227,7 @@ def run_async_agent(processes, make_env, model_opt, make_agent,
     return models, opts
 
 
-def run_a3c(processes, make_env, model_opt, phi, t_max=1, beta=1e-2,
+def run_a3c(outdir, processes, make_env, model_opt, phi, t_max=1, beta=1e-2,
             profile=False, steps=8 * 10 ** 7, eval_frequency=10 ** 6,
             eval_n_runs=10, use_terminal_state_value=False, gamma=0.99,
             max_episode_len=None, clip_reward=True, args={}):
@@ -242,13 +240,13 @@ def run_a3c(processes, make_env, model_opt, phi, t_max=1, beta=1e-2,
                        use_terminal_state_value=use_terminal_state_value,
                        clip_reward=clip_reward)
 
-    return run_async_agent(processes, make_env, model_opt, make_agent,
+    return run_async_agent(outdir, processes, make_env, model_opt, make_agent,
                            profile=profile, steps=steps, eval_frequency=eval_frequency,
                            eval_n_runs=eval_n_runs, gamma=gamma,
                            max_episode_len=max_episode_len, args=args)
 
 
-def run_nsq(processes, make_env, model_opt, phi, t_max=1, beta=1e-2,
+def run_nsq(outdir, processes, make_env, model_opt, phi, t_max=1, beta=1e-2,
             profile=False, steps=8 * 10 ** 7, eval_frequency=10 ** 6,
             eval_n_runs=10, use_terminal_state_value=False, gamma=0.99,
             i_target=100,
@@ -261,6 +259,6 @@ def run_nsq(processes, make_env, model_opt, phi, t_max=1, beta=1e-2,
         return nsq.NSQ(process_idx, q_func, target_q_func, opts[0], t_max, gamma,
                        i_target=i_target, explorer=explorers[process_idx])
 
-    return run_async_agent(processes, make_env, model_opt, make_agent,
+    return run_async_agent(outdir, processes, make_env, model_opt, make_agent,
                            profile=profile, steps=steps, eval_frequency=eval_frequency,
                            eval_n_runs=eval_n_runs, gamma=gamma, args=args)
