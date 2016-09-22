@@ -84,10 +84,19 @@ class SoftmaxPolicyOutput(PolicyOutput):
             self.logits.data, self.probs.data, self.entropy.data)
 
 
+def clip_actions(actions, min_action, max_action):
+    min_actions = F.broadcast_to(min_action, actions.shape)
+    max_actions = F.broadcast_to(max_action, actions.shape)
+    return F.maximum(F.minimum(actions, max_actions), min_actions)
+
+
 class GaussianPolicyOutput(PolicyOutput):
 
-    def __init__(self, mean, ln_var=None, var=None, eps=None):
+    def __init__(self, mean, ln_var=None, var=None, eps=None, clip_action=False, min_action=None, max_action=None):
         self.mean = mean
+        self.clip_action = clip_action
+        self.min_action = min_action
+        self.max_action = max_action
 
         if ln_var is not None:
             assert var is None
@@ -101,7 +110,10 @@ class GaussianPolicyOutput(PolicyOutput):
 
     @cached_property
     def most_probable_actions(self):
-        return self.mean
+        if self.clip_action:
+            return clip_actions(self.mean, min_action=self.min_action, max_action=self.max_action)
+        else:
+            return self.mean
 
     @cached_property
     def sampled_actions(self):
@@ -109,9 +121,13 @@ class GaussianPolicyOutput(PolicyOutput):
             # print('mean', self.mean.data, 'var', self.var.data)
             func = F.Gaussian()
             func.eps = self.eps
-            return func(self.mean, self.ln_var)
+            actions = func(self.mean, self.ln_var)
         else:
-            return F.gaussian(self.mean, self.ln_var)
+            actions = F.gaussian(self.mean, self.ln_var)
+        if self.clip_action:
+            return clip_actions(actions, min_action=self.min_action, max_action=self.max_action)
+        else:
+            return actions
 
     @cached_property
     def sampled_actions_log_probs(self):

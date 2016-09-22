@@ -115,7 +115,8 @@ class FCGaussianPolicy(chainer.ChainList, GaussianPolicy):
 
     def __init__(self, n_input_channels, action_size,
                  n_hidden_layers=0, n_hidden_channels=None,
-                 min_action=None, max_action=None, bound_mean=True):
+                 min_action=None, max_action=None, bound_mean=True,
+                 clip_action=True):
 
         self.n_input_channels = n_input_channels
         self.action_size = action_size
@@ -124,6 +125,7 @@ class FCGaussianPolicy(chainer.ChainList, GaussianPolicy):
         self.min_action = min_action
         self.max_action = max_action
         self.bound_mean = bound_mean
+        self.clip_action = clip_action
 
         self.hidden_layers = []
         if n_hidden_layers > 0:
@@ -151,6 +153,16 @@ class FCGaussianPolicy(chainer.ChainList, GaussianPolicy):
         # ln_var = self.ln_var_layer(h)
         ln_var = F.log(F.softplus(self.ln_var_layer(h)))
         return mean, ln_var
+
+    def __call__(self, x, test=False):
+        try:
+            mean, ln_var = self.compute_mean_and_ln_var(x, test=test)
+            return policy_output.GaussianPolicyOutput(
+                mean, ln_var=ln_var, clip_action=self.clip_action,
+                min_action=self.min_action, max_action=self.max_action)
+        except NotImplementedError:
+            mean, var = self.compute_mean_and_var(x, test=test)
+            return policy_output.GaussianPolicyOutput(mean, var=var)
 
 
 class LinearGaussianPolicyWithDiagonalCovariance(chainer.ChainList, GaussianPolicy):
