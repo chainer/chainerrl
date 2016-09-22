@@ -21,6 +21,8 @@ class _TestGaussianPolicyOutput(unittest.TestCase):
         sampled_actions = self.pout.sampled_actions
         print('sampled_actions', sampled_actions.data)
         for i in range(self.shape[0]):
+            print('mean', self.pout.mean.data[i])
+            print('var', self.pout.var.data[i])
             cov = np.identity(
                 self.shape[1], dtype=np.float32) * np.exp(self.pout.ln_var.data[i])
             print('cov', cov)
@@ -34,6 +36,8 @@ class _TestGaussianPolicyOutput(unittest.TestCase):
         for i in range(self.shape[0]):
             cov = np.identity(
                 self.shape[1], dtype=np.float32) * np.exp(self.pout.ln_var.data[i])
+            print('mean', self.pout.mean.data[i])
+            print('var', self.pout.var.data[i])
             print('cov', cov)
             desired_entropy = scipy.stats.multivariate_normal(
                 self.pout.mean.data[i], cov).entropy()
@@ -47,10 +51,8 @@ class TestGaussianPolicyOutputWithDiagonalVariance(_TestGaussianPolicyOutput):
         self.shape = (2, 3)
         mean = chainer.Variable(
             np.random.rand(*self.shape).astype(np.float32))
-        print('mean', mean.data)
         var = chainer.Variable(
             np.random.rand(*self.shape).astype(np.float32))
-        print('var', var.data)
         self.pout = GaussianPolicyOutput(mean, var=var)
 
 
@@ -60,11 +62,9 @@ class TestGaussianPolicyOutputWithDiagonalLogVariance(_TestGaussianPolicyOutput)
         self.shape = (2, 3)
         mean = chainer.Variable(
             np.random.rand(*self.shape).astype(np.float32))
-        print('mean', mean.data)
         # Log of variance can be negative
         ln_var = chainer.Variable(
             np.random.uniform(-1.0, 1.0, self.shape).astype(np.float32))
-        print('ln_var', ln_var.data)
         self.pout = GaussianPolicyOutput(mean, ln_var=ln_var)
 
 
