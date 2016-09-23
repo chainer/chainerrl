@@ -41,7 +41,8 @@ class A3C(object):
     def __init__(self, model, optimizer, t_max, gamma, beta=1e-2,
                  process_idx=0, clip_reward=True, phi=lambda x: x,
                  pi_loss_coef=1.0, v_loss_coef=0.5,
-                 keep_loss_scale_same=False, use_terminal_state_value=False):
+                 keep_loss_scale_same=False, use_terminal_state_value=False,
+                 normalize_grad_by_t_max=False):
 
         assert isinstance(model, A3CModel)
         # Globally shared model
@@ -63,6 +64,7 @@ class A3C(object):
         self.v_loss_coef = v_loss_coef
         self.keep_loss_scale_same = keep_loss_scale_same
         self.use_terminal_state_value = use_terminal_state_value
+        self.normalize_grad_by_t_max = normalize_grad_by_t_max
 
         self.t = 0
         self.t_start = 0
@@ -119,6 +121,10 @@ class A3C(object):
             factor = self.t_max / (self.t - self.t_start)
             pi_loss *= factor
             v_loss *= factor
+
+        if self.normalize_grad_by_t_max:
+            pi_loss /= self.t - self.t_start
+            v_loss /= self.t - self.t_start
 
         if self.process_idx == 0:
             logger.debug('pi_loss:%s v_loss:%s', pi_loss.data, v_loss.data)
