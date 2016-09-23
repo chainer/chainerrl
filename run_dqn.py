@@ -54,7 +54,7 @@ def run_dqn_with_evaluation(agent, env, steps, outdir, max_episode_len=None,
                 if done:
                     agent.observe_terminal(obs, r)
                 else:
-                    agent.stop_current_episode()
+                    agent.stop_current_episode(obs, r)
                 print('{} t:{} episode_idx:{} explorer:{} episode_r:{}'.format(
                     outdir, t, episode_idx, agent.explorer, episode_r))
                 if evaluator is not None:

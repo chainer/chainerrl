@@ -31,7 +31,16 @@ class _TestDQNLike(_TestTraining):
         self.model_filename = os.path.join(self.tmpdir, 'model.h5')
         self.rbuf_filename = os.path.join(self.tmpdir, 'rbuf.pkl')
 
-    def make_agent(self, env, q_func, opt, explorer, rbuf, gpu):
+    def make_agent(self, env, gpu):
+        q_func = self.make_q_func(env)
+        opt = self.make_optimizer(env, q_func)
+        explorer = self.make_explorer(env)
+        rbuf = self.make_replay_buffer(env)
+        agent = self.make_dqn_agent(env=env, q_func=q_func, opt=opt,
+                                    explorer=explorer, rbuf=rbuf, gpu=gpu)
+        return agent
+
+    def make_dqn_agent(self, env, q_func, opt, explorer, rbuf, gpu):
         raise NotImplementedError()
 
     def make_env_and_successful_return(self):
@@ -45,49 +54,6 @@ class _TestDQNLike(_TestTraining):
 
     def make_replay_buffer(self, env):
         raise NotImplementedError()
-
-    def _test_training(self, gpu, steps=5000, load_model=False):
-
-        random_seed.set_random_seed(0)
-
-        env, successful_return = self.make_env_and_successful_return()
-
-        q_func = self.make_q_func(env)
-        opt = self.make_optimizer(env, q_func)
-        explorer = self.make_explorer(env)
-        rbuf = self.make_replay_buffer(env)
-        agent = self.make_agent(env=env, gpu=gpu)
-
-        if load_model:
-            print('Load model from', self.model_filename)
-            agent.load_model(self.model_filename)
-            agent.replay_buffer.load(self.rbuf_filename)
-
-        # Train
-        run_dqn.run_dqn_with_evaluation(
-            agent=agent, env=env, steps=steps, outdir=self.tmpdir,
-            save_final_model=False)
-
-        # Test
-        total_r = 0.0
-        obs = env.reset()
-        done = False
-        reward = 0.0
-        q_func.reset_state()
-        while not done:
-            s = np.expand_dims(obs, 0)
-            if gpu >= 0:
-                s = cuda.to_gpu(s, device=gpu)
-            action = q_func(chainer.Variable(s)).greedy_actions.data[0]
-            if isinstance(action, cuda.cupy.ndarray):
-                action = cuda.to_cpu(action)
-            obs, reward, done, _ = env.step(action)
-            total_r += reward
-        self.assertAlmostEqual(total_r, successful_return)
-
-        # Save
-        agent.save_model(self.model_filename)
-        agent.replay_buffer.save(self.rbuf_filename)
 
     def test_training_gpu(self):
         self._test_training(0, steps=1000)

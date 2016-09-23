@@ -51,7 +51,7 @@ class _TestTraining(unittest.TestCase):
         obs = env.reset()
         done = False
         reward = 0.0
-        agent.stop_current_episode()
+        agent.prepare_for_new_episode()
         while not done:
             # s = np.expand_dims(obs, 0)
             # if gpu >= 0:

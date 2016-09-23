@@ -201,7 +201,7 @@ class DQN(agent.Agent):
                 transitions.append(ep[i])
             batch = batch_experiences(transitions, xp=self.xp, phi=self.phi)
             if i == 0:
-                self.input_initial_batch_target_model(batch)
+                self.input_initial_batch_to_target_model(batch)
             loss += self._compute_loss(transitions, self.gamma)
         loss /= max_epi_len
         self.optimizer.zero_grads()
@@ -452,16 +452,41 @@ class DQN(agent.Agent):
             next_action=self.last_action,
             is_state_terminal=True)
 
-        self.last_state = None
-        self.last_action = None
+        self.prepare_for_new_episode()
 
-        self.model.reset_state()
-
-    def stop_current_episode(self):
+    def stop_current_episode(self, state, reward):
         """
         Stop the current episode.
 
         This function must be called once when an episode is stopped.
+        """
+
+        if self.clip_reward:
+            reward = np.clip(reward, -1, 1)
+
+        assert self.last_state is not None
+        assert self.last_action is not None
+
+        if self.async_update and self.update_future:
+            self.update_future.result()
+            self.update_future = None
+
+        # Add a transition to the replay buffer
+        self.replay_buffer.append(
+            state=self.last_state,
+            action=self.last_action,
+            reward=reward,
+            next_state=state,
+            next_action=self.last_action,
+            is_state_terminal=False)
+
+        self.prepare_for_new_episode()
+
+    def prepare_for_new_episode(self):
+        """
+        Prepare for a new episode.
+
+        This method should be called before starting a new episode.
         """
         self.last_state = None
         self.last_action = None
