@@ -8,7 +8,6 @@ import copy
 import threading
 import os
 from logging import getLogger
-import concurrent.futures
 from concurrent.futures import ThreadPoolExecutor
 from future.utils import native
 
@@ -40,9 +39,29 @@ def batch_experiences(experiences, xp, phi):
             [[elem['reward']] for elem in experiences], dtype=np.float32),
         'next_state': xp.asarray(
             [phi(elem['next_state']) for elem in experiences]),
+        'next_action': xp.asarray(
+            [phi(elem['next_action']) for elem in experiences]),
         'is_state_terminal': xp.asarray(
             [[elem['is_state_terminal']] for elem in experiences],
             dtype=np.float32)}
+
+
+def compute_value_loss(y, t, clip_delta=True, batch_accumulator='mean'):
+    """Compute a loss for value prediction problem."""
+    assert batch_accumulator in ('mean', 'sum')
+    if clip_delta:
+        loss_sum = F.sum(F.huber_loss(y, t, delta=1.0))
+        if batch_accumulator == 'mean':
+            loss = loss_sum / y.shape[0]
+        elif batch_accumulator == 'sum':
+            loss = loss_sum
+    else:
+        loss_mean = F.mean_squared_error(y, t) / 2
+        if batch_accumulator == 'mean':
+            loss = loss_mean
+        elif batch_accumulator == 'sum':
+            loss = loss_mean * y.shape[0]
+    return loss
 
 
 class DQN(agent.Agent):
@@ -58,7 +77,8 @@ class DQN(agent.Agent):
                  soft_update_tau=1e-2, async_update=False,
                  n_times_update=1, average_q_decay=0.999,
                  average_loss_decay=0.99,
-                 batch_accumulator='mean',
+                 batch_accumulator='mean', episodic_update=False,
+                 episodic_update_len=None,
                  logger=getLogger(__name__)):
         """
         Args:
@@ -112,7 +132,8 @@ class DQN(agent.Agent):
             self.update_executor.submit(
                 lambda: cuda.get_device(gpu).use()).result()
             self.update_future = None
-
+        self.episodic_update = episodic_update
+        self.episodic_update_len = episodic_update_len
         self.target_model = None
         self.sync_target_network()
         self.target_q_function = self.target_model  # For backward compatibility
@@ -161,6 +182,34 @@ class DQN(agent.Agent):
         self.optimizer.zero_grads()
         loss.backward()
         self.optimizer.update()
+
+    def input_initial_batch_to_target_model(self, batch):
+        self.target_model(batch['state'])
+
+    def update_from_episodes(self, episodes, errors_out=None):
+        self.model.push_state()
+        self.target_model.push_state()
+
+        loss = 0
+        sorted_episodes = list(reversed(sorted(episodes, key=len)))
+        max_epi_len = len(sorted_episodes[0])
+        for i in range(max_epi_len):
+            transitions = []
+            for ep in sorted_episodes:
+                if len(ep) <= i:
+                    break
+                transitions.append(ep[i])
+            batch = batch_experiences(transitions, xp=self.xp, phi=self.phi)
+            if i == 0:
+                self.input_initial_batch_target_model(batch)
+            loss += self._compute_loss(transitions, self.gamma)
+        loss /= max_epi_len
+        self.optimizer.zero_grads()
+        loss.backward()
+        self.optimizer.update()
+
+        self.model.pop_state()
+        self.target_model.pop_state()
 
     def _batch_states(self, states):
         """Generate an input batch array from a list of states
@@ -230,19 +279,8 @@ class DQN(agent.Agent):
             for e in delta:
                 errors_out.append(e)
 
-        if self.clip_delta:
-            loss_sum = F.sum(F.huber_loss(y, t, delta=1.0))
-            if self.batch_accumulator == 'mean':
-                loss = loss_sum / len(experiences)
-            elif self.batch_accumulator == 'sum':
-                loss = loss_sum
-        else:
-            loss_mean = F.mean_squared_error(y, t) / 2
-            if self.batch_accumulator == 'mean':
-                loss = loss_mean
-            elif self.batch_accumulator == 'sum':
-                loss = loss_mean * len(experiences)
-        return loss
+        return compute_value_loss(y, t, clip_delta=self.clip_delta,
+                                  batch_accumulator=self.batch_accumulator)
 
     def compute_q_values(self, states):
         """Compute Q-values
@@ -325,6 +363,28 @@ class DQN(agent.Agent):
         return self.explorer.select_action(
             self.t, lambda: self.select_greedy_action(state))
 
+    def update_if_necessary(self):
+        if self.t < self.replay_start_size:
+            return
+        if self.t % self.update_frequency != 0:
+            return
+
+        def update_func():
+            for _ in range(self.n_times_update):
+                if self.episodic_update:
+                    episodes = self.replay_buffer.sample_episodes(
+                        self.minibatch_size, self.episodic_update_len)
+                    self.update_from_episodes(episodes)
+                else:
+                    experiences = self.replay_buffer.sample(
+                        self.minibatch_size)
+                    self.update(experiences)
+
+        if self.async_update:
+            self.update_future = self.update_executor.submit(update_func)
+        else:
+            update_func()
+
     def act(self, state, reward):
         """
         Observe a current state and a reward, then choose an action.
@@ -356,22 +416,13 @@ class DQN(agent.Agent):
                 action=self.last_action,
                 reward=reward,
                 next_state=state,
+                next_action=action,
                 is_state_terminal=False)
 
         self.last_state = state
         self.last_action = action
 
-        if len(self.replay_buffer) >= self.replay_start_size and \
-                self.t % self.update_frequency == 0:
-            def update_func():
-                for _ in range(self.n_times_update):
-                    experiences = self.replay_buffer.sample(
-                        self.minibatch_size)
-                    self.update(experiences)
-            if self.async_update:
-                self.update_future = self.update_executor.submit(update_func)
-            else:
-                update_func()
+        self.update_if_necessary()
 
         return self.last_action
 
@@ -398,10 +449,13 @@ class DQN(agent.Agent):
             action=self.last_action,
             reward=reward,
             next_state=state,
+            next_action=self.last_action,
             is_state_terminal=True)
 
         self.last_state = None
         self.last_action = None
+
+        self.model.reset_state()
 
     def stop_current_episode(self):
         """
@@ -411,6 +465,8 @@ class DQN(agent.Agent):
         """
         self.last_state = None
         self.last_action = None
+        self.model.reset_state()
+        self.replay_buffer.stop_current_episode()
 
     def get_stats_keys(self):
         return ('average_q', 'average_loss')

@@ -19,7 +19,12 @@ class ABC(env.Env):
     If the agent can choose actions 0, 1, 2 exactly in this order, it will receive reward 1. Otherwise, if it failed to do so, the environment is terminated with reward 0.
     """
 
-    def __init__(self, discrete=True):
+    def __init__(self, discrete=True, partially_observable=False):
+        self.partially_observable = partially_observable
+        self.n_dim_obs = 5
+        self.observation_space = spaces.Box(
+            low=np.asarray([-np.inf] * self.n_dim_obs, dtype=np.float32),
+            high=np.asarray([np.inf] * self.n_dim_obs, dtype=np.float32))
         if discrete:
             self.action_space = spaces.Discrete(3)
         else:
@@ -29,8 +34,11 @@ class ABC(env.Env):
                 high=np.asarray([2.49] * n_dim_action, dtype=np.float32))
 
     def observe(self):
-        state_vec = np.zeros((5,), dtype=np.float32)
-        state_vec[self._state] = 1.0
+        state_vec = np.zeros((self.n_dim_obs,), dtype=np.float32)
+        if self.partially_observable:
+            state_vec[self._state % 2] = 1.0
+        else:
+            state_vec[self._state] = 1.0
         return state_vec
 
     def initialize(self):
