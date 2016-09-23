@@ -30,7 +30,8 @@ def ask_and_save_agent_replay_buffer(agent, t, outdir, suffix=''):
 
 
 def run_dqn_with_evaluation(agent, env, steps, outdir, max_episode_len=None,
-                            step_offset=0, evaluator=None):
+                            step_offset=0, evaluator=None,
+                            save_final_model=True):
 
     assert isinstance(agent, DQN)
 
@@ -53,7 +54,7 @@ def run_dqn_with_evaluation(agent, env, steps, outdir, max_episode_len=None,
                 if done:
                     agent.observe_terminal(obs, r)
                 else:
-                    agent.stop_current_episode()
+                    agent.stop_current_episode(obs, r)
                 print('{} t:{} episode_idx:{} explorer:{} episode_r:{}'.format(
                     outdir, t, episode_idx, agent.explorer, episode_r))
                 if evaluator is not None:
@@ -78,9 +79,10 @@ def run_dqn_with_evaluation(agent, env, steps, outdir, max_episode_len=None,
                 agent, t, outdir, suffix='_except')
             raise
 
-    # Save the final model
-    save_agent_model(agent, t, outdir, suffix='_finish')
-    ask_and_save_agent_replay_buffer(agent, t, outdir, suffix='_finish')
+    if save_final_model:
+        # Save the final model
+        save_agent_model(agent, t, outdir, suffix='_finish')
+        ask_and_save_agent_replay_buffer(agent, t, outdir, suffix='_finish')
 
 
 def run_dqn(agent, env, steps, eval_n_runs, eval_frequency,

@@ -13,121 +13,126 @@ from chainer import cuda
 from chainer import optimizers
 import numpy as np
 
-import q_function
+from q_function import FCSIQFunction
+from q_function import FCSIContinuousQFunction
+from q_function import FCLSTMStateQFunction
 import random_seed
 from envs.simple_abc import ABC
 from explorers.epsilon_greedy import LinearDecayEpsilonGreedy
-from explorers.epsilon_greedy import ConstantEpsilonGreedy
+import replay_buffer
+import run_dqn
+from test_training import _TestTraining
 
 
-class _TestDQNLike(unittest.TestCase):
+class _TestDQNLike(_TestTraining):
 
     def setUp(self):
         self.tmpdir = tempfile.mkdtemp()
         self.model_filename = os.path.join(self.tmpdir, 'model.h5')
         self.rbuf_filename = os.path.join(self.tmpdir, 'rbuf.pkl')
 
-    def make_discrete_q_func(self, env):
-        return q_function.FCSIQFunction(5, 3, 10, env.action_space.n)
+    def make_agent(self, env, gpu):
+        q_func = self.make_q_func(env)
+        opt = self.make_optimizer(env, q_func)
+        explorer = self.make_explorer(env)
+        rbuf = self.make_replay_buffer(env)
+        agent = self.make_dqn_agent(env=env, q_func=q_func, opt=opt,
+                                    explorer=explorer, rbuf=rbuf, gpu=gpu)
+        return agent
 
-    def make_continuous_q_func(self, env):
-        n_dim_action = env.action_space.low.size
-        return q_function.FCSIContinuousQFunction(
-            5, n_dim_action, 20, 2, env.action_space)
+    def make_dqn_agent(self, env, q_func, opt, explorer, rbuf, gpu):
+        raise NotImplementedError()
 
-    def make_agent(self, gpu, q_func, explorer, opt):
-        raise NotImplementedError
+    def make_env_and_successful_return(self):
+        raise NotImplementedError()
 
-    def _test_abc(self, gpu, discrete=True, steps=5000, load_model=False):
+    def make_explorer(self, env):
+        raise NotImplementedError()
 
-        random_seed.set_random_seed(0)
+    def make_optimizer(self, env, q_func):
+        raise NotImplementedError()
 
-        env = ABC(discrete=discrete)
+    def make_replay_buffer(self, env):
+        raise NotImplementedError()
 
-        if discrete:
-            q_func = self.make_discrete_q_func(env)
-        else:
-            q_func = self.make_continuous_q_func(env)
+    def test_training_gpu(self):
+        self._test_training(0, steps=1000)
+        self._test_training(0, steps=300, load_model=True)
 
+    def test_training_cpu(self):
+        self._test_training(-1, steps=1000)
+
+
+class _TestDQNOnABC(_TestDQNLike):
+
+    def make_agent(self, env, gpu):
+        q_func = self.make_q_func(env)
+        opt = self.make_optimizer(env, q_func)
+        explorer = self.make_explorer(env)
+        rbuf = self.make_replay_buffer(env)
+        return self.make_dqn_agent(env=env, q_func=q_func,
+                                   opt=opt, explorer=explorer, rbuf=rbuf,
+                                   gpu=gpu)
+
+    def make_dqn_agent(self, env, q_func, opt, explorer, rbuf, gpu):
+        raise NotImplementedError()
+
+    def make_explorer(self, env):
         def random_action_func():
             a = env.action_space.sample()
-            if not discrete:
+            if isinstance(a, np.ndarray):
                 return a.astype(np.float32)
             else:
                 return a
+        return LinearDecayEpsilonGreedy(1.0, 0.1, 1000, random_action_func)
 
-        if load_model:
-            explorer = ConstantEpsilonGreedy(0.1, random_action_func)
-        else:
-            explorer = LinearDecayEpsilonGreedy(
-                1.0, 0.1, 1000, random_action_func)
-
+    def make_optimizer(self, env, q_func):
         opt = optimizers.Adam()
         opt.setup(q_func)
+        return opt
 
-        agent = self.make_agent(gpu, q_func, explorer, opt)
+    def make_replay_buffer(self, env):
+        return replay_buffer.ReplayBuffer(10 ** 5)
 
-        if load_model:
-            print('Load model from', self.model_filename)
-            agent.load_model(self.model_filename)
-            agent.replay_buffer.load(self.rbuf_filename)
 
-        total_r = 0
-        episode_r = 0
+class _TestDQNOnDiscreteABC(_TestDQNOnABC):
 
-        obs = env.reset()
-        done = False
-        reward = 0.0
+    def make_q_func(self, env):
+        return FCSIQFunction(n_input_channels=env.observation_space.low.size,
+                             n_actions=env.action_space.n,
+                             n_hidden_channels=10,
+                             n_hidden_layers=2)
 
-        # Train
-        t = 0
-        while t < 5000:
-            episode_r += reward
-            total_r += reward
+    def make_env_and_successful_return(self):
+        return ABC(discrete=True), 1
 
-            if done:
-                agent.observe_terminal(obs, reward)
-                print(('t:{} explorer:{} episode_r:{}'.format(
-                    t, agent.explorer, episode_r)))
-                episode_r = 0
-                obs = env.reset()
-                done = False
-                reward = 0.0
-            else:
-                action = agent.act(obs, reward)
-                obs, reward, done, _ = env.step(action)
-                t += 1
 
-        # Test
-        total_r = 0.0
-        obs = env.reset()
-        done = False
-        reward = 0.0
-        while not done:
-            s = np.expand_dims(obs, 0)
-            if gpu >= 0:
-                s = cuda.to_gpu(s, device=gpu)
-            action = q_func(chainer.Variable(s)).greedy_actions.data[0]
-            if isinstance(action, cuda.cupy.ndarray):
-                action = cuda.to_cpu(action)
-            obs, reward, done, _ = env.step(action)
-            total_r += reward
-        self.assertAlmostEqual(total_r, 1)
+class _TestDQNOnDiscretePOABC(_TestDQNOnABC):
 
-        # Save
-        agent.save_model(self.model_filename)
-        agent.replay_buffer.save(self.rbuf_filename)
+    def make_q_func(self, env):
+        return FCLSTMStateQFunction(n_dim_obs=env.observation_space.low.size,
+                                    n_dim_action=env.action_space.n,
+                                    n_hidden_channels=10,
+                                    n_hidden_layers=1)
 
-    def test_abc_discrete_gpu(self):
-        self._test_abc(0, discrete=True, steps=1000)
-        self._test_abc(0, discrete=True, steps=500, load_model=True)
+    def make_replay_buffer(self, env):
+        return replay_buffer.EpisodicReplayBuffer(10 ** 5)
 
-    def test_abc_continuous_gpu(self):
-        self._test_abc(0, discrete=False, steps=1000)
+    def make_env_and_successful_return(self):
+        return ABC(discrete=True, partially_observable=True), 1
 
-    def test_abc_discrete_cpu(self):
-        self._test_abc(-1, discrete=True, steps=1000)
 
-    def test_abc_continuous_cpu(self):
-        self._test_abc(-1, discrete=False, steps=1000)
-        self._test_abc(-1, discrete=False, steps=500, load_model=True)
+class _TestDQNOnContinuousABC(_TestDQNOnABC):
+
+    def make_q_func(self, env):
+        n_dim_action = env.action_space.low.size
+        n_dim_obs = env.observation_space.low.size
+        return FCSIContinuousQFunction(
+            n_input_channels=n_dim_obs,
+            n_dim_action=n_dim_action,
+            n_hidden_channels=20,
+            n_hidden_layers=2,
+            action_space=env.action_space)
+
+    def make_env_and_successful_return(self):
+        return ABC(discrete=False), 1
