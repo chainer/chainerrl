@@ -231,7 +231,8 @@ def run_a3c(outdir, processes, make_env, model_opt, phi, t_max=1, beta=1e-2,
             profile=False, steps=8 * 10 ** 7, eval_frequency=10 ** 6,
             eval_n_runs=10, use_terminal_state_value=False, gamma=0.99,
             max_episode_len=None, clip_reward=True,
-            normalize_grad_by_t_max=False, args={}):
+            normalize_grad_by_t_max=False, use_average_reward=False,
+            average_reward_tau=1e-2, args={}):
 
     def make_agent(process_idx, models, opts):
         assert len(models) == 1
@@ -241,7 +242,9 @@ def run_a3c(outdir, processes, make_env, model_opt, phi, t_max=1, beta=1e-2,
                        process_idx=process_idx, phi=phi,
                        use_terminal_state_value=use_terminal_state_value,
                        clip_reward=clip_reward,
-                       normalize_grad_by_t_max=normalize_grad_by_t_max)
+                       normalize_grad_by_t_max=normalize_grad_by_t_max,
+                       use_average_reward=use_average_reward,
+                       average_reward_tau=average_reward_tau)
 
     return run_async_agent(outdir, processes, make_env, model_opt, make_agent,
                            profile=profile, steps=steps, eval_frequency=eval_frequency,

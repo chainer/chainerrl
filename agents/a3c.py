@@ -42,7 +42,8 @@ class A3C(object):
                  process_idx=0, clip_reward=True, phi=lambda x: x,
                  pi_loss_coef=1.0, v_loss_coef=0.5,
                  keep_loss_scale_same=False, use_terminal_state_value=False,
-                 normalize_grad_by_t_max=False):
+                 normalize_grad_by_t_max=False,
+                 use_average_reward=False, average_reward_tau=1e-2):
 
         assert isinstance(model, A3CModel)
         # Globally shared model
@@ -65,6 +66,8 @@ class A3C(object):
         self.keep_loss_scale_same = keep_loss_scale_same
         self.use_terminal_state_value = use_terminal_state_value
         self.normalize_grad_by_t_max = normalize_grad_by_t_max
+        self.use_average_reward = use_average_reward
+        self.average_reward_tau = average_reward_tau
 
         self.t = 0
         self.t_start = 0
@@ -73,6 +76,7 @@ class A3C(object):
         self.past_states = {}
         self.past_rewards = {}
         self.past_values = {}
+        self.average_reward = 0
 
     def sync_parameters(self):
         copy_param.copy_param(target_link=self.model,
@@ -92,11 +96,15 @@ class A3C(object):
         for i in reversed(range(self.t_start, self.t)):
             R *= self.gamma
             R += self.past_rewards[i]
+            if self.use_average_reward:
+                R -= self.average_reward
             v = self.past_values[i]
             if self.process_idx == 0:
-                logger.debug('s:%s v:%s R:%s',
-                             self.past_states[i].data.sum(), v.data, R)
+                logger.debug('t:%s s:%s v:%s R:%s',
+                             i, self.past_states[i].data.sum(), v.data, R)
             advantage = R - v
+            if self.use_average_reward:
+                self.average_reward += self.average_reward_tau * float(advantage.data)
             # Accumulate gradients of policy
             log_prob = self.past_action_log_prob[i]
             entropy = self.past_action_entropy[i]

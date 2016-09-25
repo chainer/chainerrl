@@ -135,17 +135,17 @@ class TestA3C(unittest.TestCase):
         self._test_abc(5, True, discrete=False, steps=100000)
 
     def test_abc_ff_gaussian_infinite(self):
-        self._test_abc(1, False, discrete=False, episodic=False)
-        self._test_abc(2, False, discrete=False, episodic=False)
-        self._test_abc(5, False, discrete=False, episodic=False)
+        self._test_abc(1, False, discrete=False, episodic=False, steps=100000, use_average_reward=True)
+        self._test_abc(2, False, discrete=False, episodic=False, steps=100000, use_average_reward=True)
+        self._test_abc(5, False, discrete=False, episodic=False, steps=100000, use_average_reward=True)
 
-    def test_abc_lstm_gaussian(self):
-        self._test_abc(1, True, discrete=False, episodic=False, steps=400000)
-        self._test_abc(2, True, discrete=False, episodic=False, steps=400000)
-        self._test_abc(5, True, discrete=False, episodic=False, steps=400000)
+    def test_abc_lstm_gaussian_infinite(self):
+        self._test_abc(1, True, discrete=False, episodic=False, steps=100000, use_average_reward=True)
+        self._test_abc(2, True, discrete=False, episodic=False, steps=100000, use_average_reward=True)
+        self._test_abc(5, True, discrete=False, episodic=False, steps=100000, use_average_reward=True)
 
     def _test_abc(self, t_max, use_lstm, discrete=True, episodic=True,
-                  steps=40000):
+                  steps=40000, use_average_reward=False):
 
         nproc = 8
 
@@ -172,7 +172,6 @@ class TestA3C(unittest.TestCase):
                         action_space.low.size,
                         bound_mean=True, min_action=action_space.low,
                         max_action=action_space.high)
-            # opt = optimizers.RMSprop(1e-3, eps=1e-2)
             opt = rmsprop_async.RMSpropAsync(lr=1e-3, eps=1e-1, alpha=0.99)
             opt.setup(model)
             return (model,), (opt,)
@@ -184,7 +183,9 @@ class TestA3C(unittest.TestCase):
 
         models, opts = run_a3c.run_a3c(
             self.outdir, nproc, make_env, model_opt, phi, t_max, steps=steps,
-            max_episode_len=max_episode_len)
+            max_episode_len=max_episode_len,
+            use_average_reward=use_average_reward,
+            gamma=1.0 if use_average_reward else 0.9)
 
         model, = models
 
