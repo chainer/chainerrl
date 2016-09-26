@@ -98,7 +98,7 @@ def train_loop(process_idx, counter, make_env, max_score, eval_frequency,
                 done = False
                 episode_len = 0
             else:
-	        a = agent.act(obs, r)
+                a = agent.act(obs, r)
                 obs, r, done, info = env.step(a)
 
                 # Get and increment the global counter
@@ -115,12 +115,12 @@ def train_loop(process_idx, counter, make_env, max_score, eval_frequency,
 
                 if global_t % eval_frequency == 0:
                     # Evaluation
-    
+
                     # We must use a copy of the model because test runs can change
                     # the hidden states of the model
                     test_model = copy.deepcopy(agent.model)
                     test_model.reset_state()
-    
+
                     mean, median, stdev = eval_performance(
                         process_idx, make_env, test_model, agent.phi,
                         eval_n_runs, max_episode_len=max_episode_len)
