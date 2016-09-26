@@ -126,7 +126,7 @@ def main():
                        treat_life_lost_as_terminal=not test)
 
     run_a3c.run_a3c(
-        args.processes, make_env, model_opt, phi=dqn_phi, t_max=args.t_max,
+        args.outdir, args.processes, make_env, model_opt, phi=dqn_phi, t_max=args.t_max,
         beta=args.beta, profile=args.profile,
         steps=args.steps, eval_n_runs=args.eval_n_runs,
         use_terminal_state_value=False, gamma=0.99,
