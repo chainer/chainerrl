@@ -133,7 +133,7 @@ class FCGaussianPolicy(chainer.ChainList, GaussianPolicy):
     def __init__(self, n_input_channels, action_size,
                  n_hidden_layers=0, n_hidden_channels=None,
                  min_action=None, max_action=None, bound_mean=True,
-                 clip_action=True):
+                 clip_action=True, var_type='spherical'):
 
         self.n_input_channels = n_input_channels
         self.action_size = action_size
@@ -143,6 +143,7 @@ class FCGaussianPolicy(chainer.ChainList, GaussianPolicy):
         self.max_action = max_action
         self.bound_mean = bound_mean
         self.clip_action = clip_action
+        var_size = {'spherical': 1, 'diagonal': action_size}[var_type]
 
         self.hidden_layers = []
         if n_hidden_layers > 0:
@@ -152,34 +153,29 @@ class FCGaussianPolicy(chainer.ChainList, GaussianPolicy):
                 self.hidden_layers.append(
                     L.Linear(n_hidden_channels, n_hidden_channels))
             self.mean_layer = L.Linear(n_hidden_channels, action_size)
-            self.ln_var_layer = L.Linear(n_hidden_channels, action_size)
+            self.var_layer = L.Linear(n_hidden_channels, var_size)
         else:
             self.mean_layer = L.Linear(n_input_channels, action_size)
-            self.ln_var_layer = L.Linear(n_input_channels, action_size)
+            self.var_layer = L.Linear(n_input_channels, var_size)
 
         super().__init__(
-            self.mean_layer, self.ln_var_layer, *self.hidden_layers)
+            self.mean_layer, self.var_layer, *self.hidden_layers)
 
-    def compute_mean_and_ln_var(self, x, test=False):
+    def compute_mean_and_var(self, x, test=False):
         h = x
         for layer in self.hidden_layers:
             h = F.relu(layer(h))
         mean = self.mean_layer(h)
         if self.bound_mean:
             mean = bound_action_by_tanh(mean, self.min_action, self.max_action)
-        # ln_var = self.ln_var_layer(h)
-        ln_var = F.log(F.softplus(self.ln_var_layer(h)))
-        return mean, ln_var
+        var = F.broadcast_to(F.softplus(self.var_layer(h)), mean.shape)
+        return mean, var
 
     def __call__(self, x, test=False):
-        try:
-            mean, ln_var = self.compute_mean_and_ln_var(x, test=test)
-            return policy_output.GaussianPolicyOutput(
-                mean, ln_var=ln_var, clip_action=self.clip_action,
-                min_action=self.min_action, max_action=self.max_action)
-        except NotImplementedError:
-            mean, var = self.compute_mean_and_var(x, test=test)
-            return policy_output.GaussianPolicyOutput(mean, var=var)
+        mean, var = self.compute_mean_and_var(x, test=test)
+        return policy_output.GaussianPolicyOutput(
+            mean, var=var, clip_action=self.clip_action,
+            min_action=self.min_action, max_action=self.max_action)
 
 
 class LinearGaussianPolicyWithDiagonalCovariance(chainer.ChainList, GaussianPolicy):
