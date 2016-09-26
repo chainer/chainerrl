@@ -201,6 +201,8 @@ def run_async_agent(outdir, processes, make_env, model_opt, make_agent,
         print('\t'.join(column_names), file=f)
 
     def run_func(process_idx):
+        random_seed.set_random_seed(process_idx)
+
         env = make_env(process_idx, test=False)
         models, opts = model_opt()
 
