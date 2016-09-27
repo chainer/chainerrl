@@ -77,6 +77,8 @@ class A3C(object):
         self.past_rewards = {}
         self.past_values = {}
         self.average_reward = 0
+        # A3C won't use a explorer, but this arrtibute is referenced by run_dqn
+        self.explorer = None
 
     def sync_parameters(self):
         copy_param.copy_param(target_link=self.model,
@@ -212,8 +214,8 @@ class A3C(object):
         """Load a network model form a file
         """
         serializers.load_hdf5(model_filename, self.model)
-        copy_param.copy_param(target_link=self.model,
-                              source_link=self.shared_model)
+        copy_param.copy_param(target_link=self.shared_model,
+                              source_link=self.model)
         opt_filename = model_filename + '.opt'
         if os.path.exists(opt_filename):
             serializers.load_hdf5(model_filename + '.opt', self.optimizer)
@@ -226,3 +228,9 @@ class A3C(object):
         """
         serializers.save_hdf5(model_filename, self.model)
         serializers.save_hdf5(model_filename + '.opt', self.optimizer)
+
+    def get_stats_keys(self):
+        return ()
+
+    def get_stats_values(self):
+        return ()

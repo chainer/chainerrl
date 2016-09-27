@@ -33,8 +33,6 @@ def run_dqn_with_evaluation(agent, env, steps, outdir, max_episode_len=None,
                             step_offset=0, evaluator=None,
                             save_final_model=True):
 
-    assert isinstance(agent, DQN)
-
     episode_r = 0
     episode_idx = 0
 
