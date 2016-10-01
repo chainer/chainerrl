@@ -120,9 +120,8 @@ class EpisodicReplayBuffer(object):
             self.episodic_memory.append(self.current_episode)
             self.memory.extend(self.current_episode)
             self.current_episode = []
-            if len(self.memory) > self.capacity:
+            while len(self.memory) > self.capacity:
                 discarded_episode = self.episodic_memory.popleft()
                 for _ in range(len(discarded_episode)):
                     self.memory.popleft()
-                assert self.memory <= self.capacity
         assert not self.current_episode
