@@ -39,7 +39,8 @@ class MLP(chainer.Chain):
 
     def __call__(self, x, test=False):
         h = x
-        for l in self.hidden_layers:
-            h = F.relu(l(h))
+        if self.hidden_sizes:
+            for l in self.hidden_layers:
+                h = F.relu(l(h))
         return self.output(h)
 
