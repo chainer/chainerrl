@@ -439,3 +439,39 @@ class FCBNLateActionSAQFunction(chainer.Chain, QFunction):
         h = F.relu(self.obs_mlp(state, test=test))
         h = F.concat((h, action), axis=1)
         return self.mlp(h, test=test)
+
+
+class FCLateActionSAQFunction(chainer.Chain, QFunction):
+    """Fully-connected (s,a)-input continuous Q-function.
+
+    Actions are not included until the second hidden layer and not normalized.
+    This architecture is used in the DDPG paper:
+    http://arxiv.org/abs/1509.02971
+    """
+
+    def __init__(self, n_dim_obs, n_dim_action, n_hidden_channels,
+                 n_hidden_layers):
+        """
+        Args:
+          n_dim_obs: number of dimensions of observation space
+          n_dim_action: number of dimensions of action space
+          n_hidden_channels: number of hidden channels
+          n_hidden_layers: number of hidden layers
+        """
+
+        self.n_input_channels = n_dim_obs + n_dim_action
+        self.n_hidden_layers = n_hidden_layers
+        self.n_hidden_channels = n_hidden_channels
+
+        super().__init__(
+            obs_mlp=MLP(in_size=n_dim_obs, out_size=n_hidden_channels,
+                          hidden_sizes=[]),
+            mlp=MLP(in_size=n_hidden_channels + n_dim_action,
+                    out_size=1,
+                    hidden_sizes=[self.n_input_channels] * (self.n_hidden_layers - 1)))
+        self.output = self.mlp.output
+
+    def __call__(self, state, action, test=False):
+        h = F.relu(self.obs_mlp(state, test=test))
+        h = F.concat((h, action), axis=1)
+        return self.mlp(h, test=test)
