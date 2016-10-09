@@ -20,6 +20,7 @@ import v_function
 from agents import a3c
 import random_seed
 import rmsprop_async
+from prepare_output_dir import prepare_output_dir
 from init_like_torch import init_like_torch
 import run_a3c
 import env_modifiers
@@ -102,6 +103,8 @@ def main():
     if args.seed is not None:
         random_seed.set_random_seed(args.seed)
 
+    args.outdir = prepare_output_dir(args, args.outdir)
+
     def tanh_action_filter(a):
         magnitude = (sample_env.action_space.high -
                      sample_env.action_space.low) / 2.0
@@ -141,12 +144,20 @@ def main():
         opt.add_hook(chainer.optimizer.GradientClipping(40))
         return (model,),  (opt,)
 
-    run_a3c.run_a3c(args.processes, make_env, model_opt, phi, t_max=args.t_max,
-                    beta=args.beta, profile=args.profile, steps=args.steps,
-                    eval_frequency=args.eval_frequency,
-                    eval_n_runs=args.eval_n_runs,
-                    use_terminal_state_value=args.use_terminal_state_value,
-                    args=args)
+    run_a3c.run_a3c(
+        outdir=args.outdir,
+        processes=args.processes,
+        make_env=make_env,
+        model_opt=model_opt,
+        phi=phi,
+        t_max=args.t_max,
+        beta=args.beta,
+        profile=args.profile,
+        steps=args.steps,
+        eval_frequency=args.eval_frequency,
+        eval_n_runs=args.eval_n_runs,
+        use_terminal_state_value=args.use_terminal_state_value,
+        args=args)
 
 
 if __name__ == '__main__':

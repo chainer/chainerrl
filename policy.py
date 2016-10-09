@@ -187,7 +187,7 @@ class LinearGaussianPolicyWithDiagonalCovariance(chainer.ChainList, GaussianPoli
         self.action_size = action_size
 
         self.mean_layer = L.Linear(n_input_channels, action_size)
-        self.var_layer = L.Linear(n_input_channels, 1)
+        self.var_layer = L.Linear(n_input_channels, action_size)
 
         super().__init__(self.mean_layer, self.var_layer)
 
