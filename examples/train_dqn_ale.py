@@ -17,9 +17,9 @@ from links import fc_tail_q_function
 from links import dqn_head
 from links import dqn_head_crelu
 from links.dueling_dqn import DuelingDQN
-from agents.dqn import DQN
-from agents.double_dqn import DoubleDQN
-from agents.pal import PAL
+from chainerrl.agents.dqn import DQN
+from chainerrl.agents.double_dqn import DoubleDQN
+from chainerrl.agents.pal import PAL
 from envs import ale
 import random_seed
 import replay_buffer
@@ -29,7 +29,7 @@ from init_like_torch import init_like_torch
 from dqn_phi import dqn_phi
 from explorers.epsilon_greedy import LinearDecayEpsilonGreedy
 from explorers.epsilon_greedy import ConstantEpsilonGreedy
-import run_dqn
+from chainerrl.experiments.train_agent import train_agent_with_evaluation
 
 
 def parse_activation(activation_str):
@@ -143,7 +143,7 @@ def main():
 
     eval_explorer = ConstantEpsilonGreedy(
         5e-2, lambda: np.random.randint(n_actions))
-    run_dqn.run_dqn(
+    train_agent_with_evaluation(
         agent=agent, env=env, steps=args.steps,
         eval_n_runs=args.eval_n_runs, eval_frequency=args.eval_frequency,
         outdir=args.outdir, eval_explorer=eval_explorer,

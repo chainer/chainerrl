@@ -7,7 +7,7 @@ standard_library.install_aliases()
 
 import numpy as np
 
-from . import dqn
+from chainerrl.agents import dqn
 
 
 class DoubleDQN(dqn.DQN):

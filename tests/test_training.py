@@ -12,7 +12,7 @@ import logging
 from chainer import cuda
 
 import random_seed
-import run_dqn
+from chainerrl.experiments import train_agent
 
 
 class _TestTraining(unittest.TestCase):
@@ -42,25 +42,24 @@ class _TestTraining(unittest.TestCase):
             agent.replay_buffer.load(self.rbuf_filename)
 
         # Train
-        run_dqn.run_dqn_with_evaluation(
-            agent=agent, env=env, steps=steps, outdir=self.tmpdir,
-            save_final_model=False)
+        train_agent.train_agent(
+            agent=agent, env=env, steps=steps, outdir=self.tmpdir)
 
         # Test
         total_r = 0.0
         obs = env.reset()
         done = False
         reward = 0.0
-        agent.prepare_for_new_episode()
         while not done:
             # s = np.expand_dims(obs, 0)
             # if gpu >= 0:
             #     s = cuda.to_gpu(s, device=gpu)
-            action = agent.select_greedy_action(obs)
+            action = agent.act(obs)
             if isinstance(action, cuda.cupy.ndarray):
                 action = cuda.to_cpu(action)
             obs, reward, done, _ = env.step(action)
             total_r += reward
+        agent.stop_episode()
         self.assertAlmostEqual(total_r, successful_return)
 
         # Save

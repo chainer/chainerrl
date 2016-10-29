@@ -17,7 +17,7 @@ import chainer.functions as F
 from chainer import cuda
 from chainer import serializers
 
-import agent
+from chainerrl import agent
 import copy_param
 
 
@@ -346,7 +346,33 @@ class DQN(agent.Agent):
         serializers.save_hdf5(model_filename + '.opt', self.optimizer)
         self.lock.release()
 
-    def select_greedy_action(self, state):
+    def save(self, dirname):
+        os.makedirs(dirname)
+        serializers.save_npz(os.path.join(dirname, 'model.npz'), self.model)
+        serializers.save_npz(
+            os.path.join(dirname, 'target_model.npz'), self.target_model)
+        serializers.save_npz(
+            os.path.join(dirname, 'optimizer.npz'), self.optimizer)
+
+    def load(self, dirname):
+        serializers.load_npz(os.path.join(dirname, 'model.npz'), self.model)
+
+        target_filename = os.path.join(dirname, 'target_model.npz')
+        if os.path.exists(target_filename):
+            serializers.load_npz(target_filename, self.target_model)
+        else:
+            print('WARNING: {0} was not found'.format(target_filename))
+            copy_param.copy_param(target_link=self.target_model,
+                                  source_link=self.model)
+
+        opt_filename = os.path.join(dirname, 'optimizer.npz')
+        if os.path.exists(opt_filename):
+            serializers.load_npz(opt_filename, self.optimizer)
+        else:
+            print('WARNING: {0} was not found, so loaded only a model'.format(
+                opt_filename))
+
+    def act(self, state):
         qout = self.model(self._batch_states([state]), test=True)
         action = cuda.to_cpu(qout.greedy_actions.data)[0]
         action_var = chainer.Variable(self.xp.asarray([action]))
@@ -361,7 +387,7 @@ class DQN(agent.Agent):
 
     def select_action(self, state):
         return self.explorer.select_action(
-            self.t, lambda: self.select_greedy_action(state))
+            self.t, lambda: self.act(state))
 
     def update_if_necessary(self):
         if self.t < self.replay_start_size:
@@ -385,12 +411,7 @@ class DQN(agent.Agent):
         else:
             update_func()
 
-    def act(self, state, reward):
-        """
-        Observe a current state and a reward, then choose an action.
-
-        This function must be called every time step exept at terminal states.
-        """
+    def act_and_train(self, state, reward):
 
         self.logger.debug('t:%s r:%s', self.t, reward)
 
@@ -426,7 +447,7 @@ class DQN(agent.Agent):
 
         return self.last_action
 
-    def observe_terminal(self, state, reward):
+    def stop_episode_and_train(self, state, reward, done=False):
         """
         Observe a terminal state and a reward.
 
@@ -450,44 +471,11 @@ class DQN(agent.Agent):
             reward=reward,
             next_state=state,
             next_action=self.last_action,
-            is_state_terminal=True)
+            is_state_terminal=done)
 
-        self.prepare_for_new_episode()
+        self.stop_episode()
 
-    def stop_current_episode(self, state, reward):
-        """
-        Stop the current episode.
-
-        This function must be called once when an episode is stopped.
-        """
-
-        if self.clip_reward:
-            reward = np.clip(reward, -1, 1)
-
-        assert self.last_state is not None
-        assert self.last_action is not None
-
-        if self.async_update and self.update_future:
-            self.update_future.result()
-            self.update_future = None
-
-        # Add a transition to the replay buffer
-        self.replay_buffer.append(
-            state=self.last_state,
-            action=self.last_action,
-            reward=reward,
-            next_state=state,
-            next_action=self.last_action,
-            is_state_terminal=False)
-
-        self.prepare_for_new_episode()
-
-    def prepare_for_new_episode(self):
-        """
-        Prepare for a new episode.
-
-        This method should be called before starting a new episode.
-        """
+    def stop_episode(self):
         self.last_state = None
         self.last_action = None
         self.model.reset_state()

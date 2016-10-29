@@ -25,7 +25,7 @@ def eval_performance(env, agent, n_runs, max_episode_len=None,
         t = 0
         while not (done or t == max_episode_len):
             def greedy_action_func():
-                return agent.select_greedy_action(obs)
+                return agent.act(obs)
             if explorer is not None:
                 a = explorer.select_action(t, greedy_action_func)
             else:
@@ -33,6 +33,7 @@ def eval_performance(env, agent, n_runs, max_episode_len=None,
             obs, r, done, info = env.step(a)
             test_r += r
             t += 1
+        agent.stop_episode()
         # As mixing float and numpy float causes errors in statistics
         # functions, here every score is cast to float.
         scores.append(float(test_r))

@@ -20,7 +20,6 @@ import random_seed
 from envs.simple_abc import ABC
 from explorers.epsilon_greedy import LinearDecayEpsilonGreedy
 import replay_buffer
-import run_dqn
 from test_training import _TestTraining
 
 

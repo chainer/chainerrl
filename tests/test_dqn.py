@@ -5,9 +5,7 @@ from __future__ import absolute_import
 from future import standard_library
 standard_library.install_aliases()
 
-import numpy as np
-
-from agents.dqn import DQN
+from chainerrl.agents.dqn import DQN
 from test_dqn_like import _TestDQNOnDiscreteABC
 from test_dqn_like import _TestDQNOnDiscretePOABC
 from test_dqn_like import _TestDQNOnContinuousABC

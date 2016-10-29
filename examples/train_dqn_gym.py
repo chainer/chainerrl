@@ -14,14 +14,14 @@ import numpy as np
 from gym import spaces
 
 sys.path.append('..')
-from agents.dqn import DQN
+from chainerrl.agents.dqn import DQN
 import random_seed
 import replay_buffer
 from prepare_output_dir import prepare_output_dir
 from init_like_torch import init_like_torch
 import q_function
 import env_modifiers
-import run_dqn
+from chainerrl.experiments.train_agent import train_agent_with_evaluation
 from explorers.epsilon_greedy import LinearDecayEpsilonGreedy
 
 
@@ -129,7 +129,7 @@ def main():
     if len(args.model) > 0:
         agent.load_model(args.model)
 
-    run_dqn.run_dqn(
+    train_agent_with_evaluation(
         agent=agent, env=env, steps=args.steps,
         eval_n_runs=args.eval_n_runs, eval_frequency=args.eval_frequency,
         outdir=args.outdir)

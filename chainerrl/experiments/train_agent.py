@@ -6,15 +6,14 @@ from future import standard_library
 standard_library.install_aliases()
 import os
 
-from agents.dqn import DQN
 from ask_yes_no import ask_yes_no
-from evaluator import Evaluator
+from chainerrl.experiments.evaluator import Evaluator
 
 
-def save_agent_model(agent, t, outdir, suffix=''):
-    filename = os.path.join(outdir, '{}{}.h5'.format(t, suffix))
-    agent.save_model(filename)
-    print('Saved the current model to {}'.format(filename))
+def save_agent(agent, t, outdir, suffix=''):
+    dirname = os.path.join(outdir, '{}{}'.format(t, suffix))
+    agent.save(dirname)
+    print('Saved the agent to {}'.format(dirname))
 
 
 def save_agent_replay_buffer(agent, t, outdir, suffix=''):
@@ -29,9 +28,8 @@ def ask_and_save_agent_replay_buffer(agent, t, outdir, suffix=''):
         save_agent_replay_buffer(agent, t, outdir, suffix=suffix)
 
 
-def run_dqn_with_evaluation(agent, env, steps, outdir, max_episode_len=None,
-                            step_offset=0, evaluator=None,
-                            save_final_model=True):
+def train_agent(agent, env, steps, outdir, max_episode_len=None,
+                step_offset=0, evaluator=None):
 
     episode_r = 0
     episode_idx = 0
@@ -45,14 +43,12 @@ def run_dqn_with_evaluation(agent, env, steps, outdir, max_episode_len=None,
 
     episode_len = 0
     while t < steps:
+        print('t', t)
         try:
             episode_r += r
 
             if done or episode_len == max_episode_len:
-                if done:
-                    agent.observe_terminal(obs, r)
-                else:
-                    agent.stop_current_episode(obs, r)
+                agent.stop_episode_and_train(obs, r, done=done)
                 print('{} t:{} episode_idx:{} explorer:{} episode_r:{}'.format(
                     outdir, t, episode_idx, agent.explorer, episode_r))
                 if evaluator is not None:
@@ -65,27 +61,24 @@ def run_dqn_with_evaluation(agent, env, steps, outdir, max_episode_len=None,
                 r = 0
                 done = False
             else:
-                action = agent.act(obs, r)
+                action = agent.act_and_train(obs, r)
                 obs, r, done, info = env.step(action)
                 t += 1
                 episode_len += 1
 
         except:
             # Save the current model before being killed
-            save_agent_model(agent, t, outdir, suffix='_except')
-            ask_and_save_agent_replay_buffer(
-                agent, t, outdir, suffix='_except')
+            save_agent(agent, t, outdir, suffix='_except')
             raise
 
-    if save_final_model:
-        # Save the final model
-        save_agent_model(agent, t, outdir, suffix='_finish')
-        ask_and_save_agent_replay_buffer(agent, t, outdir, suffix='_finish')
+    # Save the final model
+    save_agent(agent, t, outdir, suffix='_finish')
 
 
-def run_dqn(agent, env, steps, eval_n_runs, eval_frequency,
-            outdir, max_episode_len=None, step_offset=0, eval_explorer=None,
-            eval_env=None):
+def train_agent_with_evaluation(
+        agent, env, steps, eval_n_runs, eval_frequency,
+        outdir, max_episode_len=None, step_offset=0, eval_explorer=None,
+        eval_env=None):
     """
     Run a DQN-like agent.
 
@@ -113,6 +106,6 @@ def run_dqn(agent, env, steps, eval_n_runs, eval_frequency,
                           env=eval_env,
                           step_offset=step_offset)
 
-    run_dqn_with_evaluation(
+    train_agent(
         agent, env, steps, outdir, max_episode_len=max_episode_len,
         step_offset=step_offset, evaluator=evaluator)

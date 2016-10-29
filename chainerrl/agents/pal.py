@@ -11,7 +11,7 @@ import numpy as np
 from chainer import Variable
 from chainer import functions as F
 
-from . import dqn
+from chainerrl.agents import dqn
 
 
 class PAL(dqn.DQN):
