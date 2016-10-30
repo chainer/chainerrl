@@ -19,7 +19,7 @@ class _TestTraining(unittest.TestCase):
 
     def setUp(self):
         self.tmpdir = tempfile.mkdtemp()
-        self.model_filename = os.path.join(self.tmpdir, 'model.h5')
+        self.agent_dirname = os.path.join(self.tmpdir, 'agent_final')
         self.rbuf_filename = os.path.join(self.tmpdir, 'rbuf.pkl')
 
     def make_agent(self, env, gpu):
@@ -37,8 +37,8 @@ class _TestTraining(unittest.TestCase):
         agent = self.make_agent(env, gpu)
 
         if load_model:
-            print('Load model from', self.model_filename)
-            agent.load_model(self.model_filename)
+            print('Load agent from', self.agent_dirname)
+            agent.load(self.agent_dirname)
             agent.replay_buffer.load(self.rbuf_filename)
 
         # Train
@@ -63,7 +63,7 @@ class _TestTraining(unittest.TestCase):
         self.assertAlmostEqual(total_r, successful_return)
 
         # Save
-        agent.save_model(self.model_filename)
+        agent.save(self.agent_dirname)
         agent.replay_buffer.save(self.rbuf_filename)
 
     def test_training_gpu(self):

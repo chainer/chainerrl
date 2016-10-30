@@ -8,15 +8,15 @@ standard_library.install_aliases()
 from chainer import optimizers
 import numpy as np
 
-from q_function import FCBNLateActionSAQFunction
-from q_function import FCLSTMSAQFunction
-from policy import FCBNDeterministicPolicy
-from policy import FCLSTMDeterministicPolicy
+from chainerrl.q_function import FCBNLateActionSAQFunction
+from chainerrl.q_function import FCLSTMSAQFunction
+from chainerrl.policy import FCBNDeterministicPolicy
+from chainerrl.policy import FCLSTMDeterministicPolicy
 from envs.simple_abc import ABC
 from explorers.epsilon_greedy import LinearDecayEpsilonGreedy
 import replay_buffer
-from agents.ddpg import DDPG
-from agents.ddpg import DDPGModel
+from chainerrl.agents.ddpg import DDPG
+from chainerrl.agents.ddpg import DDPGModel
 from test_training import _TestTraining
 
 

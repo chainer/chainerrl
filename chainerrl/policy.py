@@ -313,7 +313,7 @@ class FCLSTMDeterministicPolicy(chainer.Chain, ContinuousDeterministicPolicy):
         self.__call__(x, test=test)
 
 
-class FCBNDeterministicPolicy(MLPBN, ContinuousDeterministicPolicy):
+class FCBNDeterministicPolicy(chainer.Chain, ContinuousDeterministicPolicy):
 
     def __init__(self, n_input_channels, n_hidden_layers,
                  n_hidden_channels, action_size,
@@ -328,14 +328,14 @@ class FCBNDeterministicPolicy(MLPBN, ContinuousDeterministicPolicy):
         self.bound_action = bound_action
         self.normalize_input = normalize_input
 
-        super().__init__(
+        super().__init__(mlp=MLPBN(
             in_size=self.n_input_channels,
             out_size=self.action_size,
             hidden_sizes=[self.n_hidden_channels] * self.n_hidden_layers,
-            normalize_input=self.normalize_input)
+            normalize_input=self.normalize_input))
 
     def compute_action(self, state, test=False):
-        a = super().__call__(state, test=test)
+        a = self.mlp(state, test=test)
 
         if self.bound_action:
             a = bound_action_by_tanh(a, self.min_action, self.max_action)

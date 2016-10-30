@@ -6,17 +6,11 @@ from future import standard_library
 from builtins import super
 standard_library.install_aliases()
 
-import os
-
-import numpy as np
 import chainer
-import chainer.links as L
 import chainer.functions as F
 from chainer import cuda
-from chainer import serializers
 
-from . import dqn
-import copy_param
+from chainerrl.agents import dqn
 
 
 class DDPGModel(chainer.Chain):
@@ -78,7 +72,7 @@ class DDPG(dqn.DQN):
         batch_next_actions = batch['next_action']
 
         # Target policy observes s_{t+1}
-        next_actions = self.target_policy(batch_next_state, test=True)
+        next_actions = self.target_policy(batch_next_state, test=True).sample()
 
         # Q(s_{t+1}, mu(a_{t+1})) is evaluated.
         # This should not affect the internal state of Q.
@@ -122,7 +116,7 @@ class DDPG(dqn.DQN):
         batch_size = batch_state.shape[0]
 
         # Estimated policy observes s_t
-        onpolicy_actions = self.policy(batch_state, test=False)
+        onpolicy_actions = self.policy(batch_state, test=False).sample()
 
         # Q(s_t, mu(s_t)) is evaluated.
         # This should not affect the internal state of Q.
@@ -210,10 +204,10 @@ class DDPG(dqn.DQN):
         self.model.pop_state()
         self.target_model.pop_state()
 
-    def select_greedy_action(self, state):
+    def act(self, state):
 
         s = self._batch_states([state])
-        action = self.policy(s, test=True)
+        action = self.policy(s, test=True).sample()
         # Q is not needed here, but log it just for information
         q = self.q_function(s, action, test=True)
 
@@ -230,7 +224,7 @@ class DDPG(dqn.DQN):
 
         def greedy_func():
             greedy_evaluated[0] = True
-            return self.select_greedy_action(state)
+            return self.act(state)
 
         a = self.explorer.select_action(self.t, greedy_func)
 
@@ -245,41 +239,9 @@ class DDPG(dqn.DQN):
 
         return a
 
-    def save_model(self, model_filename):
-        """Save a network model to a file."""
-
-        serializers.save_hdf5(model_filename, self.model)
-        serializers.save_hdf5(model_filename + '.target', self.target_model)
-        serializers.save_hdf5(model_filename + '.opt.actor',
-                              self.actor_optimizer)
-        serializers.save_hdf5(model_filename + '.opt.critic',
-                              self.critic_optimizer)
-
-    def load_model(self, model_filename):
-        """Load a network model form a file."""
-
-        serializers.load_hdf5(model_filename, self.model)
-
-        # Load target model
-        target_filename = model_filename + '.target'
-        if os.path.exists(target_filename):
-            serializers.load_hdf5(target_filename, self.target_model)
-        else:
-            print('WARNING: {0} was not found'.format(target_filename))
-            copy_param.copy_param(target_link=self.target_model,
-                                  source_link=self.model)
-
-        actor_opt_filename = model_filename + '.opt.actor'
-        if os.path.exists(actor_opt_filename):
-            serializers.load_hdf5(actor_opt_filename, self.actor_optimizer)
-        else:
-            print('WARNING: {0} was not found'.format(actor_opt_filename))
-
-        critic_opt_filename = model_filename + '.opt.critic'
-        if os.path.exists(critic_opt_filename):
-            serializers.load_hdf5(critic_opt_filename, self.critic_optimizer)
-        else:
-            print('WARNING: {0} was not found'.format(critic_opt_filename))
+    @property
+    def saved_attributes(self):
+        return ('model', 'target_model', 'actor_optimizer', 'critic_optimizer')
 
     def get_stats_keys(self):
         return ('average_q', 'average_actor_loss', 'average_critic_loss')

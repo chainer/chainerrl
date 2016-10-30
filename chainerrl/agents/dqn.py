@@ -18,6 +18,7 @@ from chainer import cuda
 from chainer import serializers
 
 from chainerrl import agent
+from chainerrl.misc.makedirs import makedirs
 import copy_param
 
 
@@ -306,71 +307,22 @@ class DQN(agent.Agent):
         else:
             model.to_cpu()
 
-    def _load_model_without_lock(self, model_filename):
-        serializers.load_hdf5(model_filename, self.model)
-
-        # Load target model
-        target_filename = model_filename + '.target'
-        if os.path.exists(target_filename):
-            serializers.load_hdf5(target_filename, self.target_model)
-        else:
-            print('WARNING: {0} was not found'.format(target_filename))
-            copy_param.copy_param(target_link=self.target_model,
-                                  source_link=self.model)
-
-        self.sync_target_network()
-        opt_filename = model_filename + '.opt'
-        if os.path.exists(opt_filename):
-            serializers.load_hdf5(model_filename + '.opt', self.optimizer)
-        else:
-            print('WARNING: {0} was not found, so loaded only a model'.format(
-                opt_filename))
-
-    def load_model(self, model_filename):
-        """Load a network model form a file
-
-        This function is thread-safe.
-        """
-        self.lock.acquire()
-        self._load_model_without_lock(model_filename)
-        self.lock.release()
-
-    def save_model(self, model_filename):
-        """Save a network model to a file
-
-        This function is thread-safe.
-        """
-        self.lock.acquire()
-        serializers.save_hdf5(model_filename, self.model)
-        serializers.save_hdf5(model_filename + '.target', self.target_model)
-        serializers.save_hdf5(model_filename + '.opt', self.optimizer)
-        self.lock.release()
+    @property
+    def saved_attributes(self):
+        return ('model', 'target_model', 'optimizer')
 
     def save(self, dirname):
-        os.makedirs(dirname)
-        serializers.save_npz(os.path.join(dirname, 'model.npz'), self.model)
-        serializers.save_npz(
-            os.path.join(dirname, 'target_model.npz'), self.target_model)
-        serializers.save_npz(
-            os.path.join(dirname, 'optimizer.npz'), self.optimizer)
+        makedirs(dirname, exist_ok=True)
+        for attr in self.saved_attributes:
+            serializers.save_npz(
+                os.path.join(dirname, '{}.npz'.format(attr)),
+                getattr(self, attr))
 
     def load(self, dirname):
-        serializers.load_npz(os.path.join(dirname, 'model.npz'), self.model)
-
-        target_filename = os.path.join(dirname, 'target_model.npz')
-        if os.path.exists(target_filename):
-            serializers.load_npz(target_filename, self.target_model)
-        else:
-            print('WARNING: {0} was not found'.format(target_filename))
-            copy_param.copy_param(target_link=self.target_model,
-                                  source_link=self.model)
-
-        opt_filename = os.path.join(dirname, 'optimizer.npz')
-        if os.path.exists(opt_filename):
-            serializers.load_npz(opt_filename, self.optimizer)
-        else:
-            print('WARNING: {0} was not found, so loaded only a model'.format(
-                opt_filename))
+        for attr in self.saved_attributes:
+            serializers.load_npz(
+                os.path.join(dirname, '{}.npz'.format(attr)),
+                getattr(self, attr))
 
     def act(self, state):
         qout = self.model(self._batch_states([state]), test=True)
