@@ -182,11 +182,12 @@ class A3C(object):
 
         self.past_states[self.t] = statevar
         pout, vout = self.model.pi_and_v(statevar)
-        self.past_action_log_prob[self.t] = pout.sampled_actions_log_probs
+        action = pout.sample()
+        self.past_action_log_prob[self.t] = pout.log_prob(action)
         self.past_action_entropy[self.t] = pout.entropy
         self.past_values[self.t] = vout
         self.t += 1
-        action = pout.sampled_actions.data[0]
+        action = action.data[0]
         if self.process_idx == 0:
             logger.debug('t:%s r:%s a:%s pout:%s', self.t, reward, action, pout)
         return action

@@ -5,9 +5,14 @@ from __future__ import absolute_import
 from builtins import super
 from builtins import range
 from future import standard_library
+from future.utils import with_metaclass
 standard_library.install_aliases()
+
 from logging import getLogger
 logger = getLogger(__name__)
+
+from abc import ABCMeta
+from abc import abstractmethod
 
 import chainer
 from chainer import cuda
@@ -17,13 +22,19 @@ from chainer import links as L
 import policy_output
 from links.mlp_bn import MLPBN
 from links.mlp import MLP
+from chainerrl import distribution
 
 
-class Policy(object):
-    """Abstract policy class."""
+class Policy(with_metaclass(ABCMeta, object)):
+    """Abstract policy."""
 
-    def __call__(self, state):
-        raise NotImplementedError
+    @abstractmethod
+    def __call__(self, state, test=False):
+        """
+        Returns:
+            Distribution of actions
+        """
+        raise NotImplementedError()
 
     def push_state(self):
         pass
@@ -43,47 +54,50 @@ class Policy(object):
 
 
 class SoftmaxPolicy(Policy):
-    """Abstract softmax policy class."""
+    """Abstract softmax policy."""
 
+    @abstractmethod
     def compute_logits(self, state):
         """
         Returns:
           ~chainer.Variable: logits of actions
         """
-        raise NotImplementedError
+        raise NotImplementedError()
 
     def __call__(self, state):
-        return policy_output.SoftmaxPolicyOutput(self.compute_logits(state))
+        return distribution.SoftmaxDistribution(self.compute_logits(state))
 
 
 class GaussianPolicy(Policy):
-    """Abstract Gaussian policy class.
+    """Abstract Gaussian policy."""
 
-    You must implement only one of compute_mean_and_ln_var and
-    compute_mean_and_var.
-    """
-
-    def compute_mean_and_ln_var(self, x, test=False):
-        """
-        Returns:
-          tuple of two ~chainer.Variable: mean and log variance
-        """
-        raise NotImplementedError
-
+    @abstractmethod
     def compute_mean_and_var(self, x, test=False):
         """
         Returns:
           tuple of two ~chainer.Variable: mean and variance
         """
-        raise NotImplementedError
+        raise NotImplementedError()
 
     def __call__(self, x, test=False):
-        try:
-            mean, ln_var = self.compute_mean_and_ln_var(x, test=test)
-            return policy_output.GaussianPolicyOutput(mean, ln_var=ln_var)
-        except NotImplementedError:
-            mean, var = self.compute_mean_and_var(x, test=test)
-            return policy_output.GaussianPolicyOutput(mean, var=var)
+        mean, var = self.compute_mean_and_var(x, test=test)
+        return distribution.GaussianDistribution(mean=mean, var=var)
+
+
+class ContinuousDeterministicPolicy(Policy):
+    """Abstract deterministic policy."""
+
+    @abstractmethod
+    def compute_action(self, x, test=False):
+        """
+        Returns:
+          ~chainer.Variable: action
+        """
+        raise NotImplementedError()
+
+    def __call__(self, x, test=False):
+        action = self.compute_action(x, test=test)
+        return distribution.ContinuousDeterministicDistribution(action)
 
 
 class FCSoftmaxPolicy(chainer.ChainList, SoftmaxPolicy):
@@ -218,7 +232,7 @@ class LinearGaussianPolicyWithSphericalCovariance(chainer.ChainList, GaussianPol
         return mean, var
 
 
-class FCDeterministicPolicy(chainer.ChainList, Policy):
+class FCDeterministicPolicy(chainer.ChainList, ContinuousDeterministicPolicy):
 
     def __init__(self, n_input_channels, n_hidden_layers,
                  n_hidden_channels, action_size,
@@ -242,12 +256,11 @@ class FCDeterministicPolicy(chainer.ChainList, Policy):
 
         super().__init__(*layers)
 
-    def __call__(self, state, test=False):
+    def compute_action(self, state, test=False):
         h = state
         for layer in self[:-1]:
             h = F.relu(layer(h))
         a = self[-1](h)
-        xp = cuda.get_array_module(a.data)
 
         if self.bound_action:
             a = bound_action_by_tanh(a, self.min_action, self.max_action)
@@ -255,7 +268,7 @@ class FCDeterministicPolicy(chainer.ChainList, Policy):
         return a
 
 
-class FCLSTMDeterministicPolicy(chainer.Chain, Policy):
+class FCLSTMDeterministicPolicy(chainer.Chain, ContinuousDeterministicPolicy):
 
     def __init__(self, n_input_channels, n_hidden_layers,
                  n_hidden_channels, action_size,
@@ -277,7 +290,7 @@ class FCLSTMDeterministicPolicy(chainer.Chain, Policy):
             out=L.Linear(n_hidden_channels, self.action_size)
         )
 
-    def __call__(self, x, test=False):
+    def compute_action(self, x, test=False):
         h = F.relu(self.fc(x, test=test))
         h = F.relu(self.lstm(h))
         a = self.out(h)
@@ -301,7 +314,7 @@ class FCLSTMDeterministicPolicy(chainer.Chain, Policy):
         self.__call__(x, test=test)
 
 
-class FCBNDeterministicPolicy(MLPBN, Policy):
+class FCBNDeterministicPolicy(MLPBN, ContinuousDeterministicPolicy):
 
     def __init__(self, n_input_channels, n_hidden_layers,
                  n_hidden_channels, action_size,
@@ -322,7 +335,7 @@ class FCBNDeterministicPolicy(MLPBN, Policy):
             hidden_sizes=[self.n_hidden_channels] * self.n_hidden_layers,
             normalize_input=self.normalize_input)
 
-    def __call__(self, state, test=False):
+    def compute_action(self, state, test=False):
         a = super().__call__(state, test=test)
 
         if self.bound_action:

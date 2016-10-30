@@ -5,13 +5,14 @@ from __future__ import absolute_import
 from builtins import super
 from future import standard_library
 standard_library.install_aliases()
+
 import chainer
 from chainer import functions as F
 from chainer import links as L
 
 from links.mlp import MLP
-import q_function
-import q_output
+from chainerrl import q_function
+from chainerrl import action_value
 
 
 class DuelingDQN(chainer.Chain, q_function.QFunction):
@@ -52,4 +53,4 @@ class DuelingDQN(chainer.Chain, q_function.QFunction):
 
         ya, ys = F.broadcast(ya, ys)
         q = ya + ys
-        return q_output.DiscreteQOutput(q)
+        return action_value.DiscreteActionValue(q)

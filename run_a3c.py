@@ -22,7 +22,7 @@ from chainer import functions as F
 import cv2
 import numpy as np
 
-from agents import a3c
+from chainerrl.agents import a3c
 from agents import nsq
 import random_seed
 import async

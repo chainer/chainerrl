@@ -136,7 +136,7 @@ class SoftmaxDistribution(CategoricalDistribution):
 
     def __repr__(self):
         return 'SoftmaxDistribution logits:{} probs:{} entropy:{}'.format(
-            self.logits.data, self.probs.data, self.entropy.data)
+            self.logits.data, self.all_prob.data, self.entropy.data)
 
 
 def clip_actions(actions, min_action, max_action):

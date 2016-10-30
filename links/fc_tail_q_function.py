@@ -5,11 +5,12 @@ from __future__ import absolute_import
 from builtins import super
 from future import standard_library
 standard_library.install_aliases()
+
 import chainer
 from chainer import links as L
 
-import q_function
-from q_output import DiscreteQOutput
+from chainerrl import q_function
+from chainerrl.action_value import DiscreteActionValue
 
 
 class FCTailQFunction(chainer.ChainList, q_function.QFunction):
@@ -27,4 +28,4 @@ class FCTailQFunction(chainer.ChainList, q_function.QFunction):
 
     def __call__(self, state, test=False):
         h = self[0](state)
-        return DiscreteQOutput(self[1](h))
+        return DiscreteActionValue(self[1](h))

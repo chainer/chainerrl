@@ -15,9 +15,9 @@ from chainer import optimizers
 from chainer import links as L
 from chainer import functions as F
 
-import policy
+from chainerrl import policy
 import v_function
-from agents import a3c
+from chainerrl.agents import a3c
 from envs.simple_abc import ABC
 import run_a3c
 import rmsprop_async
@@ -205,7 +205,7 @@ class TestA3C(unittest.TestCase):
             pout = pi_func(chainer.Variable(
                 obs.reshape((1,) + obs.shape)))
             # Use the most probale actions for stability of test results
-            action = pout.most_probable_actions.data[0]
+            action = pout.most_probable.data[0]
             print('state:', obs, 'action:', action)
             obs, reward, done, _ = env.step(action)
             total_r += reward

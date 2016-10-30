@@ -13,9 +13,9 @@ from chainer import cuda
 from chainer import optimizers
 import numpy as np
 
-from q_function import FCSIQFunction
-from q_function import FCSIContinuousQFunction
-from q_function import FCLSTMStateQFunction
+from chainerrl.q_function import FCSIQFunction
+from chainerrl.q_function import FCSIContinuousQFunction
+from chainerrl.q_function import FCLSTMStateQFunction
 import random_seed
 from envs.simple_abc import ABC
 from explorers.epsilon_greedy import LinearDecayEpsilonGreedy

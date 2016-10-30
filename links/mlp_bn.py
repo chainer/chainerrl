@@ -3,20 +3,12 @@ from __future__ import unicode_literals
 from __future__ import print_function
 from __future__ import absolute_import
 from builtins import super
-from builtins import range
 from future import standard_library
 standard_library.install_aliases()
-import random
 
-import numpy as np
 import chainer
 from chainer import functions as F
 from chainer import links as L
-from chainer import cuda
-
-from q_output import DiscreteQOutput
-from q_output import ContinuousQOutput
-from functions.lower_triangular_matrix import lower_triangular_matrix
 
 
 class LinearBN(chainer.Chain):
@@ -77,4 +69,3 @@ class MLPBN(chainer.Chain):
         if self.normalize_output:
             h = self.output_bn(h, test=test)
         return h
-

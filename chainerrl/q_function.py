@@ -5,8 +5,10 @@ from __future__ import absolute_import
 from builtins import super
 from builtins import range
 from future import standard_library
+from future.utils import with_metaclass
 standard_library.install_aliases()
-import random
+
+from abc import ABCMeta
 
 import numpy as np
 import chainer
@@ -16,12 +18,12 @@ from chainer import cuda
 
 from links.mlp_bn import MLPBN
 from links.mlp import MLP
-from q_output import DiscreteQOutput
-from q_output import ContinuousQOutput
+from chainerrl.action_value import DiscreteActionValue
+from chainerrl.action_value import QuadraticActionValue
 from functions.lower_triangular_matrix import lower_triangular_matrix
 
 
-class QFunction(object):
+class QFunction(with_metaclass(ABCMeta, object)):
 
     def push_state(self):
         pass
@@ -41,45 +43,6 @@ class QFunction(object):
         Unlike __call__, stateless QFunctions would do nothing.
         """
         pass
-
-
-class StateInputQFunction(QFunction):
-    """
-    Input: state
-    Output: values for each action
-    """
-
-    def forward(self, state, test=False):
-        raise NotImplementedError()
-
-    def __call__(self, state, action):
-        assert state.shape[0] == 1
-        xp = cuda.get_array_module(state)
-        values = self.forward(state)
-        q = F.select_item(
-            values, chainer.Variable(xp.asarray(action, dtype=np.int32)))
-        return q
-
-    def sample_epsilon_greedily_with_value(self, state, epsilon):
-        assert state.shape[0] == 1
-        xp = cuda.get_array_module(state)
-        values = self.forward(state)
-        if random.random() < epsilon:
-            a = random.randint(0, self.n_actions - 1)
-        else:
-            a = values.data[0].argmax()
-        q = F.select_item(
-            values, chainer.Variable(xp.asarray([a], dtype=np.int32)))
-        return [a], q
-
-    def sample_greedily_with_value(self, state):
-        assert state.shape[0] == 1
-        xp = cuda.get_array_module(state)
-        values = self.forward(state)
-        a = values.data[0].argmax()
-        q = F.select_item(
-            values, chainer.Variable(xp.asarray([a], dtype=np.int32)))
-        return [a], q
 
 
 class FCSIQFunction(chainer.ChainList, QFunction):
@@ -106,10 +69,10 @@ class FCSIQFunction(chainer.ChainList, QFunction):
         for layer in self[:-1]:
             h = F.elu(layer(h))
         h = self[-1](h)
-        return DiscreteQOutput(h)
+        return DiscreteActionValue(h)
 
 
-class FCLSTMStateQFunction(chainer.Chain, StateInputQFunction):
+class FCLSTMStateQFunction(chainer.Chain, QFunction):
     """Fully-connected state-input discrete  Q-function."""
 
     def __init__(self, n_dim_obs, n_dim_action, n_hidden_channels,
@@ -136,7 +99,7 @@ class FCLSTMStateQFunction(chainer.Chain, StateInputQFunction):
     def __call__(self, x, test=False):
         h = F.relu(self.fc(x, test=test))
         h = F.relu(self.lstm(h))
-        return DiscreteQOutput(self.out(h))
+        return DiscreteActionValue(self.out(h))
 
     def push_state(self):
         self.state_stack.append((self.lstm.h, self.lstm.c))
@@ -204,7 +167,6 @@ class FCSIContinuousQFunction(chainer.Chain, QFunction):
         super().__init__(**layers)
 
     def __call__(self, state, test=False):
-        xp = cuda.get_array_module(state)
         h = state
         for layer in self.hidden_layers:
             h = F.elu(layer(h))
@@ -222,8 +184,8 @@ class FCSIContinuousQFunction(chainer.Chain, QFunction):
             mat = F.batch_matmul(tril, tril, transb=True)
         else:
             mat = F.expand_dims(mat_diag ** 2, axis=2)
-        return ContinuousQOutput(mu, mat, v, min_action=self.action_space.low,
-                                 max_action=self.action_space.high)
+        return QuadraticActionValue(mu, mat, v, min_action=self.action_space.low,
+                                    max_action=self.action_space.high)
 
 
 class FCBNSIContinuousQFunction(chainer.Chain, QFunction):
@@ -465,7 +427,7 @@ class FCLateActionSAQFunction(chainer.Chain, QFunction):
 
         super().__init__(
             obs_mlp=MLP(in_size=n_dim_obs, out_size=n_hidden_channels,
-                          hidden_sizes=[]),
+                        hidden_sizes=[]),
             mlp=MLP(in_size=n_hidden_channels + n_dim_action,
                     out_size=1,
                     hidden_sizes=[self.n_input_channels] * (self.n_hidden_layers - 1)))

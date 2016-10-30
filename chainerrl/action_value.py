@@ -17,7 +17,7 @@ from chainer import cuda
 import numpy as np
 
 
-class QOutput(with_metaclass(ABCMeta, object)):
+class ActionValue(with_metaclass(ABCMeta, object)):
     """Struct that holds state-fixed Q-functions and its subproducts.
 
     Every operation it supports is done in a batch manner.
@@ -39,10 +39,15 @@ class QOutput(with_metaclass(ABCMeta, object)):
         raise NotImplementedError()
 
 
-class DiscreteQOutput(QOutput):
+class DiscreteActionValue(ActionValue):
     """Qfunction output for discrete action space."""
 
     def __init__(self, q_values, q_values_formatter=lambda x: x):
+        """
+        Args:
+            q_values (ndarray or chainer.Variable):
+                Array of Q values whose shape is (batchsize, n_actions)
+        """
         assert isinstance(q_values, chainer.Variable)
         self.xp = cuda.get_array_module(q_values.data)
         self.q_values = q_values
@@ -86,7 +91,7 @@ class DiscreteQOutput(QOutput):
             self.q_values_formatter(self.q_values.data))
 
 
-class ContinuousQOutput(QOutput):
+class QuadraticActionValue(ActionValue):
     """Qfunction output for continuous action space.
 
     See: http://arxiv.org/abs/1603.00748

@@ -4,6 +4,7 @@ from __future__ import division
 from __future__ import absolute_import
 from future import standard_library
 standard_library.install_aliases()
+
 import argparse
 import sys
 
@@ -19,7 +20,7 @@ import random_seed
 import replay_buffer
 from prepare_output_dir import prepare_output_dir
 from init_like_torch import init_like_torch
-import q_function
+from chainerrl import q_function
 import env_modifiers
 from chainerrl.experiments.train_agent import train_agent_with_evaluation
 from explorers.epsilon_greedy import LinearDecayEpsilonGreedy
