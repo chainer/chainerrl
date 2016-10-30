@@ -6,7 +6,7 @@ from future import standard_library
 standard_library.install_aliases()
 import os
 
-from ask_yes_no import ask_yes_no
+from chainerrl.misc.ask_yes_no import ask_yes_no
 from chainerrl.experiments.evaluator import Evaluator
 
 
