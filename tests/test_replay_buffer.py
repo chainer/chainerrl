@@ -9,7 +9,7 @@ import os
 import tempfile
 import unittest
 
-import replay_buffer
+from chainerrl import replay_buffer
 
 
 class TestReplayBuffer(unittest.TestCase):

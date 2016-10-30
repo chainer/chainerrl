@@ -8,8 +8,8 @@ standard_library.install_aliases()
 import chainer
 from chainer import links as L
 
-import v_function
-from links.wn_linear import WNLinear
+from chainerrl import v_function
+from chainerrl.links.wn_linear import WNLinear
 
 
 class FCTailVFunction(chainer.ChainList, v_function.VFunction):

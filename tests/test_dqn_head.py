@@ -12,10 +12,10 @@ import chainer
 from chainer import optimizers
 from chainer import functions as F
 
-from links import dqn_head
-import policy
-from links import fc_tail_q_function
-from links import fc_tail_v_function
+from chainerrl.links import dqn_head
+from chainerrl import policy
+from chainerrl.links import fc_tail_q_function
+from chainerrl.links import fc_tail_v_function
 
 
 def generate_different_two_states():
@@ -123,8 +123,8 @@ class _TestDQNHead(unittest.TestCase):
             loss_b.backward()
             opt.update()
 
-        pa = float(pi(head(a)).probs.data[0, 0])
-        pb = float(pi(head(b)).probs.data[0, 1])
+        pa = float(pi(head(a)).all_prob.data[0, 0])
+        pb = float(pi(head(b)).all_prob.data[0, 1])
         self.assertAlmostEqual(pa, 1.0, places=3)
         self.assertAlmostEqual(pb, 1.0, places=3)
 
