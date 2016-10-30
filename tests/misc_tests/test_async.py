@@ -14,7 +14,7 @@ import chainer.links as L
 from chainer import optimizers
 import numpy as np
 
-import async
+from chainerrl.misc import async
 
 
 class TestAsync(unittest.TestCase):

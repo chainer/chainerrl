@@ -8,7 +8,7 @@ import unittest
 
 import numpy as np
 
-from explorers.additive_gaussian import AdditiveGaussian
+from chainerrl.explorers.additive_gaussian import AdditiveGaussian
 
 
 class TestAdditiveGaussian(unittest.TestCase):

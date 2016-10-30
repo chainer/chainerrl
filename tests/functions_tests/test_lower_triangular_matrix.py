@@ -14,8 +14,8 @@ from chainer import gradient_check
 from chainer import testing
 from chainer.testing import attr
 
-from functions.lower_triangular_matrix import lower_triangular_matrix
-from functions.lower_triangular_matrix import LowerTriangularMatrix
+from chainerrl.functions.lower_triangular_matrix import lower_triangular_matrix
+from chainerrl.functions.lower_triangular_matrix import LowerTriangularMatrix
 
 
 @testing.parameterize(

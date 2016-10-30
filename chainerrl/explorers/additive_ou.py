@@ -11,7 +11,7 @@ from logging import getLogger
 from chainer import cuda
 import numpy as np
 
-import explorer
+from chainerrl import explorer
 
 
 class AdditiveOU(explorer.Explorer):

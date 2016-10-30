@@ -21,11 +21,6 @@ from test_training import _TestTraining
 
 class _TestDQNLike(_TestTraining):
 
-    def setUp(self):
-        self.tmpdir = tempfile.mkdtemp()
-        self.model_filename = os.path.join(self.tmpdir, 'model.h5')
-        self.rbuf_filename = os.path.join(self.tmpdir, 'rbuf.pkl')
-
     def make_agent(self, env, gpu):
         q_func = self.make_q_func(env)
         opt = self.make_optimizer(env, q_func)

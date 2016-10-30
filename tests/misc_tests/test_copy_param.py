@@ -11,7 +11,7 @@ import numpy as np
 import chainer
 from chainer import links as L
 
-import copy_param
+from chainerrl.misc import copy_param
 
 
 class TestCopyParam(unittest.TestCase):

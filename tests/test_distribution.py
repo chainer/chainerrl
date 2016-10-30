@@ -29,11 +29,11 @@ class TestSoftmaxDistribution(unittest.TestCase):
 
     def test_sample(self):
         sample = self.distrib.sample()
-        self.assertTrue(isinstance(sample, np.ndarray))
+        self.assertTrue(isinstance(sample, chainer.Variable))
         self.assertEqual(sample.shape, (self.batch_size,))
         for b in range(self.batch_size):
-            self.assertGreaterEqual(sample[b], 0)
-            self.assertLess(sample[b], self.n)
+            self.assertGreaterEqual(sample.data[b], 0)
+            self.assertLess(sample.data[b], self.n)
 
     def test_prob(self):
         batch_ps = []

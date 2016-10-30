@@ -11,17 +11,17 @@ import unittest
 import chainer
 import numpy as np
 
-import q_output
+from chainerrl import action_value
 
 
-class TestDiscreteQOutput(unittest.TestCase):
+class TestDiscreteActionValue(unittest.TestCase):
 
     def setUp(self):
         self.batch_size = 30
         self.action_size = 3
         self.q_values = np.random.normal(
             size=(self.batch_size, self.action_size)).astype(np.float32)
-        self.qout = q_output.DiscreteQOutput(chainer.Variable(self.q_values))
+        self.qout = action_value.DiscreteActionValue(chainer.Variable(self.q_values))
 
     def test_max(self):
         self.assertIsInstance(self.qout.max, chainer.Variable)

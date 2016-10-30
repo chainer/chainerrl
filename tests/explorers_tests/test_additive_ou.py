@@ -8,7 +8,7 @@ import unittest
 
 import numpy as np
 
-from explorers.additive_ou import AdditiveOU
+from chainerrl.explorers.additive_ou import AdditiveOU
 
 
 class TestAdditiveOU(unittest.TestCase):

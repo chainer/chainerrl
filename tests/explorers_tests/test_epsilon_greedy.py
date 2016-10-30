@@ -8,7 +8,7 @@ standard_library.install_aliases()
 import logging
 import unittest
 
-from explorers import epsilon_greedy
+from chainerrl.explorers import epsilon_greedy
 
 
 class TestEpsilonGreedy(unittest.TestCase):
