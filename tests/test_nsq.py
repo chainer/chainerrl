@@ -13,9 +13,10 @@ import unittest
 from chainer import optimizers
 import numpy as np
 
+from chainerrl.agents import nsq
 from chainerrl import q_function
 from envs.simple_abc import ABC
-import run_a3c
+from chainerrl.experiments.train_agent_async import train_agent_async
 from explorers.epsilon_greedy import ConstantEpsilonGreedy
 
 
@@ -37,28 +38,27 @@ class TestNSQ(unittest.TestCase):
         def make_env(process_idx, test):
             return ABC()
 
-        def model_opt():
-            q_func = q_function.FCSIQFunction(5, n_actions, 10, 2)
-            opt = optimizers.RMSprop(1e-3, eps=1e-2)
-            opt.setup(q_func)
-            target_q_func = copy.deepcopy(q_func)
-            return (q_func, target_q_func), (opt,)
+        def random_action_func():
+            return np.random.randint(n_actions)
 
         def phi(x):
             return x
 
-        def random_action_func():
-            return np.random.randint(n_actions)
+        def make_agent(process_idx):
+            q_func = q_function.FCSIQFunction(5, n_actions, 10, 2)
+            opt = optimizers.RMSprop(1e-3, eps=1e-2)
+            opt.setup(q_func)
+            explorer = ConstantEpsilonGreedy(
+                process_idx / 10, random_action_func)
+            return nsq.NSQ(process_idx, q_func, opt, t_max=1,
+                           gamma=0.99, i_target=100, phi=phi,
+                           explorer=explorer)
 
-        explorers = [ConstantEpsilonGreedy(
-            i / 10, random_action_func) for i in range(nproc)]
-
-        models, opts = run_a3c.run_nsq(
+        agent = train_agent_async(
             outdir=self.outdir, processes=nproc, make_env=make_env,
-            model_opt=model_opt, phi=phi, t_max=t_max, steps=10000,
-            explorers=explorers)
+            make_agent=make_agent, steps=10000)
 
-        q_func, _ = models
+        q_func = agent.shared_q_function
 
         # Test
         env = make_env(0, True)

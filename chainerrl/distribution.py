@@ -95,10 +95,11 @@ class CategoricalDistribution(Distribution):
 
     @cached_property
     def most_probable(self):
-        return np.argmax(self.all_prob.data, axis=1).astype(np.int32)
+        return chainer.Variable(
+            np.argmax(self.all_prob.data, axis=1).astype(np.int32))
 
     def sample(self):
-        return _sample_discrete_actions(self.all_prob.data)
+        return chainer.Variable(_sample_discrete_actions(self.all_prob.data))
 
     def prob(self, x):
         return F.select_item(self.all_prob, x)

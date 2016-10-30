@@ -9,6 +9,7 @@ from logging import getLogger
 logger = getLogger(__name__)
 import copy
 import os
+import multiprocessing as mp
 
 import numpy as np
 import chainer
@@ -26,14 +27,14 @@ class NSQ(object):
     See http://arxiv.org/abs/1602.01783
     """
 
-    def __init__(self, process_idx, q_function, target_q_function, optimizer,
+    def __init__(self, process_idx, q_function, optimizer,
                  t_max, gamma, i_target, explorer, phi=lambda x: x,
                  clip_reward=True):
 
         self.process_idx = process_idx
 
         self.shared_q_function = q_function
-        self.target_q_function = target_q_function
+        self.target_q_function = copy.deepcopy(q_function)
         self.q_function = copy.deepcopy(self.shared_q_function)
 
         async.assert_params_not_shared(self.shared_q_function, self.q_function)
@@ -46,6 +47,7 @@ class NSQ(object):
         self.i_target = i_target
         self.clip_reward = clip_reward
         self.phi = phi
+        self.t_global = mp.Value('l', 0)
 
         self.t = 0
         self.t_start = 0
@@ -56,6 +58,11 @@ class NSQ(object):
     def sync_parameters(self):
         copy_param.copy_param(target_link=self.q_function,
                               source_link=self.shared_q_function)
+
+    @property
+    def shared_attributes(self):
+        return ('shared_q_function', 'target_q_function', 'optimizer',
+                't_global')
 
     def update(self, statevar):
         assert self.t_start < self.t
@@ -123,13 +130,13 @@ class NSQ(object):
             logger.debug('q:%s', q.data)
         self.past_action_values[self.t] = q
         self.t += 1
+        with self.t_global.get_lock():
+            self.t_global.value += 1
+            t_global = self.t_global.value
 
-        # Update the target network
-        # Global counter T is used in the original paper, but here we use
-        # process specific counter instead. So i_target should be set
-        # x-times smaller, where x is the number of processes
-        if self.t % self.i_target == 0:
-            logger.debug('self.t:%s', self.t)
+        if t_global % self.i_target == 0:
+            logger.debug('target synchronized t_global:%s t_local:%s',
+                         t_global, self.t)
             copy_param.copy_param(self.target_q_function, self.q_function)
 
         return action

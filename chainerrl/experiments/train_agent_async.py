@@ -7,26 +7,19 @@ from builtins import open
 from builtins import str
 from future import standard_library
 standard_library.install_aliases()
-import argparse
+
 import copy
 import multiprocessing as mp
 import os
 import sys
 import statistics
-import tempfile
 import time
 
 import chainer
-from chainer import links as L
-from chainer import functions as F
-import cv2
 import numpy as np
 
-from chainerrl.agents import a3c
-from chainerrl.agents import nsq
 import random_seed
 import async
-from prepare_output_dir import prepare_output_dir
 
 
 def eval_performance(process_idx, make_env, model, phi, n_runs, greedy=False, max_episode_len=None):
@@ -164,10 +157,22 @@ def train_loop_with_profile(process_idx, counter, make_env, max_score,
                     'profile-{}.out'.format(os.getpid()))
 
 
-def run_async_agent(outdir, processes, make_env, model_opt, make_agent,
-                    profile=False, steps=8 * 10 ** 7, eval_frequency=10 ** 6,
-                    eval_n_runs=10, gamma=0.99, max_episode_len=None,
-                    args={}):
+def extract_shared_objects_from_agent(agent):
+    return dict((attr, async.as_shared_objects(getattr(agent, attr)))
+                for attr in agent.shared_attributes)
+
+
+def set_shared_objects(agent, shared_objects):
+    for attr, shared in shared_objects.items():
+        new_value = async.synchronize_to_shared_objects(
+            getattr(agent, attr), shared)
+        setattr(agent, attr, new_value)
+
+
+def train_agent_async(outdir, processes, make_env, make_agent,
+                      profile=False, steps=8 * 10 ** 7, eval_frequency=10 ** 6,
+                      eval_n_runs=10, gamma=0.99, max_episode_len=None,
+                      args={}):
     """
     Args:
       processes (int): Number of processes.
@@ -181,16 +186,12 @@ def run_async_agent(outdir, processes, make_env, model_opt, make_agent,
     # Prevent numpy from using multiple threads
     os.environ['OMP_NUM_THREADS'] = '1'
 
-    models, opts = model_opt()
-
-    shared_params = tuple(async.share_params_as_shared_arrays(model)
-                          for model in models)
-    shared_states = tuple(async.share_states_as_shared_arrays(opt)
-                          for opt in opts)
-
     max_score = mp.Value('f', np.finfo(np.float32).min)
     counter = mp.Value('l', 0)
     start_time = time.time()
+
+    agent0 = make_agent(0)
+    shared_objects = extract_shared_objects_from_agent(agent0)
 
     # Write a header line first
     with open(os.path.join(outdir, 'scores.txt'), 'a+') as f:
@@ -201,15 +202,9 @@ def run_async_agent(outdir, processes, make_env, model_opt, make_agent,
         random_seed.set_random_seed(process_idx)
 
         env = make_env(process_idx, test=False)
-        models, opts = model_opt()
-
-        for model, shared_param in zip(models, shared_params):
-            async.set_shared_params(model, shared_param)
-
-        for opt, shared_state in zip(opts, shared_states):
-            async.set_shared_states(opt, shared_state)
-
-        agent = make_agent(process_idx, models, opts)
+        # agent = agent0 if process_idx == 0 else make_agent(process_idx)
+        agent = make_agent(process_idx)
+        set_shared_objects(agent, shared_objects)
 
         if profile:
             train_loop_with_profile(process_idx, counter, make_env, max_score,
@@ -223,48 +218,4 @@ def run_async_agent(outdir, processes, make_env, model_opt, make_agent,
 
     async.run_async(processes, run_func)
 
-    return models, opts
-
-
-def run_a3c(outdir, processes, make_env, model_opt, phi, t_max=1, beta=1e-2,
-            profile=False, steps=8 * 10 ** 7, eval_frequency=10 ** 6,
-            eval_n_runs=10, use_terminal_state_value=False, gamma=0.99,
-            max_episode_len=None, clip_reward=True,
-            normalize_grad_by_t_max=False, use_average_reward=False,
-            average_reward_tau=1e-2, args={}):
-
-    def make_agent(process_idx, models, opts):
-        assert len(models) == 1
-        assert len(opts) == 1
-
-        return a3c.A3C(models[0], opts[0], t_max, gamma, beta=beta,
-                       process_idx=process_idx, phi=phi,
-                       use_terminal_state_value=use_terminal_state_value,
-                       clip_reward=clip_reward,
-                       normalize_grad_by_t_max=normalize_grad_by_t_max,
-                       use_average_reward=use_average_reward,
-                       average_reward_tau=average_reward_tau)
-
-    return run_async_agent(outdir, processes, make_env, model_opt, make_agent,
-                           profile=profile, steps=steps, eval_frequency=eval_frequency,
-                           eval_n_runs=eval_n_runs, gamma=gamma,
-                           max_episode_len=max_episode_len, args=args)
-
-
-def run_nsq(outdir, processes, make_env, model_opt, phi, t_max=1, beta=1e-2,
-            profile=False, steps=8 * 10 ** 7, eval_frequency=10 ** 6,
-            eval_n_runs=10, use_terminal_state_value=False, gamma=0.99,
-            i_target=100,
-            explorers=[], args={}):
-
-    def make_agent(process_idx, models, opts):
-        assert len(models) == 2
-        q_func, target_q_func = models
-        assert len(opts) == 1
-        return nsq.NSQ(process_idx, q_func, target_q_func, opts[0], t_max, gamma,
-                       i_target=i_target, explorer=explorers[process_idx],
-                       phi=phi)
-
-    return run_async_agent(outdir, processes, make_env, model_opt, make_agent,
-                           profile=profile, steps=steps, eval_frequency=eval_frequency,
-                           eval_n_runs=eval_n_runs, gamma=gamma, args=args)
+    return agent0

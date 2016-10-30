@@ -19,7 +19,6 @@ from chainer import cuda
 from chainer import functions as F
 from chainer import links as L
 
-import policy_output
 from links.mlp_bn import MLPBN
 from links.mlp import MLP
 from chainerrl import distribution
@@ -187,7 +186,7 @@ class FCGaussianPolicy(chainer.ChainList, GaussianPolicy):
 
     def __call__(self, x, test=False):
         mean, var = self.compute_mean_and_var(x, test=test)
-        return policy_output.GaussianPolicyOutput(
+        return distribution.GaussianDistribution(
             mean, var=var, clip_action=self.clip_action,
             min_action=self.min_action, max_action=self.max_action)
 

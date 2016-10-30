@@ -7,6 +7,7 @@ from future import standard_library
 standard_library.install_aliases()
 import copy
 from logging import getLogger
+import multiprocessing as mp
 import os
 
 import numpy as np
@@ -43,7 +44,7 @@ class A3C(agent.Agent):
     def __init__(self, model, optimizer, t_max, gamma, beta=1e-2,
                  process_idx=0, clip_reward=True, phi=lambda x: x,
                  pi_loss_coef=1.0, v_loss_coef=0.5,
-                 keep_loss_scale_same=False, use_terminal_state_value=False,
+                 keep_loss_scale_same=False,
                  normalize_grad_by_t_max=False,
                  use_average_reward=False, average_reward_tau=1e-2):
 
@@ -66,7 +67,6 @@ class A3C(agent.Agent):
         self.pi_loss_coef = pi_loss_coef
         self.v_loss_coef = v_loss_coef
         self.keep_loss_scale_same = keep_loss_scale_same
-        self.use_terminal_state_value = use_terminal_state_value
         self.normalize_grad_by_t_max = normalize_grad_by_t_max
         self.use_average_reward = use_average_reward
         self.average_reward_tau = average_reward_tau
@@ -85,6 +85,10 @@ class A3C(agent.Agent):
     def sync_parameters(self):
         copy_param.copy_param(target_link=self.model,
                               source_link=self.shared_model)
+
+    @property
+    def shared_attributes(self):
+        return ('shared_model', 'optimizer')
 
     def update(self, statevar):
         assert self.t_start < self.t

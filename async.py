@@ -115,3 +115,32 @@ def run_async(n_process, run_func):
 
     for p in processes:
         p.join()
+
+
+def as_shared_objects(obj):
+    if isinstance(obj, tuple):
+        return tuple(as_shared_objects(x) for x in obj)
+    elif isinstance(obj, chainer.Link):
+        return share_params_as_shared_arrays(obj)
+    elif isinstance(obj, chainer.Optimizer):
+        return share_states_as_shared_arrays(obj)
+    elif isinstance(obj, mp.sharedctypes.Synchronized):
+        return obj
+    else:
+        raise ValueError('')
+
+
+def synchronize_to_shared_objects(obj, shared_memory):
+    if isinstance(obj, tuple):
+        return tuple(synchronize_to_shared_objects(o, s)
+                     for o, s in zip(obj, shared_memory))
+    elif isinstance(obj, chainer.Link):
+        set_shared_params(obj, shared_memory)
+        return obj
+    elif isinstance(obj, chainer.Optimizer):
+        set_shared_states(obj, shared_memory)
+        return obj
+    elif isinstance(obj, mp.sharedctypes.Synchronized):
+        return shared_memory
+    else:
+        raise ValueError('')
