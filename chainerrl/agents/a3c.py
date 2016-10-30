@@ -16,6 +16,8 @@ from chainer import functions as F
 
 import copy_param
 import async
+from chainerrl import agent
+from chainerrl.misc.makedirs import makedirs
 
 logger = getLogger(__name__)
 
@@ -32,7 +34,7 @@ class A3CModel(chainer.Link):
         pass
 
 
-class A3C(object):
+class A3C(agent.Agent):
     """A3C: Asynchronous Advantage Actor-Critic.
 
     See http://arxiv.org/abs/1602.01783
@@ -106,7 +108,8 @@ class A3C(object):
                              i, self.past_states[i].data.sum(), v.data, R)
             advantage = R - v
             if self.use_average_reward:
-                self.average_reward += self.average_reward_tau * float(advantage.data)
+                self.average_reward += self.average_reward_tau * \
+                    float(advantage.data)
             # Accumulate gradients of policy
             log_prob = self.past_action_log_prob[i]
             entropy = self.past_action_entropy[i]
@@ -167,8 +170,7 @@ class A3C(object):
 
         self.t_start = self.t
 
-
-    def act(self, state, reward):
+    def act_and_train(self, state, reward):
 
         if self.clip_reward:
             reward = np.clip(reward, -1, 1)
@@ -189,46 +191,46 @@ class A3C(object):
         self.t += 1
         action = action.data[0]
         if self.process_idx == 0:
-            logger.debug('t:%s r:%s a:%s pout:%s', self.t, reward, action, pout)
+            logger.debug('t:%s r:%s a:%s pout:%s',
+                         self.t, reward, action, pout)
         return action
 
-    def observe_terminal(self, state, reward):
+    def act(self, obs):
+        statevar = chainer.Variable(np.expand_dims(self.phi(obs), 0))
+        pout, _ = self.model.pi_and_v(statevar)
+        return pout.sample().data[0]
+
+    def stop_episode_and_train(self, state, reward, done=False):
         if self.clip_reward:
             reward = np.clip(reward, -1, 1)
 
         self.past_rewards[self.t - 1] = reward
-        self.update(None)
+        if done:
+            self.update(None)
+        else:
+            statevar = chainer.Variable(np.expand_dims(self.phi(state), 0))
+            self.update(statevar)
 
         self.model.reset_state()
 
-    def stop_current_episode(self, state, reward):
-        if self.clip_reward:
-            reward = np.clip(reward, -1, 1)
-
-        self.past_rewards[self.t - 1] = reward
-        statevar = chainer.Variable(np.expand_dims(self.phi(state), 0))
-        self.update(statevar)
-
+    def stop_episode(self):
         self.model.reset_state()
 
-    def load_model(self, model_filename):
-        """Load a network model form a file
-        """
-        serializers.load_hdf5(model_filename, self.model)
-        copy_param.copy_param(target_link=self.shared_model,
-                              source_link=self.model)
-        opt_filename = model_filename + '.opt'
+    def save(self, dirname):
+        makedirs(dirname, exist_ok=True)
+        serializers.save_npz(os.path.join(dirname, 'model.npz'), self.model)
+        serializers.save_npz(
+            os.path.join(dirname, 'optimizer.npz'), self.optimizer)
+
+    def load(self, dirname):
+        serializers.load_npz(os.path.join(dirname, 'model.npz'), self.model)
+
+        opt_filename = os.path.join(dirname, 'optimizer.npz')
         if os.path.exists(opt_filename):
-            serializers.load_hdf5(model_filename + '.opt', self.optimizer)
+            serializers.load_npz(opt_filename, self.optimizer)
         else:
             print('WARNING: {0} was not found, so loaded only a model'.format(
                 opt_filename))
-
-    def save_model(self, model_filename):
-        """Save a network model to a file
-        """
-        serializers.save_hdf5(model_filename, self.model)
-        serializers.save_hdf5(model_filename + '.opt', self.optimizer)
 
     def get_stats_keys(self):
         return ()

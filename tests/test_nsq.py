@@ -6,12 +6,14 @@ from builtins import range
 from future import standard_library
 standard_library.install_aliases()
 import copy
+import logging
+import tempfile
 import unittest
 
 from chainer import optimizers
 import numpy as np
 
-import q_function
+from chainerrl import q_function
 from envs.simple_abc import ABC
 import run_a3c
 from explorers.epsilon_greedy import ConstantEpsilonGreedy
@@ -20,7 +22,8 @@ from explorers.epsilon_greedy import ConstantEpsilonGreedy
 class TestNSQ(unittest.TestCase):
 
     def setUp(self):
-        pass
+        self.outdir = tempfile.mkdtemp()
+        logging.basicConfig(level=logging.DEBUG)
 
     def test_abc(self):
         self._test_abc(1)
@@ -51,7 +54,8 @@ class TestNSQ(unittest.TestCase):
             i / 10, random_action_func) for i in range(nproc)]
 
         models, opts = run_a3c.run_nsq(
-            nproc, make_env, model_opt, phi, t_max, steps=40000,
+            outdir=self.outdir, processes=nproc, make_env=make_env,
+            model_opt=model_opt, phi=phi, t_max=t_max, steps=10000,
             explorers=explorers)
 
         q_func, _ = models

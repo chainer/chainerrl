@@ -23,7 +23,7 @@ import cv2
 import numpy as np
 
 from chainerrl.agents import a3c
-from agents import nsq
+from chainerrl.agents import nsq
 import random_seed
 import async
 from prepare_output_dir import prepare_output_dir
@@ -84,10 +84,7 @@ def train_loop(process_idx, counter, make_env, max_score, eval_frequency,
             episode_r += r
 
             if done or episode_len == max_episode_len:
-                if done:
-                    agent.observe_terminal(obs, r)
-                else:
-                    agent.stop_current_episode(obs, r)
+                agent.stop_episode_and_train(obs, r, done)
                 if process_idx == 0:
                     print('{} global_t:{} local_t:{} lr:{} r:{}'.format(
                         outdir, global_t, local_t, agent.optimizer.lr,
@@ -98,7 +95,7 @@ def train_loop(process_idx, counter, make_env, max_score, eval_frequency,
                 done = False
                 episode_len = 0
             else:
-                a = agent.act(obs, r)
+                a = agent.act_and_train(obs, r)
                 obs, r, done, info = env.step(a)
 
                 # Get and increment the global counter
@@ -133,11 +130,11 @@ def train_loop(process_idx, counter, make_env, max_score, eval_frequency,
                             # Save the best model so far
                             print('The best score is updated {} -> {}'.format(
                                 max_score.value, mean))
-                            filename = os.path.join(
+                            dirname = os.path.join(
                                 outdir, '{}.h5'.format(global_t))
-                            agent.save_model(filename)
+                            agent.save(dirname)
                             print('Saved the current best model to {}'.format(
-                                filename))
+                                dirname))
                             max_score.value = mean
 
     except KeyboardInterrupt:
@@ -151,9 +148,9 @@ def train_loop(process_idx, counter, make_env, max_score, eval_frequency,
 
     if global_t == steps + 1:
         # Save the final model
-        agent.save_model(
-            os.path.join(outdir, '{}_finish.h5'.format(steps)))
-        print('Saved the final model to {}'.format(outdir))
+        dirname = os.path.join(outdir, '{}_finish'.format(steps))
+        agent.save(dirname)
+        print('Saved the final model to {}'.format(dirname))
 
 
 def train_loop_with_profile(process_idx, counter, make_env, max_score,
@@ -265,7 +262,8 @@ def run_nsq(outdir, processes, make_env, model_opt, phi, t_max=1, beta=1e-2,
         q_func, target_q_func = models
         assert len(opts) == 1
         return nsq.NSQ(process_idx, q_func, target_q_func, opts[0], t_max, gamma,
-                       i_target=i_target, explorer=explorers[process_idx])
+                       i_target=i_target, explorer=explorers[process_idx],
+                       phi=phi)
 
     return run_async_agent(outdir, processes, make_env, model_opt, make_agent,
                            profile=profile, steps=steps, eval_frequency=eval_frequency,
