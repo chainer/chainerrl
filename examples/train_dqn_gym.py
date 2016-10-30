@@ -16,14 +16,14 @@ from gym import spaces
 
 sys.path.append('..')
 from chainerrl.agents.dqn import DQN
-import random_seed
-import replay_buffer
-from prepare_output_dir import prepare_output_dir
-from init_like_torch import init_like_torch
+from chainerrl.misc import random_seed
+from chainerrl import replay_buffer
+from chainerrl.experiments.prepare_output_dir import prepare_output_dir
+from chainerrl.misc.init_like_torch import init_like_torch
 from chainerrl import q_function
-import env_modifiers
+from chainerrl.misc import env_modifiers
 from chainerrl.experiments.train_agent import train_agent_with_evaluation
-from explorers.epsilon_greedy import LinearDecayEpsilonGreedy
+from chainerrl.explorers.epsilon_greedy import LinearDecayEpsilonGreedy
 
 
 def main():

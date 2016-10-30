@@ -10,7 +10,7 @@ import chainer
 from chainer import functions as F
 from chainer import links as L
 
-from links.mlp import MLP
+from chainerrl.links.mlp import MLP
 from chainerrl import q_function
 from chainerrl import action_value
 

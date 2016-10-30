@@ -5,14 +5,13 @@ from __future__ import absolute_import
 from builtins import range
 from future import standard_library
 standard_library.install_aliases()
+
 import multiprocessing as mp
-import os
-import random
 
 import chainer
 import numpy as np
 
-import random_seed
+from chainerrl.misc import random_seed
 
 
 def set_shared_params(a, b):

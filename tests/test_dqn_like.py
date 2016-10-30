@@ -6,20 +6,16 @@ from future import standard_library
 standard_library.install_aliases()
 import os
 import tempfile
-import unittest
 
-import chainer
-from chainer import cuda
 from chainer import optimizers
 import numpy as np
 
 from chainerrl.q_function import FCSIQFunction
 from chainerrl.q_function import FCSIContinuousQFunction
 from chainerrl.q_function import FCLSTMStateQFunction
-import random_seed
-from envs.simple_abc import ABC
-from explorers.epsilon_greedy import LinearDecayEpsilonGreedy
-import replay_buffer
+from chainerrl.envs.simple_abc import ABC
+from chainerrl.explorers.epsilon_greedy import LinearDecayEpsilonGreedy
+from chainerrl import replay_buffer
 from test_training import _TestTraining
 
 

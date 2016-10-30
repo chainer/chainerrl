@@ -18,8 +18,8 @@ import time
 import chainer
 import numpy as np
 
-import random_seed
-import async
+from chainerrl.misc import random_seed
+from chainerrl.misc import async
 
 
 def eval_performance(process_idx, make_env, model, phi, n_runs, greedy=False, max_episode_len=None):

@@ -19,7 +19,7 @@ from chainer import serializers
 
 from chainerrl import agent
 from chainerrl.misc.makedirs import makedirs
-import copy_param
+from chainerrl.misc import copy_param
 
 
 def _to_device(obj, gpu):

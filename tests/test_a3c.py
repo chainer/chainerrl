@@ -16,11 +16,11 @@ from chainer import links as L
 from chainer import functions as F
 
 from chainerrl import policy
-import v_function
+from chainerrl import v_function
 from chainerrl.agents import a3c
-from envs.simple_abc import ABC
+from chainerrl.envs.simple_abc import ABC
 from chainerrl.experiments.train_agent_async import train_agent_async
-import rmsprop_async
+from chainerrl.optimizers import rmsprop_async
 
 
 class A3CFF(chainer.ChainList, a3c.A3CModel):

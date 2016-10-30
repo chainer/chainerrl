@@ -13,23 +13,23 @@ from chainer import functions as F
 import numpy as np
 
 sys.path.append('..')
-from links import fc_tail_q_function
-from links import dqn_head
-from links import dqn_head_crelu
-from links.dueling_dqn import DuelingDQN
+from chainerrl.links import fc_tail_q_function
+from chainerrl.links import dqn_head
+from chainerrl.links import dqn_head_crelu
+from chainerrl.links.dueling_dqn import DuelingDQN
 from chainerrl.agents.dqn import DQN
 from chainerrl.agents.double_dqn import DoubleDQN
 from chainerrl.agents.pal import PAL
-from envs import ale
-import random_seed
-import replay_buffer
-from prepare_output_dir import prepare_output_dir
-from functions import oplu
-from init_like_torch import init_like_torch
-from dqn_phi import dqn_phi
-from explorers.epsilon_greedy import LinearDecayEpsilonGreedy
-from explorers.epsilon_greedy import ConstantEpsilonGreedy
+from chainerrl.envs import ale
+from chainerrl.misc import random_seed
+from chainerrl import replay_buffer
+from chainerrl.experiments.prepare_output_dir import prepare_output_dir
+from chainerrl.functions import oplu
+from chainerrl.misc.init_like_torch import init_like_torch
+from chainerrl.explorers.epsilon_greedy import LinearDecayEpsilonGreedy
+from chainerrl.explorers.epsilon_greedy import ConstantEpsilonGreedy
 from chainerrl.experiments.train_agent import train_agent_with_evaluation
+from dqn_phi import dqn_phi
 
 
 def parse_activation(activation_str):

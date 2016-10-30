@@ -11,7 +11,7 @@ import logging
 
 from chainer import cuda
 
-import random_seed
+from chainerrl.misc import random_seed
 from chainerrl.experiments import train_agent
 
 

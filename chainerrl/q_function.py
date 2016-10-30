@@ -16,11 +16,11 @@ from chainer import functions as F
 from chainer import links as L
 from chainer import cuda
 
-from links.mlp_bn import MLPBN
-from links.mlp import MLP
+from chainerrl.links.mlp_bn import MLPBN
+from chainerrl.links.mlp import MLP
 from chainerrl.action_value import DiscreteActionValue
 from chainerrl.action_value import QuadraticActionValue
-from functions.lower_triangular_matrix import lower_triangular_matrix
+from chainerrl.functions.lower_triangular_matrix import lower_triangular_matrix
 
 
 class QFunction(with_metaclass(ABCMeta, object)):

@@ -5,9 +5,9 @@ from __future__ import absolute_import
 from builtins import range
 from future import standard_library
 standard_library.install_aliases()
+
 import copy
 from logging import getLogger
-import multiprocessing as mp
 import os
 
 import numpy as np
@@ -15,8 +15,8 @@ import chainer
 from chainer import serializers
 from chainer import functions as F
 
-import copy_param
-import async
+from chainerrl.misc import copy_param
+from chainerrl.misc import async
 from chainerrl import agent
 from chainerrl.misc.makedirs import makedirs
 

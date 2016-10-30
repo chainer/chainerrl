@@ -19,8 +19,8 @@ from chainer import cuda
 from chainer import functions as F
 from chainer import links as L
 
-from links.mlp_bn import MLPBN
-from links.mlp import MLP
+from chainerrl.links.mlp_bn import MLPBN
+from chainerrl.links.mlp import MLP
 from chainerrl import distribution
 
 

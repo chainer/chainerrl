@@ -14,18 +14,18 @@ import chainer
 from chainer import links as L
 
 sys.path.append('..')
-import policy
-import v_function
-from links import dqn_head
-from agents import a3c
-from envs import ale
-import random_seed
-import rmsprop_async
-from prepare_output_dir import prepare_output_dir
-from nonbias_weight_decay import NonbiasWeightDecay
-from init_like_torch import init_like_torch
+from chainerrl import policy
+from chainerrl import v_function
+from chainerrl.links import dqn_head
+from chainerrl.agents import a3c
+from chainerrl.envs import ale
+from chainerrl.misc import random_seed
+from chainerrl.optimizers import rmsprop_async
+from chainerrl.experiments.prepare_output_dir import prepare_output_dir
+from chainerrl.optimizers.nonbias_weight_decay import NonbiasWeightDecay
+from chainerrl.misc.init_like_torch import init_like_torch
+from chainerrl.experiments.train_agent_async import train_agent_async
 from dqn_phi import dqn_phi
-import run_a3c
 
 
 class A3CFF(chainer.ChainList, a3c.A3CModel):
@@ -109,7 +109,7 @@ def main():
 
     n_actions = ale.ALE(args.rom).number_of_actions
 
-    def model_opt():
+    def make_agent(process_idx):
         if args.use_lstm:
             model = A3CLSTM(n_actions)
         else:
@@ -119,17 +119,21 @@ def main():
         opt.add_hook(chainer.optimizer.GradientClipping(40))
         if args.weight_decay > 0:
             opt.add_hook(NonbiasWeightDecay(args.weight_decay))
-        return (model,), (opt,)
+        return a3c.A3C(model, opt, t_max=args.t_max, gamma=0.99,
+                       beta=args.beta, process_idx=process_idx, phi=dqn_phi)
 
     def make_env(process_idx, test):
         return ale.ALE(args.rom, use_sdl=args.use_sdl,
                        treat_life_lost_as_terminal=not test)
 
-    run_a3c.run_a3c(
-        args.outdir, args.processes, make_env, model_opt, phi=dqn_phi, t_max=args.t_max,
-        beta=args.beta, profile=args.profile,
-        steps=args.steps, eval_n_runs=args.eval_n_runs,
-        use_terminal_state_value=False, gamma=0.99,
+    train_agent_async(
+        outdir=args.outdir,
+        processes=args.processes,
+        make_env=make_env,
+        make_agent=make_agent,
+        profile=args.profile,
+        steps=args.steps,
+        eval_n_runs=args.eval_n_runs,
         eval_frequency=args.eval_frequency)
 
 

@@ -5,10 +5,10 @@ from __future__ import absolute_import
 from builtins import super
 from future import standard_library
 standard_library.install_aliases()
+
 import chainer
 from chainer import links as L
-
-from functions import crelu
+from chainer import functions as F
 
 
 class NatureDQNHeadCReLU(chainer.ChainList):
@@ -29,7 +29,7 @@ class NatureDQNHeadCReLU(chainer.ChainList):
     def __call__(self, state):
         h = state
         for layer in self:
-            h = crelu.crelu(layer(h))
+            h = F.crelu(layer(h))
         return h
 
 
@@ -50,5 +50,5 @@ class NIPSDQNHeadCReLU(chainer.ChainList):
     def __call__(self, state):
         h = state
         for layer in self:
-            h = crelu.crelu(layer(h))
+            h = F.crelu(layer(h))
         return h

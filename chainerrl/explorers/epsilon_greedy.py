@@ -10,7 +10,7 @@ from logging import getLogger
 
 import numpy as np
 
-import explorer
+from chainerrl import explorer
 
 
 def select_action_epsilon_greedily(epsilon, random_action_func,
