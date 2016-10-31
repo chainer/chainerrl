@@ -7,6 +7,8 @@ from builtins import open
 from builtins import str
 from future import standard_library
 standard_library.install_aliases()
+
+import multiprocessing as mp
 import os
 import statistics
 import time
@@ -71,7 +73,6 @@ class Evaluator(object):
         self.env = env
         self.max_score = np.finfo(np.float32).min
         self.start_time = time.time()
-        self.eval_after_this_episode = False
         self.n_runs = n_runs
         self.eval_frequency = eval_frequency
         self.outdir = outdir
@@ -81,7 +82,7 @@ class Evaluator(object):
         self.prev_eval_t = self.step_offset - self.step_offset % self.eval_frequency
 
         # Write a header line first
-        with open(os.path.join(self.outdir, 'scores.txt'), 'a+') as f:
+        with open(os.path.join(self.outdir, 'scores.txt'), 'w') as f:
             column_names = (('steps', 'elapsed', 'mean', 'median', 'stdev') +
                             self.agent.get_stats_keys())
             print('\t'.join(column_names), file=f)
@@ -102,3 +103,59 @@ class Evaluator(object):
         if t >= self.prev_eval_t + self.eval_frequency:
             self.evaluate_and_update_max_score(t)
             self.prev_eval_t = t - t % self.eval_frequency
+
+
+class AsyncEvaluator(object):
+
+    def __init__(self, n_runs, eval_frequency,
+                 outdir, max_episode_len=None, explorer=None,
+                 step_offset=0):
+
+        self.max_score = np.finfo(np.float32).min
+        self.start_time = time.time()
+        self.n_runs = n_runs
+        self.eval_frequency = eval_frequency
+        self.outdir = outdir
+        self.max_episode_len = max_episode_len
+        self.explorer = explorer
+        self.step_offset = step_offset
+        self.prev_eval_t = mp.Value('l', self.step_offset - self.step_offset % self.eval_frequency)
+        self.max_score = mp.Value('f', np.finfo(np.float32).min)
+        self.wrote_header = False
+
+        # Create scores.txt
+        with open(os.path.join(self.outdir, 'scores.txt'), 'a'):
+            pass
+
+    def evaluate_and_update_max_score(self, t, env, agent):
+        mean, median, stdev = eval_performance(
+            env, agent, self.n_runs,
+            max_episode_len=self.max_episode_len, explorer=self.explorer)
+        elapsed = time.time() - self.start_time
+        values = (t, elapsed, mean, median, stdev) + \
+            agent.get_stats_values()
+        record_stats(self.outdir, values)
+        if mean > self.max_score:
+            update_best_model(agent, self.outdir, t, self.max_score, mean)
+            self.max_score.value = mean
+
+    def write_header(self, agent):
+        # Write a header line first
+        with open(os.path.join(self.outdir, 'scores.txt'), 'w') as f:
+            column_names = (('steps', 'elapsed', 'mean', 'median', 'stdev') +
+                            agent.get_stats_keys())
+            print('\t'.join(column_names), file=f)
+
+    def evaluate_if_necessary(self, t, env, agent):
+        necessary = False
+        with self.prev_eval_t.get_lock():
+            if t >= self.prev_eval_t.value + self.eval_frequency:
+                print('prev_eval_t.value:', self.prev_eval_t.value)
+                necessary = True
+                # self.prev_eval_t.value = t - t % self.eval_frequency
+                self.prev_eval_t.value += self.eval_frequency
+        if necessary:
+            if not self.wrote_header:
+                self.write_header(agent)
+                self.wrote_header = True
+            self.evaluate_and_update_max_score(t, env, agent)

@@ -123,11 +123,12 @@ class NSQ(object):
 
         self.past_states[self.t] = statevar
         qout = self.q_function(statevar)
+        if self.process_idx == 0:
+            logger.debug('t_global: %s t_local: %s action_value: %s',
+                         self.t_global.value, self.t, qout)
         action = self.explorer.select_action(
             self.t, lambda: qout.greedy_actions.data[0])
         q = qout.evaluate_actions(np.asarray([action]))
-        if self.t % 100 == 0:
-            logger.debug('q:%s', q.data)
         self.past_action_values[self.t] = q
         self.t += 1
         with self.t_global.get_lock():
@@ -157,6 +158,10 @@ class NSQ(object):
             statevar = chainer.Variable(np.expand_dims(self.phi(state), 0))
             self.update(statevar)
 
+    def stop_episode(self):
+        # TODO support recurrent Q-function
+        pass
+
     def save(self, dirname):
         makedirs(dirname, exist_ok=True)
         serializers.save_npz(os.path.join(dirname, 'q_function.npz'),
@@ -184,3 +189,9 @@ class NSQ(object):
         else:
             print('WARNING: {0} was not found, so loaded only a model'.format(
                 opt_filename))
+
+    def get_stats_keys(self):
+        return ()
+
+    def get_stats_values(self):
+        return ()

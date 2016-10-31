@@ -2,63 +2,25 @@ from __future__ import print_function
 from __future__ import division
 from __future__ import unicode_literals
 from __future__ import absolute_import
-from builtins import range
-from builtins import open
-from builtins import str
+from builtins import *
 from future import standard_library
 standard_library.install_aliases()
 
-import copy
 import multiprocessing as mp
 import os
 import sys
-import statistics
-import time
-
-import chainer
-import numpy as np
 
 from chainerrl.misc import random_seed
 from chainerrl.misc import async
+from chainerrl.experiments.evaluator import AsyncEvaluator
 
 
-def eval_performance(process_idx, make_env, model, phi, n_runs, greedy=False, max_episode_len=None):
-    assert n_runs > 1, 'Computing stdev requires at least two runs'
-    scores = []
+def train_loop(process_idx, env, agent, steps, outdir, counter,
+               max_episode_len=None, evaluator=None, eval_env=None):
 
-    for i in range(n_runs):
-        model.reset_state()
-        env = make_env(process_idx, test=True)
-        if hasattr(env, 'spec'):
-            timestep_limit = env.spec.timestep_limit
-        else:
-            timestep_limit = None
-        obs = env.reset()
-        done = False
-        test_r = 0
-        t = 0
-        while not (done or t == max_episode_len):
-            s = chainer.Variable(np.expand_dims(phi(obs), 0))
-            pout, _ = model.pi_and_v(s)
-            if greedy:
-                a = pout.most_probable.data[0]
-            else:
-                a = pout.sample().data[0]
-            obs, r, done, info = env.step(a)
-            test_r += r
-            t += 1
-            if timestep_limit is not None and t >= timestep_limit:
-                break
-        scores.append(test_r)
-        print('test_{}:'.format(i), test_r)
-    mean = statistics.mean(scores)
-    median = statistics.median(scores)
-    stdev = statistics.stdev(scores)
-    return mean, median, stdev
+    if eval_env is None:
+        eval_env = env
 
-
-def train_loop(process_idx, counter, make_env, max_score, eval_frequency,
-               eval_n_runs, agent, env, start_time, steps, outdir, max_episode_len=None):
     try:
 
         total_r = 0
@@ -82,6 +44,9 @@ def train_loop(process_idx, counter, make_env, max_score, eval_frequency,
                     print('{} global_t:{} local_t:{} lr:{} r:{}'.format(
                         outdir, global_t, local_t, agent.optimizer.lr,
                         episode_r))
+                if evaluator is not None:
+                    evaluator.evaluate_if_necessary(
+                        global_t, env=eval_env, agent=agent)
                 episode_r = 0
                 obs = env.reset()
                 r = 0
@@ -103,40 +68,13 @@ def train_loop(process_idx, counter, make_env, max_score, eval_frequency,
 
                 agent.optimizer.lr = (steps - global_t - 1) / steps * base_lr
 
-                if global_t % eval_frequency == 0:
-                    # Evaluation
-
-                    # We must use a copy of the model because test runs can change
-                    # the hidden states of the model
-                    test_model = copy.deepcopy(agent.model)
-                    test_model.reset_state()
-
-                    mean, median, stdev = eval_performance(
-                        process_idx, make_env, test_model, agent.phi,
-                        eval_n_runs, max_episode_len=max_episode_len)
-                    with open(os.path.join(outdir, 'scores.txt'), 'a+') as f:
-                        elapsed = time.time() - start_time
-                        record = (global_t, elapsed, mean, median, stdev)
-                        print('\t'.join(str(x) for x in record), file=f)
-                    with max_score.get_lock():
-                        if mean > max_score.value:
-                            # Save the best model so far
-                            print('The best score is updated {} -> {}'.format(
-                                max_score.value, mean))
-                            dirname = os.path.join(
-                                outdir, '{}.h5'.format(global_t))
-                            agent.save(dirname)
-                            print('Saved the current best model to {}'.format(
-                                dirname))
-                            max_score.value = mean
-
     except KeyboardInterrupt:
         if process_idx == 0:
             # Save the current model before being killed
-            agent.save_model(os.path.join(
-                outdir, '{}_keyboardinterrupt.h5'.format(global_t)))
-            print('Saved the current model to {}'.format(
-                outdir), file=sys.stderr)
+            dirname = os.path.join(outdir, '{}_except'.format(global_t))
+            agent.save(dirname)
+            print('Saved the current model to {}'.format(dirname),
+                  file=sys.stderr)
         raise
 
     if global_t == steps + 1:
@@ -146,13 +84,11 @@ def train_loop(process_idx, counter, make_env, max_score, eval_frequency,
         print('Saved the final model to {}'.format(dirname))
 
 
-def train_loop_with_profile(process_idx, counter, make_env, max_score,
-                            eval_frequency, eval_n_runs, agent, env,
-                            start_time, steps, outdir, max_episode_len=None):
+def train_loop_with_profile(process_idx, counter, agent, env,
+                            start_time, steps, outdir, max_episode_len=None,
+                            evaluator=None, eval_env=None):
     import cProfile
-    cmd = 'train_loop(process_idx, counter, make_env, max_score, ' \
-        'eval_frequency, eval_n_runs, agent, env, start_time, steps, ' \
-        'outdir, max_episode_len)'
+    cmd = 'train_loop(process_idx=process_idx, counter=counter, agent=agent, env=env, steps=steps, outdir=outdir, max_episode_len=max_episode_len, evaluator=evaluator)'
     cProfile.runctx(cmd, globals(), locals(),
                     'profile-{}.out'.format(os.getpid()))
 
@@ -172,7 +108,7 @@ def set_shared_objects(agent, shared_objects):
 def train_agent_async(outdir, processes, make_env, make_agent,
                       profile=False, steps=8 * 10 ** 7, eval_frequency=10 ** 6,
                       eval_n_runs=10, gamma=0.99, max_episode_len=None,
-                      args={}):
+                      step_offset=0):
     """
     Args:
       processes (int): Number of processes.
@@ -186,17 +122,16 @@ def train_agent_async(outdir, processes, make_env, make_agent,
     # Prevent numpy from using multiple threads
     os.environ['OMP_NUM_THREADS'] = '1'
 
-    max_score = mp.Value('f', np.finfo(np.float32).min)
     counter = mp.Value('l', 0)
-    start_time = time.time()
 
     agent0 = make_agent(0)
     shared_objects = extract_shared_objects_from_agent(agent0)
 
-    # Write a header line first
-    with open(os.path.join(outdir, 'scores.txt'), 'a+') as f:
-        column_names = ('steps', 'elapsed', 'mean', 'median', 'stdev')
-        print('\t'.join(column_names), file=f)
+    evaluator = AsyncEvaluator(
+        n_runs=eval_n_runs,
+        eval_frequency=eval_frequency, outdir=outdir,
+        max_episode_len=max_episode_len,
+        step_offset=step_offset)
 
     def run_func(process_idx):
         random_seed.set_random_seed(process_idx)
@@ -207,14 +142,25 @@ def train_agent_async(outdir, processes, make_env, make_agent,
         set_shared_objects(agent, shared_objects)
 
         if profile:
-            train_loop_with_profile(process_idx, counter, make_env, max_score,
-                                    eval_frequency, eval_n_runs, agent, env,
-                                    start_time, steps, outdir=outdir,
-                                    max_episode_len=max_episode_len)
+            train_loop_with_profile(
+                process_idx=process_idx,
+                counter=counter,
+                agent=agent,
+                env=env,
+                steps=steps,
+                outdir=outdir,
+                max_episode_len=max_episode_len,
+                evaluator=evaluator)
         else:
-            train_loop(process_idx, counter, make_env, max_score,
-                       eval_frequency, eval_n_runs, agent, env, start_time,
-                       steps, outdir=outdir, max_episode_len=max_episode_len)
+            train_loop(
+                process_idx=process_idx,
+                counter=counter,
+                agent=agent,
+                env=env,
+                steps=steps,
+                outdir=outdir,
+                max_episode_len=max_episode_len,
+                evaluator=evaluator)
 
     async.run_async(processes, run_func)
 
