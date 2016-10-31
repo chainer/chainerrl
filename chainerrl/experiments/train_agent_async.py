@@ -41,9 +41,9 @@ def eval_performance(process_idx, make_env, model, phi, n_runs, greedy=False, ma
             s = chainer.Variable(np.expand_dims(phi(obs), 0))
             pout, _ = model.pi_and_v(s)
             if greedy:
-                a = pout.most_probable_actions.data[0]
+                a = pout.most_probable.data[0]
             else:
-                a = pout.sampled_actions.data[0]
+                a = pout.sample().data[0]
             obs, r, done, info = env.step(a)
             test_r += r
             t += 1
