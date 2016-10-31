@@ -43,7 +43,6 @@ def train_agent(agent, env, steps, outdir, max_episode_len=None,
 
     episode_len = 0
     while t < steps:
-        print('t', t)
         try:
             episode_r += r
 
