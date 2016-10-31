@@ -50,9 +50,9 @@ def record_stats(outdir, values):
 
 
 def save_agent_model(agent, t, outdir, suffix=''):
-    filename = os.path.join(outdir, '{}{}.h5'.format(t, suffix))
-    agent.save_model(filename)
-    print('Saved the current model to {}'.format(filename))
+    dirname = os.path.join(outdir, '{}{}'.format(t, suffix))
+    agent.save(dirname)
+    print('Saved the current model to {}'.format(dirname))
 
 
 def update_best_model(agent, outdir, t, old_max_score, new_max_score):
