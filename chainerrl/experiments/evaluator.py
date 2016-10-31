@@ -119,9 +119,12 @@ class AsyncEvaluator(object):
         self.max_episode_len = max_episode_len
         self.explorer = explorer
         self.step_offset = step_offset
-        self.prev_eval_t = mp.Value('l', self.step_offset - self.step_offset % self.eval_frequency)
+
+        # Values below are shared among processes
+        self.prev_eval_t = mp.Value(
+            'l', self.step_offset - self.step_offset % self.eval_frequency)
         self.max_score = mp.Value('f', np.finfo(np.float32).min)
-        self.wrote_header = False
+        self.wrote_header = mp.Value('b', False)
 
         # Create scores.txt
         with open(os.path.join(self.outdir, 'scores.txt'), 'a'):
@@ -140,7 +143,6 @@ class AsyncEvaluator(object):
             self.max_score.value = mean
 
     def write_header(self, agent):
-        # Write a header line first
         with open(os.path.join(self.outdir, 'scores.txt'), 'w') as f:
             column_names = (('steps', 'elapsed', 'mean', 'median', 'stdev') +
                             agent.get_stats_keys())
@@ -150,12 +152,11 @@ class AsyncEvaluator(object):
         necessary = False
         with self.prev_eval_t.get_lock():
             if t >= self.prev_eval_t.value + self.eval_frequency:
-                print('prev_eval_t.value:', self.prev_eval_t.value)
                 necessary = True
-                # self.prev_eval_t.value = t - t % self.eval_frequency
                 self.prev_eval_t.value += self.eval_frequency
         if necessary:
-            if not self.wrote_header:
-                self.write_header(agent)
-                self.wrote_header = True
+            with self.wrote_header.get_lock():
+                if not self.wrote_header.value:
+                    self.write_header(agent)
+                    self.wrote_header.value = True
             self.evaluate_and_update_max_score(t, env, agent)
