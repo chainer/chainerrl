@@ -124,8 +124,9 @@ class NSQ(object):
         self.past_states[self.t] = statevar
         qout = self.q_function(statevar)
         if self.process_idx == 0:
-            logger.debug('t_global: %s t_local: %s action_value: %s',
-                         self.t_global.value, self.t, qout)
+            logger.debug(
+                't_global: %s t_local: %s obs: %s r: %s action_value: %s',
+                self.t_global.value, self.t, statevar.data.sum(), reward, qout)
         action = self.explorer.select_action(
             self.t, lambda: qout.greedy_actions.data[0])
         q = qout.evaluate_actions(np.asarray([action]))
