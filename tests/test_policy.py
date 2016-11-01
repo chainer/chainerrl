@@ -1,16 +1,9 @@
-from __future__ import unicode_literals
-from __future__ import print_function
-from __future__ import division
-from __future__ import absolute_import
-from builtins import range
-from future import standard_library
-standard_library.install_aliases()
 import unittest
 
 import numpy as np
 import chainer
 
-import policy
+from chainerrl import policy
 
 
 class TestFCSoftmaxPolicy(unittest.TestCase):
@@ -29,13 +22,14 @@ class TestFCSoftmaxPolicy(unittest.TestCase):
         state = chainer.Variable(np.random.rand(
             batch_size, self.n_input_channels).astype(np.float32))
         pout = self.policy(state)
-        self.assertEqual(len(pout.sampled_actions.data), batch_size)
-        self.assertEqual(pout.probs.data.shape, (batch_size, self.n_actions))
+        sample = pout.sample()
+        self.assertEqual(sample.data.shape[0], batch_size)
+        self.assertEqual(pout.all_prob.data.shape, (batch_size, self.n_actions))
         for i in range(batch_size):
-            self.assertGreaterEqual(pout.sampled_actions.data[i], 0)
-            self.assertLess(pout.sampled_actions.data[i], self.n_actions)
+            self.assertGreaterEqual(sample.data[i], 0)
+            self.assertLess(sample.data[i], self.n_actions)
             # Probability must be strictly larger than zero because it was
             # actually sampled
             for a in range(self.n_actions):
-                self.assertGreater(pout.probs.data[i, a], 0)
-                self.assertLessEqual(pout.probs.data[i, a], 1)
+                self.assertGreater(pout.all_prob.data[i, a], 0)
+                self.assertLessEqual(pout.all_prob.data[i, a], 1)

@@ -1,18 +1,20 @@
-# Drill
+# Chainer-RL
 
-Drill is a deep reinforcement learning library, still work-in-progress.
+Chainer-RL is a deep reinforcement learning library built on top of Chainer.
 
 ## Requirements
 
-Install via `pip install -r requirements.txt`.
-
-- Python 3.5.1+
-- Chainer 1.8.2+
+- Python 2.7.6+, 3.4.3+, 3.5.1+
+- Chainer 1.16.0+
 - cached-property
 - fastcache
 - h5py
 - statistics
 - future
+
+## Get started
+
+
 
 ## Agents
 
@@ -35,4 +37,9 @@ Additionally, following environments have been implemented in this library:
 
 ## How to use
 
+To get started,
+```
+pip install -r requirements.txt
+python setup.py develop
+```
 Please see the examples in the `examples` directory.

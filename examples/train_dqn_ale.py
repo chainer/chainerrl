@@ -13,23 +13,23 @@ from chainer import functions as F
 import numpy as np
 
 sys.path.append('..')
-from links import fc_tail_q_function
-from links import dqn_head
-from links import dqn_head_crelu
-from links.dueling_dqn import DuelingDQN
-from agents.dqn import DQN
-from agents.double_dqn import DoubleDQN
-from agents.pal import PAL
-from envs import ale
-import random_seed
-import replay_buffer
-from prepare_output_dir import prepare_output_dir
-from functions import oplu
-from init_like_torch import init_like_torch
+from chainerrl.links import fc_tail_q_function
+from chainerrl.links import dqn_head
+from chainerrl.links import dqn_head_crelu
+from chainerrl.links.dueling_dqn import DuelingDQN
+from chainerrl.agents.dqn import DQN
+from chainerrl.agents.double_dqn import DoubleDQN
+from chainerrl.agents.pal import PAL
+from chainerrl.envs import ale
+from chainerrl.misc import random_seed
+from chainerrl import replay_buffer
+from chainerrl.experiments.prepare_output_dir import prepare_output_dir
+from chainerrl.functions import oplu
+from chainerrl.misc.init_like_torch import init_like_torch
+from chainerrl.explorers.epsilon_greedy import LinearDecayEpsilonGreedy
+from chainerrl.explorers.epsilon_greedy import ConstantEpsilonGreedy
+from chainerrl.experiments.train_agent import train_agent_with_evaluation
 from dqn_phi import dqn_phi
-from explorers.epsilon_greedy import LinearDecayEpsilonGreedy
-from explorers.epsilon_greedy import ConstantEpsilonGreedy
-import run_dqn
 
 
 def parse_activation(activation_str):
@@ -143,7 +143,7 @@ def main():
 
     eval_explorer = ConstantEpsilonGreedy(
         5e-2, lambda: np.random.randint(n_actions))
-    run_dqn.run_dqn(
+    train_agent_with_evaluation(
         agent=agent, env=env, steps=args.steps,
         eval_n_runs=args.eval_n_runs, eval_frequency=args.eval_frequency,
         outdir=args.outdir, eval_explorer=eval_explorer,
