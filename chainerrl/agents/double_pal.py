@@ -9,7 +9,7 @@ import numpy as np
 from chainer import Variable
 from chainer import functions as F
 
-from . import pal
+from chainerrl.agents import pal
 
 
 class DoublePAL(pal.PAL):
@@ -38,7 +38,8 @@ class DoublePAL(pal.PAL):
         next_qout = self.q_function(batch_next_state, test=False)
 
         target_next_qout = self.target_q_function(batch_next_state, test=True)
-        next_q_max = target_next_qout.max
+        next_q_max = target_next_qout.evaluate_actions(
+            next_qout.greedy_actions)
         next_q_max.creator = None
 
         batch_rewards = self.xp.asarray(
@@ -52,10 +53,8 @@ class DoublePAL(pal.PAL):
         t_q = batch_rewards + self.gamma * (1.0 - batch_terminal) * next_q_max
 
         # T_PAL Q: persistent advantage learning operator
-        cur_advantage = target_qout.compute_double_advantage(
-            batch_actions, argmax_actions=qout.greedy_actions)
-        next_advantage = target_next_qout.compute_double_advantage(
-            batch_actions, argmax_actions=next_qout.greedy_actions)
+        cur_advantage = target_qout.compute_advantage(batch_actions)
+        next_advantage = target_next_qout.compute_advantage(batch_actions)
         tpal_q = t_q + self.alpha * F.maximum(cur_advantage, next_advantage)
 
         batch_q = F.reshape(batch_q, (batch_size, 1))
