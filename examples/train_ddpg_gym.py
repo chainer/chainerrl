@@ -98,10 +98,10 @@ def main():
     action_size = np.asarray(action_space.shape).prod()
     model = DDPGModel(
         q_func=q_function.FCBNSAQFunction(
-            obs_size, action_size, n_hidden_channels=200, n_hidden_layers=3),
+            obs_size, action_size, n_hidden_channels=300, n_hidden_layers=3),
         policy=policy.FCBNDeterministicPolicy(
             obs_size, action_size=action_size,
-            n_hidden_layers=2, n_hidden_channels=200,
+            n_hidden_layers=2, n_hidden_channels=300,
             min_action=-1, max_action=1, bound_action=True)
     )
     init_like_torch(model['q_function'])
@@ -112,6 +112,7 @@ def main():
     opt_c.setup(model['q_function'])
     opt_a.add_hook(chainer.optimizer.GradientClipping(1.0), 'hook_a')
     opt_c.add_hook(chainer.optimizer.GradientClipping(1.0), 'hook_c')
+    opt_c.add_hook(chainer.optimizer.WeightDecay(1e-4))
 
     rbuf = replay_buffer.ReplayBuffer(5 * 10 ** 5)
 
@@ -124,12 +125,12 @@ def main():
             a = a.astype(np.float32)
         return a
 
-    explorer = AdditiveGaussian(scale=args.start_epsilon)
+    explorer = AdditiveGaussian(scale=0.4)
     agent = DDPG(model, opt_a, opt_c, rbuf, gamma=args.gamma,
                  explorer=explorer, replay_start_size=args.replay_start_size,
                  target_update_frequency=args.target_update_frequency,
                  update_frequency=args.update_frequency,
-                 n_times_update=50,
+                 n_times_update=10,
                  phi=phi, gpu=args.gpu, minibatch_size=args.minibatch_size)
     agent.logger.setLevel(logging.DEBUG)
 
