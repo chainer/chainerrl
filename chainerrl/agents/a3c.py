@@ -35,6 +35,31 @@ class A3CModel(chainer.Link):
         pass
 
 
+class A3CSeparateModel(chainer.Chain, A3CModel):
+
+    def __init__(self, pi, v):
+        super().__init__(pi=pi, v=v)
+
+    def pi_and_v(self, obs, keep_same_state=False):
+        if keep_same_state:
+            self.pi.push_and_keep_state()
+            self.v.push_and_keep_state()
+        pout = self.pi(obs)
+        vout = self.v(obs)
+        if keep_same_state:
+            self.pi.pop_state()
+            self.v.pop_state()
+        return pout, vout
+
+    def reset_state(self):
+        self.pi.reset_state()
+        self.v.reset_state()
+
+    def unchain_backward(self):
+        self.pi.unchain_backward()
+        self.v.unchain_backward()
+
+
 class A3C(agent.Agent):
     """A3C: Asynchronous Advantage Actor-Critic.
 

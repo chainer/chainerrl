@@ -10,8 +10,8 @@ import chainer
 import chainer.functions as F
 from chainer import cuda
 
-from agents.dqn import DQN
-from functions import scale_grad
+from chainerrl.agents.dqn import DQN
+from chainerrl.functions import scale_grad
 
 
 class ResidualDQN(DQN):
@@ -62,3 +62,8 @@ class ResidualDQN(DQN):
             self._compute_target_values(experiences, gamma), (batch_size, 1))
 
         return batch_q, scale_grad.scale_grad(batch_q_target, self.grad_scale)
+
+    @property
+    def saved_attributes(self):
+        # ResidualDQN doesn't use target models
+        return ('model', 'optimizer')

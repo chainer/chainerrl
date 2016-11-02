@@ -11,13 +11,14 @@ import tempfile
 import unittest
 
 from chainer import optimizers
+from chainer import testing
 import numpy as np
 
 from chainerrl.agents import nsq
 from chainerrl import q_function
-from envs.simple_abc import ABC
+from chainerrl.envs.abc import ABC
 from chainerrl.experiments.train_agent_async import train_agent_async
-from explorers.epsilon_greedy import ConstantEpsilonGreedy
+from chainerrl.explorers.epsilon_greedy import ConstantEpsilonGreedy
 
 
 class TestNSQ(unittest.TestCase):
@@ -26,6 +27,7 @@ class TestNSQ(unittest.TestCase):
         self.outdir = tempfile.mkdtemp()
         logging.basicConfig(level=logging.DEBUG)
 
+    @testing.attr.slow
     def test_abc(self):
         self._test_abc(1)
         self._test_abc(5)

@@ -14,8 +14,8 @@ from chainer import functions as F
 from chainerrl.agents import dqn
 
 
-class PAL(dqn.DQN):
-    """Persistent Advantage Learning.
+class AL(dqn.DQN):
+    """Advantage Learning.
 
     See: http://arxiv.org/abs/1512.04860.
     """
@@ -65,13 +65,12 @@ class PAL(dqn.DQN):
         # T Q: Bellman operator
         t_q = batch_rewards + self.gamma * (1.0 - batch_terminal) * next_q_max
 
-        # T_PAL Q: persistent advantage learning operator
+        # T_AL Q: advantage learning operator
         cur_advantage = target_qout.compute_advantage(batch_actions)
-        next_advantage = target_next_qout.compute_advantage(batch_actions)
-        tpal_q = t_q + self.alpha * F.maximum(cur_advantage, next_advantage)
+        tal_q = t_q + self.alpha * cur_advantage
 
         batch_q = F.reshape(batch_q, (batch_size, 1))
-        tpal_q = F.reshape(tpal_q, (batch_size, 1))
-        tpal_q.creator = None
+        tal_q = F.reshape(tal_q, (batch_size, 1))
+        tal_q.creator = None
 
-        return batch_q, tpal_q
+        return batch_q, tal_q

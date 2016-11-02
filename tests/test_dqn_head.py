@@ -11,9 +11,10 @@ import numpy as np
 import chainer
 from chainer import optimizers
 from chainer import functions as F
+from chainer import testing
 
 from chainerrl.links import dqn_head
-from chainerrl import policy
+from chainerrl import policies
 from chainerrl.links import fc_tail_q_function
 from chainerrl.links import fc_tail_v_function
 
@@ -43,6 +44,7 @@ class _TestDQNHead(unittest.TestCase):
         # return optimizers.RMSpropOnes(lr=1e-3, eps=1e-1)
         return optimizers.Adam()
 
+    @testing.attr.slow
     def test_v_function(self):
         head = self.create_head()
         v_func = fc_tail_v_function.FCTailVFunction(
@@ -68,6 +70,7 @@ class _TestDQNHead(unittest.TestCase):
         self.assertAlmostEqual(va, 1.0, places=3)
         self.assertAlmostEqual(vb, 0.0, places=3)
 
+    @testing.attr.slow
     def test_q_function(self):
         n_actions = 3
         head = self.create_head()
@@ -95,10 +98,11 @@ class _TestDQNHead(unittest.TestCase):
         self.assertAlmostEqual(qa, 1.0, places=3)
         self.assertAlmostEqual(qb, 0.0, places=3)
 
+    @testing.attr.slow
     def test_policy(self):
         n_actions = 3
         head = self.create_head()
-        pi = policy.FCSoftmaxPolicy(head.n_output_channels, n_actions)
+        pi = policies.FCSoftmaxPolicy(head.n_output_channels, n_actions)
         opt = self.create_optimizer()
         opt.setup(chainer.ChainList(head, pi))
         a, b = generate_different_two_states()

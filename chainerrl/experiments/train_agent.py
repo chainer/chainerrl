@@ -34,6 +34,7 @@ def train_agent(agent, env, steps, outdir, max_episode_len=None,
     episode_r = 0
     episode_idx = 0
 
+    # o_0, r_0
     obs = env.reset()
     r = 0
     done = False
@@ -42,9 +43,16 @@ def train_agent(agent, env, steps, outdir, max_episode_len=None,
     agent.t = step_offset
 
     episode_len = 0
-    while t < steps:
-        try:
+    try:
+        while t < steps:
+
+            # a_t
+            action = agent.act_and_train(obs, r)
+            # o_{t+1}, r_{t+1}
+            obs, r, done, info = env.step(action)
+            t += 1
             episode_r += r
+            episode_len += 1
 
             if done or episode_len == max_episode_len:
                 agent.stop_episode_and_train(obs, r, done=done)
@@ -59,16 +67,11 @@ def train_agent(agent, env, steps, outdir, max_episode_len=None,
                 obs = env.reset()
                 r = 0
                 done = False
-            else:
-                action = agent.act_and_train(obs, r)
-                obs, r, done, info = env.step(action)
-                t += 1
-                episode_len += 1
 
-        except:
-            # Save the current model before being killed
-            save_agent(agent, t, outdir, suffix='_except')
-            raise
+    except:
+        # Save the current model before being killed
+        save_agent(agent, t, outdir, suffix='_except')
+        raise
 
     # Save the final model
     save_agent(agent, t, outdir, suffix='_finish')
@@ -77,7 +80,7 @@ def train_agent(agent, env, steps, outdir, max_episode_len=None,
 def train_agent_with_evaluation(
         agent, env, steps, eval_n_runs, eval_frequency,
         outdir, max_episode_len=None, step_offset=0, eval_explorer=None,
-        eval_env=None):
+        eval_max_episode_len=None, eval_env=None):
     """
     Run a DQN-like agent.
 
@@ -97,10 +100,13 @@ def train_agent_with_evaluation(
     if eval_env is None:
         eval_env = env
 
+    if eval_max_episode_len is None:
+        eval_max_episode_len = max_episode_len
+
     evaluator = Evaluator(agent=agent,
                           n_runs=eval_n_runs,
                           eval_frequency=eval_frequency, outdir=outdir,
-                          max_episode_len=max_episode_len,
+                          max_episode_len=eval_max_episode_len,
                           explorer=eval_explorer,
                           env=eval_env,
                           step_offset=step_offset)

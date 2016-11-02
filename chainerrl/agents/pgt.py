@@ -14,7 +14,7 @@ import chainer.functions as F
 from chainer import cuda
 from chainer import serializers
 
-from . import dqn
+from chainerrl.agents import dqn
 
 
 class PGT(dqn.DQN):
@@ -67,8 +67,8 @@ class PGT(dqn.DQN):
 
         # Update Q-function
         def compute_critic_loss():
-            next_actions = self.target_policy(
-                batch_next_state, test=True).sampled_actions
+            pout = self.target_policy(batch_next_state, test=True)
+            next_actions = pout.sample()
             next_q = self.target_q_function(batch_next_state, next_actions,
                                             test=True)
 
@@ -89,10 +89,11 @@ class PGT(dqn.DQN):
 
         def compute_actor_loss():
             pout = self.policy(batch_state, test=False)
-            q = self.q_function(batch_state, pout.sampled_actions, test=True)
-            log_probs = pout.sampled_actions_log_probs
+            sampled_actions = pout.sample()
+            q = self.q_function(batch_state, sampled_actions, test=True)
+            log_probs = pout.log_prob(sampled_actions)
             v = self.q_function(
-                batch_state, pout.most_probable_actions, test=True)
+                batch_state, pout.most_probable, test=True)
             advantage = F.reshape(q - v, (batch_size,))
             advantage = chainer.Variable(advantage.data)
             loss = - F.sum(advantage * log_probs + self.beta * pout.entropy) \
@@ -108,10 +109,10 @@ class PGT(dqn.DQN):
         self.critic_optimizer.update(compute_critic_loss)
         self.actor_optimizer.update(compute_actor_loss)
 
-    def select_greedy_action(self, state):
+    def act(self, state):
 
         s = self._batch_states([state])
-        action = self.policy(s, test=True).sampled_actions
+        action = self.policy(s, test=True).sample()
         # Q is not needed here, but log it just for information
         q = self.q_function(s, action, test=True)
 
@@ -125,7 +126,7 @@ class PGT(dqn.DQN):
 
     def select_action(self, state):
         return self.explorer.select_action(
-            self.t, lambda: self.select_greedy_action(state))
+            self.t, lambda: self.act(state))
 
     def save_model(self, model_filename):
         """Save a network model to a file."""
@@ -159,3 +160,7 @@ class PGT(dqn.DQN):
 
     def get_stats_values(self):
         return (self.average_q, self.average_actor_loss, self.average_critic_loss)
+
+    @property
+    def saved_attributes(self):
+        return ('model', 'target_model', 'actor_optimizer', 'critic_optimizer')

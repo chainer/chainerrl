@@ -14,7 +14,7 @@ import sys
 from PIL import Image
 import numpy as np
 
-from envs import ale
+from chainerrl.envs import ale
 
 
 class TestALE(unittest.TestCase):

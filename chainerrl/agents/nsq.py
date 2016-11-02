@@ -16,8 +16,8 @@ import chainer
 from chainer import functions as F
 from chainer import serializers
 
-import copy_param
-import async
+from chainerrl.misc import copy_param
+from chainerrl.misc import async
 from chainerrl.misc.makedirs import makedirs
 
 

@@ -11,18 +11,19 @@ import unittest
 import chainer
 from chainer import cuda
 from chainer import optimizers
+from chainer import testing
 import numpy as np
 
-from q_function import FCSAQFunction
-from q_function import FCBNLateActionSAQFunction
-from policy import FCGaussianPolicy
-from policy import FCBNDeterministicPolicy
-import random_seed
-from envs.simple_abc import ABC
-from explorers.epsilon_greedy import LinearDecayEpsilonGreedy
-from explorers.epsilon_greedy import ConstantEpsilonGreedy
-import replay_buffer
-from agents.pgt import PGT
+from chainerrl.q_function import FCSAQFunction
+from chainerrl.q_function import FCBNLateActionSAQFunction
+from chainerrl.policies import FCGaussianPolicy
+from chainerrl.policies import FCBNDeterministicPolicy
+from chainerrl.misc import random_seed
+from chainerrl.envs.abc import ABC
+from chainerrl.explorers.epsilon_greedy import LinearDecayEpsilonGreedy
+from chainerrl.explorers.epsilon_greedy import ConstantEpsilonGreedy
+from chainerrl import replay_buffer
+from chainerrl.agents.pgt import PGT
 
 
 class TestPGT(unittest.TestCase):
@@ -94,7 +95,7 @@ class TestPGT(unittest.TestCase):
             total_r += reward
 
             if done:
-                agent.observe_terminal(obs, reward)
+                agent.stop_episode_and_train(obs, reward, done=done)
                 print(('t:{} explorer:{} episode_r:{}'.format(
                     t, agent.explorer, episode_r)))
                 episode_r = 0
@@ -102,7 +103,7 @@ class TestPGT(unittest.TestCase):
                 done = False
                 reward = 0.0
             else:
-                action = agent.act(obs, reward)
+                action = agent.act_and_train(obs, reward)
                 obs, reward, done, _ = env.step(action)
                 t += 1
 
@@ -115,15 +116,18 @@ class TestPGT(unittest.TestCase):
             s = np.expand_dims(obs, 0)
             if gpu >= 0:
                 s = cuda.to_gpu(s, device=gpu)
-            action = policy(chainer.Variable(s), test=True).sampled_actions.data[0]
+            action = policy(chainer.Variable(
+                s), test=True).sampled_actions.data[0]
             if isinstance(action, cuda.cupy.ndarray):
                 action = cuda.to_cpu(action)
             obs, reward, done, _ = env.step(action)
             total_r += reward
         self.assertAlmostEqual(total_r, 1)
 
+    @testing.attr.slow
     def test_abc_continuous_gpu(self):
         self._test_abc(0)
 
+    @testing.attr.slow
     def test_abc_continuous_cpu(self):
         self._test_abc(-1)

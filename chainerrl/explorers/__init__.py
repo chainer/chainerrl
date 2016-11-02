@@ -1,10 +1,4 @@
-from __future__ import unicode_literals
-from __future__ import print_function
-from __future__ import division
-from __future__ import absolute_import
-from future import standard_library
-standard_library.install_aliases()
-class ExplorationStrategy(object):
-
-    def select_action(self, t, greedy_action_func):
-        pass
+from chainerrl.explorers.epsilon_greedy import ConstantEpsilonGreedy
+from chainerrl.explorers.epsilon_greedy import LinearDecayEpsilonGreedy
+from chainerrl.explorers.additive_gaussian import AdditiveGaussian
+from chainerrl.explorers.additive_ou import AdditiveOU

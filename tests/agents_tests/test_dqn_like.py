@@ -8,12 +8,13 @@ import os
 import tempfile
 
 from chainer import optimizers
+from chainer import testing
 import numpy as np
 
 from chainerrl.q_function import FCSIQFunction
 from chainerrl.q_function import FCSIContinuousQFunction
 from chainerrl.q_function import FCLSTMStateQFunction
-from chainerrl.envs.simple_abc import ABC
+from chainerrl.envs.abc import ABC
 from chainerrl.explorers.epsilon_greedy import LinearDecayEpsilonGreedy
 from chainerrl import replay_buffer
 from test_training import _TestTraining
@@ -45,10 +46,12 @@ class _TestDQNLike(_TestTraining):
     def make_replay_buffer(self, env):
         raise NotImplementedError()
 
+    @testing.attr.slow
     def test_training_gpu(self):
         self._test_training(0, steps=1000)
         self._test_training(0, steps=300, load_model=True)
 
+    @testing.attr.slow
     def test_training_cpu(self):
         self._test_training(-1, steps=1000)
 

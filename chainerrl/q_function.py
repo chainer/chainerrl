@@ -17,13 +17,15 @@ from chainer import links as L
 from chainer import cuda
 
 from chainerrl.links.mlp_bn import MLPBN
+from chainerrl.links.mlp_wn import MLPWN
 from chainerrl.links.mlp import MLP
 from chainerrl.action_value import DiscreteActionValue
 from chainerrl.action_value import QuadraticActionValue
 from chainerrl.functions.lower_triangular_matrix import lower_triangular_matrix
+from chainerrl import stateful_callable
 
 
-class QFunction(with_metaclass(ABCMeta, object)):
+class QFunction(stateful_callable.StatefulCallable):
 
     def push_state(self):
         pass
@@ -43,6 +45,21 @@ class QFunction(with_metaclass(ABCMeta, object)):
         Unlike __call__, stateless QFunctions would do nothing.
         """
         pass
+
+
+class StateQFunctionWithDiscreteAction(chainer.Chain, QFunction):
+    """Fully-connected state-input (discrete) Q-function."""
+
+    def __init__(self, link, forward_func=None):
+        self.forward_func = forward_func
+        super().__init__(link=link)
+
+    def __call__(self, obs, test=False):
+        if self.forward_func is not None:
+            h = self.forward_func(link, obs, test=test)
+        else:
+            h = self.link(obs)
+        return DiscreteActionValue(h)
 
 
 class FCSIQFunction(chainer.ChainList, QFunction):
@@ -67,9 +84,60 @@ class FCSIQFunction(chainer.ChainList, QFunction):
     def __call__(self, state, test=False):
         h = state
         for layer in self[:-1]:
-            h = F.elu(layer(h))
+            h = F.relu(layer(h))
         h = self[-1](h)
         return DiscreteActionValue(h)
+
+
+class FCBNStateQFunction(MLPBN, QFunction):
+    """Fully-connected state-input continuous Q-function."""
+
+    def __init__(self, n_input_channels, n_actions, n_hidden_channels,
+                 n_hidden_layers, normalize_input=True):
+        """
+        Args:
+          n_input_channels: number of dimensions of observation space
+          n_actions: number of discrete actions
+          n_hidden_channels: number of hidden channels
+          n_hidden_layers: number of hidden layers
+        """
+
+        self.n_input_channels = n_input_channels
+        self.n_hidden_layers = n_hidden_layers
+        self.n_hidden_channels = n_hidden_channels
+        self.normalize_input = normalize_input
+        super().__init__(
+            in_size=self.n_input_channels, out_size=n_actions,
+            hidden_sizes=[self.n_hidden_channels] * self.n_hidden_layers,
+            normalize_input=self.normalize_input)
+
+    def __call__(self, x, test=False):
+        return DiscreteActionValue(super().__call__(x, test=test))
+
+
+class FCWNStateQFunction(MLPWN, QFunction):
+    """Fully-connected state-input continuous Q-function."""
+
+    def __init__(self, n_input_channels, n_actions, n_hidden_channels,
+                 n_hidden_layers, normalize_input=True):
+        """
+        Args:
+          n_input_channels: number of dimensions of observation space
+          n_actions: number of discrete actions
+          n_hidden_channels: number of hidden channels
+          n_hidden_layers: number of hidden layers
+        """
+
+        self.n_input_channels = n_input_channels
+        self.n_hidden_layers = n_hidden_layers
+        self.n_hidden_channels = n_hidden_channels
+        self.normalize_input = normalize_input
+        super().__init__(
+            in_size=self.n_input_channels, out_size=n_actions,
+            hidden_sizes=[self.n_hidden_channels] * self.n_hidden_layers)
+
+    def __call__(self, x, test=False):
+        return DiscreteActionValue(super().__call__(x, test=test))
 
 
 class FCLSTMStateQFunction(chainer.Chain, QFunction):

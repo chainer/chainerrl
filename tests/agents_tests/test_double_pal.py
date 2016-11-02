@@ -4,8 +4,9 @@ from __future__ import division
 from __future__ import absolute_import
 from future import standard_library
 standard_library.install_aliases()
-from agents.double_pal import DoublePAL
-import replay_buffer
+
+from chainerrl.agents.double_pal import DoublePAL
+from chainerrl import replay_buffer
 from test_dqn_like import _TestDQNLike
 
 

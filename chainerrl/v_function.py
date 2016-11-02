@@ -6,13 +6,34 @@ from builtins import super
 from builtins import range
 from future import standard_library
 standard_library.install_aliases()
+
 import chainer
 from chainer import functions as F
 from chainer import links as L
 
+from chainerrl import stateful_callable
 
-class VFunction(object):
-    pass
+
+class VFunction(stateful_callable.StatefulCallable):
+
+    def push_state(self):
+        pass
+
+    def pop_state(self):
+        pass
+
+    def reset_state(self):
+        pass
+
+    def push_and_keep_state(self):
+        pass
+
+    def update_state(self, x, test=False):
+        """Update its state so that it reflects x and a.
+
+        Unlike __call__, stateless QFunctions would do nothing.
+        """
+        pass
 
 
 class FCVFunction(chainer.ChainList, VFunction):

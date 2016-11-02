@@ -5,10 +5,10 @@ from __future__ import absolute_import
 from future import standard_library
 standard_library.install_aliases()
 
-from agents.dpp import DPP
-from agents.dpp import DPPL
-from agents.dpp import DPPGreedy
-import replay_buffer
+from chainerrl.agents.dpp import DPP
+from chainerrl.agents.dpp import DPPL
+from chainerrl.agents.dpp import DPPGreedy
+from chainerrl import replay_buffer
 from test_dqn_like import _TestDQNLike
 
 

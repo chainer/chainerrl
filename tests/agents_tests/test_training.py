@@ -10,6 +10,7 @@ import unittest
 import logging
 
 from chainer import cuda
+from chainer import testing
 
 from chainerrl.misc import random_seed
 from chainerrl.experiments import train_agent
@@ -66,9 +67,11 @@ class _TestTraining(unittest.TestCase):
         agent.save(self.agent_dirname)
         agent.replay_buffer.save(self.rbuf_filename)
 
+    @testing.attr.slow
     def test_training_gpu(self):
         self._test_training(0, steps=3000)
         self._test_training(0, steps=300, load_model=True)
 
+    @testing.attr.slow
     def test_training_cpu(self):
         self._test_training(-1, steps=3000)

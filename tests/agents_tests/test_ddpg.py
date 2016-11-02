@@ -12,7 +12,7 @@ from chainerrl.q_function import FCBNLateActionSAQFunction
 from chainerrl.q_function import FCLSTMSAQFunction
 from chainerrl.policy import FCBNDeterministicPolicy
 from chainerrl.policy import FCLSTMDeterministicPolicy
-from chainerrl.envs.simple_abc import ABC
+from chainerrl.envs.abc import ABC
 from chainerrl.explorers.epsilon_greedy import LinearDecayEpsilonGreedy
 from chainerrl import replay_buffer
 from chainerrl.agents.ddpg import DDPG

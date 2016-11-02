@@ -3,7 +3,7 @@ import unittest
 import numpy as np
 import chainer
 
-from chainerrl import policy
+from chainerrl import policies
 
 
 class TestFCSoftmaxPolicy(unittest.TestCase):
@@ -13,7 +13,7 @@ class TestFCSoftmaxPolicy(unittest.TestCase):
         self.n_actions = 3
         self.n_hidden_layers = 2
         self.n_hidden_channels = 100
-        self.policy = policy.FCSoftmaxPolicy(
+        self.policy = policies.FCSoftmaxPolicy(
             self.n_input_channels, self.n_actions, self.n_hidden_channels,
             self.n_hidden_layers)
 
@@ -24,7 +24,8 @@ class TestFCSoftmaxPolicy(unittest.TestCase):
         pout = self.policy(state)
         sample = pout.sample()
         self.assertEqual(sample.data.shape[0], batch_size)
-        self.assertEqual(pout.all_prob.data.shape, (batch_size, self.n_actions))
+        self.assertEqual(pout.all_prob.data.shape,
+                         (batch_size, self.n_actions))
         for i in range(batch_size):
             self.assertGreaterEqual(sample.data[i], 0)
             self.assertLess(sample.data[i], self.n_actions)

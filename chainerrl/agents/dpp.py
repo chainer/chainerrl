@@ -15,7 +15,7 @@ import chainer.functions as F
 from chainer import cuda
 import numpy as np
 
-from agents.dqn import DQN
+from chainerrl.agents.dqn import DQN
 
 
 class AbstractDPP(with_metaclass(ABCMeta, DQN)):
@@ -57,21 +57,26 @@ class AbstractDPP(with_metaclass(ABCMeta, DQN)):
 
         batch_actions = chainer.Variable(
             xp.asarray([elem['action'] for elem in experiences]))
+        # Q(s_t,a_t)
         batch_q = F.reshape(qout.evaluate_actions(
             batch_actions), (batch_size, 1))
 
         # Compute target values
         target_qout = self.target_q_function(batch_state, test=True)
 
+        # Q'(s_t,a_t)
         target_q = F.reshape(target_qout.evaluate_actions(
             batch_actions), (batch_size, 1))
 
+        # LQ'(s_t,a)
         target_q_expect = F.reshape(
             self._l_operator(target_qout), (batch_size, 1))
 
+        # r + g * LQ'(s_{t+1},a)
         batch_q_target = F.reshape(
             self._compute_target_values(experiences, gamma), (batch_size, 1))
 
+        # Q'(s_t,a_t) + r + g * LQ'(s_{t+1},a) - LQ'(s_t,a)
         t = target_q + batch_q_target - target_q_expect
         t.creator = None
 
