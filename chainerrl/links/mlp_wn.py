@@ -1,0 +1,47 @@
+from __future__ import division
+from __future__ import unicode_literals
+from __future__ import print_function
+from __future__ import absolute_import
+from builtins import super
+from builtins import range
+from future import standard_library
+standard_library.install_aliases()
+import random
+
+import numpy as np
+import chainer
+from chainer import functions as F
+from chainer import links as L
+from chainer import cuda
+
+from chainerrl.links.wn_linear import WNLinear
+
+
+class MLPWN(chainer.Chain):
+    """Multi-Layer Perceptron"""
+
+    def __init__(self, in_size, out_size, hidden_sizes):
+        self.in_size = in_size
+        self.out_size = out_size
+        self.hidden_sizes = hidden_sizes
+
+        layers = {}
+
+        if hidden_sizes:
+            hidden_layers = []
+            hidden_layers.append(L.Linear(in_size, hidden_sizes[0]))
+            for hin, hout in zip(hidden_sizes, hidden_sizes[1:]):
+                hidden_layers.append(WNLinear(hin, hout))
+            layers['hidden_layers'] = chainer.ChainList(*hidden_layers)
+            layers['output'] = WNLinear(hidden_sizes[-1], out_size)
+        else:
+            layers['output'] = WNLinear(in_size, out_size)
+
+        super().__init__(**layers)
+
+    def __call__(self, x, test=False):
+        h = x
+        if self.hidden_sizes:
+            for l in self.hidden_layers:
+                h = F.relu(l(h))
+        return self.output(h)
