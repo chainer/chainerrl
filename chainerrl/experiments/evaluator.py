@@ -18,7 +18,6 @@ import numpy as np
 
 def eval_performance(env, agent, n_runs, max_episode_len=None,
                      explorer=None):
-    assert n_runs > 1, 'Computing stdev requires at least two runs'
     scores = []
     for i in range(n_runs):
         obs = env.reset()
@@ -42,7 +41,10 @@ def eval_performance(env, agent, n_runs, max_episode_len=None,
         print('test_{}:'.format(i), test_r)
     mean = statistics.mean(scores)
     median = statistics.median(scores)
-    stdev = statistics.stdev(scores)
+    if n_runs >= 2:
+        stdev = statistics.stdev(scores)
+    else:
+        stdev = 0.
     return mean, median, stdev
 
 
