@@ -139,7 +139,7 @@ def main():
                   batch_accumulator='sum', phi=dqn_phi)
 
     if len(args.model) > 0:
-        agent.load_model(args.model)
+        agent.load(args.model)
 
     eval_explorer = ConstantEpsilonGreedy(
         5e-2, lambda: np.random.randint(n_actions))

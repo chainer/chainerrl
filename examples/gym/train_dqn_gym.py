@@ -128,7 +128,7 @@ def main():
     agent.logger.setLevel(logging.DEBUG)
 
     if len(args.model) > 0:
-        agent.load_model(args.model)
+        agent.load(args.model)
 
     eval_env = make_env(for_eval=True)
 
