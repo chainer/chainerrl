@@ -132,7 +132,9 @@ class PGT(dqn.DQN):
         return ('average_q', 'average_actor_loss', 'average_critic_loss')
 
     def get_stats_values(self):
-        return (self.average_q, self.average_actor_loss, self.average_critic_loss)
+        return (self.average_q,
+                self.average_actor_loss,
+                self.average_critic_loss)
 
     @property
     def saved_attributes(self):
