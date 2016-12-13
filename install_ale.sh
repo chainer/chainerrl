@@ -40,4 +40,9 @@ fi
 if [ ! -e pong.bin ]; then
   ln -s ROMS/Video\ Olympics\ -\ Pong\ Sports\ \(Paddle\)\ \(1977\)\ \(Atari\,\ Joe\ Decuir\ -\ Sears\)\ \(CX2621\ -\ 99806\,\ 6-99806\,\ 49-75104\)\ ~.bin pong.bin
 fi
-ln -s ROMS/Breakout\ -\ Breakaway\ IV\ \(Paddle\)\ \(1978\)\ \(Atari\,\ Brad\ Stewart\ -\ Sears\)\ \(CX2622\ -\ 6-99813\,\ 49-75107\)\ ~.bin breakout.bin
+if [ ! -e breakout.bin ]; then
+  ln -s ROMS/Breakout\ -\ Breakaway\ IV\ \(Paddle\)\ \(1978\)\ \(Atari\,\ Brad\ Stewart\ -\ Sears\)\ \(CX2622\ -\ 6-99813\,\ 49-75107\)\ ~.bin breakout.bin
+fi
+if [ ! -e seaquest.bin ]; then
+  ln -s ROMS/Seaquest\ \(1983\)\ \(Activision\,\ Steve\ Cartwright\)\ \(AX-022\)\ ~.bin seaquest.bin
+fi
