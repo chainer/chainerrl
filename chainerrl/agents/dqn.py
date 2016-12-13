@@ -430,7 +430,8 @@ class DQN(agent.Agent):
     def stop_episode(self):
         self.last_state = None
         self.last_action = None
-        self.model.reset_state()
+        if hasattr(self.model, 'reset_state'):
+            self.model.reset_state()
         self.replay_buffer.stop_current_episode()
 
     def get_stats_keys(self):
