@@ -116,8 +116,7 @@ class TestPGT(unittest.TestCase):
             s = np.expand_dims(obs, 0)
             if gpu >= 0:
                 s = cuda.to_gpu(s, device=gpu)
-            action = policy(chainer.Variable(
-                s), test=True).sampled_actions.data[0]
+            action = policy(chainer.Variable(s), test=True).sample().data[0]
             if isinstance(action, cuda.cupy.ndarray):
                 action = cuda.to_cpu(action)
             obs, reward, done, _ = env.step(action)
