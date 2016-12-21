@@ -17,6 +17,8 @@ from chainer import functions as F
 from cached_property import cached_property
 import numpy as np
 
+from chainerrl.functions import mellowmax
+
 
 def _wrap_by_variable(x):
     if isinstance(x, chainer.Variable):
@@ -119,25 +121,53 @@ class CategoricalDistribution(Distribution):
 class SoftmaxDistribution(CategoricalDistribution):
     """Softmax distribution."""
 
-    def __init__(self, logits):
+    def __init__(self, logits, beta=1.0):
         """
         Args:
             logits (ndarray or chainer.Variable): Logits for softmax
                 distribution.
         """
         self.logits = logits
+        self.beta = 1.0
 
     @cached_property
     def all_prob(self):
-        return F.softmax(self.logits)
+        return F.softmax(self.beta * self.logits)
 
     @cached_property
     def all_log_prob(self):
-        return F.log_softmax(self.logits)
+        return F.log_softmax(self.beta * self.logits)
 
     def __repr__(self):
-        return 'SoftmaxDistribution logits:{} probs:{} entropy:{}'.format(
-            self.logits.data, self.all_prob.data, self.entropy.data)
+        return 'SoftmaxDistribution(beta={}) logits:{} probs:{} entropy:{}'.format(
+            self.beta, self.logits.data, self.all_prob.data, self.entropy.data)
+
+
+class MellowmaxDistribution(CategoricalDistribution):
+    """Maximum entropy mellowmax distribution.
+
+    See: http://arxiv.org/abs/1612.05628
+    """
+
+    def __init__(self, values, omega=8.):
+        """
+        Args:
+            values (ndarray or chainer.Variable): Values to apply mellowmax.
+        """
+        self.values = values
+        self.omega = omega
+
+    @cached_property
+    def all_prob(self):
+        return mellowmax.maximum_entropy_mellowmax(self.values)
+
+    @cached_property
+    def all_log_prob(self):
+        return F.log(self.all_prob)
+
+    def __repr__(self):
+        return 'MellowmaxDistribution(omega={}) values:{} probs:{} entropy:{}'.format(
+            self.omega, self.values.data, self.all_prob.data, self.entropy.data)
 
 
 def clip_actions(actions, min_action, max_action):

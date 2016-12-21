@@ -44,6 +44,10 @@ def maximum_entropy_mellowmax(values, omega=1., beta_min=-5, beta_max=5):
             Input values. Mellowmax is taken along the second axis.
         omega (float):
             Parameter of mellowmax.
+        beta_min (float):
+            Minimum value of beta, used in Brent's algorithm.
+        beta_max (float):
+            Maximum value of beta, used in Brent's algorithm.
     Returns:
         outputs (Variable)
     """

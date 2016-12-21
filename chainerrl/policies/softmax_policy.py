@@ -4,65 +4,51 @@ from __future__ import division
 from __future__ import absolute_import
 from builtins import *
 from future import standard_library
-from future.utils import with_metaclass
 standard_library.install_aliases()
 
 from logging import getLogger
 logger = getLogger(__name__)
 
-from abc import ABCMeta
-from abc import abstractmethod
-
 import chainer
-from chainer import cuda
-from chainer import functions as F
-from chainer import links as L
 
-from chainerrl.links.mlp_bn import MLPBN
 from chainerrl.links.mlp import MLP
 from chainerrl import distribution
 from chainerrl import policy
 
 
-class SoftmaxPolicy(policy.Policy):
-    """Abstract softmax policy."""
+class SoftmaxPolicy(chainer.Chain, policy.Policy):
+    """Softmax policy that uses Boltzmann distributions.
 
-    @abstractmethod
-    def compute_logits(self, state):
-        """
-        Returns:
-          ~chainer.Variable: logits of actions
-        """
-        raise NotImplementedError()
+    Args:
+        model (chainer.Link):
+            Link that is callable and outputs action values.
+        beta (float):
+            Parameter of Boltzmann distributions.
+    """
 
-    def __call__(self, state):
-        return distribution.SoftmaxDistribution(self.compute_logits(state))
+    def __init__(self, model, beta=1.0):
+        self.beta = beta
+        super().__init__(model=model)
+
+    def __call__(self, x, test=False):
+        h = self.model(x, test=test)
+        return distribution.SoftmaxDistribution(h, beta=self.beta)
 
 
-class FCSoftmaxPolicy(chainer.ChainList, SoftmaxPolicy):
+class FCSoftmaxPolicy(SoftmaxPolicy):
     """Softmax policy that consists of FC layers and rectifiers"""
 
     def __init__(self, n_input_channels, n_actions,
-                 n_hidden_layers=0, n_hidden_channels=None):
+                 n_hidden_layers=0, n_hidden_channels=None,
+                 beta=1.0):
         self.n_input_channels = n_input_channels
         self.n_actions = n_actions
         self.n_hidden_layers = n_hidden_layers
         self.n_hidden_channels = n_hidden_channels
+        self.beta = beta
 
-        layers = []
-        if n_hidden_layers > 0:
-            layers.append(L.Linear(n_input_channels, n_hidden_channels))
-            for i in range(n_hidden_layers - 1):
-                layers.append(L.Linear(n_hidden_channels, n_hidden_channels))
-            layers.append(L.Linear(n_hidden_channels, n_actions))
-        else:
-            layers.append(L.Linear(n_input_channels, n_actions))
-
-        super(FCSoftmaxPolicy, self).__init__(*layers)
-
-    def compute_logits(self, state):
-        h = state
-        for layer in self[:-1]:
-            h = F.relu(layer(h))
-        h = self[-1](h)
-        return h
+        super().__init__(
+            model=MLP(n_input_channels,
+                      n_actions,
+                      (n_hidden_channels,) * n_hidden_layers),
+            beta=self.beta)
