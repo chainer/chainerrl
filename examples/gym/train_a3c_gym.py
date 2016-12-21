@@ -6,28 +6,52 @@ from builtins import super
 from future import standard_library
 standard_library.install_aliases()
 import argparse
-import sys
 
-import chainer
-from chainer import links as L
 from chainer import functions as F
+from chainer import links as L
+import chainer
 import gym
 import numpy as np
 
-sys.path.append('..')
-import policy
-import v_function
-from agents import a3c
-import random_seed
-import rmsprop_async
-from prepare_output_dir import prepare_output_dir
-from init_like_torch import init_like_torch
-import run_a3c
-import env_modifiers
+from chainerrl import policy
+from chainerrl import v_function
+from chainerrl.agents import a3c
+from chainerrl.experiments.prepare_output_dir import prepare_output_dir
+from chainerrl.experiments.train_agent_async import train_agent_async
+from chainerrl.links import MLP
+from chainerrl.misc import env_modifiers
+from chainerrl.misc import random_seed
+from chainerrl.misc.init_like_torch import init_like_torch
+from chainerrl.optimizers import rmsprop_async
+from chainerrl.optimizers.nonbias_weight_decay import NonbiasWeightDecay
 
 
 def phi(obs):
     return obs.astype(np.float32)
+
+
+class A3CFFSoftmax(chainer.ChainList, a3c.A3CModel):
+
+    def __init__(self, ndim_obs, n_actions, hidden_sizes=(200, 200)):
+        self.pi = policy.SoftmaxPolicy(
+            model=MLP(ndim_obs, n_actions, hidden_sizes))
+        self.v = MLP(ndim_obs, 1, hidden_sizes=hidden_sizes)
+        super().__init__(self.pi, self.v)
+
+    def pi_and_v(self, state, keep_same_state=False):
+        return self.pi(state), self.v(state)
+
+
+class A3CFFMellowmax(chainer.ChainList, a3c.A3CModel):
+
+    def __init__(self, ndim_obs, n_actions, hidden_sizes=(200, 200)):
+        self.pi = policy.MellowmaxPolicy(
+            model=MLP(ndim_obs, n_actions, hidden_sizes))
+        self.v = MLP(ndim_obs, 1, hidden_sizes=hidden_sizes)
+        super().__init__(self.pi, self.v)
+
+    def pi_and_v(self, state, keep_same_state=False):
+        return self.pi(state), self.v(state)
 
 
 class A3CLSTMGaussian(chainer.ChainList, a3c.A3CModel):
@@ -80,24 +104,20 @@ def main():
 
     parser = argparse.ArgumentParser()
     parser.add_argument('processes', type=int)
-    parser.add_argument('--env', type=str, default='Pendulum-v0')
+    parser.add_argument('--env', type=str, default='CartPole-v0')
     parser.add_argument('--seed', type=int, default=None)
     parser.add_argument('--outdir', type=str, default=None)
-    parser.add_argument('--t-max', type=int, default=10 ** 8)
-    parser.add_argument('--beta', type=float, default=1e-4)
+    parser.add_argument('--t-max', type=int, default=5)
+    parser.add_argument('--beta', type=float, default=1e-2)
     parser.add_argument('--profile', action='store_true')
     parser.add_argument('--steps', type=int, default=8 * 10 ** 7)
-    parser.add_argument('--lr', type=float, default=7e-4)
     parser.add_argument('--eval-frequency', type=int, default=10 ** 5)
     parser.add_argument('--eval-n-runs', type=int, default=10)
-    parser.add_argument('--use-lstm', action='store_true')
     parser.add_argument('--reward-scale-factor', type=float, default=1e-3)
     parser.add_argument('--rmsprop-epsilon', type=float, default=1e-1)
-    parser.add_argument('--render', action='store_true')
-    parser.add_argument('--use-terminal-state-value', action='store_true')
-    parser.set_defaults(render=False)
-    parser.set_defaults(use_lstm=False)
-    parser.set_defaults(use_terminal_state_value=False)
+    parser.add_argument('--render', action='store_true', default=False)
+    parser.add_argument('--lr', type=float, default=7e-4)
+    parser.add_argument('--weight-decay', type=float, default=0.0)
     args = parser.parse_args()
 
     if args.seed is not None:
@@ -105,59 +125,48 @@ def main():
 
     args.outdir = prepare_output_dir(args, args.outdir)
 
-    def tanh_action_filter(a):
-        magnitude = (sample_env.action_space.high -
-                     sample_env.action_space.low) / 2.0
-        center = (sample_env.action_space.high +
-                  sample_env.action_space.low) / 2.0
-        return np.tanh(a) * magnitude + center
-
-    def clip_action_filter(a):
-        return np.clip(a, sample_env.action_space.low,
-                       sample_env.action_space.high)
-
-    def reward_filter(r):
-        return r * args.reward_scale_factor
-
     def make_env(process_idx, test):
         env = gym.make(args.env)
-        timestep_limit = env.spec.timestep_limit
-        env_modifiers.make_timestep_limited(env, timestep_limit)
-        env_modifiers.make_action_filtered(env, clip_action_filter)
+        # Scale rewards observed by agents
         if not test:
-            env_modifiers.make_reward_filtered(env, reward_filter)
+            env_modifiers.make_reward_filtered(
+                env, lambda x: x * args.reward_scale_factor)
         if args.render and process_idx == 0 and not test:
             env_modifiers.make_rendered(env)
         return env
 
     sample_env = gym.make(args.env)
-    # timestep_limit = sample_env.spec.timestep_limit
-    obs_size = np.asarray(sample_env.observation_space.shape).prod()
-    action_size = np.asarray(sample_env.action_space.shape).prod()
-    print(obs_size, action_size)
+    obs_space = sample_env.observation_space
+    action_space = sample_env.action_space
 
-    def model_opt():
-        model = A3CLSTMGaussian(obs_size, action_size)
+    def make_agent(process_idx):
+
+        # Switch policy types accordingly to action space types
+        if isinstance(action_space, gym.spaces.Box):
+            model = A3CLSTMGaussian(obs_space.low.size, action_space.low.size)
+        else:
+            model = A3CFFSoftmax(obs_space.low.size, action_space.n)
+
         opt = rmsprop_async.RMSpropAsync(
             lr=args.lr, eps=args.rmsprop_epsilon, alpha=0.99)
         opt.setup(model)
         opt.add_hook(chainer.optimizer.GradientClipping(40))
-        return (model,),  (opt,)
+        if args.weight_decay > 0:
+            opt.add_hook(NonbiasWeightDecay(args.weight_decay))
 
-    run_a3c.run_a3c(
+        return a3c.A3C(model, opt, t_max=args.t_max, gamma=0.99,
+                       beta=args.beta, process_idx=process_idx, phi=phi)
+
+    train_agent_async(
         outdir=args.outdir,
         processes=args.processes,
         make_env=make_env,
-        model_opt=model_opt,
-        phi=phi,
-        t_max=args.t_max,
-        beta=args.beta,
+        make_agent=make_agent,
         profile=args.profile,
         steps=args.steps,
-        eval_frequency=args.eval_frequency,
         eval_n_runs=args.eval_n_runs,
-        use_terminal_state_value=args.use_terminal_state_value,
-        args=args)
+        eval_frequency=args.eval_frequency,
+        max_episode_len=sample_env.spec.timestep_limit)
 
 
 if __name__ == '__main__':
