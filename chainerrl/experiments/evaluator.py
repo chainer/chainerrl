@@ -140,9 +140,11 @@ class AsyncEvaluator(object):
         values = (t, elapsed, mean, median, stdev) + \
             agent.get_stats_values()
         record_stats(self.outdir, values)
-        if mean > self.max_score:
-            update_best_model(agent, self.outdir, t, self.max_score, mean)
-            self.max_score.value = mean
+        with self.max_score.get_lock():
+            if mean > self.max_score.value:
+                update_best_model(
+                    agent, self.outdir, t, self.max_score.value, mean)
+                self.max_score.value = mean
 
     def write_header(self, agent):
         with open(os.path.join(self.outdir, 'scores.txt'), 'w') as f:
