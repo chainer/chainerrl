@@ -31,7 +31,7 @@ def mellowmax(values, omega=1., axis=1):
     return (F.logsumexp(omega * values, axis=axis) - np.log(n)) / omega
 
 
-def maximum_entropy_mellowmax(values, omega=1., beta_min=-5, beta_max=5):
+def maximum_entropy_mellowmax(values, omega=1., beta_min=-10, beta_max=10):
     """Maximum entropy mellowmax policy function.
 
     This function provides a categorical distribution whose expectation matches
@@ -67,7 +67,11 @@ def maximum_entropy_mellowmax(values, omega=1., beta_min=-5, beta_max=5):
     for idx in np.ndindex(mm.shape):
         idx_full = idx[:1] + (slice(None),) + idx[1:]
         adv = batch_adv[idx_full]
-        beta = scipy.optimize.brentq(f, a=beta_min, b=beta_max, args=(adv,))
+        if xp.allclose(adv, xp.zeros_like(adv), atol=1e-5):
+            beta = 0
+        else:
+            beta = scipy.optimize.brentq(
+                f, a=beta_min, b=beta_max, args=(adv,))
         batch_beta[idx] = beta
 
     return F.softmax(xp.expand_dims(xp.asarray(batch_beta), 1) * values)
