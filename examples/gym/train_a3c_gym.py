@@ -13,7 +13,7 @@ import chainer
 import gym
 import numpy as np
 
-from chainerrl import policy
+from chainerrl import policies
 from chainerrl import v_function
 from chainerrl.agents import a3c
 from chainerrl.experiments.prepare_output_dir import prepare_output_dir
@@ -33,7 +33,7 @@ def phi(obs):
 class A3CFFSoftmax(chainer.ChainList, a3c.A3CModel):
 
     def __init__(self, ndim_obs, n_actions, hidden_sizes=(200, 200)):
-        self.pi = policy.SoftmaxPolicy(
+        self.pi = policies.SoftmaxPolicy(
             model=MLP(ndim_obs, n_actions, hidden_sizes))
         self.v = MLP(ndim_obs, 1, hidden_sizes=hidden_sizes)
         super().__init__(self.pi, self.v)
@@ -45,7 +45,7 @@ class A3CFFSoftmax(chainer.ChainList, a3c.A3CModel):
 class A3CFFMellowmax(chainer.ChainList, a3c.A3CModel):
 
     def __init__(self, ndim_obs, n_actions, hidden_sizes=(200, 200)):
-        self.pi = policy.MellowmaxPolicy(
+        self.pi = policies.MellowmaxPolicy(
             model=MLP(ndim_obs, n_actions, hidden_sizes))
         self.v = MLP(ndim_obs, 1, hidden_sizes=hidden_sizes)
         super().__init__(self.pi, self.v)
@@ -63,7 +63,7 @@ class A3CLSTMGaussian(chainer.ChainList, a3c.A3CModel):
         self.v_lstm = L.LSTM(hidden_size, lstm_size)
         # self.pi = policy.FCGaussianPolicy(lstm_size, action_size)
         # self.pi = policy.LinearGaussianPolicyWithSphericalCovariance(
-        self.pi = policy.LinearGaussianPolicyWithDiagonalCovariance(
+        self.pi = policies.LinearGaussianPolicyWithDiagonalCovariance(
             lstm_size, action_size)
         self.v = v_function.FCVFunction(lstm_size)
         super().__init__(self.pi_head, self.v_head,
@@ -105,6 +105,8 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('processes', type=int)
     parser.add_argument('--env', type=str, default='CartPole-v0')
+    parser.add_argument('--arch', type=str, default='A3CFFSoftmax',
+                        choices=('FFSoftmax', 'FFMellowmax', 'LSTMGaussian'))
     parser.add_argument('--seed', type=int, default=None)
     parser.add_argument('--outdir', type=str, default=None)
     parser.add_argument('--t-max', type=int, default=5)
@@ -113,7 +115,7 @@ def main():
     parser.add_argument('--steps', type=int, default=8 * 10 ** 7)
     parser.add_argument('--eval-frequency', type=int, default=10 ** 5)
     parser.add_argument('--eval-n-runs', type=int, default=10)
-    parser.add_argument('--reward-scale-factor', type=float, default=1e-3)
+    parser.add_argument('--reward-scale-factor', type=float, default=1e-2)
     parser.add_argument('--rmsprop-epsilon', type=float, default=1e-1)
     parser.add_argument('--render', action='store_true', default=False)
     parser.add_argument('--lr', type=float, default=7e-4)
@@ -142,10 +144,12 @@ def main():
     def make_agent(process_idx):
 
         # Switch policy types accordingly to action space types
-        if isinstance(action_space, gym.spaces.Box):
+        if args.arch == 'LSTMGaussian':
             model = A3CLSTMGaussian(obs_space.low.size, action_space.low.size)
-        else:
+        elif args.arch == 'FFSoftmax':
             model = A3CFFSoftmax(obs_space.low.size, action_space.n)
+        elif args.arch == 'FFMellowmax':
+            model = A3CFFMellowmax(obs_space.low.size, action_space.n)
 
         opt = rmsprop_async.RMSpropAsync(
             lr=args.lr, eps=args.rmsprop_epsilon, alpha=0.99)
