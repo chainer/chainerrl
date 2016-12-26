@@ -48,9 +48,9 @@ def invert_gradients(x, range_min, range_max):
     See: http://arxiv.org/abs/1511.04143
 
     Args:
-        x (chainer.Variable or ndarray): Input value
+        x (chainer.Variable or ndarray): Input value.
         range_min (chainer.Variable or ndarray): Minimum of the value range.
-        range_min (chainer.Variable or ndarray): Maximum of the value range.
+        range_max (chainer.Variable or ndarray): Maximum of the value range.
     Returns:
         The same value as x, except that the gradients backpropagated is scaled
         and inverted so that values would be in a given range after update.
