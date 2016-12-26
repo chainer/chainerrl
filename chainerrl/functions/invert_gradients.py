@@ -26,7 +26,7 @@ class InvertGradients(function.Function):
 
     @property
     def label(self):
-        return 'InvertExceedingGradients'
+        return 'InvertGradients'
 
     def forward(self, inputs):
         return inputs
