@@ -19,45 +19,27 @@ from chainerrl.misc import copy_param
 from chainerrl.misc import async
 from chainerrl import agent
 from chainerrl.misc.makedirs import makedirs
+from chainerrl.recurrent import Recurrent
+from chainerrl.recurrent import RecurrentChainMixin
 
 logger = getLogger(__name__)
 
 
 class A3CModel(chainer.Link):
 
-    def pi_and_v(self, state, keep_same_state=False):
+    def pi_and_v(self, obs):
         raise NotImplementedError()
 
-    def reset_state(self):
-        pass
 
-    def unchain_backward(self):
-        pass
-
-
-class A3CSeparateModel(chainer.Chain, A3CModel):
+class A3CSeparateModel(chainer.Chain, A3CModel, RecurrentChainMixin):
 
     def __init__(self, pi, v):
         super().__init__(pi=pi, v=v)
 
-    def pi_and_v(self, obs, keep_same_state=False):
-        if keep_same_state:
-            self.pi.push_and_keep_state()
-            self.v.push_and_keep_state()
+    def pi_and_v(self, obs):
         pout = self.pi(obs)
         vout = self.v(obs)
-        if keep_same_state:
-            self.pi.pop_state()
-            self.v.pop_state()
         return pout, vout
-
-    def reset_state(self):
-        self.pi.reset_state()
-        self.v.reset_state()
-
-    def unchain_backward(self):
-        self.pi.unchain_backward()
-        self.v.unchain_backward()
 
 
 class A3C(agent.Agent):
@@ -121,7 +103,11 @@ class A3C(agent.Agent):
         if statevar is None:
             R = 0
         else:
-            _, vout = self.model.pi_and_v(statevar, keep_same_state=True)
+            if isinstance(self.model, Recurrent):
+                with self.model.state_kept():
+                    _, vout = self.model.pi_and_v(statevar)
+            else:
+                _, vout = self.model.pi_and_v(statevar)
             R = float(vout.data)
 
         pi_loss = 0
@@ -189,7 +175,8 @@ class A3C(agent.Agent):
             logger.debug('update')
 
         self.sync_parameters()
-        self.model.unchain_backward()
+        if isinstance(self.model, Recurrent):
+            self.model.unchain_backward()
 
         self.past_action_log_prob = {}
         self.past_action_entropy = {}
@@ -240,10 +227,12 @@ class A3C(agent.Agent):
             statevar = chainer.Variable(np.expand_dims(self.phi(state), 0))
             self.update(statevar)
 
-        self.model.reset_state()
+        if isinstance(self.model, Recurrent):
+            self.model.reset_state()
 
     def stop_episode(self):
-        self.model.reset_state()
+        if isinstance(self.model, Recurrent):
+            self.model.reset_state()
 
     def save(self, dirname):
         makedirs(dirname, exist_ok=True)
