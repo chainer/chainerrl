@@ -6,37 +6,43 @@ from builtins import super
 from builtins import range
 from future import standard_library
 standard_library.install_aliases()
+from future.utils import with_metaclass
+
+from abc import ABCMeta
+from abc import abstractmethod
 
 import chainer
-from chainer import functions as F
 from chainer import links as L
 
-from chainerrl import stateful_callable
+from chainerrl.recurrent import RecurrentChainMixin
+from chainerrl.links.mlp import MLP
 
 
-class VFunction(stateful_callable.StatefulCallable):
+class VFunction(with_metaclass(ABCMeta, object)):
 
-    def push_state(self):
-        pass
-
-    def pop_state(self):
-        pass
-
-    def reset_state(self):
-        pass
-
-    def push_and_keep_state(self):
-        pass
-
-    def update_state(self, x, test=False):
-        """Update its state so that it reflects x and a.
-
-        Unlike __call__, stateless QFunctions would do nothing.
-        """
-        pass
+    @abstractmethod
+    def __call__(self, x, test=False):
+        raise NotImplementedError()
 
 
-class FCVFunction(chainer.ChainList, VFunction):
+class SingleModelVFunction(
+        chainer.Chain, VFunction, RecurrentChainMixin):
+    """Q-function with discrete actions.
+
+    Args:
+        model (chainer.Link):
+            Link that is callable and outputs action values.
+    """
+
+    def __init__(self, model):
+        super().__init__(model=model)
+
+    def __call__(self, x, test=False):
+        h = self.model(x, test=test)
+        return h
+
+
+class FCVFunction(SingleModelVFunction):
 
     def __init__(self, n_input_channels, n_hidden_layers=0,
                  n_hidden_channels=None):
@@ -53,11 +59,7 @@ class FCVFunction(chainer.ChainList, VFunction):
         else:
             layers.append(L.Linear(n_input_channels, 1))
 
-        super(FCVFunction, self).__init__(*layers)
-
-    def __call__(self, state):
-        h = state
-        for layer in self[:-1]:
-            h = F.relu(layer(h))
-        h = self[-1](h)
-        return h
+        super().__init__(
+            model=MLP(self.n_input_channels, 1,
+                      [self.n_hidden_channels] * self.n_hidden_layers),
+        )

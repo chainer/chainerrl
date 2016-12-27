@@ -22,10 +22,9 @@ from chainer import links as L
 from chainerrl.links.mlp_bn import MLPBN
 from chainerrl.links.mlp import MLP
 from chainerrl import distribution
-from chainerrl.stateful_callable import StatefulCallable
 
 
-class Policy(StatefulCallable):
+class Policy(object):
     """Abstract policy."""
 
     @abstractmethod
@@ -36,21 +35,6 @@ class Policy(StatefulCallable):
         """
         raise NotImplementedError()
 
-    def push_state(self):
-        pass
-
-    def pop_state(self):
-        pass
-
-    def reset_state(self):
-        pass
-
-    def update_state(self, x, test=False):
-        """Update its state so that it reflects x and a.
-
-        Unlike __call__, stateless QFunctions would do nothing.
-        """
-        pass
 
 from chainerrl.policies.softmax_policy import *
 from chainerrl.policies.gaussian_policy import *

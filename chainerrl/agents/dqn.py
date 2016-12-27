@@ -20,6 +20,7 @@ from chainer import serializers
 from chainerrl import agent
 from chainerrl.misc.makedirs import makedirs
 from chainerrl.misc import copy_param
+from chainerrl.recurrent import Recurrent
 
 
 def _to_device(obj, gpu):
@@ -440,7 +441,7 @@ class DQN(agent.Agent):
     def stop_episode(self):
         self.last_state = None
         self.last_action = None
-        if hasattr(self.model, 'reset_state'):
+        if isinstance(self.model, Recurrent):
             self.model.reset_state()
         self.replay_buffer.stop_current_episode()
 

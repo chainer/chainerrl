@@ -11,24 +11,14 @@ import chainer.functions as F
 from chainer import cuda
 
 from chainerrl.agents import dqn
+from chainerrl.recurrent import Recurrent
+from chainerrl.recurrent import RecurrentChainMixin
 
 
-class DDPGModel(chainer.Chain):
+class DDPGModel(chainer.Chain, RecurrentChainMixin):
 
     def __init__(self, policy, q_func):
         super().__init__(policy=policy, q_function=q_func)
-
-    def push_state(self):
-        self.policy.push_state()
-        self.q_function.push_state()
-
-    def pop_state(self):
-        self.policy.pop_state()
-        self.q_function.pop_state()
-
-    def reset_state(self):
-        self.policy.reset_state()
-        self.q_function.reset_state()
 
 
 class DDPG(dqn.DQN):
@@ -120,9 +110,11 @@ class DDPG(dqn.DQN):
 
         # Q(s_t, mu(s_t)) is evaluated.
         # This should not affect the internal state of Q.
-        self.q_function.push_and_keep_state()
-        q = self.q_function(batch_state, onpolicy_actions, test=True)
-        self.q_function.pop_state()
+        if isinstance(self.q_function, Recurrent):
+            with self.q_function.state_kept():
+                q = self.q_function(batch_state, onpolicy_actions, test=True)
+        else:
+            q = self.q_function(batch_state, onpolicy_actions, test=True)
 
         # import copy
         # q = copy.deepcopy(self.q_function)(batch_state, onpolicy_actions, test=True)
@@ -163,46 +155,26 @@ class DDPG(dqn.DQN):
                 transitions, xp=self.xp, phi=self.phi)
             batches.append(batch)
 
-        # Backup current states
-        self.model.push_state()
-        self.target_model.push_state()
+        with self.model.state_reset():
+            with self.target_model.state_reset():
 
-        self.input_initial_batch_target_model(batches[0])
+                # Since the target model is evaluated one-step ahead,
+                # its internal states need to be updated
+                self.input_initial_batch_target_model(batches[0])
 
-        assert self.q_function.lstm.h is None
-        assert self.policy.lstm.h is None
-        assert self.target_q_function.lstm.h is not None
-        assert self.target_policy.lstm.h is not None
+                # Update critic through time
+                critic_loss = 0
+                for batch in batches:
+                    critic_loss += self.compute_critic_loss(batch)
+                self.critic_optimizer.update(lambda: critic_loss / max_epi_len)
 
-        # Update critic through time
-        critic_loss = 0
-        for batch in batches:
-            critic_loss += self.compute_critic_loss(batch)
-        self.critic_optimizer.update(lambda: critic_loss / max_epi_len)
+        with self.model.state_reset():
 
-        # Reset states before updating actor
-        self.model.reset_state()
-        self.target_model.reset_state()
-
-        assert self.q_function.lstm.h is None
-        assert self.policy.lstm.h is None
-        assert self.target_q_function.lstm.h is None
-        assert self.target_policy.lstm.h is None
-
-        # Update actor through time
-        actor_loss = 0
-        for batch in batches:
-            actor_loss += self.compute_actor_loss(batch)
-        self.actor_optimizer.update(lambda: actor_loss / max_epi_len)
-
-        assert self.q_function.lstm.h is not None
-        assert self.policy.lstm.h is not None
-        assert self.target_q_function.lstm.h is None
-        assert self.target_policy.lstm.h is None
-
-        # Backup current states
-        self.model.pop_state()
-        self.target_model.pop_state()
+            # Update actor through time
+            actor_loss = 0
+            for batch in batches:
+                actor_loss += self.compute_actor_loss(batch)
+            self.actor_optimizer.update(lambda: actor_loss / max_epi_len)
 
     def act(self, state):
 
