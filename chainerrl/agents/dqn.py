@@ -48,7 +48,17 @@ def batch_experiences(experiences, xp, phi):
 
 
 def compute_value_loss(y, t, clip_delta=True, batch_accumulator='mean'):
-    """Compute a loss for value prediction problem."""
+    """Compute a loss for value prediction problem.
+
+    Args:
+        y (Variable or ndarray): Predicted values.
+        t (Variable or ndarray): Target values.
+        clip_delta (bool): Use the Huber loss function if set True.
+        batch_accumulator (str): 'mean' or 'sum'. 'mean' will use the mean of
+            the loss values in a batch. 'sum' will use the sum.
+    Returns:
+        (Variable) scalar loss
+    """
     assert batch_accumulator in ('mean', 'sum')
     if clip_delta:
         loss_sum = F.sum(F.huber_loss(y, t, delta=1.0))
