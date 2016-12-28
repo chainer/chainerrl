@@ -367,10 +367,6 @@ class DQN(agent.Agent):
         self.logger.debug('t:%s a:%s q:%s qout:%s', self.t, action, q, qout)
         return action
 
-    def select_action(self, state):
-        return self.explorer.select_action(
-            self.t, lambda: self.act(state))
-
     def update_if_necessary(self):
         if self.t < self.replay_start_size:
             return
@@ -404,7 +400,8 @@ class DQN(agent.Agent):
         if self.clip_reward:
             reward = np.clip(reward, -1, 1)
 
-        action = self.select_action(state)
+        greedy_action = self.act(state)
+        action = self.explorer.select_action(self.t, lambda: greedy_action)
         self.t += 1
 
         # Update the target network
