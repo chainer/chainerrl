@@ -158,7 +158,7 @@ class FCSIContinuousQFunction(chainer.Chain, StateQFunction):
     def __call__(self, state, test=False):
         h = state
         for layer in self.hidden_layers:
-            h = F.elu(layer(h))
+            h = F.relu(layer(h))
         v = self.v(h)
         mu = self.mu(h)
 
