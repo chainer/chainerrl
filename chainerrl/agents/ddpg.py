@@ -199,26 +199,6 @@ class DDPG(dqn.DQN):
                           self.t, action.data[0], q.data)
         return cuda.to_cpu(action.data[0])
 
-    def select_action(self, state):
-        greedy_evaluated = [False]
-
-        def greedy_func():
-            greedy_evaluated[0] = True
-            return self.act(state)
-
-        a = self.explorer.select_action(self.t, greedy_func)
-
-        # Even when greedy actions are not selected, policy and q_function's
-        # states should be updated
-        # FIXME: This would not work for some explorers that add noises to
-        # greedy actions.
-        if not greedy_evaluated[0]:
-            s = self._batch_states([state])
-            self.policy.update_state(s, test=True)
-            self.q_function.update_state(s, self.xp.asarray([a]))
-
-        return a
-
     @property
     def saved_attributes(self):
         return ('model', 'target_model', 'actor_optimizer', 'critic_optimizer')
