@@ -97,11 +97,7 @@ def main():
     else:
         n_actions = action_space.n
         q_func = q_function.FCSIQFunction(obs_size, n_actions, 100, 2)
-    init_like_torch(q_func)
 
-    # Use the same hyper parameters as the Nature paper's
-    # opt = optimizers.RMSpropGraves(
-    #     lr=2.5e-4, alpha=0.95, momentum=0.95, eps=1e-2)
     opt = optimizers.Adam(eps=1e-2)
 
     opt.setup(q_func)
