@@ -23,6 +23,14 @@ class DDPGModel(chainer.Chain, RecurrentChainMixin):
 
 class DDPG(dqn.DQN):
     """Deep Deterministic Policy Gradients.
+
+    Args:
+        model (DDPGModel): DDPG model that contains both a policy and a
+            Q-function
+        actor_optimizer (Optimizer): Optimizer setup with the policy
+        critic_optimizer (Optimizer): Optimizer setup with the Q-function
+
+        For other arguments, see DQN
     """
 
     def __init__(self, model, actor_optimizer, critic_optimizer, replay_buffer,
