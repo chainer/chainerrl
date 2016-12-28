@@ -77,7 +77,35 @@ def compute_value_loss(y, t, clip_delta=True, batch_accumulator='mean'):
 
 
 class DQN(agent.Agent):
-    """DQN = QNetwork + Optimizer
+    """Deep Q-Network algorithm.
+
+    Args:
+        q_function (StateQFunction): Q-function
+        optimizer (Optimizer): Optimizer that is already setup
+        replay_buffer (ReplayBuffer): Replay buffer
+        gamma (float): Discount factor
+        explorer (Explorer): Explorer that specifies an exploration strategy.
+        gpu (int): GPU device id. -1 for CPU.
+        replay_start_size (int): if the replay buffer's size is less than
+            replay_start_size, skip update
+        minibatch_size (int): Minibatch size
+        update_frequency (int): Model update frequency in step
+        target_update_frequency (int): Target model update frequency in step
+        clip_delta (bool): Clip delta if set True
+        phi (callable): Feature extractor applied to observations
+        target_update_method (str): 'hard' or 'soft'.
+        soft_update_tau (float): Tau of soft target update.
+        async_update (bool): Update model in a different thread if set True
+        n_times_update (int): Number of repetition of update
+        average_q_decay (float): Decay rate of average Q, only used for
+            statistics
+        average_loss_decay (float): Decay rate of average loss, only used for
+            statistics
+        batch_accumulator (str): 'mean' or 'sum'
+        episodic_update (bool): Use full episodes for update if set True
+        episodic_update_len (int or None): Subsequences of this length are used
+            for update if set int and episodic_update=True
+        logger (Logger): Logger used
     """
 
     def __init__(self, q_function, optimizer, replay_buffer, gamma,
@@ -92,15 +120,6 @@ class DQN(agent.Agent):
                  batch_accumulator='mean', episodic_update=False,
                  episodic_update_len=None,
                  logger=getLogger(__name__)):
-        """
-        Args:
-          replay_start_size (int): if replay buffer's size is less than
-            replay_start_size, skip updating
-          target_update_frequency (int): frequency of updating target Q
-            function
-          target_update_method (str): 'hard' or 'soft'.
-          soft_update_tau (float): tau of soft target update.
-        """
         self.model = q_function
         self.q_function = q_function  # For backward compatibility
 
