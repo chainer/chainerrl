@@ -35,7 +35,8 @@ class AdditiveOU(explorer.Explorer):
 
     def evolve(self):
         # For a Wiener process, dW ~ N(0,u)
-        dW = np.random.normal(size=self.shape, loc=0, scale=np.sqrt(self.dt))
+        dW = np.random.normal(size=self.ou_state.shape, loc=0,
+                              scale=np.sqrt(self.dt))
         # dx = theta (mu - x) + sigma dW
         self.ou_state += self.theta * \
             (self.mu - self.ou_state) * self.dt + self.sigma * dW
