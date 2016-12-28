@@ -100,7 +100,7 @@ class FCLSTMStateQFunction(chainer.Chain, StateQFunction, RecurrentChainMixin):
 
     def __call__(self, x, test=False):
         h = F.relu(self.fc(x, test=test))
-        h = F.relu(self.lstm(h))
+        h = self.lstm(h)
         return DiscreteActionValue(self.out(h))
 
 
@@ -303,7 +303,7 @@ class FCLSTMSAQFunction(chainer.Chain, StateActionQFunction,
     def __call__(self, x, a, test=False):
         h = F.concat((x, a), axis=1)
         h = F.relu(self.fc(h, test=test))
-        h = F.relu(self.lstm(h))
+        h = self.lstm(h)
         return self.out(h)
 
 
