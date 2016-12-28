@@ -50,15 +50,6 @@ class FCVFunction(SingleModelVFunction):
         self.n_hidden_layers = n_hidden_layers
         self.n_hidden_channels = n_hidden_channels
 
-        layers = []
-        if n_hidden_layers > 0:
-            layers.append(L.Linear(n_input_channels, n_hidden_channels))
-            for i in range(n_hidden_layers - 1):
-                layers.append(L.Linear(n_hidden_channels, n_hidden_channels))
-            layers.append(L.Linear(n_hidden_channels, 1))
-        else:
-            layers.append(L.Linear(n_input_channels, 1))
-
         super().__init__(
             model=MLP(self.n_input_channels, 1,
                       [self.n_hidden_channels] * self.n_hidden_layers),
