@@ -276,7 +276,7 @@ class FCSAQFunction(chainer.ChainList, StateActionQFunction):
 
 
 class FCLSTMSAQFunction(chainer.Chain, StateActionQFunction,
-        RecurrentChainMixin):
+                        RecurrentChainMixin):
     """Fully-connected (s,a)-input continuous Q-function."""
 
     def __init__(self, n_dim_obs, n_dim_action, n_hidden_channels,
@@ -292,12 +292,11 @@ class FCLSTMSAQFunction(chainer.Chain, StateActionQFunction,
         self.n_input_channels = n_dim_obs + n_dim_action
         self.n_hidden_layers = n_hidden_layers
         self.n_hidden_channels = n_hidden_channels
-        self.state_stack = []
         super().__init__(
-            fc=MLP(in_size=self.n_input_channels, out_size=n_hidden_channels,
-                   hidden_sizes=[self.n_hidden_channels] * self.n_hidden_layers),
+            fc=MLP(self.n_input_channels, n_hidden_channels,
+                   [self.n_hidden_channels] * self.n_hidden_layers),
             lstm=L.LSTM(n_hidden_channels, n_hidden_channels),
-            out=L.Linear(n_hidden_channels, 1)
+            out=L.Linear(n_hidden_channels, 1),
         )
 
     def __call__(self, x, a, test=False):
