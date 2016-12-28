@@ -32,10 +32,11 @@ class AdditiveOU(explorer.Explorer):
         self.ou_state = np.full(self.shape, self.mu, dtype=np.float32)
 
     def evolve(self):
-        self.wiener_state += np.random.normal(
-            size=self.shape, loc=0, scale=np.sqrt(self.dt))
+        # For a Wiener process, dW ~ N(0,u)
+        dW = np.random.normal(size=self.shape, loc=0, scale=np.sqrt(self.dt))
+        # dx = theta (mu - x) + sigma dW
         self.ou_state += self.theta * \
-            (self.mu - self.ou_state) * self.dt + self.sigma * self.wiener_state
+            (self.mu - self.ou_state) * self.dt + self.sigma * dW
 
     def select_action(self, t, greedy_action_func):
         self.evolve()
