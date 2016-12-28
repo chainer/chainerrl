@@ -6,12 +6,10 @@ from builtins import super
 from future import standard_library
 standard_library.install_aliases()
 import logging
-import os
 import unittest
 import tempfile
 
 import chainer
-from chainer import optimizers
 from chainer import links as L
 from chainer import functions as F
 from chainer import testing
@@ -22,6 +20,8 @@ from chainerrl.agents import a3c
 from chainerrl.envs.abc import ABC
 from chainerrl.experiments.train_agent_async import train_agent_async
 from chainerrl.optimizers import rmsprop_async
+from chainerrl.recurrent import Recurrent
+from chainerrl.recurrent import RecurrentChainMixin
 
 
 class A3CFF(chainer.ChainList, a3c.A3CModel):
@@ -33,11 +33,11 @@ class A3CFF(chainer.ChainList, a3c.A3CModel):
             5, n_hidden_channels=10, n_hidden_layers=2)
         super().__init__(self.pi, self.v)
 
-    def pi_and_v(self, state, keep_same_state=False):
+    def pi_and_v(self, state):
         return self.pi(state), self.v(state)
 
 
-class A3CLSTM(chainer.ChainList, a3c.A3CModel):
+class A3CLSTM(chainer.ChainList, a3c.A3CModel, RecurrentChainMixin):
 
     def __init__(self, n_actions):
         self.lstm = L.LSTM(5, 10)
@@ -47,22 +47,9 @@ class A3CLSTM(chainer.ChainList, a3c.A3CModel):
             10, n_hidden_channels=10, n_hidden_layers=2)
         super().__init__(self.lstm, self.pi, self.v)
 
-    def pi_and_v(self, state, keep_same_state=False):
-        if keep_same_state:
-            prev_h, prev_c = self.lstm.h, self.lstm.c
-            h = F.relu(self.lstm(state))
-            self.lstm.h, self.lstm.c = prev_h, prev_c
-        else:
-            h = F.relu(self.lstm(state))
+    def pi_and_v(self, state):
+        h = F.relu(self.lstm(state))
         return self.pi(h), self.v(h)
-
-    def reset_state(self):
-        print('reset')
-        self.lstm.reset_state()
-
-    def unchain_backward(self):
-        self.lstm.h.unchain_backward()
-        self.lstm.c.unchain_backward()
 
 
 class A3CFFGaussian(chainer.ChainList, a3c.A3CModel):
@@ -76,11 +63,11 @@ class A3CFFGaussian(chainer.ChainList, a3c.A3CModel):
             5, n_hidden_channels=10, n_hidden_layers=2)
         super().__init__(self.pi, self.v)
 
-    def pi_and_v(self, state, keep_same_state=False):
+    def pi_and_v(self, state):
         return self.pi(state), self.v(state)
 
 
-class A3CLSTMGaussian(chainer.ChainList, a3c.A3CModel):
+class A3CLSTMGaussian(chainer.ChainList, a3c.A3CModel, RecurrentChainMixin):
 
     def __init__(self, n_dim_action, bound_mean, min_action, max_action):
         self.lstm = L.LSTM(5, 10)
@@ -92,21 +79,9 @@ class A3CLSTMGaussian(chainer.ChainList, a3c.A3CModel):
             10, n_hidden_channels=10, n_hidden_layers=2)
         super().__init__(self.lstm, self.pi, self.v)
 
-    def pi_and_v(self, state, keep_same_state=False):
-        if keep_same_state:
-            prev_h, prev_c = self.lstm.h, self.lstm.c
-            h = F.relu(self.lstm(state))
-            self.lstm.h, self.lstm.c = prev_h, prev_c
-        else:
-            h = F.relu(self.lstm(state))
+    def pi_and_v(self, state):
+        h = F.relu(self.lstm(state))
         return self.pi(h), self.v(h)
-
-    def reset_state(self):
-        self.lstm.reset_state()
-
-    def unchain_backward(self):
-        self.lstm.h.unchain_backward()
-        self.lstm.c.unchain_backward()
 
 
 class TestA3C(unittest.TestCase):
@@ -214,7 +189,8 @@ class TestA3C(unittest.TestCase):
         def pi_func(state):
             return model.pi_and_v(state)[0]
 
-        model.reset_state()
+        if isinstance(model, Recurrent):
+            model.reset_state()
 
         while not done:
             pout = pi_func(chainer.Variable(
