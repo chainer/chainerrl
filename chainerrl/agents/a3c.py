@@ -42,6 +42,25 @@ class A3CSeparateModel(chainer.Chain, A3CModel, RecurrentChainMixin):
         return pout, vout
 
 
+class A3CSharedModel(chainer.Chain, A3CModel, RecurrentChainMixin):
+    """A3C model where the policy and V-function share parameters.
+
+    Args:
+        shared (Link): Shared part. Nonlinearity must be included in it.
+        pi (Policy): Policy that receives output of shared as input.
+        v (VFunction): V-function that receives output of shared as input.
+    """
+
+    def __init__(self, shared, pi, v):
+        super().__init__(shared=shared, pi=pi, v=v)
+
+    def pi_and_v(self, obs):
+        h = self.shared(obs)
+        pout = self.pi(h)
+        vout = self.v(h)
+        return pout, vout
+
+
 class A3C(agent.Agent):
     """A3C: Asynchronous Advantage Actor-Critic.
 
