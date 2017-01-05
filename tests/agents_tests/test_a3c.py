@@ -23,7 +23,7 @@ from chainerrl.recurrent import Recurrent
 
 
 @testing.parameterize(*testing.product({
-    't_max': [1, 2, 5],
+    't_max': [1, 2],
     'use_lstm': [True, False],
     'episodic': [True, False],
 }))
