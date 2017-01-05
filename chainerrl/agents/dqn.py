@@ -38,13 +38,13 @@ def batch_experiences(experiences, xp, phi):
         'state': xp.asarray([phi(elem['state']) for elem in experiences]),
         'action': xp.asarray([elem['action'] for elem in experiences]),
         'reward': xp.asarray(
-            [[elem['reward']] for elem in experiences], dtype=np.float32),
+            [elem['reward'] for elem in experiences], dtype=np.float32),
         'next_state': xp.asarray(
             [phi(elem['next_state']) for elem in experiences]),
         'next_action': xp.asarray(
             [phi(elem['next_action']) for elem in experiences]),
         'is_state_terminal': xp.asarray(
-            [[elem['is_state_terminal']] for elem in experiences],
+            [elem['is_state_terminal'] for elem in experiences],
             dtype=np.float32)}
 
 
@@ -203,8 +203,10 @@ class DQN(agent.Agent):
         Returns:
           None
         """
+
+        exp_batch = batch_experiences(experiences, xp=self.xp, phi=self.phi)
         loss = self._compute_loss(
-            experiences, self.gamma, errors_out=errors_out)
+            exp_batch, self.gamma, errors_out=errors_out)
 
         # Update stats
         self.average_loss *= self.average_loss_decay
@@ -218,29 +220,26 @@ class DQN(agent.Agent):
         self.target_model(batch['state'])
 
     def update_from_episodes(self, episodes, errors_out=None):
-        self.model.push_state()
-        self.target_model.push_state()
-
-        loss = 0
-        sorted_episodes = list(reversed(sorted(episodes, key=len)))
-        max_epi_len = len(sorted_episodes[0])
-        for i in range(max_epi_len):
-            transitions = []
-            for ep in sorted_episodes:
-                if len(ep) <= i:
-                    break
-                transitions.append(ep[i])
-            batch = batch_experiences(transitions, xp=self.xp, phi=self.phi)
-            if i == 0:
-                self.input_initial_batch_to_target_model(batch)
-            loss += self._compute_loss(transitions, self.gamma)
-        loss /= max_epi_len
-        self.optimizer.zero_grads()
-        loss.backward()
-        self.optimizer.update()
-
-        self.model.pop_state()
-        self.target_model.pop_state()
+        with self.model.state_reset():
+            with self.target_model.state_reset():
+                loss = 0
+                sorted_episodes = list(reversed(sorted(episodes, key=len)))
+                max_epi_len = len(sorted_episodes[0])
+                for i in range(max_epi_len):
+                    transitions = []
+                    for ep in sorted_episodes:
+                        if len(ep) <= i:
+                            break
+                        transitions.append(ep[i])
+                    batch = batch_experiences(transitions,
+                                              xp=self.xp, phi=self.phi)
+                    if i == 0:
+                        self.input_initial_batch_to_target_model(batch)
+                    loss += self._compute_loss(batch, self.gamma)
+                loss /= max_epi_len
+                self.optimizer.zero_grads()
+                loss.backward()
+                self.optimizer.update()
 
     def _batch_states(self, states):
         """Generate an input batch array from a list of states
@@ -248,47 +247,40 @@ class DQN(agent.Agent):
         states = [self.phi(s) for s in states]
         return self.xp.asarray(states)
 
-    def _compute_target_values(self, experiences, gamma):
+    def _compute_target_values(self, exp_batch, gamma):
 
-        batch_next_state = self._batch_states(
-            [elem['next_state'] for elem in experiences])
+        batch_next_state = exp_batch['next_state']
 
         target_next_qout = self.target_model(batch_next_state, test=True)
         next_q_max = target_next_qout.max
         next_q_max.creator = None
 
-        batch_rewards = self.xp.asarray(
-            [elem['reward'] for elem in experiences], dtype=np.float32)
-
-        batch_terminal = self.xp.asarray(
-            [elem['is_state_terminal'] for elem in experiences],
-            dtype=np.float32)
+        batch_rewards = exp_batch['reward']
+        batch_terminal = exp_batch['is_state_terminal']
 
         return batch_rewards + self.gamma * (1.0 - batch_terminal) * next_q_max
 
-    def _compute_y_and_t(self, experiences, gamma):
+    def _compute_y_and_t(self, exp_batch, gamma):
 
-        batch_size = len(experiences)
+        batch_size = exp_batch['state'].shape[0]
 
         # Compute Q-values for current states
-        batch_state = self._batch_states(
-            [elem['state'] for elem in experiences])
+        batch_state = exp_batch['state']
 
         qout = self.model(batch_state, test=False)
 
-        batch_actions = self.xp.asarray(
-            [elem['action'] for elem in experiences])
+        batch_actions = exp_batch['action']
         batch_q = F.reshape(qout.evaluate_actions(
             batch_actions), (batch_size, 1))
 
-        batch_q_target = F.reshape(
-            self._compute_target_values(experiences, gamma), (batch_size, 1))
-
-        batch_q_target.creator = None
+        with chainer.no_backprop_mode():
+            batch_q_target = F.reshape(
+                self._compute_target_values(exp_batch, gamma),
+                (batch_size, 1))
 
         return batch_q, batch_q_target
 
-    def _compute_loss(self, experiences, gamma, errors_out=None):
+    def _compute_loss(self, exp_batch, gamma, errors_out=None):
         """
         Compute the Q-learning loss for a batch of experiences
 
@@ -299,9 +291,8 @@ class DQN(agent.Agent):
         Returns:
           loss
         """
-        assert experiences
 
-        y, t = self._compute_y_and_t(experiences, gamma)
+        y, t = self._compute_y_and_t(exp_batch, gamma)
 
         if errors_out is not None:
             del errors_out[:]

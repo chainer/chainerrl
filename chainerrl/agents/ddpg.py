@@ -68,27 +68,30 @@ class DDPG(dqn.DQN):
         batch_state = batch['state']
         batch_actions = batch['action']
         batch_next_actions = batch['next_action']
+        batchsize = len(batch_state)
 
-        # Target policy observes s_{t+1}
-        next_actions = self.target_policy(batch_next_state, test=True).sample()
+        with chainer.no_backprop_mode():
+            # Target policy observes s_{t+1}
+            next_actions = self.target_policy(
+                batch_next_state, test=True).sample()
 
-        # Q(s_{t+1}, mu(a_{t+1})) is evaluated.
-        # This should not affect the internal state of Q.
-        self.target_q_function.push_and_keep_state()
-        next_q = self.target_q_function(batch_next_state, next_actions,
-                                        test=True)
-        self.target_q_function.pop_state()
+            # Q(s_{t+1}, mu(a_{t+1})) is evaluated.
+            # This should not affect the internal state of Q.
+            with self.target_q_function.state_kept():
+                next_q = self.target_q_function(batch_next_state, next_actions,
+                                                test=True)
 
-        # Target Q-function observes s_{t+1} and a_{t+1}
-        self.target_q_function.update_state(
-            batch_next_state, batch_next_actions, test=True)
+            # Target Q-function observes s_{t+1} and a_{t+1}
+            self.target_q_function.update_state(
+                batch_next_state, batch_next_actions, test=True)
 
-        target_q = batch_rewards + self.gamma * \
-            (1.0 - batch_terminal) * next_q
-        target_q.creator = None
+            target_q = batch_rewards + self.gamma * \
+                (1.0 - batch_terminal) * F.reshape(next_q, (batchsize,))
 
         # Estimated Q-function observes s_t and a_t
-        predict_q = self.q_function(batch_state, batch_actions, test=False)
+        predict_q = F.reshape(
+            self.q_function(batch_state, batch_actions, test=False),
+            (batchsize,))
 
         loss = F.mean_squared_error(target_q, predict_q)
 
