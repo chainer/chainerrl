@@ -120,12 +120,9 @@ class DDPG(dqn.DQN):
         # This should not affect the internal state of Q.
         if isinstance(self.q_function, Recurrent):
             with self.q_function.state_kept():
-                q = self.q_function(batch_state, onpolicy_actions, test=True)
+                q = self.q_function(batch_state, onpolicy_actions, test=False)
         else:
-            q = self.q_function(batch_state, onpolicy_actions, test=True)
-
-        # import copy
-        # q = copy.deepcopy(self.q_function)(batch_state, onpolicy_actions, test=True)
+            q = self.q_function(batch_state, onpolicy_actions, test=False)
 
         # Estimated Q-function observes s_t and a_t
         self.q_function.update_state(batch_state, batch_action, test=False)
