@@ -148,6 +148,7 @@ class DDPG(dqn.DQN):
         self.actor_optimizer.update(lambda: self.compute_actor_loss(batch))
 
     def update_from_episodes(self, episodes, errors_out=None):
+        # Sort episodes desc by their lengths
         sorted_episodes = list(reversed(sorted(episodes, key=len)))
         max_epi_len = len(sorted_episodes[0])
 
