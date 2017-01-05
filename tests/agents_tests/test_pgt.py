@@ -29,7 +29,8 @@ from chainerrl.agents.pgt import PGT
 class TestPGT(unittest.TestCase):
 
     def setUp(self):
-        pass
+        import logging
+        logging.basicConfig(level=logging.DEBUG)
 
     def make_model(self, env):
         ndim_obs = env.observation_space.low.size
@@ -49,9 +50,6 @@ class TestPGT(unittest.TestCase):
         return chainer.Chain(policy=policy, q_function=q_func)
 
     def _test_abc(self, gpu):
-
-        import logging
-        logging.basicConfig(level=logging.DEBUG)
 
         random_seed.set_random_seed(0)
 
