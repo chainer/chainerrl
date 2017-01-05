@@ -6,15 +6,31 @@ from future import standard_library
 standard_library.install_aliases()
 
 from chainerrl.agents.double_dqn import DoubleDQN
-from chainerrl import replay_buffer
-from test_dqn_like import _TestDQNLike
+from test_dqn_like import _TestDQNOnDiscreteABC
+from test_dqn_like import _TestDQNOnDiscretePOABC
+from test_dqn_like import _TestDQNOnContinuousABC
 
 
-class TestDoubleDQN(_TestDQNLike):
+class TestDoubleDQNOnDiscreteABC(_TestDQNOnDiscreteABC):
 
-    def make_agent(self, gpu, q_func, explorer, opt):
-        rbuf = replay_buffer.ReplayBuffer(10 ** 5)
-        return DoubleDQN(q_func, opt, rbuf, gpu=gpu, gamma=0.9,
-                         explorer=explorer, replay_start_size=100,
-                         target_update_frequency=100,
-                         minibatch_size=100)
+    def make_dqn_agent(self, env, q_func, opt, explorer, rbuf, gpu):
+        return DoubleDQN(
+            q_func, opt, rbuf, gpu=gpu, gamma=0.9, explorer=explorer,
+            replay_start_size=100, target_update_frequency=100)
+
+
+class TestDoubleDQNOnContinuousABC(_TestDQNOnContinuousABC):
+
+    def make_dqn_agent(self, env, q_func, opt, explorer, rbuf, gpu):
+        return DoubleDQN(
+            q_func, opt, rbuf, gpu=gpu, gamma=0.9, explorer=explorer,
+            replay_start_size=100, target_update_frequency=100)
+
+
+class TestDoubleDQNOnDiscretePOABC(_TestDQNOnDiscretePOABC):
+
+    def make_dqn_agent(self, env, q_func, opt, explorer, rbuf, gpu):
+        return DoubleDQN(
+            q_func, opt, rbuf, gpu=gpu, gamma=0.9, explorer=explorer,
+            replay_start_size=100, target_update_frequency=100,
+            episodic_update=True)

@@ -141,3 +141,23 @@ class RecurrentChainMixin(Recurrent):
 
     def reset_state(self):
         reset_state(self)
+
+
+@contextlib.contextmanager
+def state_kept(link):
+    if isinstance(link, Recurrent):
+        link.push_and_keep_state()
+        yield
+        link.pop_state()
+    else:
+        yield
+
+
+@contextlib.contextmanager
+def state_reset(link):
+    if isinstance(link, Recurrent):
+        link.push_state()
+        yield
+        link.pop_state()
+    else:
+        yield

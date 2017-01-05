@@ -5,32 +5,32 @@ from __future__ import absolute_import
 from future import standard_library
 standard_library.install_aliases()
 
-from chainerrl.agents.pal import PAL
+from chainerrl.agents.al import AL
 from test_dqn_like import _TestDQNOnDiscreteABC
 from test_dqn_like import _TestDQNOnDiscretePOABC
 from test_dqn_like import _TestDQNOnContinuousABC
 
 
-class TestPALOnDiscreteABC(_TestDQNOnDiscreteABC):
+class TestALOnDiscreteABC(_TestDQNOnDiscreteABC):
 
     def make_dqn_agent(self, env, q_func, opt, explorer, rbuf, gpu):
-        return PAL(
+        return AL(
             q_func, opt, rbuf, gpu=gpu, gamma=0.9, explorer=explorer,
             replay_start_size=100, target_update_frequency=100)
 
 
-class TestPALOnContinuousABC(_TestDQNOnContinuousABC):
+class TestALOnContinuousABC(_TestDQNOnContinuousABC):
 
     def make_dqn_agent(self, env, q_func, opt, explorer, rbuf, gpu):
-        return PAL(
+        return AL(
             q_func, opt, rbuf, gpu=gpu, gamma=0.9, explorer=explorer,
             replay_start_size=100, target_update_frequency=100)
 
 
-class TestPALOnDiscretePOABC(_TestDQNOnDiscretePOABC):
+class TestALOnDiscretePOABC(_TestDQNOnDiscretePOABC):
 
     def make_dqn_agent(self, env, q_func, opt, explorer, rbuf, gpu):
-        return PAL(
+        return AL(
             q_func, opt, rbuf, gpu=gpu, gamma=0.9, explorer=explorer,
             replay_start_size=100, target_update_frequency=100,
             episodic_update=True)

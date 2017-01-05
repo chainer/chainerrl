@@ -61,6 +61,8 @@ def compute_value_loss(y, t, clip_delta=True, batch_accumulator='mean'):
         (Variable) scalar loss
     """
     assert batch_accumulator in ('mean', 'sum')
+    y = F.reshape(y, (-1, 1))
+    t = F.reshape(t, (-1, 1))
     if clip_delta:
         loss_sum = F.sum(F.huber_loss(y, t, delta=1.0))
         if batch_accumulator == 'mean':
@@ -253,7 +255,6 @@ class DQN(agent.Agent):
 
         target_next_qout = self.target_model(batch_next_state, test=True)
         next_q_max = target_next_qout.max
-        next_q_max.creator = None
 
         batch_rewards = exp_batch['reward']
         batch_terminal = exp_batch['is_state_terminal']
