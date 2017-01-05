@@ -27,10 +27,10 @@ class _TestDDPGOnABC(_TestTraining):
         policy = model['policy']
         q_func = model['q_function']
 
-        actor_opt = optimizers.Adam(alpha=1e-4)
+        actor_opt = optimizers.Adam(alpha=5e-4)
         actor_opt.setup(policy)
 
-        critic_opt = optimizers.Adam(alpha=2e-3)
+        critic_opt = optimizers.Adam(alpha=1e-3)
         critic_opt.setup(q_func)
 
         explorer = self.make_explorer(env)
@@ -52,11 +52,6 @@ class _TestDDPGOnABC(_TestTraining):
                 return a
         return LinearDecayEpsilonGreedy(1.0, 0.2, 1000, random_action_func)
 
-    def make_optimizer(self, env, q_func):
-        opt = optimizers.Adam()
-        opt.setup(q_func)
-        return opt
-
     def make_replay_buffer(self, env):
         return replay_buffer.ReplayBuffer(10 ** 5)
 
@@ -66,9 +61,10 @@ class _TestDDPGOnContinuousPOABC(_TestDDPGOnABC):
     def make_model(self, env):
         n_dim_obs = env.observation_space.low.size
         n_dim_action = env.action_space.low.size
+        n_hidden_channels = 50
         policy = FCLSTMDeterministicPolicy(n_input_channels=n_dim_obs,
                                            n_hidden_layers=2,
-                                           n_hidden_channels=10,
+                                           n_hidden_channels=n_hidden_channels,
                                            action_size=n_dim_action,
                                            min_action=env.action_space.low,
                                            max_action=env.action_space.high,
@@ -77,7 +73,7 @@ class _TestDDPGOnContinuousPOABC(_TestDDPGOnABC):
         q_func = FCLSTMSAQFunction(n_dim_obs=n_dim_obs,
                                    n_dim_action=n_dim_action,
                                    n_hidden_layers=2,
-                                   n_hidden_channels=10)
+                                   n_hidden_channels=n_hidden_channels)
 
         return DDPGModel(policy=policy, q_func=q_func)
 
@@ -93,9 +89,10 @@ class _TestDDPGOnContinuousABC(_TestDDPGOnABC):
     def make_model(self, env):
         n_dim_obs = env.observation_space.low.size
         n_dim_action = env.action_space.low.size
+        n_hidden_channels = 50
         policy = FCBNDeterministicPolicy(n_input_channels=n_dim_obs,
                                          n_hidden_layers=2,
-                                         n_hidden_channels=10,
+                                         n_hidden_channels=n_hidden_channels,
                                          action_size=n_dim_action,
                                          min_action=env.action_space.low,
                                          max_action=env.action_space.high,
@@ -104,7 +101,7 @@ class _TestDDPGOnContinuousABC(_TestDDPGOnABC):
         q_func = FCBNLateActionSAQFunction(n_dim_obs=n_dim_obs,
                                            n_dim_action=n_dim_action,
                                            n_hidden_layers=2,
-                                           n_hidden_channels=10)
+                                           n_hidden_channels=n_hidden_channels)
 
         return DDPGModel(policy=policy, q_func=q_func)
 
