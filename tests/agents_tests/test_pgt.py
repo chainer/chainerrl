@@ -32,19 +32,19 @@ class TestPGT(unittest.TestCase):
         pass
 
     def make_model(self, env):
-        n_dim_action = env.action_space.low.size
-        policy = FCGaussianPolicy(n_input_channels=5,
+        ndim_obs = env.observation_space.low.size
+        ndim_action = env.action_space.low.size
+        policy = FCGaussianPolicy(n_input_channels=ndim_obs,
                                   n_hidden_layers=2,
-                                  n_hidden_channels=10,
-                                  action_size=n_dim_action,
+                                  n_hidden_channels=50,
+                                  action_size=ndim_action,
                                   min_action=env.action_space.low,
-                                  max_action=env.action_space.high,
-                                  bound_mean=True)
+                                  max_action=env.action_space.high)
 
-        q_func = FCBNLateActionSAQFunction(n_dim_obs=5,
-                                           n_dim_action=n_dim_action,
+        q_func = FCBNLateActionSAQFunction(n_dim_obs=ndim_obs,
+                                           n_dim_action=ndim_action,
                                            n_hidden_layers=2,
-                                           n_hidden_channels=10)
+                                           n_hidden_channels=50)
 
         return chainer.Chain(policy=policy, q_function=q_func)
 
