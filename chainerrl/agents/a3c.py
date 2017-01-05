@@ -26,12 +26,26 @@ logger = getLogger(__name__)
 
 
 class A3CModel(chainer.Link):
+    """A3C model."""
 
     def pi_and_v(self, obs):
+        """Evaluate the policy and the V-function.
+
+        Args:
+            obs (Variable or ndarray): Batched observations.
+        Returns:
+            Distribution and Variable
+        """
         raise NotImplementedError()
 
 
 class A3CSeparateModel(chainer.Chain, A3CModel, RecurrentChainMixin):
+    """A3C model that consists of a separate policy and V-function.
+
+    Args:
+        pi (Policy): Policy.
+        v (VFunction): V-function.
+    """
 
     def __init__(self, pi, v):
         super().__init__(pi=pi, v=v)
