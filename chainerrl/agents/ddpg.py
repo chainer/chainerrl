@@ -11,28 +11,26 @@ import chainer.functions as F
 from chainer import cuda
 
 from chainerrl.agents import dqn
+from chainerrl.recurrent import Recurrent
+from chainerrl.recurrent import RecurrentChainMixin
 
 
-class DDPGModel(chainer.Chain):
+class DDPGModel(chainer.Chain, RecurrentChainMixin):
 
     def __init__(self, policy, q_func):
         super().__init__(policy=policy, q_function=q_func)
 
-    def push_state(self):
-        self.policy.push_state()
-        self.q_function.push_state()
-
-    def pop_state(self):
-        self.policy.pop_state()
-        self.q_function.pop_state()
-
-    def reset_state(self):
-        self.policy.reset_state()
-        self.q_function.reset_state()
-
 
 class DDPG(dqn.DQN):
     """Deep Deterministic Policy Gradients.
+
+    Args:
+        model (DDPGModel): DDPG model that contains both a policy and a
+            Q-function
+        actor_optimizer (Optimizer): Optimizer setup with the policy
+        critic_optimizer (Optimizer): Optimizer setup with the Q-function
+
+        For other arguments, see DQN
     """
 
     def __init__(self, model, actor_optimizer, critic_optimizer, replay_buffer,
@@ -70,27 +68,30 @@ class DDPG(dqn.DQN):
         batch_state = batch['state']
         batch_actions = batch['action']
         batch_next_actions = batch['next_action']
+        batchsize = len(batch_state)
 
-        # Target policy observes s_{t+1}
-        next_actions = self.target_policy(batch_next_state, test=True).sample()
+        with chainer.no_backprop_mode():
+            # Target policy observes s_{t+1}
+            next_actions = self.target_policy(
+                batch_next_state, test=True).sample()
 
-        # Q(s_{t+1}, mu(a_{t+1})) is evaluated.
-        # This should not affect the internal state of Q.
-        self.target_q_function.push_and_keep_state()
-        next_q = self.target_q_function(batch_next_state, next_actions,
-                                        test=True)
-        self.target_q_function.pop_state()
+            # Q(s_{t+1}, mu(a_{t+1})) is evaluated.
+            # This should not affect the internal state of Q.
+            with self.target_q_function.state_kept():
+                next_q = self.target_q_function(batch_next_state, next_actions,
+                                                test=True)
 
-        # Target Q-function observes s_{t+1} and a_{t+1}
-        self.target_q_function.update_state(
-            batch_next_state, batch_next_actions, test=True)
+            # Target Q-function observes s_{t+1} and a_{t+1}
+            self.target_q_function.update_state(
+                batch_next_state, batch_next_actions, test=True)
 
-        target_q = batch_rewards + self.gamma * \
-            (1.0 - batch_terminal) * next_q
-        target_q.creator = None
+            target_q = batch_rewards + self.gamma * \
+                (1.0 - batch_terminal) * F.reshape(next_q, (batchsize,))
 
         # Estimated Q-function observes s_t and a_t
-        predict_q = self.q_function(batch_state, batch_actions, test=False)
+        predict_q = F.reshape(
+            self.q_function(batch_state, batch_actions, test=False),
+            (batchsize,))
 
         loss = F.mean_squared_error(target_q, predict_q)
 
@@ -120,12 +121,11 @@ class DDPG(dqn.DQN):
 
         # Q(s_t, mu(s_t)) is evaluated.
         # This should not affect the internal state of Q.
-        self.q_function.push_and_keep_state()
-        q = self.q_function(batch_state, onpolicy_actions, test=True)
-        self.q_function.pop_state()
-
-        # import copy
-        # q = copy.deepcopy(self.q_function)(batch_state, onpolicy_actions, test=True)
+        if isinstance(self.q_function, Recurrent):
+            with self.q_function.state_kept():
+                q = self.q_function(batch_state, onpolicy_actions, test=False)
+        else:
+            q = self.q_function(batch_state, onpolicy_actions, test=False)
 
         # Estimated Q-function observes s_t and a_t
         self.q_function.update_state(batch_state, batch_action, test=False)
@@ -148,6 +148,7 @@ class DDPG(dqn.DQN):
         self.actor_optimizer.update(lambda: self.compute_actor_loss(batch))
 
     def update_from_episodes(self, episodes, errors_out=None):
+        # Sort episodes desc by their lengths
         sorted_episodes = list(reversed(sorted(episodes, key=len)))
         max_epi_len = len(sorted_episodes[0])
 
@@ -163,46 +164,26 @@ class DDPG(dqn.DQN):
                 transitions, xp=self.xp, phi=self.phi)
             batches.append(batch)
 
-        # Backup current states
-        self.model.push_state()
-        self.target_model.push_state()
+        with self.model.state_reset():
+            with self.target_model.state_reset():
 
-        self.input_initial_batch_target_model(batches[0])
+                # Since the target model is evaluated one-step ahead,
+                # its internal states need to be updated
+                self.input_initial_batch_target_model(batches[0])
 
-        assert self.q_function.lstm.h is None
-        assert self.policy.lstm.h is None
-        assert self.target_q_function.lstm.h is not None
-        assert self.target_policy.lstm.h is not None
+                # Update critic through time
+                critic_loss = 0
+                for batch in batches:
+                    critic_loss += self.compute_critic_loss(batch)
+                self.critic_optimizer.update(lambda: critic_loss / max_epi_len)
 
-        # Update critic through time
-        critic_loss = 0
-        for batch in batches:
-            critic_loss += self.compute_critic_loss(batch)
-        self.critic_optimizer.update(lambda: critic_loss / max_epi_len)
+        with self.model.state_reset():
 
-        # Reset states before updating actor
-        self.model.reset_state()
-        self.target_model.reset_state()
-
-        assert self.q_function.lstm.h is None
-        assert self.policy.lstm.h is None
-        assert self.target_q_function.lstm.h is None
-        assert self.target_policy.lstm.h is None
-
-        # Update actor through time
-        actor_loss = 0
-        for batch in batches:
-            actor_loss += self.compute_actor_loss(batch)
-        self.actor_optimizer.update(lambda: actor_loss / max_epi_len)
-
-        assert self.q_function.lstm.h is not None
-        assert self.policy.lstm.h is not None
-        assert self.target_q_function.lstm.h is None
-        assert self.target_policy.lstm.h is None
-
-        # Backup current states
-        self.model.pop_state()
-        self.target_model.pop_state()
+            # Update actor through time
+            actor_loss = 0
+            for batch in batches:
+                actor_loss += self.compute_actor_loss(batch)
+            self.actor_optimizer.update(lambda: actor_loss / max_epi_len)
 
     def act(self, state):
 
@@ -218,26 +199,6 @@ class DDPG(dqn.DQN):
         self.logger.debug('t:%s a:%s q:%s',
                           self.t, action.data[0], q.data)
         return cuda.to_cpu(action.data[0])
-
-    def select_action(self, state):
-        greedy_evaluated = [False]
-
-        def greedy_func():
-            greedy_evaluated[0] = True
-            return self.act(state)
-
-        a = self.explorer.select_action(self.t, greedy_func)
-
-        # Even when greedy actions are not selected, policy and q_function's
-        # states should be updated
-        # FIXME: This would not work for some explorers that add noises to
-        # greedy actions.
-        if not greedy_evaluated[0]:
-            s = self._batch_states([state])
-            self.policy.update_state(s, test=True)
-            self.q_function.update_state(s, self.xp.asarray([a]))
-
-        return a
 
     @property
     def saved_attributes(self):

@@ -24,6 +24,7 @@ from chainerrl.misc import random_seed
 from chainerrl.misc.init_like_torch import init_like_torch
 from chainerrl.optimizers import rmsprop_async
 from chainerrl.optimizers.nonbias_weight_decay import NonbiasWeightDecay
+from chainerrl.recurrent import RecurrentChainMixin
 
 
 def phi(obs):
@@ -38,7 +39,7 @@ class A3CFFSoftmax(chainer.ChainList, a3c.A3CModel):
         self.v = MLP(ndim_obs, 1, hidden_sizes=hidden_sizes)
         super().__init__(self.pi, self.v)
 
-    def pi_and_v(self, state, keep_same_state=False):
+    def pi_and_v(self, state):
         return self.pi(state), self.v(state)
 
 
@@ -50,11 +51,11 @@ class A3CFFMellowmax(chainer.ChainList, a3c.A3CModel):
         self.v = MLP(ndim_obs, 1, hidden_sizes=hidden_sizes)
         super().__init__(self.pi, self.v)
 
-    def pi_and_v(self, state, keep_same_state=False):
+    def pi_and_v(self, state):
         return self.pi(state), self.v(state)
 
 
-class A3CLSTMGaussian(chainer.ChainList, a3c.A3CModel):
+class A3CLSTMGaussian(chainer.ChainList, a3c.A3CModel, RecurrentChainMixin):
 
     def __init__(self, obs_size, action_size, hidden_size=200, lstm_size=128):
         self.pi_head = L.Linear(obs_size, hidden_size)
@@ -70,32 +71,17 @@ class A3CLSTMGaussian(chainer.ChainList, a3c.A3CModel):
                          self.pi_lstm, self.v_lstm, self.pi, self.v)
         init_like_torch(self)
 
-    def pi_and_v(self, state, keep_same_state=False):
+    def pi_and_v(self, state):
 
         def forward(head, lstm, tail):
             h = F.relu(head(state))
-            if keep_same_state:
-                prev_h, prev_c = lstm.h, lstm.c
-                h = lstm(h)
-                lstm.h, lstm.c = prev_h, prev_c
-            else:
-                h = lstm(h)
+            h = lstm(h)
             return tail(h)
 
         pout = forward(self.pi_head, self.pi_lstm, self.pi)
         vout = forward(self.v_head, self.v_lstm, self.v)
 
         return pout, vout
-
-    def reset_state(self):
-        self.pi_lstm.reset_state()
-        self.v_lstm.reset_state()
-
-    def unchain_backward(self):
-        self.pi_lstm.h.unchain_backward()
-        self.pi_lstm.c.unchain_backward()
-        self.v_lstm.h.unchain_backward()
-        self.v_lstm.c.unchain_backward()
 
 
 def main():
@@ -105,7 +91,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('processes', type=int)
     parser.add_argument('--env', type=str, default='CartPole-v0')
-    parser.add_argument('--arch', type=str, default='A3CFFSoftmax',
+    parser.add_argument('--arch', type=str, default='FFSoftmax',
                         choices=('FFSoftmax', 'FFMellowmax', 'LSTMGaussian'))
     parser.add_argument('--seed', type=int, default=None)
     parser.add_argument('--outdir', type=str, default=None)

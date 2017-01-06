@@ -19,45 +19,60 @@ from chainerrl.misc import copy_param
 from chainerrl.misc import async
 from chainerrl import agent
 from chainerrl.misc.makedirs import makedirs
+from chainerrl.recurrent import Recurrent
+from chainerrl.recurrent import RecurrentChainMixin
 
 logger = getLogger(__name__)
 
 
 class A3CModel(chainer.Link):
+    """A3C model."""
 
-    def pi_and_v(self, state, keep_same_state=False):
+    def pi_and_v(self, obs):
+        """Evaluate the policy and the V-function.
+
+        Args:
+            obs (Variable or ndarray): Batched observations.
+        Returns:
+            Distribution and Variable
+        """
         raise NotImplementedError()
 
-    def reset_state(self):
-        pass
 
-    def unchain_backward(self):
-        pass
+class A3CSeparateModel(chainer.Chain, A3CModel, RecurrentChainMixin):
+    """A3C model that consists of a separate policy and V-function.
 
-
-class A3CSeparateModel(chainer.Chain, A3CModel):
+    Args:
+        pi (Policy): Policy.
+        v (VFunction): V-function.
+    """
 
     def __init__(self, pi, v):
         super().__init__(pi=pi, v=v)
 
-    def pi_and_v(self, obs, keep_same_state=False):
-        if keep_same_state:
-            self.pi.push_and_keep_state()
-            self.v.push_and_keep_state()
+    def pi_and_v(self, obs):
         pout = self.pi(obs)
         vout = self.v(obs)
-        if keep_same_state:
-            self.pi.pop_state()
-            self.v.pop_state()
         return pout, vout
 
-    def reset_state(self):
-        self.pi.reset_state()
-        self.v.reset_state()
 
-    def unchain_backward(self):
-        self.pi.unchain_backward()
-        self.v.unchain_backward()
+class A3CSharedModel(chainer.Chain, A3CModel, RecurrentChainMixin):
+    """A3C model where the policy and V-function share parameters.
+
+    Args:
+        shared (Link): Shared part. Nonlinearity must be included in it.
+        pi (Policy): Policy that receives output of shared as input.
+        v (VFunction): V-function that receives output of shared as input.
+    """
+
+    def __init__(self, shared, pi, v):
+        super().__init__(shared=shared, pi=pi, v=v)
+
+    def pi_and_v(self, obs):
+        h = self.shared(obs)
+        pout = self.pi(h)
+        vout = self.v(h)
+        return pout, vout
 
 
 class A3C(agent.Agent):
@@ -121,7 +136,11 @@ class A3C(agent.Agent):
         if statevar is None:
             R = 0
         else:
-            _, vout = self.model.pi_and_v(statevar, keep_same_state=True)
+            if isinstance(self.model, Recurrent):
+                with self.model.state_kept():
+                    _, vout = self.model.pi_and_v(statevar)
+            else:
+                _, vout = self.model.pi_and_v(statevar)
             R = float(vout.data)
 
         pi_loss = 0
@@ -189,7 +208,8 @@ class A3C(agent.Agent):
             logger.debug('update')
 
         self.sync_parameters()
-        self.model.unchain_backward()
+        if isinstance(self.model, Recurrent):
+            self.model.unchain_backward()
 
         self.past_action_log_prob = {}
         self.past_action_entropy = {}
@@ -214,6 +234,7 @@ class A3C(agent.Agent):
         self.past_states[self.t] = statevar
         pout, vout = self.model.pi_and_v(statevar)
         action = pout.sample()
+        action.creator = None  # Do not backprop through sampled actions
         self.past_action_log_prob[self.t] = pout.log_prob(action)
         self.past_action_entropy[self.t] = pout.entropy
         self.past_values[self.t] = vout
@@ -240,10 +261,12 @@ class A3C(agent.Agent):
             statevar = chainer.Variable(np.expand_dims(self.phi(state), 0))
             self.update(statevar)
 
-        self.model.reset_state()
+        if isinstance(self.model, Recurrent):
+            self.model.reset_state()
 
     def stop_episode(self):
-        self.model.reset_state()
+        if isinstance(self.model, Recurrent):
+            self.model.reset_state()
 
     def save(self, dirname):
         makedirs(dirname, exist_ok=True)

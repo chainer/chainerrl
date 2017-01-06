@@ -46,6 +46,8 @@ class _TestTraining(unittest.TestCase):
         train_agent.train_agent(
             agent=agent, env=env, steps=steps, outdir=self.tmpdir)
 
+        agent.stop_episode()
+
         # Test
         total_r = 0.0
         obs = env.reset()

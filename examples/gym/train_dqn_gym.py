@@ -25,7 +25,10 @@ from chainerrl import q_function
 from chainerrl.misc import env_modifiers
 from chainerrl.experiments.train_agent import train_agent_with_evaluation
 from chainerrl.explorers.epsilon_greedy import LinearDecayEpsilonGreedy
+from chainerrl.explorers.additive_gaussian import AdditiveGaussian
+from chainerrl.explorers.additive_ou import AdditiveOU
 from chainerrl.misc import reward_filter
+from chainerrl.links.mlp import MLP
 
 
 def main():
@@ -33,7 +36,7 @@ def main():
     logging.basicConfig(level=logging.DEBUG)
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('--outdir', type=str, default=None)
+    parser.add_argument('--outdir', type=str, default='dqn_out')
     parser.add_argument('--env', type=str, default='Pendulum-v0')
     parser.add_argument('--seed', type=int, default=None)
     parser.add_argument('--gpu', type=int, default=0)
@@ -46,11 +49,14 @@ def main():
     parser.add_argument('--replay-start-size', type=int, default=10 ** 4)
     parser.add_argument('--target-update-frequency',
                         type=int, default=10 ** 4)
+    parser.add_argument('--target-update-method',
+                        type=str, default='hard')
+    parser.add_argument('--soft-update-tau', type=float, default=1e-2)
     parser.add_argument('--update-frequency', type=int, default=16)
     parser.add_argument('--eval-n-runs', type=int, default=10)
     parser.add_argument('--eval-frequency', type=int, default=10 ** 4)
-    parser.add_argument('--n-x-layers', type=int, default=10)
-    parser.add_argument('--n-hidden-channels', type=int, default=4)
+    parser.add_argument('--n-hidden-channels', type=int, default=100)
+    parser.add_argument('--n-hidden-layers', type=int, default=2)
     parser.add_argument('--gamma', type=float, default=0.99)
     parser.add_argument('--minibatch-size', type=int, default=32)
     parser.add_argument('--render-train', action='store_true')
@@ -91,18 +97,32 @@ def main():
     print('Output files are saved in {}'.format(args.outdir))
 
     if isinstance(action_space, spaces.Box):
-        action_size = np.asarray(action_space.shape).prod()
+        action_size = action_space.low.size
+        # Use NAF to apply DQN to continuous action spaces
         q_func = q_function.FCSIContinuousQFunction(
-            obs_size, action_size, 100, 2, action_space)
+            obs_size, action_size,
+            n_hidden_channels=args.n_hidden_channels,
+            n_hidden_layers=args.n_hidden_layers,
+            action_space=action_space)
+        explorer = AdditiveOU()
     else:
         n_actions = action_space.n
-        q_func = q_function.FCSIQFunction(obs_size, n_actions, 100, 2)
-    init_like_torch(q_func)
+        q_func = q_function.SingleModelStateQFunctionWithDiscreteAction(
+            model=MLP(obs_size, n_actions,
+                      (args.n_hidden_channels,) * args.n_hidden_layers)
+        )
 
-    # Use the same hyper parameters as the Nature paper's
-    # opt = optimizers.RMSpropGraves(
-    #     lr=2.5e-4, alpha=0.95, momentum=0.95, eps=1e-2)
-    opt = optimizers.Adam(eps=1e-2)
+        def random_action():
+            a = action_space.sample()
+            if isinstance(a, np.ndarray):
+                a = a.astype(np.float32)
+            return a
+
+        explorer = LinearDecayEpsilonGreedy(
+            args.start_epsilon, args.end_epsilon, args.final_exploration_steps,
+            random_action)
+
+    opt = optimizers.Adam()
 
     opt.setup(q_func)
 
@@ -111,20 +131,13 @@ def main():
     def phi(obs):
         return obs.astype(np.float32)
 
-    def random_action():
-        a = action_space.sample()
-        if isinstance(a, np.ndarray):
-            a = a.astype(np.float32)
-        return a
-
-    explorer = LinearDecayEpsilonGreedy(
-        args.start_epsilon, args.end_epsilon, args.final_exploration_steps,
-        random_action)
-    agent = DoubleDQN(q_func, opt, rbuf, gpu=args.gpu, gamma=args.gamma,
-                      explorer=explorer, replay_start_size=args.replay_start_size,
-                      target_update_frequency=args.target_update_frequency,
-                      update_frequency=args.update_frequency,
-                      phi=phi, minibatch_size=args.minibatch_size)
+    agent = DQN(q_func, opt, rbuf, gpu=args.gpu, gamma=args.gamma,
+                explorer=explorer, replay_start_size=args.replay_start_size,
+                target_update_frequency=args.target_update_frequency,
+                update_frequency=args.update_frequency,
+                phi=phi, minibatch_size=args.minibatch_size,
+                target_update_method=args.target_update_method,
+                soft_update_tau=args.soft_update_tau)
     agent.logger.setLevel(logging.DEBUG)
 
     if len(args.model) > 0:

@@ -14,15 +14,20 @@ import env
 
 
 class ABC(env.Env):
-    """Very simple toy problem.
+    """Toy problem for only a testing purpose.
 
-    If the agent can choose actions 0, 1, 2 exactly in this order, it will receive reward 1. Otherwise, if it failed to do so, the environment is terminated with reward 0.
+    The optimal policy is:
+        state0 -> action0
+        state1 -> action1
+        state2 -> action2
+    Observations are one-hot vectors that represents which state it is now.
     """
 
     def __init__(self, discrete=True, partially_observable=False, episodic=True):
         self.episodic = episodic
         self.partially_observable = partially_observable
-        self.n_dim_obs = 5
+        self.n_max_offset = 1
+        self.n_dim_obs = 5 + self.n_max_offset
         self.observation_space = spaces.Box(
             low=np.asarray([-np.inf] * self.n_dim_obs, dtype=np.float32),
             high=np.asarray([np.inf] * self.n_dim_obs, dtype=np.float32))
@@ -36,14 +41,8 @@ class ABC(env.Env):
 
     def observe(self):
         state_vec = np.zeros((self.n_dim_obs,), dtype=np.float32)
-        if self.partially_observable:
-            state_vec[self._state % 2] = 1.0
-        else:
-            state_vec[self._state] = 1.0
+        state_vec[self._state + self._offset] = 1.0
         return state_vec
-
-    def initialize(self):
-        self._state = 0
 
     def is_terminal(self):
         if not self.episodic:
@@ -52,6 +51,12 @@ class ABC(env.Env):
 
     def reset(self):
         self._state = 0
+        if self.partially_observable:
+            # For partially observable settings, observations are shifted by
+            # episode-dependent random offsets
+            self._offset = np.random.randint(0, self.n_max_offset + 1)
+        else:
+            self._offset = 0
         return self.observe()
 
     def step(self, action):

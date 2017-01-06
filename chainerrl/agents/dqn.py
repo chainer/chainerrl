@@ -20,6 +20,7 @@ from chainer import serializers
 from chainerrl import agent
 from chainerrl.misc.makedirs import makedirs
 from chainerrl.misc import copy_param
+from chainerrl.recurrent import Recurrent
 
 
 def _to_device(obj, gpu):
@@ -37,19 +38,31 @@ def batch_experiences(experiences, xp, phi):
         'state': xp.asarray([phi(elem['state']) for elem in experiences]),
         'action': xp.asarray([elem['action'] for elem in experiences]),
         'reward': xp.asarray(
-            [[elem['reward']] for elem in experiences], dtype=np.float32),
+            [elem['reward'] for elem in experiences], dtype=np.float32),
         'next_state': xp.asarray(
             [phi(elem['next_state']) for elem in experiences]),
         'next_action': xp.asarray(
             [phi(elem['next_action']) for elem in experiences]),
         'is_state_terminal': xp.asarray(
-            [[elem['is_state_terminal']] for elem in experiences],
+            [elem['is_state_terminal'] for elem in experiences],
             dtype=np.float32)}
 
 
 def compute_value_loss(y, t, clip_delta=True, batch_accumulator='mean'):
-    """Compute a loss for value prediction problem."""
+    """Compute a loss for value prediction problem.
+
+    Args:
+        y (Variable or ndarray): Predicted values.
+        t (Variable or ndarray): Target values.
+        clip_delta (bool): Use the Huber loss function if set True.
+        batch_accumulator (str): 'mean' or 'sum'. 'mean' will use the mean of
+            the loss values in a batch. 'sum' will use the sum.
+    Returns:
+        (Variable) scalar loss
+    """
     assert batch_accumulator in ('mean', 'sum')
+    y = F.reshape(y, (-1, 1))
+    t = F.reshape(t, (-1, 1))
     if clip_delta:
         loss_sum = F.sum(F.huber_loss(y, t, delta=1.0))
         if batch_accumulator == 'mean':
@@ -66,7 +79,35 @@ def compute_value_loss(y, t, clip_delta=True, batch_accumulator='mean'):
 
 
 class DQN(agent.Agent):
-    """DQN = QNetwork + Optimizer
+    """Deep Q-Network algorithm.
+
+    Args:
+        q_function (StateQFunction): Q-function
+        optimizer (Optimizer): Optimizer that is already setup
+        replay_buffer (ReplayBuffer): Replay buffer
+        gamma (float): Discount factor
+        explorer (Explorer): Explorer that specifies an exploration strategy.
+        gpu (int): GPU device id. -1 for CPU.
+        replay_start_size (int): if the replay buffer's size is less than
+            replay_start_size, skip update
+        minibatch_size (int): Minibatch size
+        update_frequency (int): Model update frequency in step
+        target_update_frequency (int): Target model update frequency in step
+        clip_delta (bool): Clip delta if set True
+        phi (callable): Feature extractor applied to observations
+        target_update_method (str): 'hard' or 'soft'.
+        soft_update_tau (float): Tau of soft target update.
+        async_update (bool): Update model in a different thread if set True
+        n_times_update (int): Number of repetition of update
+        average_q_decay (float): Decay rate of average Q, only used for
+            statistics
+        average_loss_decay (float): Decay rate of average loss, only used for
+            statistics
+        batch_accumulator (str): 'mean' or 'sum'
+        episodic_update (bool): Use full episodes for update if set True
+        episodic_update_len (int or None): Subsequences of this length are used
+            for update if set int and episodic_update=True
+        logger (Logger): Logger used
     """
 
     def __init__(self, q_function, optimizer, replay_buffer, gamma,
@@ -81,15 +122,6 @@ class DQN(agent.Agent):
                  batch_accumulator='mean', episodic_update=False,
                  episodic_update_len=None,
                  logger=getLogger(__name__)):
-        """
-        Args:
-          replay_start_size (int): if replay buffer's size is less than
-            replay_start_size, skip updating
-          target_update_frequency (int): frequency of updating target Q
-            function
-          target_update_method (str): 'hard' or 'soft'.
-          soft_update_tau (float): tau of soft target update.
-        """
         self.model = q_function
         self.q_function = q_function  # For backward compatibility
 
@@ -173,8 +205,10 @@ class DQN(agent.Agent):
         Returns:
           None
         """
+
+        exp_batch = batch_experiences(experiences, xp=self.xp, phi=self.phi)
         loss = self._compute_loss(
-            experiences, self.gamma, errors_out=errors_out)
+            exp_batch, self.gamma, errors_out=errors_out)
 
         # Update stats
         self.average_loss *= self.average_loss_decay
@@ -188,29 +222,26 @@ class DQN(agent.Agent):
         self.target_model(batch['state'])
 
     def update_from_episodes(self, episodes, errors_out=None):
-        self.model.push_state()
-        self.target_model.push_state()
-
-        loss = 0
-        sorted_episodes = list(reversed(sorted(episodes, key=len)))
-        max_epi_len = len(sorted_episodes[0])
-        for i in range(max_epi_len):
-            transitions = []
-            for ep in sorted_episodes:
-                if len(ep) <= i:
-                    break
-                transitions.append(ep[i])
-            batch = batch_experiences(transitions, xp=self.xp, phi=self.phi)
-            if i == 0:
-                self.input_initial_batch_to_target_model(batch)
-            loss += self._compute_loss(transitions, self.gamma)
-        loss /= max_epi_len
-        self.optimizer.zero_grads()
-        loss.backward()
-        self.optimizer.update()
-
-        self.model.pop_state()
-        self.target_model.pop_state()
+        with self.model.state_reset():
+            with self.target_model.state_reset():
+                loss = 0
+                sorted_episodes = list(reversed(sorted(episodes, key=len)))
+                max_epi_len = len(sorted_episodes[0])
+                for i in range(max_epi_len):
+                    transitions = []
+                    for ep in sorted_episodes:
+                        if len(ep) <= i:
+                            break
+                        transitions.append(ep[i])
+                    batch = batch_experiences(transitions,
+                                              xp=self.xp, phi=self.phi)
+                    if i == 0:
+                        self.input_initial_batch_to_target_model(batch)
+                    loss += self._compute_loss(batch, self.gamma)
+                loss /= max_epi_len
+                self.optimizer.zero_grads()
+                loss.backward()
+                self.optimizer.update()
 
     def _batch_states(self, states):
         """Generate an input batch array from a list of states
@@ -218,47 +249,39 @@ class DQN(agent.Agent):
         states = [self.phi(s) for s in states]
         return self.xp.asarray(states)
 
-    def _compute_target_values(self, experiences, gamma):
+    def _compute_target_values(self, exp_batch, gamma):
 
-        batch_next_state = self._batch_states(
-            [elem['next_state'] for elem in experiences])
+        batch_next_state = exp_batch['next_state']
 
         target_next_qout = self.target_model(batch_next_state, test=True)
         next_q_max = target_next_qout.max
-        next_q_max.creator = None
 
-        batch_rewards = self.xp.asarray(
-            [elem['reward'] for elem in experiences], dtype=np.float32)
-
-        batch_terminal = self.xp.asarray(
-            [elem['is_state_terminal'] for elem in experiences],
-            dtype=np.float32)
+        batch_rewards = exp_batch['reward']
+        batch_terminal = exp_batch['is_state_terminal']
 
         return batch_rewards + self.gamma * (1.0 - batch_terminal) * next_q_max
 
-    def _compute_y_and_t(self, experiences, gamma):
+    def _compute_y_and_t(self, exp_batch, gamma):
 
-        batch_size = len(experiences)
+        batch_size = exp_batch['state'].shape[0]
 
         # Compute Q-values for current states
-        batch_state = self._batch_states(
-            [elem['state'] for elem in experiences])
+        batch_state = exp_batch['state']
 
         qout = self.model(batch_state, test=False)
 
-        batch_actions = self.xp.asarray(
-            [elem['action'] for elem in experiences])
+        batch_actions = exp_batch['action']
         batch_q = F.reshape(qout.evaluate_actions(
             batch_actions), (batch_size, 1))
 
-        batch_q_target = F.reshape(
-            self._compute_target_values(experiences, gamma), (batch_size, 1))
-
-        batch_q_target.creator = None
+        with chainer.no_backprop_mode():
+            batch_q_target = F.reshape(
+                self._compute_target_values(exp_batch, gamma),
+                (batch_size, 1))
 
         return batch_q, batch_q_target
 
-    def _compute_loss(self, experiences, gamma, errors_out=None):
+    def _compute_loss(self, exp_batch, gamma, errors_out=None):
         """
         Compute the Q-learning loss for a batch of experiences
 
@@ -269,9 +292,8 @@ class DQN(agent.Agent):
         Returns:
           loss
         """
-        assert experiences
 
-        y, t = self._compute_y_and_t(experiences, gamma)
+        y, t = self._compute_y_and_t(exp_batch, gamma)
 
         if errors_out is not None:
             del errors_out[:]
@@ -337,10 +359,6 @@ class DQN(agent.Agent):
         self.logger.debug('t:%s a:%s q:%s qout:%s', self.t, action, q, qout)
         return action
 
-    def select_action(self, state):
-        return self.explorer.select_action(
-            self.t, lambda: self.act(state))
-
     def update_if_necessary(self):
         if self.t < self.replay_start_size:
             return
@@ -374,7 +392,8 @@ class DQN(agent.Agent):
         if self.clip_reward:
             reward = np.clip(reward, -1, 1)
 
-        action = self.select_action(state)
+        greedy_action = self.act(state)
+        action = self.explorer.select_action(self.t, lambda: greedy_action)
         self.t += 1
 
         # Update the target network
@@ -430,7 +449,7 @@ class DQN(agent.Agent):
     def stop_episode(self):
         self.last_state = None
         self.last_action = None
-        if hasattr(self.model, 'reset_state'):
+        if isinstance(self.model, Recurrent):
             self.model.reset_state()
         self.replay_buffer.stop_current_episode()
 

@@ -8,12 +8,10 @@ from future import standard_library
 standard_library.install_aliases()
 import argparse
 import os
-import sys
 
 import chainer
 from chainer import links as L
 
-sys.path.append('..')
 from chainerrl import policy
 from chainerrl import v_function
 from chainerrl.links import dqn_head
@@ -25,6 +23,7 @@ from chainerrl.experiments.prepare_output_dir import prepare_output_dir
 from chainerrl.optimizers.nonbias_weight_decay import NonbiasWeightDecay
 from chainerrl.misc.init_like_torch import init_like_torch
 from chainerrl.experiments.train_agent_async import train_agent_async
+from chainerrl.recurrent import RecurrentChainMixin
 from dqn_phi import dqn_phi
 
 
@@ -38,12 +37,12 @@ class A3CFF(chainer.ChainList, a3c.A3CModel):
         super().__init__(self.head, self.pi, self.v)
         init_like_torch(self)
 
-    def pi_and_v(self, state, keep_same_state=False):
+    def pi_and_v(self, state):
         out = self.head(state)
         return self.pi(out), self.v(out)
 
 
-class A3CLSTM(chainer.ChainList, a3c.A3CModel):
+class A3CLSTM(chainer.ChainList, a3c.A3CModel, RecurrentChainMixin):
 
     def __init__(self, n_actions):
         self.head = dqn_head.NIPSDQNHead()
@@ -55,22 +54,10 @@ class A3CLSTM(chainer.ChainList, a3c.A3CModel):
         super().__init__(self.head, self.lstm, self.pi, self.v)
         init_like_torch(self)
 
-    def pi_and_v(self, state, keep_same_state=False):
-        out = self.head(state)
-        if keep_same_state:
-            prev_h, prev_c = self.lstm.h, self.lstm.c
-            out = self.lstm(out)
-            self.lstm.h, self.lstm.c = prev_h, prev_c
-        else:
-            out = self.lstm(out)
-        return self.pi(out), self.v(out)
-
-    def reset_state(self):
-        self.lstm.reset_state()
-
-    def unchain_backward(self):
-        self.lstm.h.unchain_backward()
-        self.lstm.c.unchain_backward()
+    def pi_and_v(self, state):
+        h = self.head(state)
+        h = self.lstm(h)
+        return self.pi(h), self.v(h)
 
 
 def main():

@@ -67,14 +67,15 @@ class PGT(dqn.DQN):
 
         # Update Q-function
         def compute_critic_loss():
-            pout = self.target_policy(batch_next_state, test=True)
-            next_actions = pout.sample()
-            next_q = self.target_q_function(batch_next_state, next_actions,
-                                            test=True)
 
-            target_q = batch_rewards + self.gamma * \
-                (1.0 - batch_terminal) * next_q
-            target_q.creator = None
+            with chainer.no_backprop_mode():
+                pout = self.target_policy(batch_next_state, test=True)
+                next_actions = pout.sample()
+                next_q = self.target_q_function(batch_next_state, next_actions,
+                                                test=True)
+
+                target_q = batch_rewards + self.gamma * \
+                    (1.0 - batch_terminal) * next_q
 
             predict_q = self.q_function(batch_state, batch_actions, test=False)
 
@@ -90,6 +91,7 @@ class PGT(dqn.DQN):
         def compute_actor_loss():
             pout = self.policy(batch_state, test=False)
             sampled_actions = pout.sample()
+            sampled_actions.creator = None
             q = self.q_function(batch_state, sampled_actions, test=True)
             log_probs = pout.log_prob(sampled_actions)
             v = self.q_function(

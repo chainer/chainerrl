@@ -46,7 +46,7 @@ class FCGaussianPolicy(chainer.ChainList, GaussianPolicy):
 
     def __init__(self, n_input_channels, action_size,
                  n_hidden_layers=0, n_hidden_channels=None,
-                 min_action=None, max_action=None, bound_mean=True,
+                 min_action=None, max_action=None, bound_mean=False,
                  var_type='spherical'):
 
         self.n_input_channels = n_input_channels

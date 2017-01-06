@@ -11,12 +11,13 @@ from chainer import optimizers
 from chainer import testing
 import numpy as np
 
-from chainerrl.q_function import FCSIQFunction
+from chainerrl.q_function import SingleModelStateQFunctionWithDiscreteAction
 from chainerrl.q_function import FCSIContinuousQFunction
 from chainerrl.q_function import FCLSTMStateQFunction
 from chainerrl.envs.abc import ABC
 from chainerrl.explorers.epsilon_greedy import LinearDecayEpsilonGreedy
 from chainerrl import replay_buffer
+from chainerrl.links.mlp import MLP
 from test_training import _TestTraining
 
 
@@ -91,10 +92,9 @@ class _TestDQNOnABC(_TestDQNLike):
 class _TestDQNOnDiscreteABC(_TestDQNOnABC):
 
     def make_q_func(self, env):
-        return FCSIQFunction(n_input_channels=env.observation_space.low.size,
-                             n_actions=env.action_space.n,
-                             n_hidden_channels=10,
-                             n_hidden_layers=2)
+        return SingleModelStateQFunctionWithDiscreteAction(
+            model=MLP(env.observation_space.low.size,
+                      env.action_space.n, (10, 10)))
 
     def make_env_and_successful_return(self):
         return ABC(discrete=True), 1
