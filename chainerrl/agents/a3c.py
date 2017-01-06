@@ -21,6 +21,7 @@ from chainerrl import agent
 from chainerrl.misc.makedirs import makedirs
 from chainerrl.recurrent import Recurrent
 from chainerrl.recurrent import RecurrentChainMixin
+from chainerrl.recurrent import state_kept
 
 logger = getLogger(__name__)
 
@@ -136,10 +137,7 @@ class A3C(agent.Agent):
         if statevar is None:
             R = 0
         else:
-            if isinstance(self.model, Recurrent):
-                with self.model.state_kept():
-                    _, vout = self.model.pi_and_v(statevar)
-            else:
+            with state_kept(self.model):
                 _, vout = self.model.pi_and_v(statevar)
             R = float(vout.data)
 
