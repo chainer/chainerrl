@@ -19,6 +19,8 @@ from chainer import serializers
 from chainerrl.misc import copy_param
 from chainerrl.misc import async
 from chainerrl.misc.makedirs import makedirs
+from chainerrl.recurrent import Recurrent
+from chainerrl.recurrent import state_kept
 
 
 class NSQ(object):
@@ -71,7 +73,8 @@ class NSQ(object):
         if statevar is None:
             R = 0
         else:
-            R = float(self.target_q_function(statevar).max.data)
+            with state_kept(self.target_q_function):
+                R = float(self.target_q_function(statevar).max.data)
 
         loss = 0
         for i in reversed(range(self.t_start, self.t)):
@@ -102,6 +105,8 @@ class NSQ(object):
         self.optimizer.update()
 
         self.sync_parameters()
+        if isinstance(self.q_function, Recurrent):
+            self.q_function.unchain_backward()
 
         self.past_action_values = {}
         self.past_states = {}
@@ -122,6 +127,9 @@ class NSQ(object):
             self.update(statevar)
 
         self.past_states[self.t] = statevar
+        if isinstance(self.target_q_function, Recurrent):
+            # Evaluate it to update states
+            self.target_q_function(statevar)
         qout = self.q_function(statevar)
         if self.process_idx == 0:
             logger.debug(
@@ -145,7 +153,8 @@ class NSQ(object):
 
     def act(self, obs):
         statevar = chainer.Variable(np.expand_dims(self.phi(obs), 0))
-        qout = self.q_function(statevar)
+        qout = self.shared_q_function(statevar)
+        logger.debug('act action_value: %s', qout)
         return qout.greedy_actions.data[0]
 
     def stop_episode_and_train(self, state, reward, done=False):
@@ -159,9 +168,16 @@ class NSQ(object):
             statevar = chainer.Variable(np.expand_dims(self.phi(state), 0))
             self.update(statevar)
 
+        if isinstance(self.q_function, Recurrent):
+            self.q_function.reset_state()
+            self.shared_q_function.reset_state()
+            self.target_q_function.reset_state()
+
     def stop_episode(self):
-        # TODO support recurrent Q-function
-        pass
+        if isinstance(self.q_function, Recurrent):
+            self.q_function.reset_state()
+            self.shared_q_function.reset_state()
+            self.target_q_function.reset_state()
 
     def save(self, dirname):
         makedirs(dirname, exist_ok=True)
