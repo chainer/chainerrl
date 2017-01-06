@@ -25,6 +25,7 @@ from chainerrl.misc.init_like_torch import init_like_torch
 from chainerrl.optimizers import rmsprop_async
 from chainerrl.optimizers.nonbias_weight_decay import NonbiasWeightDecay
 from chainerrl.recurrent import RecurrentChainMixin
+from chainerrl.experiments.evaluator import eval_performance
 
 
 def phi(obs):
@@ -86,7 +87,6 @@ class A3CLSTMGaussian(chainer.ChainList, a3c.A3CModel, RecurrentChainMixin):
 
 def main():
     import logging
-    logging.getLogger().setLevel(logging.DEBUG)
 
     parser = argparse.ArgumentParser()
     parser.add_argument('processes', type=int)
@@ -106,7 +106,12 @@ def main():
     parser.add_argument('--render', action='store_true', default=False)
     parser.add_argument('--lr', type=float, default=7e-4)
     parser.add_argument('--weight-decay', type=float, default=0.0)
+    parser.add_argument('--demo', action='store_true', default=False)
+    parser.add_argument('--load', type=str, default='')
+    parser.add_argument('--logger-level', type=int, default=logging.DEBUG)
     args = parser.parse_args()
+
+    logging.getLogger().setLevel(args.logger_level)
 
     if args.seed is not None:
         random_seed.set_random_seed(args.seed)
@@ -144,19 +149,33 @@ def main():
         if args.weight_decay > 0:
             opt.add_hook(NonbiasWeightDecay(args.weight_decay))
 
-        return a3c.A3C(model, opt, t_max=args.t_max, gamma=0.99,
-                       beta=args.beta, process_idx=process_idx, phi=phi)
+        agent = a3c.A3C(model, opt, t_max=args.t_max, gamma=0.99,
+                        beta=args.beta, process_idx=process_idx, phi=phi)
+        if args.load:
+            agent.load(args.load)
+        return agent
 
-    train_agent_async(
-        outdir=args.outdir,
-        processes=args.processes,
-        make_env=make_env,
-        make_agent=make_agent,
-        profile=args.profile,
-        steps=args.steps,
-        eval_n_runs=args.eval_n_runs,
-        eval_frequency=args.eval_frequency,
-        max_episode_len=sample_env.spec.timestep_limit)
+    if args.demo:
+        env = make_env(0, True)
+        agent = make_agent(0)
+        mean, median, stdev = eval_performance(
+            env=env,
+            agent=agent,
+            n_runs=args.eval_n_runs,
+            max_episode_len=sample_env.spec.timestep_limit)
+        print('n_runs: {} mean: {} median: {} stdev'.format(
+            args.eval_n_runs, mean, median, stdev))
+    else:
+        train_agent_async(
+            outdir=args.outdir,
+            processes=args.processes,
+            make_env=make_env,
+            make_agent=make_agent,
+            profile=args.profile,
+            steps=args.steps,
+            eval_n_runs=args.eval_n_runs,
+            eval_frequency=args.eval_frequency,
+            max_episode_len=sample_env.spec.timestep_limit)
 
 
 if __name__ == '__main__':

@@ -274,6 +274,8 @@ class A3C(agent.Agent):
 
     def load(self, dirname):
         serializers.load_npz(os.path.join(dirname, 'model.npz'), self.model)
+        copy_param.copy_param(target_link=self.shared_model,
+                              source_link=self.model)
 
         opt_filename = os.path.join(dirname, 'optimizer.npz')
         if os.path.exists(opt_filename):
