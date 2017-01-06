@@ -10,7 +10,7 @@ import gym
 gym.undo_logger_setup()
 from gym import spaces
 
-import env
+from chainerrl import env
 
 
 class ABC(env.Env):

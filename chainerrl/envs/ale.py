@@ -13,7 +13,7 @@ import numpy as np
 from ale_python_interface import ALEInterface
 import cv2
 
-import env
+from chainerrl import env
 
 
 class ALE(env.Env):
@@ -57,7 +57,6 @@ class ALE(env.Env):
         ale.loadROM(str.encode(rom_filename))
 
         assert ale.getFrameNumber() == 0
-
 
         self.ale = ale
         self.legal_actions = ale.getMinimalActionSet()

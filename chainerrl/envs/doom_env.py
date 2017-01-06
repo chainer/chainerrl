@@ -11,7 +11,7 @@ import time
 
 import numpy as np
 
-import env
+from chainer import env
 
 class DoomEnv(env.Env):
 
