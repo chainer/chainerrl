@@ -25,6 +25,7 @@ from chainerrl.misc.init_like_torch import init_like_torch
 from chainerrl.experiments.train_agent_async import train_agent_async
 from chainerrl.recurrent import RecurrentChainMixin
 from dqn_phi import dqn_phi
+from chainerrl.experiments.evaluator import eval_performance
 
 
 class A3CFF(chainer.ChainList, a3c.A3CModel):
@@ -83,6 +84,8 @@ def main():
     parser.add_argument('--eval-n-runs', type=int, default=10)
     parser.add_argument('--weight-decay', type=float, default=0.0)
     parser.add_argument('--use-lstm', action='store_true')
+    parser.add_argument('--demo', action='store_true', default=False)
+    parser.add_argument('--load', type=str, default='')
     parser.set_defaults(use_sdl=False)
     parser.set_defaults(use_lstm=False)
     args = parser.parse_args()
@@ -106,22 +109,35 @@ def main():
         opt.add_hook(chainer.optimizer.GradientClipping(40))
         if args.weight_decay > 0:
             opt.add_hook(NonbiasWeightDecay(args.weight_decay))
-        return a3c.A3C(model, opt, t_max=args.t_max, gamma=0.99,
-                       beta=args.beta, process_idx=process_idx, phi=dqn_phi)
+        agent = a3c.A3C(model, opt, t_max=args.t_max, gamma=0.99,
+                        beta=args.beta, process_idx=process_idx, phi=dqn_phi)
+        if args.load:
+            agent.load(args.load)
+        return agent
 
     def make_env(process_idx, test):
         return ale.ALE(args.rom, use_sdl=args.use_sdl,
                        treat_life_lost_as_terminal=not test)
 
-    train_agent_async(
-        outdir=args.outdir,
-        processes=args.processes,
-        make_env=make_env,
-        make_agent=make_agent,
-        profile=args.profile,
-        steps=args.steps,
-        eval_n_runs=args.eval_n_runs,
-        eval_frequency=args.eval_frequency)
+    if args.demo:
+        env = make_env(0, True)
+        agent = make_agent(0)
+        mean, median, stdev = eval_performance(
+            env=env,
+            agent=agent,
+            n_runs=args.eval_n_runs)
+        print('n_runs: {} mean: {} median: {} stdev'.format(
+            args.eval_n_runs, mean, median, stdev))
+    else:
+        train_agent_async(
+            outdir=args.outdir,
+            processes=args.processes,
+            make_env=make_env,
+            make_agent=make_agent,
+            profile=args.profile,
+            steps=args.steps,
+            eval_n_runs=args.eval_n_runs,
+            eval_frequency=args.eval_frequency)
 
 
 if __name__ == '__main__':
