@@ -126,6 +126,7 @@ def train_agent_async(outdir, processes, make_env, make_agent,
 
     agent0 = make_agent(0)
     shared_objects = extract_shared_objects_from_agent(agent0)
+    set_shared_objects(agent0, shared_objects)
 
     evaluator = AsyncEvaluator(
         n_runs=eval_n_runs,

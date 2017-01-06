@@ -74,6 +74,24 @@ class SingleModelStateActionQFunction(
         return h
 
 
+class FCStateQFunctionWithDiscreteAction(
+        SingleModelStateQFunctionWithDiscreteAction):
+    """Fully-connected state-input Q-function with discrete actions."""
+
+    def __init__(self, ndim_obs, n_actions, n_hidden_channels,
+                 n_hidden_layers):
+        """
+        Args:
+          n_dim_obs: number of dimensions of observation space
+          n_dim_action: number of dimensions of action space
+          n_hidden_channels: number of hidden channels
+          n_hidden_layers: number of hidden layers
+        """
+        super().__init__(model=MLP(
+            in_size=ndim_obs, out_size=n_actions,
+            hidden_sizes=[n_hidden_channels] * n_hidden_layers))
+
+
 class FCLSTMStateQFunction(chainer.Chain, StateQFunction, RecurrentChainMixin):
     """Fully-connected state-input discrete  Q-function."""
 

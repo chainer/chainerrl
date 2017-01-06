@@ -2,25 +2,30 @@ from __future__ import print_function
 from __future__ import unicode_literals
 from __future__ import division
 from __future__ import absolute_import
-from builtins import range
+from builtins import *
 from future import standard_library
 standard_library.install_aliases()
-import copy
 import logging
 import tempfile
 import unittest
 
-from chainer import optimizers
 from chainer import testing
 import numpy as np
 
 from chainerrl.agents import nsq
-from chainerrl import q_function
+from chainerrl.q_function import FCStateQFunctionWithDiscreteAction
+from chainerrl.q_function import FCLSTMStateQFunction
 from chainerrl.envs.abc import ABC
 from chainerrl.experiments.train_agent_async import train_agent_async
 from chainerrl.explorers.epsilon_greedy import ConstantEpsilonGreedy
+from chainerrl.optimizers import rmsprop_async
 
 
+@testing.parameterize(*testing.product({
+    't_max': [1, 2],
+    'use_lstm': [True, False],
+    'episodic': [True, False],
+}))
 class TestNSQ(unittest.TestCase):
 
     def setUp(self):
@@ -29,38 +34,50 @@ class TestNSQ(unittest.TestCase):
 
     @testing.attr.slow
     def test_abc(self):
-        self._test_abc(1)
-        self._test_abc(5)
+        self._test_abc()
 
-    def _test_abc(self, t_max):
+    def _test_abc(self):
 
         nproc = 8
-        n_actions = 3
 
         def make_env(process_idx, test):
-            return ABC()
+            return ABC(episodic=self.episodic or test)
+
+        sample_env = make_env(0, False)
+        action_space = sample_env.action_space
+        obs_space = sample_env.observation_space
+        ndim_obs = obs_space.low.size
+        n_actions = action_space.n
 
         def random_action_func():
             return np.random.randint(n_actions)
 
-        def phi(x):
-            return x
-
         def make_agent(process_idx):
-            q_func = q_function.FCSIQFunction(5, n_actions, 10, 2)
-            opt = optimizers.RMSprop(1e-3, eps=1e-2)
+            n_hidden_channels = 50
+            if self.use_lstm:
+                q_func = FCLSTMStateQFunction(
+                    ndim_obs, n_actions,
+                    n_hidden_channels=n_hidden_channels,
+                    n_hidden_layers=2)
+            else:
+                q_func = FCStateQFunctionWithDiscreteAction(
+                    ndim_obs, n_actions,
+                    n_hidden_channels=n_hidden_channels,
+                    n_hidden_layers=2)
+            opt = rmsprop_async.RMSpropAsync(lr=1e-3, eps=1e-2, alpha=0.99)
             opt.setup(q_func)
             explorer = ConstantEpsilonGreedy(
                 process_idx / 10, random_action_func)
             return nsq.NSQ(process_idx, q_func, opt, t_max=1,
-                           gamma=0.99, i_target=100, phi=phi,
+                           gamma=0.99, i_target=100,
                            explorer=explorer)
 
         agent = train_agent_async(
             outdir=self.outdir, processes=nproc, make_env=make_env,
-            make_agent=make_agent, steps=10000)
+            make_agent=make_agent, steps=40000,
+            max_episode_len=5)
 
-        q_func = agent.shared_q_function
+        agent.stop_episode()
 
         # Test
         env = make_env(0, True)
@@ -70,8 +87,7 @@ class TestNSQ(unittest.TestCase):
         r = 0.0
 
         while not done:
-            qout = q_func(np.expand_dims(obs, 0))
-            action = qout.greedy_actions.data[0]
+            action = agent.act(obs)
             print(('state:', obs, 'action:', action))
             obs, r, done, _ = env.step(action)
             total_r += r
