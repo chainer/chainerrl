@@ -44,7 +44,9 @@ class AdditiveOU(explorer.Explorer):
     def select_action(self, t, greedy_action_func):
         a = greedy_action_func()
         if self.ou_state is None:
-            self.ou_state = np.full(a.shape, self.mu, dtype=np.float32)
+            s = np.random.normal(size=a.shape,
+                loc=self.mu, scale=self.sigma**2/(2*self.theta))
+            self.ou_state = s.astype(np.float32)
         self.evolve()
         noise = self.ou_state
         self.logger.debug('t:%s noise:%s', t, noise)
