@@ -25,29 +25,28 @@ class AdditiveOU(explorer.Explorer):
     """
 
     def __init__(self, mu=0.0, theta=0.15, sigma=0.3,
-                 dt=1.0, logger=getLogger(__name__)):
+                 logger=getLogger(__name__)):
         self.mu = mu
         self.theta = theta
         self.sigma = sigma
-        self.dt = dt
         self.logger = logger
         self.ou_state = None
 
     def evolve(self):
-        # For a Wiener process, dW ~ N(0,u)
-        dW = np.random.normal(size=self.ou_state.shape, loc=0,
-                              scale=np.sqrt(self.dt))
         # dx = theta (mu - x) + sigma dW
-        self.ou_state += self.theta * \
-            (self.mu - self.ou_state) * self.dt + self.sigma * dW
+        # for a Wiener process W
+        noise = np.random.normal(size=self.ou_state.shape, loc=0,
+                                 scale=self.sigma)
+        self.ou_state += self.theta * (self.mu - self.ou_state) + noise
 
     def select_action(self, t, greedy_action_func):
         a = greedy_action_func()
         if self.ou_state is None:
-            s = np.random.normal(size=a.shape,
-                loc=self.mu, scale=self.sigma/np.sqrt(2*self.theta))
-            self.ou_state = s.astype(np.float32)
-        self.evolve()
+            sigma_stable = self.sigma / np.sqrt(2*self.theta - self.theta**2)
+            self.ou_state = np.random.normal(size=a.shape,
+                loc=self.mu, scale=sigma_stable).astype(np.float32)
+        else:
+            self.evolve()
         noise = self.ou_state
         self.logger.debug('t:%s noise:%s', t, noise)
         if isinstance(a, cuda.cupy.ndarray):
