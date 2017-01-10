@@ -45,7 +45,7 @@ class AdditiveOU(explorer.Explorer):
         a = greedy_action_func()
         if self.ou_state is None:
             s = np.random.normal(size=a.shape,
-                loc=self.mu, scale=self.sigma**2/(2*self.theta))
+                loc=self.mu, scale=self.sigma/np.sqrt(2*self.theta))
             self.ou_state = s.astype(np.float32)
         self.evolve()
         noise = self.ou_state
