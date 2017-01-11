@@ -22,13 +22,15 @@ class AdditiveOU(explorer.Explorer):
         mu (float): Mean of the OU process
         theta (float): Friction to pull towards the mean
         sigma (float): Scale of noise
+        start_with_mu (bool): Start the process without noise
     """
 
-    def __init__(self, mu=0.0, theta=0.15, sigma=0.3,
+    def __init__(self, mu=0.0, theta=0.15, sigma=0.3, start_with_mu=False,
                  logger=getLogger(__name__)):
         self.mu = mu
         self.theta = theta
         self.sigma = sigma
+        self.start_with_mu = start_with_mu
         self.logger = logger
         self.ou_state = None
 
@@ -42,9 +44,13 @@ class AdditiveOU(explorer.Explorer):
     def select_action(self, t, greedy_action_func):
         a = greedy_action_func()
         if self.ou_state is None:
-            sigma_stable = self.sigma / np.sqrt(2*self.theta - self.theta**2)
-            self.ou_state = np.random.normal(size=a.shape,
-                loc=self.mu, scale=sigma_stable).astype(np.float32)
+            if self.start_with_mu:
+                self.ou_state = np.full(a.shape, self.mu, dtype=np.float32)
+            else:
+                sigma_stable = \
+                    self.sigma / np.sqrt(2*self.theta - self.theta**2)
+                self.ou_state = np.random.normal(size=a.shape,
+                    loc=self.mu, scale=sigma_stable).astype(np.float32)
         else:
             self.evolve()
         noise = self.ou_state
