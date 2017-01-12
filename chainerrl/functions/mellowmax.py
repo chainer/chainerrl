@@ -67,11 +67,11 @@ def maximum_entropy_mellowmax(values, omega=1., beta_min=-10, beta_max=10):
     for idx in np.ndindex(mm.shape):
         idx_full = idx[:1] + (slice(None),) + idx[1:]
         adv = batch_adv[idx_full]
-        if xp.allclose(adv, xp.zeros_like(adv), atol=1e-5):
-            beta = 0
-        else:
+        try:
             beta = scipy.optimize.brentq(
                 f, a=beta_min, b=beta_max, args=(adv,))
+        except ValueError:
+            beta = 0
         batch_beta[idx] = beta
 
     return F.softmax(xp.expand_dims(xp.asarray(batch_beta), 1) * values)
