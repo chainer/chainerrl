@@ -13,6 +13,7 @@ from chainer import cuda
 from chainerrl.agents import dqn
 from chainerrl.recurrent import Recurrent
 from chainerrl.recurrent import RecurrentChainMixin
+from chainerrl.recurrent import state_kept
 
 
 class DDPGModel(chainer.Chain, RecurrentChainMixin):
@@ -77,13 +78,14 @@ class DDPG(dqn.DQN):
 
             # Q(s_{t+1}, mu(a_{t+1})) is evaluated.
             # This should not affect the internal state of Q.
-            with self.target_q_function.state_kept():
+            with state_kept(self.target_q_function):
                 next_q = self.target_q_function(batch_next_state, next_actions,
                                                 test=True)
 
             # Target Q-function observes s_{t+1} and a_{t+1}
-            self.target_q_function.update_state(
-                batch_next_state, batch_next_actions, test=True)
+            if isinstance(self.target_q_function, Recurrent):
+                self.target_q_function.update_state(
+                    batch_next_state, batch_next_actions, test=True)
 
             target_q = batch_rewards + self.gamma * \
                 (1.0 - batch_terminal) * F.reshape(next_q, (batchsize,))
@@ -121,14 +123,12 @@ class DDPG(dqn.DQN):
 
         # Q(s_t, mu(s_t)) is evaluated.
         # This should not affect the internal state of Q.
-        if isinstance(self.q_function, Recurrent):
-            with self.q_function.state_kept():
-                q = self.q_function(batch_state, onpolicy_actions, test=False)
-        else:
+        with state_kept(self.q_function):
             q = self.q_function(batch_state, onpolicy_actions, test=False)
 
         # Estimated Q-function observes s_t and a_t
-        self.q_function.update_state(batch_state, batch_action, test=False)
+        if isinstance(self.q_function, Recurrent):
+            self.q_function.update_state(batch_state, batch_action, test=False)
 
         # Since we want to maximize Q, loss is negation of Q
         loss = - F.sum(q) / batch_size
