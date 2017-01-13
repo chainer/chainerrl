@@ -55,8 +55,8 @@ def create_state_q_function_for_env(env):
     assert isinstance(env.observation_space, gym.spaces.Box)
     ndim_obs = env.observation_space.low.size
     if isinstance(env.action_space, gym.spaces.Discrete):
-        return q_function.FCSIQFunction(
-            n_input_channels=ndim_obs,
+        return q_function.FCStateQFunctionWithDiscreteAction(
+            ndim_obs=ndim_obs,
             n_actions=env.action_space.n,
             n_hidden_channels=200,
             n_hidden_layers=2)
