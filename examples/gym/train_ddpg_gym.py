@@ -14,7 +14,6 @@ import gym
 import numpy as np
 from gym import spaces
 
-sys.path.append('..')
 from chainerrl import policy
 from chainerrl import q_function
 from chainerrl import replay_buffer
