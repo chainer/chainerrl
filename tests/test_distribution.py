@@ -113,7 +113,7 @@ class TestGaussianDistribution(unittest.TestCase):
                 self.mean[b], cov).pdf(sample.data[b])
             np.testing.assert_allclose(
                 sample_log_prob.data[b],
-                np.log(desired_pdf), rtol=1e-5)
+                np.log(desired_pdf), rtol=1e-4)
 
     def test_entropy(self):
         entropy = self.distrib.entropy
