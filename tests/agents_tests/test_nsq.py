@@ -75,7 +75,11 @@ class TestNSQ(unittest.TestCase):
         agent = train_agent_async(
             outdir=self.outdir, processes=nproc, make_env=make_env,
             make_agent=make_agent, steps=40000,
-            max_episode_len=5)
+            max_episode_len=5,
+            eval_frequency=500,
+            eval_n_runs=5,
+            successful_score=1,
+        )
 
         agent.stop_episode()
 

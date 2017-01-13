@@ -4,6 +4,7 @@ from __future__ import division
 from __future__ import absolute_import
 from future import standard_library
 standard_library.install_aliases()
+
 import os
 
 from chainerrl.misc.ask_yes_no import ask_yes_no
@@ -29,7 +30,7 @@ def ask_and_save_agent_replay_buffer(agent, t, outdir, suffix=''):
 
 
 def train_agent(agent, env, steps, outdir, max_episode_len=None,
-                step_offset=0, evaluator=None):
+                step_offset=0, evaluator=None, successful_score=None):
 
     episode_r = 0
     episode_idx = 0
@@ -60,6 +61,9 @@ def train_agent(agent, env, steps, outdir, max_episode_len=None,
                     outdir, t, episode_idx, agent.explorer, episode_r))
                 if evaluator is not None:
                     evaluator.evaluate_if_necessary(t)
+                    if (successful_score is not None and
+                            evaluator.max_score >= successful_score):
+                        break
                 # Start a new episode
                 episode_r = 0
                 episode_idx += 1
@@ -80,7 +84,7 @@ def train_agent(agent, env, steps, outdir, max_episode_len=None,
 def train_agent_with_evaluation(
         agent, env, steps, eval_n_runs, eval_frequency,
         outdir, max_episode_len=None, step_offset=0, eval_explorer=None,
-        eval_max_episode_len=None, eval_env=None):
+        eval_max_episode_len=None, eval_env=None, successful_score=None):
     """
     Run a DQN-like agent.
 
@@ -95,6 +99,8 @@ def train_agent_with_evaluation(
       step_offset (int): Time step from which training starts.
       eval_explorer: Explorer used for evaluation.
       eval_env: Environment used for evaluation.
+      successful_score (float): Finish training if the mean score is greater
+          or equal to this value if not None
     """
 
     if eval_env is None:
@@ -113,4 +119,5 @@ def train_agent_with_evaluation(
 
     train_agent(
         agent, env, steps, outdir, max_episode_len=max_episode_len,
-        step_offset=step_offset, evaluator=evaluator)
+        step_offset=step_offset, evaluator=evaluator,
+        successful_score=successful_score)

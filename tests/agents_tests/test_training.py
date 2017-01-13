@@ -43,8 +43,9 @@ class _TestTraining(unittest.TestCase):
             agent.replay_buffer.load(self.rbuf_filename)
 
         # Train
-        train_agent.train_agent(
-            agent=agent, env=env, steps=steps, outdir=self.tmpdir)
+        train_agent.train_agent_with_evaluation(
+            agent=agent, env=env, steps=steps, outdir=self.tmpdir,
+            eval_frequency=100, eval_n_runs=1, successful_score=1)
 
         agent.stop_episode()
 
@@ -71,9 +72,9 @@ class _TestTraining(unittest.TestCase):
 
     @testing.attr.slow
     def test_training_gpu(self):
-        self._test_training(0, steps=3000)
+        self._test_training(0, steps=10000)
         self._test_training(0, steps=300, load_model=True)
 
     @testing.attr.slow
     def test_training_cpu(self):
-        self._test_training(-1, steps=3000)
+        self._test_training(-1, steps=10000)

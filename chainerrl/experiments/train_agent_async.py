@@ -15,8 +15,9 @@ from chainerrl.misc import async
 from chainerrl.experiments.evaluator import AsyncEvaluator
 
 
-def train_loop(process_idx, env, agent, steps, outdir, counter,
-               max_episode_len=None, evaluator=None, eval_env=None):
+def train_loop(process_idx, env, agent, steps, outdir, counter, training_done,
+               max_episode_len=None, evaluator=None, eval_env=None,
+               successful_score=None):
 
     if eval_env is None:
         eval_env = env
@@ -47,6 +48,9 @@ def train_loop(process_idx, env, agent, steps, outdir, counter,
                 if evaluator is not None:
                     evaluator.evaluate_if_necessary(
                         global_t, env=eval_env, agent=agent)
+                    if (successful_score is not None and
+                            evaluator.max_score >= successful_score):
+                        training_done.value = True
                 episode_r = 0
                 obs = env.reset()
                 r = 0
@@ -63,7 +67,7 @@ def train_loop(process_idx, env, agent, steps, outdir, counter,
                 local_t += 1
                 episode_len += 1
 
-                if global_t > steps:
+                if global_t > steps or training_done.value:
                     break
 
                 agent.optimizer.lr = (steps - global_t - 1) / steps * base_lr
@@ -108,7 +112,7 @@ def set_shared_objects(agent, shared_objects):
 def train_agent_async(outdir, processes, make_env, make_agent,
                       profile=False, steps=8 * 10 ** 7, eval_frequency=10 ** 6,
                       eval_n_runs=10, gamma=0.99, max_episode_len=None,
-                      step_offset=0):
+                      step_offset=0, successful_score=None):
     """
     Args:
       processes (int): Number of processes.
@@ -123,6 +127,7 @@ def train_agent_async(outdir, processes, make_env, make_agent,
     os.environ['OMP_NUM_THREADS'] = '1'
 
     counter = mp.Value('l', 0)
+    training_done = mp.Value('b', False)  # bool
 
     agent0 = make_agent(0)
     shared_objects = extract_shared_objects_from_agent(agent0)
@@ -151,7 +156,9 @@ def train_agent_async(outdir, processes, make_env, make_agent,
                 steps=steps,
                 outdir=outdir,
                 max_episode_len=max_episode_len,
-                evaluator=evaluator)
+                evaluator=evaluator,
+                successful_score=successful_score,
+                training_done=training_done)
         else:
             train_loop(
                 process_idx=process_idx,
@@ -161,7 +168,9 @@ def train_agent_async(outdir, processes, make_env, make_agent,
                 steps=steps,
                 outdir=outdir,
                 max_episode_len=max_episode_len,
-                evaluator=evaluator)
+                evaluator=evaluator,
+                successful_score=successful_score,
+                training_done=training_done)
 
     async.run_async(processes, run_func)
 

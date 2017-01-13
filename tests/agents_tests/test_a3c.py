@@ -119,7 +119,10 @@ class TestA3C(unittest.TestCase):
         agent = train_agent_async(
             outdir=self.outdir, processes=nproc, make_env=make_env,
             make_agent=make_agent, steps=steps,
-            max_episode_len=max_episode_len)
+            max_episode_len=max_episode_len,
+            eval_frequency=500,
+            eval_n_runs=5,
+            successful_score=1)
 
         model = agent.shared_model
 

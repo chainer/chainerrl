@@ -113,7 +113,6 @@ class AsyncEvaluator(object):
                  outdir, max_episode_len=None, explorer=None,
                  step_offset=0):
 
-        self.max_score = np.finfo(np.float32).min
         self.start_time = time.time()
         self.n_runs = n_runs
         self.eval_frequency = eval_frequency
@@ -125,12 +124,18 @@ class AsyncEvaluator(object):
         # Values below are shared among processes
         self.prev_eval_t = mp.Value(
             'l', self.step_offset - self.step_offset % self.eval_frequency)
-        self.max_score = mp.Value('f', np.finfo(np.float32).min)
+        self._max_score = mp.Value('f', np.finfo(np.float32).min)
         self.wrote_header = mp.Value('b', False)
 
         # Create scores.txt
         with open(os.path.join(self.outdir, 'scores.txt'), 'a'):
             pass
+
+    @property
+    def max_score(self):
+        with self._max_score.get_lock():
+            v = self._max_score.value
+        return v
 
     def evaluate_and_update_max_score(self, t, env, agent):
         mean, median, stdev = eval_performance(
@@ -140,11 +145,11 @@ class AsyncEvaluator(object):
         values = (t, elapsed, mean, median, stdev) + \
             agent.get_stats_values()
         record_stats(self.outdir, values)
-        with self.max_score.get_lock():
-            if mean > self.max_score.value:
+        with self._max_score.get_lock():
+            if mean > self._max_score.value:
                 update_best_model(
-                    agent, self.outdir, t, self.max_score.value, mean)
-                self.max_score.value = mean
+                    agent, self.outdir, t, self._max_score.value, mean)
+                self._max_score.value = mean
 
     def write_header(self, agent):
         with open(os.path.join(self.outdir, 'scores.txt'), 'w') as f:
