@@ -53,8 +53,10 @@ class ABC(env.Env):
         self._state = 0
         if self.partially_observable:
             # For partially observable settings, observations are shifted by
-            # episode-dependent random offsets
-            self._offset = np.random.randint(0, self.n_max_offset + 1)
+            # episode-dependent some offsets.
+            # For stabilizing tests, offsets values are deterministic.
+            self._offset = ((getattr(self, '_offset', 0) + 1) %
+                            (self.n_max_offset + 1))
         else:
             self._offset = 0
         return self.observe()
