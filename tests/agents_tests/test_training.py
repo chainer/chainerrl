@@ -45,26 +45,28 @@ class _TestTraining(unittest.TestCase):
         # Train
         train_agent.train_agent_with_evaluation(
             agent=agent, env=env, steps=steps, outdir=self.tmpdir,
-            eval_frequency=100, eval_n_runs=1, successful_score=1)
+            eval_frequency=500, eval_n_runs=5, successful_score=1)
 
         agent.stop_episode()
 
         # Test
-        total_r = 0.0
-        obs = env.reset()
-        done = False
-        reward = 0.0
-        while not done:
-            # s = np.expand_dims(obs, 0)
-            # if gpu >= 0:
-            #     s = cuda.to_gpu(s, device=gpu)
-            action = agent.act(obs)
-            if isinstance(action, cuda.cupy.ndarray):
-                action = cuda.to_cpu(action)
-            obs, reward, done, _ = env.step(action)
-            total_r += reward
-        agent.stop_episode()
-        self.assertAlmostEqual(total_r, successful_return)
+        n_test_runs = 5
+        for _ in range(n_test_runs):
+            total_r = 0.0
+            obs = env.reset()
+            done = False
+            reward = 0.0
+            while not done:
+                # s = np.expand_dims(obs, 0)
+                # if gpu >= 0:
+                #     s = cuda.to_gpu(s, device=gpu)
+                action = agent.act(obs)
+                if isinstance(action, cuda.cupy.ndarray):
+                    action = cuda.to_cpu(action)
+                obs, reward, done, _ = env.step(action)
+                total_r += reward
+            agent.stop_episode()
+            self.assertAlmostEqual(total_r, successful_return)
 
         # Save
         agent.save(self.agent_dirname)
