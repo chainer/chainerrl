@@ -100,11 +100,14 @@ class Evaluator(object):
         if mean > self.max_score:
             update_best_model(self.agent, self.outdir, t, self.max_score, mean)
             self.max_score = mean
+        return mean
 
     def evaluate_if_necessary(self, t):
         if t >= self.prev_eval_t + self.eval_frequency:
-            self.evaluate_and_update_max_score(t)
+            score = self.evaluate_and_update_max_score(t)
             self.prev_eval_t = t - t % self.eval_frequency
+            return score
+        return None
 
 
 class AsyncEvaluator(object):
@@ -150,6 +153,7 @@ class AsyncEvaluator(object):
                 update_best_model(
                     agent, self.outdir, t, self._max_score.value, mean)
                 self._max_score.value = mean
+        return mean
 
     def write_header(self, agent):
         with open(os.path.join(self.outdir, 'scores.txt'), 'w') as f:
@@ -168,4 +172,5 @@ class AsyncEvaluator(object):
                 if not self.wrote_header.value:
                     self.write_header(agent)
                     self.wrote_header.value = True
-            self.evaluate_and_update_max_score(t, env, agent)
+            return self.evaluate_and_update_max_score(t, env, agent)
+        return None
