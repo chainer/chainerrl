@@ -33,6 +33,7 @@ def train_loop(process_idx, env, agent, steps, outdir, counter, training_done,
         done = False
         base_lr = agent.optimizer.lr
         episode_len = 0
+        successful = False
 
         while True:
 
@@ -46,11 +47,16 @@ def train_loop(process_idx, env, agent, steps, outdir, counter, training_done,
                         outdir, global_t, local_t, agent.optimizer.lr,
                         episode_r))
                 if evaluator is not None:
-                    evaluator.evaluate_if_necessary(
+                    eval_score = evaluator.evaluate_if_necessary(
                         global_t, env=eval_env, agent=agent)
-                    if (successful_score is not None and
-                            evaluator.max_score >= successful_score):
+                    if (eval_score is not None and
+                            successful_score is not None and
+                            eval_score >= successful_score):
                         training_done.value = True
+                        successful = True
+                        # Break immediately in order to avoid an additional
+                        # call of agent.act_and_train
+                        break
                 episode_r = 0
                 obs = env.reset()
                 r = 0
@@ -86,6 +92,12 @@ def train_loop(process_idx, env, agent, steps, outdir, counter, training_done,
         dirname = os.path.join(outdir, '{}_finish'.format(steps))
         agent.save(dirname)
         print('Saved the final model to {}'.format(dirname))
+
+    if successful:
+        # Save the successful model
+        dirname = os.path.join(outdir, 'successful')
+        agent.save(dirname)
+        print('Saved the successful model to {}'.format(dirname))
 
 
 def train_loop_with_profile(process_idx, counter, agent, env,
