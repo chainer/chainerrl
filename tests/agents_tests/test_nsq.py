@@ -21,11 +21,18 @@ from chainerrl.explorers.epsilon_greedy import ConstantEpsilonGreedy
 from chainerrl.optimizers import rmsprop_async
 
 
-@testing.parameterize(*testing.product({
-    't_max': [1, 2],
-    'use_lstm': [True, False],
-    'episodic': [True, False],
-}))
+@testing.parameterize(
+    *testing.product({
+        't_max': [1, 2],
+        'use_lstm': [False],
+        'episodic': [True, False],
+    }),
+    *testing.product({
+        't_max': [5],
+        'use_lstm': [True, False],
+        'episodic': [True, False],
+    }),
+)
 class TestNSQ(unittest.TestCase):
 
     def setUp(self):
@@ -41,7 +48,8 @@ class TestNSQ(unittest.TestCase):
         nproc = 8
 
         def make_env(process_idx, test):
-            return ABC(episodic=self.episodic or test)
+            return ABC(episodic=self.episodic or test,
+                       partially_observable=self.use_lstm)
 
         sample_env = make_env(0, False)
         action_space = sample_env.action_space
