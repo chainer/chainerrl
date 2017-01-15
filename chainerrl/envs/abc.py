@@ -82,10 +82,9 @@ class ABC(env.Env):
             if not self.episodic:
                 self._state = 0
         else:
+            # Fail
             self._state = 4
             reward = 0.0
-            if not self.episodic:
-                self._state = 0
         return self.observe(), reward, self.is_terminal(), None
 
     def close(self):
