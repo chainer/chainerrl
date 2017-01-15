@@ -6,6 +6,7 @@ from builtins import *
 from future import standard_library
 standard_library.install_aliases()
 import logging
+import os
 import tempfile
 import unittest
 
@@ -89,6 +90,10 @@ class TestNSQ(unittest.TestCase):
             successful_score=1,
         )
 
+        # The agent returned by train_agent_async is not guaranteed to be
+        # successful because parameters could be modified by other processes
+        # after success. Thus here the successful model is loaded explicitly.
+        agent.load(os.path.join(self.outdir, 'successful'))
         agent.stop_episode()
 
         # Test
