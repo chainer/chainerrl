@@ -77,13 +77,13 @@ class TestNSQ(unittest.TestCase):
             opt.setup(q_func)
             explorer = ConstantEpsilonGreedy(
                 process_idx / 10, random_action_func)
-            return nsq.NSQ(process_idx, q_func, opt, t_max=1,
-                           gamma=0.99, i_target=100,
+            return nsq.NSQ(process_idx, q_func, opt, t_max=self.t_max,
+                           gamma=0.9, i_target=100,
                            explorer=explorer)
 
         agent = train_agent_async(
             outdir=self.outdir, processes=nproc, make_env=make_env,
-            make_agent=make_agent, steps=40000,
+            make_agent=make_agent, steps=100000,
             max_episode_len=5,
             eval_frequency=500,
             eval_n_runs=5,
@@ -97,15 +97,19 @@ class TestNSQ(unittest.TestCase):
         agent.stop_episode()
 
         # Test
+        n_test_runs = 5
         env = make_env(0, True)
-        total_r = 0
-        obs = env.reset()
-        done = False
-        r = 0.0
+        for _ in range(n_test_runs):
+            total_r = 0
+            obs = env.reset()
+            print('test run offset:', env._offset)
+            done = False
+            r = 0.0
 
-        while not done:
-            action = agent.act(obs)
-            print(('state:', obs, 'action:', action))
-            obs, r, done, _ = env.step(action)
-            total_r += r
-        self.assertAlmostEqual(total_r, 1)
+            while not done:
+                action = agent.act(obs)
+                print(('state:', obs, 'action:', action))
+                obs, r, done, _ = env.step(action)
+                total_r += r
+            agent.stop_episode()
+            self.assertAlmostEqual(total_r, 1)
