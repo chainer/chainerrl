@@ -6,10 +6,10 @@ from builtins import *
 from future import standard_library
 standard_library.install_aliases()
 import logging
+import os
 import unittest
 import tempfile
 
-import chainer
 from chainer import links as L
 from chainer import testing
 
@@ -48,10 +48,10 @@ class TestA3C(unittest.TestCase):
     def test_abc_gaussian(self):
         self._test_abc(self.t_max, self.use_lstm,
                        discrete=False, episodic=self.episodic,
-                       steps=100000)
+                       steps=1000000)
 
     def _test_abc(self, t_max, use_lstm, discrete=True, episodic=True,
-                  steps=40000):
+                  steps=1000000):
 
         nproc = 8
 
@@ -87,7 +87,10 @@ class TestA3C(unittest.TestCase):
                         pi=policies.FCGaussianPolicy(
                             n_hidden_channels, action_space.low.size,
                             n_hidden_channels=n_hidden_channels,
-                            n_hidden_layers=2),
+                            n_hidden_layers=2,
+                            bound_mean=True,
+                            min_action=action_space.low,
+                            max_action=action_space.high),
                         v=v_function.FCVFunction(
                             n_hidden_channels,
                             n_hidden_channels=n_hidden_channels,
@@ -110,17 +113,23 @@ class TestA3C(unittest.TestCase):
                         pi=policies.FCGaussianPolicy(
                             obs_space.low.size, action_space.low.size,
                             n_hidden_channels=n_hidden_channels,
-                            n_hidden_layers=2),
+                            n_hidden_layers=2,
+                            bound_mean=True,
+                            min_action=action_space.low,
+                            max_action=action_space.high),
                         v=v_function.FCVFunction(
                             obs_space.low.size,
                             n_hidden_channels=n_hidden_channels,
                             n_hidden_layers=2),
                     )
-            opt = rmsprop_async.RMSpropAsync(lr=1e-3, eps=1e-2, alpha=0.99)
+            eps = 1e-1 if discrete else 1e-2
+            opt = rmsprop_async.RMSpropAsync(lr=1e-3, eps=eps, alpha=0.99)
             opt.setup(model)
             gamma = 0.9
-            return a3c.A3C(model, opt, t_max=t_max, gamma=gamma, beta=1e-2,
-                           process_idx=process_idx, phi=phi)
+            beta = 1e-1 if discrete else 1e-3
+            return a3c.A3C(model, opt, t_max=t_max, gamma=gamma, beta=beta,
+                           process_idx=process_idx, phi=phi,
+                           act_deterministically=True)
 
         max_episode_len = None if episodic else 5
 
@@ -140,23 +149,20 @@ class TestA3C(unittest.TestCase):
 
         # Test
         env = make_env(0, True)
-        total_r = 0
-        obs = env.reset()
-        done = False
-        reward = 0.0
+        n_test_runs = 5
 
-        def pi_func(state):
-            return model.pi_and_v(state)[0]
+        for _ in range(n_test_runs):
+            total_r = 0
+            obs = env.reset()
+            done = False
+            reward = 0.0
 
-        if isinstance(model, Recurrent):
-            model.reset_state()
+            if isinstance(model, Recurrent):
+                model.reset_state()
 
-        while not done:
-            pout = pi_func(chainer.Variable(
-                obs.reshape((1,) + obs.shape)))
-            # Use the most probale actions for stability of test results
-            action = pout.most_probable.data[0]
-            print('state:', obs, 'action:', action, 'pout:', pout)
-            obs, reward, done, _ = env.step(action)
-            total_r += reward
-        self.assertAlmostEqual(total_r, 1)
+            while not done:
+                action = agent.act(obs)
+                print('state:', obs, 'action:', action)
+                obs, reward, done, _ = env.step(action)
+                total_r += reward
+            self.assertAlmostEqual(total_r, 1)
