@@ -153,7 +153,7 @@ class NSQ(object):
 
     def act(self, obs):
         statevar = chainer.Variable(np.expand_dims(self.phi(obs), 0))
-        qout = self.shared_q_function(statevar)
+        qout = self.q_function(statevar)
         logger.debug('act action_value: %s', qout)
         return qout.greedy_actions.data[0]
 
@@ -191,6 +191,8 @@ class NSQ(object):
     def load(self, dirname):
         serializers.load_npz(os.path.join(
             dirname, 'q_function.npz'), self.q_function)
+        copy_param.copy_param(target_link=self.shared_q_function,
+                              source_link=self.q_function)
 
         target_filename = os.path.join(dirname, 'target_q_function.npz')
         if os.path.exists(target_filename):
