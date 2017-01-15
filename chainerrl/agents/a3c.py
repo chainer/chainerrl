@@ -87,7 +87,8 @@ class A3C(agent.Agent):
                  pi_loss_coef=1.0, v_loss_coef=0.5,
                  keep_loss_scale_same=False,
                  normalize_grad_by_t_max=False,
-                 use_average_reward=False, average_reward_tau=1e-2):
+                 use_average_reward=False, average_reward_tau=1e-2,
+                 act_deterministically=False):
 
         assert isinstance(model, A3CModel)
         # Globally shared model
@@ -111,6 +112,7 @@ class A3C(agent.Agent):
         self.normalize_grad_by_t_max = normalize_grad_by_t_max
         self.use_average_reward = use_average_reward
         self.average_reward_tau = average_reward_tau
+        self.act_deterministically = act_deterministically
 
         self.t = 0
         self.t_start = 0
@@ -246,7 +248,10 @@ class A3C(agent.Agent):
     def act(self, obs):
         statevar = chainer.Variable(np.expand_dims(self.phi(obs), 0))
         pout, _ = self.model.pi_and_v(statevar)
-        return pout.sample().data[0]
+        if self.act_deterministically:
+            return pout.most_probable.data[0]
+        else:
+            return pout.sample().data[0]
 
     def stop_episode_and_train(self, state, reward, done=False):
         if self.clip_reward:
