@@ -49,7 +49,8 @@ class TestA3C(unittest.TestCase):
         nproc = 8
 
         def make_env(process_idx, test):
-            return ABC(discrete=discrete, episodic=episodic or test)
+            return ABC(discrete=discrete, episodic=episodic or test,
+                       partially_observable=self.use_lstm)
 
         sample_env = make_env(0, False)
         action_space = sample_env.action_space
