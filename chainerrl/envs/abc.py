@@ -63,9 +63,10 @@ class ABC(env.Env):
 
     def step(self, action):
         if isinstance(action, np.ndarray):
+            action = np.clip(action, self.action_space.low, self.action_space.high)
+            action = np.around(action)
             if action.size > 1:
                 action = action[0]
-            action = np.around(action)
         if action == 0 and self._state == 0:
             # A
             self._state = 1
