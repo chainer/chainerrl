@@ -22,11 +22,18 @@ from chainerrl.optimizers import rmsprop_async
 from chainerrl.recurrent import Recurrent
 
 
-@testing.parameterize(*testing.product({
-    't_max': [1, 2],
-    'use_lstm': [True, False],
-    'episodic': [True, False],
-}))
+@testing.parameterize(
+    *testing.product({
+        't_max': [1, 2],
+        'use_lstm': [False],
+        'episodic': [True, False],
+    }),
+    *testing.product({
+        't_max': [5],
+        'use_lstm': [True, False],
+        'episodic': [True, False],
+    }),
+)
 class TestA3C(unittest.TestCase):
 
     def setUp(self):
