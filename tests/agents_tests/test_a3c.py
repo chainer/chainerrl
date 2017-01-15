@@ -132,7 +132,11 @@ class TestA3C(unittest.TestCase):
             eval_n_runs=5,
             successful_score=1)
 
-        model = agent.shared_model
+        # The agent returned by train_agent_async is not guaranteed to be
+        # successful because parameters could be modified by other processes
+        # after success. Thus here the successful model is loaded explicitly.
+        agent.load(os.path.join(self.outdir, 'successful'))
+        model = agent.model
 
         # Test
         env = make_env(0, True)
