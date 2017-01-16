@@ -5,45 +5,62 @@ from __future__ import absolute_import
 from future import standard_library
 standard_library.install_aliases()
 
+from chainer import testing
+
 from chainerrl.agents.dpp import DPP
 from chainerrl.agents.dpp import DPPL
 from chainerrl.agents.dpp import DPPGreedy
-from chainerrl import replay_buffer
-from test_dqn_like import _TestDQNLike
+from test_dqn_like import _TestDQNOnDiscreteABC
+from test_dqn_like import _TestDQNOnDiscretePOABC
+from test_dqn_like import _TestDQNOnContinuousABC
 
 
-class TestDPP(_TestDQNLike):
-
-    def make_agent(self, gpu, q_func, explorer, opt):
-        rbuf = replay_buffer.ReplayBuffer(10 ** 5)
-        return DPP(q_func, opt, rbuf, gpu=gpu, gamma=0.9, explorer=explorer,
-                   replay_start_size=100, target_update_frequency=100)
-
-    def test_abc_continuous_gpu(self):
-        print("DPP doesn't support continuous action spaces.")
-
-    def test_abc_continuous_cpu(self):
-        print("DPP doesn't support continuous action spaces.")
+def parse_dpp_agent(dpp_type):
+    return {'DPP': DPP,
+            'DPPL': DPPL,
+            'DPPGreedy': DPPGreedy}[dpp_type]
 
 
-class TestDPPL(_TestDQNLike):
+@testing.parameterize(
+    *testing.product({
+        'dpp_type': ['DPP', 'DPPL', 'DPPGreedy'],
+    }),
+)
+class TestDPPOnDiscreteABC(_TestDQNOnDiscreteABC):
 
-    def make_agent(self, gpu, q_func, explorer, opt):
-        rbuf = replay_buffer.ReplayBuffer(10 ** 5)
-        return DPPL(q_func, opt, rbuf, gpu=gpu, gamma=0.9, explorer=explorer,
-                    replay_start_size=100, target_update_frequency=100)
-
-    def test_abc_continuous_gpu(self):
-        print("DPPL doesn't support continuous action spaces.")
-
-    def test_abc_continuous_cpu(self):
-        print("DPPL doesn't support continuous action spaces.")
+    def make_dqn_agent(self, env, q_func, opt, explorer, rbuf, gpu):
+        agent_class = parse_dpp_agent(self.dpp_type)
+        return agent_class(
+            q_func, opt, rbuf, gpu=gpu, gamma=0.9, explorer=explorer,
+            replay_start_size=100, target_update_frequency=100)
 
 
-class TestDPPGreedy(_TestDQNLike):
+# DPP and DPPL don't support continuous action spaces
+@testing.parameterize(
+    *testing.product({
+        'dpp_type': ['DPPGreedy'],
+    }),
+)
+class TestDPPOnContinuousABC(_TestDQNOnContinuousABC):
 
-    def make_agent(self, gpu, q_func, explorer, opt):
-        rbuf = replay_buffer.ReplayBuffer(10 ** 5)
-        return DPPGreedy(q_func, opt, rbuf, gpu=gpu, gamma=0.9,
-                         explorer=explorer,
-                         replay_start_size=100, target_update_frequency=100)
+    def make_dqn_agent(self, env, q_func, opt, explorer, rbuf, gpu):
+        agent_class = parse_dpp_agent(self.dpp_type)
+        return agent_class(
+            q_func, opt, rbuf, gpu=gpu, gamma=0.9, explorer=explorer,
+            replay_start_size=100, target_update_frequency=100)
+
+
+# Currently DPP doesn't work with recurrent models
+# @testing.parameterize(
+#     *testing.product({
+#         'dpp_type': ['DPP', 'DPPL', 'DPPGreedy'],
+#     }),
+# )
+# class TestDPPOnDiscretePOABC(_TestDQNOnDiscretePOABC):
+#
+#     def make_dqn_agent(self, env, q_func, opt, explorer, rbuf, gpu):
+#         agent_class = parse_dpp_agent(self.dpp_type)
+#         return agent_class(
+#             q_func, opt, rbuf, gpu=gpu, gamma=0.9, explorer=explorer,
+#             replay_start_size=100, target_update_frequency=100,
+#             episodic_update=True)

@@ -12,8 +12,6 @@ from abc import abstractmethod
 
 import chainer
 import chainer.functions as F
-from chainer import cuda
-import numpy as np
 
 from chainerrl.agents.dqn import DQN
 
@@ -28,57 +26,49 @@ class AbstractDPP(with_metaclass(ABCMeta, DQN)):
     def _l_operator(self, qout):
         raise NotImplementedError()
 
-    def _compute_target_values(self, experiences, gamma):
+    def _compute_target_values(self, exp_batch, gamma):
 
-        batch_next_state = self._batch_states(
-            [elem['next_state'] for elem in experiences])
+        batch_next_state = exp_batch['next_state']
 
         target_next_qout = self.target_q_function(batch_next_state, test=True)
         next_q_expect = self._l_operator(target_next_qout)
 
-        batch_rewards = chainer.Variable(self.xp.asarray(
-            [elem['reward'] for elem in experiences], dtype=np.float32))
+        batch_rewards = exp_batch['reward']
+        batch_terminal = exp_batch['is_state_terminal']
 
-        batch_non_terminal = chainer.Variable(self.xp.asarray(
-            [not elem['is_state_terminal'] for elem in experiences],
-            dtype=np.float32))
+        return (batch_rewards +
+                self.gamma * (1 - batch_terminal) * next_q_expect)
 
-        return batch_rewards + self.gamma * batch_non_terminal * next_q_expect
+    def _compute_y_and_t(self, exp_batch, gamma):
 
-    def _compute_y_and_t(self, experiences, gamma):
-
-        batch_size = len(experiences)
-
-        batch_state = self._batch_states(
-            [elem['state'] for elem in experiences])
+        batch_state = exp_batch['state']
+        batch_size = len(batch_state)
 
         qout = self.q_function(batch_state, test=False)
-        xp = cuda.get_array_module(qout.greedy_actions.data)
 
-        batch_actions = chainer.Variable(
-            xp.asarray([elem['action'] for elem in experiences]))
+        batch_actions = exp_batch['action']
         # Q(s_t,a_t)
         batch_q = F.reshape(qout.evaluate_actions(
             batch_actions), (batch_size, 1))
 
-        # Compute target values
-        target_qout = self.target_q_function(batch_state, test=True)
+        with chainer.no_backprop_mode():
+            # Compute target values
+            target_qout = self.target_q_function(batch_state, test=True)
 
-        # Q'(s_t,a_t)
-        target_q = F.reshape(target_qout.evaluate_actions(
-            batch_actions), (batch_size, 1))
+            # Q'(s_t,a_t)
+            target_q = F.reshape(target_qout.evaluate_actions(
+                batch_actions), (batch_size, 1))
 
-        # LQ'(s_t,a)
-        target_q_expect = F.reshape(
-            self._l_operator(target_qout), (batch_size, 1))
+            # LQ'(s_t,a)
+            target_q_expect = F.reshape(
+                self._l_operator(target_qout), (batch_size, 1))
 
-        # r + g * LQ'(s_{t+1},a)
-        batch_q_target = F.reshape(
-            self._compute_target_values(experiences, gamma), (batch_size, 1))
+            # r + g * LQ'(s_{t+1},a)
+            batch_q_target = F.reshape(
+                self._compute_target_values(exp_batch, gamma), (batch_size, 1))
 
-        # Q'(s_t,a_t) + r + g * LQ'(s_{t+1},a) - LQ'(s_t,a)
-        t = target_q + batch_q_target - target_q_expect
-        t.creator = None
+            # Q'(s_t,a_t) + r + g * LQ'(s_{t+1},a) - LQ'(s_t,a)
+            t = target_q + batch_q_target - target_q_expect
 
         return batch_q, t
 
