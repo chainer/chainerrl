@@ -5,23 +5,32 @@ from __future__ import absolute_import
 from future import standard_library
 standard_library.install_aliases()
 
-from chainer import testing
-
 from chainerrl.agents.residual_dqn import ResidualDQN
-from chainerrl import replay_buffer
-from test_dqn_like import _TestDQNLike
+from test_dqn_like import _TestDQNOnDiscreteABC
+from test_dqn_like import _TestDQNOnDiscretePOABC
+from test_dqn_like import _TestDQNOnContinuousABC
 
 
-@testing.parameterize(
-    {'grad_scale': 1e-1},
-    {'grad_scale': 1e-2},
-    {'grad_scale': 1e-3},
-)
-class TestDQN(_TestDQNLike):
+class TestResidualDQNOnDiscreteABC(_TestDQNOnDiscreteABC):
 
-    def make_agent(self, gpu, q_func, explorer, opt):
-        rbuf = replay_buffer.ReplayBuffer(10 ** 5)
-        return ResidualDQN(
-            q_func, opt, rbuf, gpu=gpu, gamma=0.9, explorer=explorer,
-            replay_start_size=100, target_update_frequency=100,
-            grad_scale=self.grad_scale)
+    def make_dqn_agent(self, env, q_func, opt, explorer, rbuf, gpu):
+        return ResidualDQN(q_func, opt, rbuf, gpu=gpu, gamma=0.9, explorer=explorer,
+                           replay_start_size=100, target_update_frequency=100,
+                           grad_scale=1e-1)
+
+
+class TestResidualDQNOnContinuousABC(_TestDQNOnContinuousABC):
+
+    def make_dqn_agent(self, env, q_func, opt, explorer, rbuf, gpu):
+        return ResidualDQN(q_func, opt, rbuf, gpu=gpu, gamma=0.9, explorer=explorer,
+                           replay_start_size=100, target_update_frequency=100,
+                           grad_scale=1e-1)
+
+
+class TestResidualDQNOnDiscretePOABC(_TestDQNOnDiscretePOABC):
+
+    def make_dqn_agent(self, env, q_func, opt, explorer, rbuf, gpu):
+        return ResidualDQN(q_func, opt, rbuf, gpu=gpu, gamma=0.9, explorer=explorer,
+                           replay_start_size=100, target_update_frequency=100,
+                           episodic_update=True,
+                           grad_scale=1e-1)
