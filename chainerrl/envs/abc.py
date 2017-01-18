@@ -23,21 +23,22 @@ class ABC(env.Env):
     Observations are one-hot vectors that represents which state it is now.
     """
 
-    def __init__(self, discrete=True, partially_observable=False, episodic=True):
+    def __init__(self, size=2, discrete=True, partially_observable=False, episodic=True):
+        self.size = size
         self.episodic = episodic
         self.partially_observable = partially_observable
         self.n_max_offset = 1
-        self.n_dim_obs = 5 + self.n_max_offset
+        self.n_dim_obs = self.size + 2 + self.n_max_offset
         self.observation_space = spaces.Box(
             low=np.asarray([-np.inf] * self.n_dim_obs, dtype=np.float32),
             high=np.asarray([np.inf] * self.n_dim_obs, dtype=np.float32))
         if discrete:
-            self.action_space = spaces.Discrete(3)
+            self.action_space = spaces.Discrete(self.size)
         else:
-            n_dim_action = 2
+            n_dim_action = 1
             self.action_space = spaces.Box(
                 low=np.asarray([-0.49] * n_dim_action, dtype=np.float32),
-                high=np.asarray([2.49] * n_dim_action, dtype=np.float32))
+                high=np.asarray([size - 1 + 0.49] * n_dim_action, dtype=np.float32))
 
     def observe(self):
         state_vec = np.zeros((self.n_dim_obs,), dtype=np.float32)
@@ -47,7 +48,7 @@ class ABC(env.Env):
     def is_terminal(self):
         if not self.episodic:
             return False
-        return self._state == 3 or self._state == 4
+        return self._state == self.size or self._state == self.size + 1
 
     def reset(self):
         self._state = 0
@@ -67,23 +68,13 @@ class ABC(env.Env):
             action = np.around(action)
             if action.size > 1:
                 action = action[0]
-        if action == 0 and self._state == 0:
-            # A
-            self._state = 1
-            reward = 0.1
-        elif action == 1 and self._state == 1:
-            # B
-            self._state = 2
-            reward = 0.0
-        elif action == 2 and self._state == 2:
-            # C
-            self._state = 3
-            reward = 0.9
-            if not self.episodic:
-                self._state = 0
+        if action == self._state:
+            # Correct
+            self._state += 1
+            reward = 1.0 if self._state == self.size else 0.0
         else:
-            # Fail
-            self._state = 4
+            # Incorrect
+            self._state = self.size + 1
             reward = 0.0
         return self.observe(), reward, self.is_terminal(), None
 
