@@ -27,7 +27,7 @@ class _TestDDPGOnABC(_TestTraining):
         policy = model['policy']
         q_func = model['q_function']
 
-        actor_opt = optimizers.Adam(alpha=5e-4)
+        actor_opt = optimizers.Adam(alpha=1e-4)
         actor_opt.setup(policy)
 
         critic_opt = optimizers.Adam(alpha=1e-3)
