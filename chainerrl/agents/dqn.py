@@ -21,6 +21,7 @@ from chainerrl import agent
 from chainerrl.misc.makedirs import makedirs
 from chainerrl.misc import copy_param
 from chainerrl.recurrent import Recurrent
+from chainerrl.recurrent import state_reset
 
 
 def _to_device(obj, gpu):
@@ -222,8 +223,8 @@ class DQN(agent.Agent):
         self.target_model(batch['state'])
 
     def update_from_episodes(self, episodes, errors_out=None):
-        with self.model.state_reset():
-            with self.target_model.state_reset():
+        with state_reset(self.model):
+            with state_reset(self.target_model):
                 loss = 0
                 sorted_episodes = list(reversed(sorted(episodes, key=len)))
                 max_epi_len = len(sorted_episodes[0])
