@@ -52,8 +52,10 @@ def train_loop(process_idx, env, agent, steps, outdir, counter, training_done,
                     if (eval_score is not None and
                             successful_score is not None and
                             eval_score >= successful_score):
-                        training_done.value = True
-                        successful = True
+                        with training_done.get_lock():
+                            if not training_done.value:
+                                training_done.value = True
+                                successful = True
                         # Break immediately in order to avoid an additional
                         # call of agent.act_and_train
                         break
