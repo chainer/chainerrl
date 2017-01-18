@@ -246,12 +246,13 @@ class A3C(agent.Agent):
         return action
 
     def act(self, obs):
-        statevar = chainer.Variable(np.expand_dims(self.phi(obs), 0))
-        pout, _ = self.model.pi_and_v(statevar)
-        if self.act_deterministically:
-            return pout.most_probable.data[0]
-        else:
-            return pout.sample().data[0]
+        with chainer.no_backprop_mode():
+            statevar = np.expand_dims(self.phi(obs), 0)
+            pout, _ = self.model.pi_and_v(statevar)
+            if self.act_deterministically:
+                return pout.most_probable.data[0]
+            else:
+                return pout.sample().data[0]
 
     def stop_episode_and_train(self, state, reward, done=False):
         if self.clip_reward:
