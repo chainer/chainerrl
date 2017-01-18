@@ -56,7 +56,8 @@ class TestA3C(unittest.TestCase):
         nproc = 8
 
         def make_env(process_idx, test):
-            return ABC(discrete=discrete, episodic=episodic or test,
+            size = 2
+            return ABC(size=size, discrete=discrete, episodic=episodic or test,
                        partially_observable=self.use_lstm)
 
         sample_env = make_env(0, False)
@@ -67,7 +68,7 @@ class TestA3C(unittest.TestCase):
             return x
 
         def make_agent(process_idx):
-            n_hidden_channels = 50
+            n_hidden_channels = 20
             if use_lstm:
                 if discrete:
                     model = a3c.A3CSharedModel(
@@ -123,15 +124,15 @@ class TestA3C(unittest.TestCase):
                             n_hidden_layers=2),
                     )
             eps = 1e-1 if discrete else 1e-2
-            opt = rmsprop_async.RMSpropAsync(lr=1e-3, eps=eps, alpha=0.99)
+            opt = rmsprop_async.RMSpropAsync(lr=5e-4, eps=eps, alpha=0.99)
             opt.setup(model)
             gamma = 0.9
-            beta = 1e-1 if discrete else 1e-3
+            beta = 1e-2 if discrete else 1e-3
             return a3c.A3C(model, opt, t_max=t_max, gamma=gamma, beta=beta,
                            process_idx=process_idx, phi=phi,
                            act_deterministically=True)
 
-        max_episode_len = None if episodic else 5
+        max_episode_len = None if episodic else 2
 
         agent = train_agent_async(
             outdir=self.outdir, processes=nproc, make_env=make_env,
