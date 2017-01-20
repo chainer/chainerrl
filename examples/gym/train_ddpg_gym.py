@@ -101,7 +101,8 @@ def main():
         policy=policy.FCBNDeterministicPolicy(
             obs_size, action_size=action_size,
             n_hidden_layers=2, n_hidden_channels=300,
-            min_action=-1, max_action=1, bound_action=True)
+            min_action=action_space.low, max_action=action_space.high,
+            bound_action=True)
     )
     init_like_torch(model['q_function'])
     init_like_torch(model['policy'])
