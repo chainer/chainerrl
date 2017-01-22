@@ -10,10 +10,11 @@ import sys
 
 from chainer import optimizers
 from chainer import functions as F
+from chainer import links as L
 import numpy as np
 
-sys.path.append('..')
-from chainerrl.links import fc_tail_q_function
+from chainerrl.links import sequence
+from chainerrl.action_value import DiscreteActionValue
 from chainerrl.links import dqn_head
 from chainerrl.links import dqn_head_crelu
 from chainerrl.links.dueling_dqn import DuelingDQN
@@ -50,9 +51,10 @@ def parse_activation(activation_str):
 
 def parse_arch(arch, n_actions, activation):
     if arch == 'nature':
-        head = dqn_head.NatureDQNHead(activation=activation)
-        return fc_tail_q_function.FCTailQFunction(
-            head, 512, n_actions=n_actions)
+        return sequence.Sequence(
+            dqn_head.NatureDQNHead(activation=activation),
+            L.Linear(512, n_actions),
+            DiscreteActionValue)
     if arch == 'nature_crelu':
         head = dqn_head_crelu.NatureDQNHeadCReLU()
         return fc_tail_q_function.FCTailQFunction(
