@@ -6,7 +6,6 @@ from builtins import str
 from future import standard_library
 standard_library.install_aliases()
 import argparse
-import sys
 
 from chainer import optimizers
 from chainer import functions as F
