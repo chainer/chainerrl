@@ -55,9 +55,10 @@ def parse_arch(arch, n_actions, activation):
             L.Linear(512, n_actions),
             DiscreteActionValue)
     elif arch == 'nips':
-        head = dqn_head.NIPSDQNHead(activation=activation)
-        return fc_tail_q_function.FCTailQFunction(
-            head, 256, n_actions=n_actions)
+        return sequence.Sequence(
+            dqn_head.NIPSDQNHead(activation=activation),
+            L.Linear(256, n_actions),
+            DiscreteActionValue)
     elif arch == 'dueling':
         return DuelingDQN(n_actions)
     else:
