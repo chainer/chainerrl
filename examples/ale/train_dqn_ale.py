@@ -16,7 +16,6 @@ import numpy as np
 from chainerrl.links import sequence
 from chainerrl.action_value import DiscreteActionValue
 from chainerrl.links import dqn_head
-from chainerrl.links import dqn_head_crelu
 from chainerrl.links.dueling_dqn import DuelingDQN
 from chainerrl.agents.dqn import DQN
 from chainerrl.agents.double_dqn import DoubleDQN
@@ -55,10 +54,6 @@ def parse_arch(arch, n_actions, activation):
             dqn_head.NatureDQNHead(activation=activation),
             L.Linear(512, n_actions),
             DiscreteActionValue)
-    if arch == 'nature_crelu':
-        head = dqn_head_crelu.NatureDQNHeadCReLU()
-        return fc_tail_q_function.FCTailQFunction(
-            head, 512, n_actions=n_actions)
     elif arch == 'nips':
         head = dqn_head.NIPSDQNHead(activation=activation)
         return fc_tail_q_function.FCTailQFunction(
@@ -88,7 +83,7 @@ def main():
                         type=int, default=10 ** 6)
     parser.add_argument('--model', type=str, default='')
     parser.add_argument('--arch', type=str, default='nature',
-                        choices=['nature', 'nips', 'nature_crelu', 'dueling'])
+                        choices=['nature', 'nips', 'dueling'])
     parser.add_argument('--steps', type=int, default=10 ** 7)
     parser.add_argument('--replay-start-size', type=int, default=5 * 10 ** 4)
     parser.add_argument('--target-update-frequency',
