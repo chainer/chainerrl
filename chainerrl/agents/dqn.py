@@ -43,7 +43,7 @@ def batch_experiences(experiences, xp, phi):
         'next_state': xp.asarray(
             [phi(elem['next_state']) for elem in experiences]),
         'next_action': xp.asarray(
-            [phi(elem['next_action']) for elem in experiences]),
+            [elem['next_action'] for elem in experiences]),
         'is_state_terminal': xp.asarray(
             [elem['is_state_terminal'] for elem in experiences],
             dtype=np.float32)}
