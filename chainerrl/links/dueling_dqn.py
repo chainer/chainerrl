@@ -15,7 +15,7 @@ from chainerrl import q_function
 from chainerrl import action_value
 
 
-class DuelingDQN(chainer.Chain, q_function.QFunction):
+class DuelingDQN(chainer.Chain, q_function.StateQFunction):
 
     def __init__(self, n_actions, n_input_channels=4,
                  activation=F.relu, bias=0.1):
