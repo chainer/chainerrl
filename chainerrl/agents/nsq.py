@@ -6,7 +6,6 @@ from builtins import range
 from future import standard_library
 standard_library.install_aliases()
 from logging import getLogger
-logger = getLogger(__name__)
 import copy
 import os
 import multiprocessing as mp
@@ -31,7 +30,7 @@ class NSQ(object):
 
     def __init__(self, process_idx, q_function, optimizer,
                  t_max, gamma, i_target, explorer, phi=lambda x: x,
-                 clip_reward=True):
+                 clip_reward=True, logger=getLogger(__name__)):
 
         self.process_idx = process_idx
 
@@ -49,6 +48,7 @@ class NSQ(object):
         self.i_target = i_target
         self.clip_reward = clip_reward
         self.phi = phi
+        self.logger = logger
         self.t_global = mp.Value('l', 0)
 
         self.t = 0
@@ -132,7 +132,7 @@ class NSQ(object):
             self.target_q_function(statevar)
         qout = self.q_function(statevar)
         if self.process_idx == 0:
-            logger.debug(
+            self.logger.debug(
                 't_global: %s t_local: %s obs: %s r: %s action_value: %s',
                 self.t_global.value, self.t, statevar.data.sum(), reward, qout)
         action = self.explorer.select_action(
@@ -145,8 +145,8 @@ class NSQ(object):
             t_global = self.t_global.value
 
         if t_global % self.i_target == 0:
-            logger.debug('target synchronized t_global:%s t_local:%s',
-                         t_global, self.t)
+            self.logger.debug('target synchronized t_global:%s t_local:%s',
+                              t_global, self.t)
             copy_param.copy_param(self.target_q_function, self.q_function)
 
         return action
@@ -154,7 +154,7 @@ class NSQ(object):
     def act(self, obs):
         statevar = chainer.Variable(np.expand_dims(self.phi(obs), 0))
         qout = self.q_function(statevar)
-        logger.debug('act action_value: %s', qout)
+        self.logger.debug('act action_value: %s', qout)
         return qout.greedy_actions.data[0]
 
     def stop_episode_and_train(self, state, reward, done=False):
