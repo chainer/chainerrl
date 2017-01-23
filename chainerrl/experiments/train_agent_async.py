@@ -102,15 +102,6 @@ def train_loop(process_idx, env, agent, steps, outdir, counter, training_done,
         print('Saved the successful model to {}'.format(dirname))
 
 
-def train_loop_with_profile(process_idx, counter, agent, env,
-                            start_time, steps, outdir, max_episode_len=None,
-                            evaluator=None, eval_env=None):
-    import cProfile
-    cmd = 'train_loop(process_idx=process_idx, counter=counter, agent=agent, env=env, steps=steps, outdir=outdir, max_episode_len=max_episode_len, evaluator=evaluator)'
-    cProfile.runctx(cmd, globals(), locals(),
-                    'profile-{}.out'.format(os.getpid()))
-
-
 def extract_shared_objects_from_agent(agent):
     return dict((attr, async.as_shared_objects(getattr(agent, attr)))
                 for attr in agent.shared_attributes)
@@ -163,19 +154,7 @@ def train_agent_async(outdir, processes, make_env, make_agent,
         agent = make_agent(process_idx)
         set_shared_objects(agent, shared_objects)
 
-        if profile:
-            train_loop_with_profile(
-                process_idx=process_idx,
-                counter=counter,
-                agent=agent,
-                env=env,
-                steps=steps,
-                outdir=outdir,
-                max_episode_len=max_episode_len,
-                evaluator=evaluator,
-                successful_score=successful_score,
-                training_done=training_done)
-        else:
+        def f():
             train_loop(
                 process_idx=process_idx,
                 counter=counter,
@@ -187,6 +166,13 @@ def train_agent_async(outdir, processes, make_env, make_agent,
                 evaluator=evaluator,
                 successful_score=successful_score,
                 training_done=training_done)
+
+        if profile:
+            import cProfile
+            cProfile.runctx('f()', globals(), locals(),
+                            'profile-{}.out'.format(os.getpid()))
+        else:
+            f()
 
     async.run_async(processes, run_func)
 
