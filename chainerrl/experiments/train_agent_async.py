@@ -126,7 +126,8 @@ def set_shared_objects(agent, shared_objects):
 def train_agent_async(outdir, processes, make_env, make_agent,
                       profile=False, steps=8 * 10 ** 7, eval_frequency=10 ** 6,
                       eval_n_runs=10, gamma=0.99, max_episode_len=None,
-                      step_offset=0, successful_score=None):
+                      step_offset=0, successful_score=None,
+                      eval_explorer=None):
     """
     Args:
       processes (int): Number of processes.
@@ -151,7 +152,8 @@ def train_agent_async(outdir, processes, make_env, make_agent,
         n_runs=eval_n_runs,
         eval_frequency=eval_frequency, outdir=outdir,
         max_episode_len=max_episode_len,
-        step_offset=step_offset)
+        step_offset=step_offset,
+        explorer=eval_explorer)
 
     def run_func(process_idx):
         random_seed.set_random_seed(process_idx)

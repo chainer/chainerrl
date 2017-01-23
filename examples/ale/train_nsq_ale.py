@@ -28,6 +28,7 @@ from chainerrl.experiments.train_agent_async import train_agent_async
 from chainerrl.recurrent import RecurrentChainMixin
 from chainerrl.experiments.evaluator import eval_performance
 from chainerrl.explorers.epsilon_greedy import LinearDecayEpsilonGreedy
+from chainerrl.explorers.epsilon_greedy import ConstantEpsilonGreedy
 from chainerrl import spaces
 from dqn_phi import dqn_phi
 
@@ -108,6 +109,7 @@ def main():
         print('n_runs: {} mean: {} median: {} stdev'.format(
             args.eval_n_runs, mean, median, stdev))
     else:
+        explorer = ConstantEpsilonGreedy(0.05, action_space.sample)
         train_agent_async(
             outdir=args.outdir,
             processes=args.processes,
@@ -116,7 +118,8 @@ def main():
             profile=args.profile,
             steps=args.steps,
             eval_n_runs=args.eval_n_runs,
-            eval_frequency=args.eval_frequency)
+            eval_frequency=args.eval_frequency,
+            eval_explorer=explorer)
 
 if __name__ == '__main__':
     main()
