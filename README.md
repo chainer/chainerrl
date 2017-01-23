@@ -20,7 +20,7 @@ Chainer-RL is a deep reinforcement learning library built on top of Chainer.
 
 Following agents have been implemented: 
 - A3C (Asynchronous Advantage Actor-Critic)
-- Asynchronous N-step Q-learning (work-in-progress)
+- Asynchronous N-step Q-learning
 - DQN (including Double DQN, Persistent Advantage Learning (PAL), Double PAL, Dynamic Policy Programming (DPP))
 - DDPG (Deep Deterministic Poilcy Gradients)
 - PGT (Policy Gradient Theorem)
