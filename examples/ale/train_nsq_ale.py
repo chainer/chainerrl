@@ -90,9 +90,12 @@ def main():
         else:
             epsilon_target = 0.5
         explorer = LinearDecayEpsilonGreedy(
-            1, epsilon_target, 4000000, action_space.sample)
-
-        return nsq.NSQ(0, q_func, opt, t_max=5, gamma=0.99, i_target=40000,
+            1, epsilon_target, args.final_exploration_frames,
+            action_space.sample)
+        # Suppress the explorer logger
+        explorer.logger.setLevel(logging.INFO)
+        return nsq.NSQ(process_idx, q_func, opt, t_max=5, gamma=0.99,
+                       i_target=40000,
                        explorer=explorer, phi=dqn_phi)
 
     if args.demo:
