@@ -60,9 +60,9 @@ def main():
     if args.seed is not None:
         random_seed.set_random_seed(args.seed)
 
-    outdir = prepare_output_dir(args, args.outdir)
+    args.outdir = prepare_output_dir(args, args.outdir)
 
-    print('Output files are saved in {}'.format(outdir))
+    print('Output files are saved in {}'.format(args.outdir))
 
     def make_env(process_idx, test):
         return ale.ALE(args.rom, use_sdl=args.use_sdl,
