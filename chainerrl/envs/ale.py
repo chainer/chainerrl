@@ -14,6 +14,7 @@ from ale_python_interface import ALEInterface
 import cv2
 
 from chainerrl import env
+from chainerrl import spaces
 
 
 class ALE(env.Env):
@@ -62,6 +63,12 @@ class ALE(env.Env):
         self.legal_actions = ale.getMinimalActionSet()
         self.initialize()
 
+        self.action_space = spaces.Discrete(len(self.legal_actions))
+        one_screen_observation_space = spaces.Box(
+            low=0, high=255, shape=(84, 84))
+        self.observation_space = spaces.Tuple(
+            [one_screen_observation_space] * n_last_screens)
+
     def current_screen(self):
         # Max of two consecutive frames
         assert self.last_raw_screen is not None
@@ -96,7 +103,7 @@ class ALE(env.Env):
 
     @property
     def state(self):
-        assert len(self.last_screens) == 4
+        assert len(self.last_screens) == self.n_last_screens
         return list(self.last_screens)
 
     @property

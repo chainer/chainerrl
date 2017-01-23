@@ -8,26 +8,33 @@ standard_library.install_aliases()
 import os
 import argparse
 import random
-import sys
 from logging import getLogger
 logger = getLogger(__name__)
 
 import chainer
+from chainer import links as L
 
-sys.path.append('..')
-from links import fc_tail_q_function
-from links import dqn_head
-from agents import nstep_q_learning
-from envs import ale
-import random_seed
-import async
-import rmsprop_ones
-from prepare_output_dir import prepare_output_dir
+from chainerrl.action_value import DiscreteActionValue
+from chainerrl.links import sequence
+from chainerrl.links import dqn_head
+from chainerrl.agents import nsq
+from chainerrl.envs import ale
+from chainerrl.misc import random_seed
+from chainerrl.optimizers import rmsprop_async
+from chainerrl.experiments.prepare_output_dir import prepare_output_dir
+from chainerrl.optimizers.nonbias_weight_decay import NonbiasWeightDecay
+from chainerrl.misc.init_like_torch import init_like_torch
+from chainerrl.experiments.train_agent_async import train_agent_async
+from chainerrl.recurrent import RecurrentChainMixin
+from chainerrl.experiments.evaluator import eval_performance
+from chainerrl.explorers.epsilon_greedy import LinearDecayEpsilonGreedy
+from chainerrl import spaces
+from dqn_phi import dqn_phi
 
 
 def main():
 
-    # This line makes execution much faster, I don't know why
+    # This prevents numpy from using multiple threads
     os.environ['OMP_NUM_THREADS'] = '1'
 
     import logging
@@ -40,7 +47,12 @@ def main():
     parser.add_argument('--steps', type=int, default=10 ** 6)
     parser.add_argument('--use-sdl', action='store_true')
     parser.add_argument('--final-exploration-frames', type=int, default=1e6)
-    parser.add_argument('--outdir', type=str, default=None)
+    parser.add_argument('--outdir', type=str, default='nsq_output')
+    parser.add_argument('--demo', action='store_true', default=False)
+    parser.add_argument('--load', type=str, default='')
+    parser.add_argument('--profile', action='store_true')
+    parser.add_argument('--eval-frequency', type=int, default=10 ** 6)
+    parser.add_argument('--eval-n-runs', type=int, default=10)
     parser.set_defaults(use_sdl=False)
     args = parser.parse_args()
 
@@ -51,22 +63,22 @@ def main():
 
     print('Output files are saved in {}'.format(outdir))
 
-    n_actions = ale.ALE(args.rom).number_of_actions
+    def make_env(process_idx, test):
+        return ale.ALE(args.rom, use_sdl=args.use_sdl,
+                       treat_life_lost_as_terminal=not test)
 
-    def agent_func(process_idx):
-        head = dqn_head.NIPSDQNHead()
-        q_func = fc_tail_q_function.FCTailQFunction(
-            head, 256, n_actions=n_actions)
-        opt = rmsprop_ones.RMSpropOnes(lr=1e-3, eps=1e-4)
+    sample_env = make_env(0, test=False)
+    action_space = sample_env.action_space
+    assert isinstance(action_space, spaces.Discrete)
+
+    def make_agent(process_idx):
+        q_func = sequence.Sequence(
+            dqn_head.NIPSDQNHead(),
+            L.Linear(256, action_space.n),
+            DiscreteActionValue)
+        opt = rmsprop_async.RMSpropAsync(lr=1e-3, eps=1e-4)
         opt.setup(q_func)
         opt.add_hook(chainer.optimizer.GradientClipping(1.0))
-        return nstep_q_learning.NStepQLearning(q_func, opt, 5, 0.99, 1.0,
-                                               i_target=40000 // args.processes)
-
-    def env_func(process_idx):
-        return ale.ALE(args.rom, use_sdl=args.use_sdl)
-
-    def run_func(process_idx, agent, env):
 
         # Random epsilon assignment described in the original paper
         rand = random.random()
@@ -76,35 +88,31 @@ def main():
             epsilon_target = 0.01
         else:
             epsilon_target = 0.5
+        explorer = LinearDecayEpsilonGreedy(
+            1, epsilon_target, 4000000, action_space.sample)
 
-        total_r = 0
-        episode_r = 0
+        return nsq.NSQ(0, q_func, opt, t_max=5, gamma=0.99, i_target=40000,
+                       explorer=explorer, phi=dqn_phi)
 
-        for i in range(args.steps):
-
-            total_r += env.reward
-            episode_r += env.reward
-
-            if agent.epsilon > epsilon_target:
-                agent.epsilon -= (1 - epsilon_target) / \
-                    args.final_exploration_frames
-
-            action = agent.act(env.state, env.reward, env.is_terminal)
-
-            if env.is_terminal:
-                if process_idx == 0:
-                    logger.debug('{} i:{} epsilon:{} episode_r:{}'.format(
-                        outdir, i, agent.epsilon, episode_r))
-                episode_r = 0
-                env.initialize()
-            else:
-                env.receive_action(action)
-
-        if process_idx == 0:
-            print(logger.debug('{} pid:{}, total_r:{}'.format(outdir, os.getpid(), total_r)))
-
-    async.run_async(args.processes, agent_func, env_func, run_func)
-
+    if args.demo:
+        env = make_env(0, True)
+        agent = make_agent(0)
+        mean, median, stdev = eval_performance(
+            env=env,
+            agent=agent,
+            n_runs=args.eval_n_runs)
+        print('n_runs: {} mean: {} median: {} stdev'.format(
+            args.eval_n_runs, mean, median, stdev))
+    else:
+        train_agent_async(
+            outdir=args.outdir,
+            processes=args.processes,
+            make_env=make_env,
+            make_agent=make_agent,
+            profile=args.profile,
+            steps=args.steps,
+            eval_n_runs=args.eval_n_runs,
+            eval_frequency=args.eval_frequency)
 
 if __name__ == '__main__':
     main()

@@ -136,7 +136,7 @@ class NSQ(object):
                 't_global: %s t_local: %s obs: %s r: %s action_value: %s',
                 self.t_global.value, self.t, statevar.data.sum(), reward, qout)
         action = self.explorer.select_action(
-            self.t, lambda: qout.greedy_actions.data[0])
+            self.t_global.value, lambda: qout.greedy_actions.data[0])
         q = qout.evaluate_actions(np.asarray([action]))
         self.past_action_values[self.t] = q
         self.t += 1
