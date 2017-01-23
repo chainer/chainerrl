@@ -11,10 +11,7 @@ Chainer-RL is a deep reinforcement learning library built on top of Chainer.
 - h5py
 - statistics
 - future
-
-## Get started
-
-
+- gym
 
 ## Agents
 
@@ -33,7 +30,6 @@ Environments that support OpenAI Gym's interface (`reset`, `step` and `close` fu
 
 Additionally, following environments have been implemented in this library:
 - ALE (https://github.com/mgbellemare/Arcade-Learning-Environment)
-- VizDoom
 
 ## How to use
 
