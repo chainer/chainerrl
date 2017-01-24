@@ -50,7 +50,8 @@ class TestNSQ(unittest.TestCase):
 
         def make_env(process_idx, test):
             return ABC(episodic=self.episodic or test,
-                       partially_observable=self.use_lstm)
+                       partially_observable=self.use_lstm,
+                       deterministic=test)
 
         sample_env = make_env(0, False)
         action_space = sample_env.action_space

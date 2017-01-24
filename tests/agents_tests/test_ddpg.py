@@ -77,8 +77,9 @@ class _TestDDPGOnContinuousPOABC(_TestDDPGOnABC):
 
         return DDPGModel(policy=policy, q_func=q_func)
 
-    def make_env_and_successful_return(self):
-        return ABC(discrete=False, partially_observable=True), 1
+    def make_env_and_successful_return(self, test):
+        return ABC(discrete=False, partially_observable=True,
+                   deterministic=test), 1
 
     def make_replay_buffer(self, env):
         return replay_buffer.EpisodicReplayBuffer(10 ** 5)
@@ -105,8 +106,8 @@ class _TestDDPGOnContinuousABC(_TestDDPGOnABC):
 
         return DDPGModel(policy=policy, q_func=q_func)
 
-    def make_env_and_successful_return(self):
-        return ABC(discrete=False), 1
+    def make_env_and_successful_return(self, test):
+        return ABC(discrete=False, deterministic=test), 1
 
 
 class TestDDPGOnContinuousPOABC(_TestDDPGOnContinuousPOABC):

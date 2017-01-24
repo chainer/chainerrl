@@ -26,7 +26,7 @@ class _TestTraining(unittest.TestCase):
     def make_agent(self, env, gpu):
         raise NotImplementedError()
 
-    def make_env_and_successful_return(self):
+    def make_env_and_successful_return(self, test):
         raise NotImplementedError()
 
     def _test_training(self, gpu, steps=5000, load_model=False):
@@ -34,7 +34,9 @@ class _TestTraining(unittest.TestCase):
         random_seed.set_random_seed(1)
         logging.basicConfig(level=logging.DEBUG)
 
-        env, successful_return = self.make_env_and_successful_return()
+        env, _ = self.make_env_and_successful_return(test=False)
+        test_env, successful_return = self.make_env_and_successful_return(
+            test=True)
         agent = self.make_agent(env, gpu)
 
         if load_model:
@@ -45,7 +47,8 @@ class _TestTraining(unittest.TestCase):
         # Train
         train_agent.train_agent_with_evaluation(
             agent=agent, env=env, steps=steps, outdir=self.tmpdir,
-            eval_frequency=500, eval_n_runs=5, successful_score=1)
+            eval_frequency=500, eval_n_runs=5, successful_score=1,
+            eval_env=test_env)
 
         agent.stop_episode()
 
@@ -53,7 +56,7 @@ class _TestTraining(unittest.TestCase):
         n_test_runs = 5
         for _ in range(n_test_runs):
             total_r = 0.0
-            obs = env.reset()
+            obs = test_env.reset()
             done = False
             reward = 0.0
             while not done:
@@ -63,7 +66,7 @@ class _TestTraining(unittest.TestCase):
                 action = agent.act(obs)
                 if isinstance(action, cuda.cupy.ndarray):
                     action = cuda.to_cpu(action)
-                obs, reward, done, _ = env.step(action)
+                obs, reward, done, _ = test_env.step(action)
                 total_r += reward
             agent.stop_episode()
             self.assertAlmostEqual(total_r, successful_return)
