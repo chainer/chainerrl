@@ -71,8 +71,8 @@ class ABC(env.Env):
             if self.deterministic:
                 action = np.argmax(action)
             else:
-                pvals = np.exp(action) / np.exp(action).sum()
-                action = np.random.multinomial(1, pvals)[0]
+                prob = np.exp(action) / np.exp(action).sum()
+                action = np.random.choice(range(self.size), p=prob)
         if action == self._state:
             # Correct
             self._state += 1
