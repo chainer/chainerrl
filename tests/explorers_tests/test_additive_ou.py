@@ -16,15 +16,12 @@ class TestAdditiveOU(unittest.TestCase):
     def test(self):
 
         action_size = 3
-        dt = 0.5
-        sigma = 0.001
-        theta = 0.3
 
         def greedy_action_func():
             return np.asarray([0] * action_size, dtype=np.float32)
 
-        explorer = AdditiveOU(action_size, dt=dt, theta=theta, sigma=sigma)
+        explorer = AdditiveOU()
 
-        for t in range(10000):
+        for t in range(100):
             a = explorer.select_action(t, greedy_action_func)
-            print(a)
+            print(t, a)
