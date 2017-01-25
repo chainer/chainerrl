@@ -14,6 +14,13 @@ Chainer-RL is a deep reinforcement learning library built on top of Chainer.
 
 ## Agents
 
+| Agent | Discrete Action | Continous Action | Recurrent Model | CPU Async Training |
+|:------|:---------------:|:----------------:|:---------------:|:--------------:|
+| DQN | o | o (NAF) | o | x |
+| DDPG | x | o | o | x |
+| A3C | o | o | o | o |
+| NSQ (N-step Q-learning) | o | o (NAF) | o | o |
+
 Following agents have been implemented: 
 - A3C (Asynchronous Advantage Actor-Critic)
 - Asynchronous N-step Q-learning
