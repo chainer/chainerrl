@@ -39,3 +39,9 @@ pip install -r requirements.txt
 python setup.py develop
 ```
 Please see the examples in the `examples` directory.
+
+## How to test
+
+To test chainerrl modules, install `nose` and run `nosetests`.
+
+To test examples, run `test_examples.sh`.
