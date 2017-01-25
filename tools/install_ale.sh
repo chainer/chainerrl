@@ -1,5 +1,9 @@
 #!/bin/bash
 
+# This script will clone Arcade-Learning-Environment to the current directory,
+# build it and install ale_python_interface.
+
+
 set -Ceu
 
 if ! hash git 2>/dev/null; then
