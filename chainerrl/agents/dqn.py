@@ -2,24 +2,26 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 from __future__ import absolute_import
+from builtins import *  # NOQA
 from future import standard_library
 standard_library.install_aliases()
-import copy
-import threading
-import os
-from logging import getLogger
-from concurrent.futures import ThreadPoolExecutor
-from future.utils import native
 
-import numpy as np
+from concurrent.futures import ThreadPoolExecutor
+import copy
+from future.utils import native
+from logging import getLogger
+import os
+import threading
+
 import chainer
-import chainer.functions as F
 from chainer import cuda
+import chainer.functions as F
 from chainer import serializers
+import numpy as np
 
 from chainerrl import agent
-from chainerrl.misc.makedirs import makedirs
 from chainerrl.misc import copy_param
+from chainerrl.misc.makedirs import makedirs
 from chainerrl.recurrent import Recurrent
 from chainerrl.recurrent import state_reset
 
@@ -170,7 +172,8 @@ class DQN(agent.Agent):
         self.episodic_update_len = episodic_update_len
         self.target_model = None
         self.sync_target_network()
-        self.target_q_function = self.target_model  # For backward compatibility
+        # For backward compatibility
+        self.target_q_function = self.target_model
         self.average_q = 0
         self.average_q_decay = average_q_decay
         self.average_loss = 0
@@ -245,8 +248,7 @@ class DQN(agent.Agent):
                 self.optimizer.update()
 
     def _batch_states(self, states):
-        """Generate an input batch array from a list of states
-        """
+        """Generate an input batch array from a list of states"""
         states = [self.phi(s) for s in states]
         return self.xp.asarray(states)
 
@@ -283,8 +285,7 @@ class DQN(agent.Agent):
         return batch_q, batch_q_target
 
     def _compute_loss(self, exp_batch, gamma, errors_out=None):
-        """
-        Compute the Q-learning loss for a batch of experiences
+        """Compute the Q-learning loss for a batch of experiences
 
 
         Args:
@@ -420,8 +421,7 @@ class DQN(agent.Agent):
         return self.last_action
 
     def stop_episode_and_train(self, state, reward, done=False):
-        """
-        Observe a terminal state and a reward.
+        """Observe a terminal state and a reward.
 
         This function must be called once when an episode terminates.
         """

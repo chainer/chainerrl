@@ -1,9 +1,9 @@
-from chainerrl.agents.a3c import A3C
-from chainerrl.agents.al import AL
-from chainerrl.agents.ddpg import DDPG
-from chainerrl.agents.double_dqn import DoubleDQN
-from chainerrl.agents.double_pal import DoublePAL
-from chainerrl.agents.dqn import DQN
-from chainerrl.agents.nsq import NSQ
-from chainerrl.agents.pal import PAL
-from chainerrl.agents.pgt import PGT
+from chainerrl.agents.a3c import A3C  # NOQA
+from chainerrl.agents.al import AL  # NOQA
+from chainerrl.agents.ddpg import DDPG  # NOQA
+from chainerrl.agents.double_dqn import DoubleDQN  # NOQA
+from chainerrl.agents.double_pal import DoublePAL  # NOQA
+from chainerrl.agents.dqn import DQN  # NOQA
+from chainerrl.agents.nsq import NSQ  # NOQA
+from chainerrl.agents.pal import PAL  # NOQA
+from chainerrl.agents.pgt import PGT  # NOQA

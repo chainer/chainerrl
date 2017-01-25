@@ -2,7 +2,7 @@ from __future__ import unicode_literals
 from __future__ import print_function
 from __future__ import division
 from __future__ import absolute_import
-from builtins import super
+from builtins import *  # NOQA
 from future import standard_library
 standard_library.install_aliases()
 import chainer.functions as F
@@ -12,8 +12,7 @@ from chainerrl.functions import scale_grad
 
 
 class ResidualDQN(DQN):
-    """DQN that allows maxQ also backpropagate gradients.
-    """
+    """DQN that allows maxQ also backpropagate gradients."""
 
     def __init__(self, *args, **kwargs):
         self.grad_scale = kwargs.pop('grad_scale', 1.0)

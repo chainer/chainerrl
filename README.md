@@ -5,15 +5,21 @@ Chainer-RL is a deep reinforcement learning library built on top of Chainer.
 ## Requirements
 
 - Python 2.7.6+, 3.4.3+, 3.5.1+
-- Chainer 1.16.0+
+- Chainer 1.20.1+
 - cached-property
 - fastcache
-- h5py
 - statistics
 - future
 - gym
 
 ## Agents
+
+| Agent | Discrete Action | Continous Action | Recurrent Model | CPU Async Training |
+|:------|:---------------:|:----------------:|:---------------:|:--------------:|
+| DQN (including DoubleDQN etc.) | o | o (NAF) | o | x |
+| DDPG | x | o | o | x |
+| A3C | o | o | o | o |
+| NSQ (N-step Q-learning) | o | o (NAF) | o | o |
 
 Following agents have been implemented: 
 - A3C (Asynchronous Advantage Actor-Critic)
@@ -39,3 +45,9 @@ pip install -r requirements.txt
 python setup.py develop
 ```
 Please see the examples in the `examples` directory.
+
+## How to test
+
+To test chainerrl modules, install `nose` and run `nosetests`.
+
+To test examples, run `test_examples.sh`.

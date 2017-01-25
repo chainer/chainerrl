@@ -3,12 +3,12 @@ from __future__ import print_function
 from __future__ import division
 from __future__ import absolute_import
 from future import standard_library
-from builtins import super
+from builtins import *  # NOQA
 standard_library.install_aliases()
 
 import chainer
-import chainer.functions as F
 from chainer import cuda
+import chainer.functions as F
 
 from chainerrl.agents import dqn
 from chainerrl.recurrent import Recurrent
@@ -52,7 +52,8 @@ class DDPG(dqn.DQN):
 
     # Update Q-function
     def compute_critic_loss(self, batch):
-        """
+        """Compute loss for critic.
+
         Preconditions:
           target_q_function must have seen up to s_t and a_t.
           target_policy must have seen up to s_t.
@@ -105,7 +106,8 @@ class DDPG(dqn.DQN):
         return loss
 
     def compute_actor_loss(self, batch):
-        """
+        """Compute loss for actor.
+
         Preconditions:
           q_function must have seen up to s_{t-1} and s_{t-1}.
           policy must have seen up to s_{t-1}.
@@ -140,8 +142,7 @@ class DDPG(dqn.DQN):
         return loss
 
     def update(self, experiences, errors_out=None):
-        """Update the model from experiences
-        """
+        """Update the model from experiences"""
 
         batch = dqn.batch_experiences(experiences, self.xp, self.phi)
         self.critic_optimizer.update(lambda: self.compute_critic_loss(batch))

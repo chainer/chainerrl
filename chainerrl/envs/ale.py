@@ -2,26 +2,26 @@ from __future__ import unicode_literals
 from __future__ import print_function
 from __future__ import division
 from __future__ import absolute_import
-from builtins import range, str
+from builtins import *  # NOQA
 from future import standard_library
 standard_library.install_aliases()
 import collections
 import os
 import sys
 
-import numpy as np
 from ale_python_interface import ALEInterface
+import atari_py
 import cv2
+import numpy as np
 
 from chainerrl import env
 from chainerrl import spaces
 
 
 class ALE(env.Env):
-    """Arcade Learning Environment.
-    """
+    """Arcade Learning Environment."""
 
-    def __init__(self, rom_filename, seed=None, use_sdl=False, n_last_screens=4,
+    def __init__(self, game, seed=None, use_sdl=False, n_last_screens=4,
                  frame_skip=4, treat_life_lost_as_terminal=True,
                  crop_or_scale='scale', max_start_nullops=30,
                  record_screen_dir=None):
@@ -29,6 +29,10 @@ class ALE(env.Env):
         self.treat_life_lost_as_terminal = treat_life_lost_as_terminal
         self.crop_or_scale = crop_or_scale
         self.max_start_nullops = max_start_nullops
+
+        # atari_py is used only to provide rom files. atari_py has its own
+        # ale_python_interface, but it is obsolete.
+        game_path = atari_py.get_game_path(game)
 
         ale = ALEInterface()
         if seed is not None:
@@ -55,7 +59,8 @@ class ALE(env.Env):
             elif sys.platform.startswith('linux'):
                 ale.setBool(b'sound', True)
             ale.setBool(b'display_screen', True)
-        ale.loadROM(str.encode(rom_filename))
+
+        ale.loadROM(str.encode(game_path))
 
         assert ale.getFrameNumber() == 0
 

@@ -2,7 +2,7 @@ from __future__ import print_function
 from __future__ import division
 from __future__ import unicode_literals
 from __future__ import absolute_import
-from builtins import str
+from builtins import *  # NOQA
 from future import standard_library
 standard_library.install_aliases()
 import argparse
@@ -28,6 +28,8 @@ from chainerrl.misc.init_like_torch import init_like_torch
 from chainerrl.explorers.epsilon_greedy import LinearDecayEpsilonGreedy
 from chainerrl.explorers.epsilon_greedy import ConstantEpsilonGreedy
 from chainerrl.experiments.train_agent import train_agent_with_evaluation
+from chainerrl.experiments.evaluator import eval_performance
+
 from dqn_phi import dqn_phi
 
 
@@ -77,8 +79,9 @@ def main():
     parser.add_argument('--outdir', type=str, default=None)
     parser.add_argument('--seed', type=int, default=None)
     parser.add_argument('--gpu', type=int, default=0)
-    parser.add_argument('--use-sdl', action='store_true')
-    parser.set_defaults(use_sdl=False)
+    parser.add_argument('--demo', action='store_true', default=False)
+    parser.add_argument('--load', type=str, default=None)
+    parser.add_argument('--use-sdl', action='store_true', default=False)
     parser.add_argument('--final-exploration-frames',
                         type=int, default=10 ** 6)
     parser.add_argument('--model', type=str, default='')
@@ -135,16 +138,24 @@ def main():
                   update_frequency=args.update_frequency,
                   batch_accumulator='sum', phi=dqn_phi)
 
-    if len(args.model) > 0:
-        agent.load(args.model)
+    if args.load:
+        agent.load(args.load)
 
-    eval_explorer = ConstantEpsilonGreedy(
-        5e-2, lambda: np.random.randint(n_actions))
-    train_agent_with_evaluation(
-        agent=agent, env=env, steps=args.steps,
-        eval_n_runs=args.eval_n_runs, eval_frequency=args.eval_frequency,
-        outdir=args.outdir, eval_explorer=eval_explorer,
-        eval_env=eval_env)
+    if args.demo:
+        mean, median, stdev = eval_performance(
+            env=eval_env,
+            agent=agent,
+            n_runs=args.eval_n_runs)
+        print('n_runs: {} mean: {} median: {} stdev'.format(
+            args.eval_n_runs, mean, median, stdev))
+    else:
+        eval_explorer = ConstantEpsilonGreedy(
+            5e-2, lambda: np.random.randint(n_actions))
+        train_agent_with_evaluation(
+            agent=agent, env=env, steps=args.steps,
+            eval_n_runs=args.eval_n_runs, eval_frequency=args.eval_frequency,
+            outdir=args.outdir, eval_explorer=eval_explorer,
+            eval_env=eval_env)
 
 if __name__ == '__main__':
     main()

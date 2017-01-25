@@ -3,16 +3,13 @@ from __future__ import print_function
 from __future__ import division
 from __future__ import absolute_import
 from future import standard_library
-from builtins import super
+from builtins import *  # NOQA
 standard_library.install_aliases()
 
-import os
-
-import numpy as np
 import chainer
-import chainer.functions as F
 from chainer import cuda
-from chainer import serializers
+import chainer.functions as F
+import numpy as np
 
 from chainerrl.agents import dqn
 
@@ -43,8 +40,7 @@ class PGT(dqn.DQN):
         self.average_critic_loss = 0.0
 
     def update(self, experiences, errors_out=None):
-        """Update the model from experiences
-        """
+        """Update the model from experiences."""
 
         batch_size = len(experiences)
 

@@ -2,7 +2,7 @@ from __future__ import print_function
 from __future__ import unicode_literals
 from __future__ import division
 from __future__ import absolute_import
-from builtins import range
+from builtins import *  # NOQA
 from future import standard_library
 standard_library.install_aliases()
 
@@ -21,7 +21,8 @@ class TestDiscreteActionValue(unittest.TestCase):
         self.action_size = 3
         self.q_values = np.random.normal(
             size=(self.batch_size, self.action_size)).astype(np.float32)
-        self.qout = action_value.DiscreteActionValue(chainer.Variable(self.q_values))
+        self.qout = action_value.DiscreteActionValue(
+            chainer.Variable(self.q_values))
 
     def test_max(self):
         self.assertIsInstance(self.qout.max, chainer.Variable)

@@ -29,6 +29,7 @@ from chainerrl.explorers.additive_gaussian import AdditiveGaussian
 from chainerrl.explorers.additive_ou import AdditiveOU
 from chainerrl.misc import reward_filter
 from chainerrl.links.mlp import MLP
+from chainerrl.experiments.evaluator import eval_performance
 
 
 def main():
@@ -44,7 +45,8 @@ def main():
                         type=int, default=10 ** 5)
     parser.add_argument('--start-epsilon', type=float, default=1.0)
     parser.add_argument('--end-epsilon', type=float, default=0.1)
-    parser.add_argument('--model', type=str, default='')
+    parser.add_argument('--demo', action='store_true', default=False)
+    parser.add_argument('--load', type=str, default=None)
     parser.add_argument('--steps', type=int, default=10 ** 7)
     parser.add_argument('--replay-start-size', type=int, default=10 ** 4)
     parser.add_argument('--target-update-frequency',
@@ -62,7 +64,6 @@ def main():
     parser.add_argument('--render-train', action='store_true')
     parser.add_argument('--render-eval', action='store_true')
     parser.add_argument('--reward-scale-factor', type=float, default=1e-3)
-    parser.set_defaults(window_visible=False)
     args = parser.parse_args()
 
     if args.seed is not None:
@@ -140,16 +141,24 @@ def main():
                 soft_update_tau=args.soft_update_tau)
     agent.logger.setLevel(logging.DEBUG)
 
-    if len(args.model) > 0:
-        agent.load(args.model)
+    if args.load:
+        agent.load(args.load)
 
     eval_env = make_env(for_eval=True)
 
-    train_agent_with_evaluation(
-        agent=agent, env=env, steps=args.steps,
-        eval_n_runs=args.eval_n_runs, eval_frequency=args.eval_frequency,
-        outdir=args.outdir, eval_env=eval_env,
-        max_episode_len=timestep_limit)
+    if args.demo:
+        mean, median, stdev = eval_performance(
+            env=eval_env,
+            agent=agent,
+            n_runs=args.eval_n_runs)
+        print('n_runs: {} mean: {} median: {} stdev'.format(
+            args.eval_n_runs, mean, median, stdev))
+    else:
+        train_agent_with_evaluation(
+            agent=agent, env=env, steps=args.steps,
+            eval_n_runs=args.eval_n_runs, eval_frequency=args.eval_frequency,
+            outdir=args.outdir, eval_env=eval_env,
+            max_episode_len=timestep_limit)
 
 
 if __name__ == '__main__':

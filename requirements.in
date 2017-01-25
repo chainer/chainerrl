@@ -2,5 +2,4 @@ cached-property
 chainer
 fastcache
 future
-h5py
 statistics
