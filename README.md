@@ -8,7 +8,6 @@ Chainer-RL is a deep reinforcement learning library built on top of Chainer.
 - Chainer 1.16.0+
 - cached-property
 - fastcache
-- h5py
 - statistics
 - future
 - gym
