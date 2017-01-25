@@ -103,9 +103,9 @@ class DQN(agent.Agent):
         async_update (bool): Update model in a different thread if set True
         n_times_update (int): Number of repetition of update
         average_q_decay (float): Decay rate of average Q, only used for
-            statistics
+            recording statistics
         average_loss_decay (float): Decay rate of average loss, only used for
-            statistics
+            recording statistics
         batch_accumulator (str): 'mean' or 'sum'
         episodic_update (bool): Use full episodes for update if set True
         episodic_update_len (int or None): Subsequences of this length are used

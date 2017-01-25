@@ -24,9 +24,21 @@ from chainerrl.recurrent import state_kept
 
 
 class NSQ(object):
-    """N-step Q-Learning.
+    """Asynchronous N-step Q-Learning.
 
     See http://arxiv.org/abs/1602.01783
+
+    Args:
+        q_function (A3CModel): Model to train
+        optimizer (chainer.Optimizer): optimizer used to train the model
+        t_max (int): The model is updated after every t_max local steps
+        gamma (float): Discount factor [0,1]
+        i_target (intn): The target model is updated after every i_target
+            global steps
+        explorer (Explorer): Explorer to use in training
+        phi (callable): Feature extractor function
+        average_q_decay (float): Decay rate of average Q, only used for
+            recording statistics
     """
 
     def __init__(self, process_idx, q_function, optimizer,

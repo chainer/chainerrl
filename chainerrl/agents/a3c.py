@@ -84,7 +84,7 @@ class A3C(agent.Agent):
     Args:
         model (A3CModel): Model to train
         optimizer (chainer.Optimizer): optimizer used to train the model
-        t_max (int): The model is updated after every t_max steps
+        t_max (int): The model is updated after every t_max local steps
         gamma (float): Discount factor [0,1]
         beta (float): Weight coefficient for the entropy regularizaiton term.
         process_idx (int): Index of the process.
