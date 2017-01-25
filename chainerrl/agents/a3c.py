@@ -76,7 +76,7 @@ class A3CSharedModel(chainer.Chain, A3CModel, RecurrentChainMixin):
         return pout, vout
 
 
-class A3C(agent.Agent):
+class A3C(agent.AsyncAgent):
     """A3C: Asynchronous Advantage Actor-Critic.
 
     See http://arxiv.org/abs/1602.01783
@@ -95,6 +95,8 @@ class A3C(agent.Agent):
         act_deterministically (bool): If set true, choose most probable actions
             in act method.
     """
+
+    process_idx = None
 
     def __init__(self, model, optimizer, t_max, gamma, beta=1e-2,
                  process_idx=0, clip_reward=True, phi=lambda x: x,
@@ -119,7 +121,6 @@ class A3C(agent.Agent):
         self.t_max = t_max
         self.gamma = gamma
         self.beta = beta
-        self.process_idx = process_idx
         self.clip_reward = clip_reward
         self.phi = phi
         self.pi_loss_coef = pi_loss_coef

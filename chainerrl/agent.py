@@ -8,6 +8,7 @@ standard_library.install_aliases()
 
 from abc import ABCMeta
 from abc import abstractmethod
+from abc import abstractproperty
 
 from future.utils import with_metaclass
 
@@ -60,3 +61,17 @@ class Agent(with_metaclass(ABCMeta, object)):
     def load(self, dirname):
         """Load internal states."""
         raise NotImplementedError()
+
+
+class AsyncAgent(with_metaclass(ABCMeta, Agent)):
+    """Abstract asynchronous agent class."""
+
+    @abstractproperty
+    def process_idx(self):
+        """Index of process as integer, 0 for the representative process."""
+        pass
+
+    @abstractproperty
+    def shared_attributes(self):
+        """Tuple of names of shared attributes."""
+        pass

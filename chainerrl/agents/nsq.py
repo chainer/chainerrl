@@ -16,6 +16,7 @@ from chainer import functions as F
 from chainer import serializers
 import numpy as np
 
+from chainerrl.agent import AsyncAgent
 from chainerrl.misc import async
 from chainerrl.misc import copy_param
 from chainerrl.misc.makedirs import makedirs
@@ -23,7 +24,7 @@ from chainerrl.recurrent import Recurrent
 from chainerrl.recurrent import state_kept
 
 
-class NSQ(object):
+class NSQ(AsyncAgent):
     """Asynchronous N-step Q-Learning.
 
     See http://arxiv.org/abs/1602.01783
@@ -41,12 +42,12 @@ class NSQ(object):
             recording statistics
     """
 
-    def __init__(self, process_idx, q_function, optimizer,
+    process_idx = None
+
+    def __init__(self, q_function, optimizer,
                  t_max, gamma, i_target, explorer, phi=lambda x: x,
                  clip_reward=True,
                  average_q_decay=0.999, logger=getLogger(__name__)):
-
-        self.process_idx = process_idx
 
         self.shared_q_function = q_function
         self.target_q_function = copy.deepcopy(q_function)
