@@ -106,13 +106,13 @@ def main():
     )
     init_like_torch(model['q_function'])
     init_like_torch(model['policy'])
-    opt_a = optimizers.Adam(alpha=0.001)
-    opt_c = optimizers.Adam(alpha=0.0005)
+    opt_a = optimizers.Adam(alpha=1e-5)
+    opt_c = optimizers.Adam(alpha=1e-3)
     opt_a.setup(model['policy'])
     opt_c.setup(model['q_function'])
     opt_a.add_hook(chainer.optimizer.GradientClipping(1.0), 'hook_a')
     opt_c.add_hook(chainer.optimizer.GradientClipping(1.0), 'hook_c')
-    opt_c.add_hook(chainer.optimizer.WeightDecay(1e-4))
+    # opt_c.add_hook(chainer.optimizer.WeightDecay(1e-4))
 
     rbuf = replay_buffer.ReplayBuffer(5 * 10 ** 5)
 

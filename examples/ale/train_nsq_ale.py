@@ -39,23 +39,22 @@ def main():
     os.environ['OMP_NUM_THREADS'] = '1'
 
     import logging
-    logging.basicConfig(level=logging.DEBUG)
+    # logging.basicConfig(level=logging.DEBUG)
 
     parser = argparse.ArgumentParser()
     parser.add_argument('processes', type=int)
     parser.add_argument('rom', type=str)
     parser.add_argument('--seed', type=int, default=None)
     parser.add_argument('--steps', type=int, default=8 * 10 ** 7)
-    parser.add_argument('--use-sdl', action='store_true')
+    parser.add_argument('--use-sdl', action='store_true', default=False)
     parser.add_argument('--final-exploration-frames',
                         type=int, default=4 * 10 ** 6)
     parser.add_argument('--outdir', type=str, default='nsq_output')
-    parser.add_argument('--demo', action='store_true', default=False)
-    parser.add_argument('--load', type=str, default='')
     parser.add_argument('--profile', action='store_true')
     parser.add_argument('--eval-frequency', type=int, default=10 ** 6)
     parser.add_argument('--eval-n-runs', type=int, default=10)
-    parser.set_defaults(use_sdl=False)
+    parser.add_argument('--demo', action='store_true', default=False)
+    parser.add_argument('--load', type=str, default=None)
     args = parser.parse_args()
 
     if args.seed is not None:
@@ -80,7 +79,7 @@ def main():
             DiscreteActionValue)
         opt = rmsprop_async.RMSpropAsync(lr=7e-4, eps=1e-1, alpha=0.99)
         opt.setup(q_func)
-        opt.add_hook(chainer.optimizer.GradientClipping(1.0))
+        # opt.add_hook(chainer.optimizer.GradientClipping(1.0))
 
         # Random epsilon assignment described in the original paper
         rand = random.random()
