@@ -372,8 +372,8 @@ class FCBNLateActionSAQFunction(chainer.Chain, StateActionQFunction,
                           normalize_output=True),
             mlp=MLP(in_size=n_hidden_channels + n_dim_action,
                     out_size=1,
-                    hidden_sizes=[self.n_input_channels] *
-                    (self.n_hidden_layers - 1)))
+                    hidden_sizes=([self.n_hidden_channels] *
+                                  (self.n_hidden_layers - 1))))
         self.output = self.mlp.output
 
     def __call__(self, state, action, test=False):
@@ -408,8 +408,8 @@ class FCLateActionSAQFunction(chainer.Chain, StateActionQFunction,
                         hidden_sizes=[]),
             mlp=MLP(in_size=n_hidden_channels + n_dim_action,
                     out_size=1,
-                    hidden_sizes=[self.n_input_channels] *
-                    (self.n_hidden_layers - 1)))
+                    hidden_sizes=([self.n_hidden_channels] *
+                                  (self.n_hidden_layers - 1))))
         self.output = self.mlp.output
 
     def __call__(self, state, action, test=False):
