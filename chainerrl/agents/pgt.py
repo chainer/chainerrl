@@ -3,7 +3,7 @@ from __future__ import print_function
 from __future__ import division
 from __future__ import absolute_import
 from future import standard_library
-from builtins import super
+from builtins import *  # NOQA
 standard_library.install_aliases()
 
 import os
