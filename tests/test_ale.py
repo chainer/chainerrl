@@ -23,14 +23,14 @@ class TestALE(unittest.TestCase):
         pass
 
     def test_state(self):
-        env = ale.ALE('breakout.bin')
+        env = ale.ALE('breakout')
         self.assertEqual(len(env.state), 4)
         for s in env.state:
             self.assertEqual(s.shape, (84, 84))
             self.assertEqual(s.dtype, np.uint8)
 
     def test_episode(self):
-        env = ale.ALE('breakout.bin')
+        env = ale.ALE('breakout')
         self.assertFalse(env.is_terminal)
         last_state = env.state
         while not env.is_terminal:
@@ -55,7 +55,7 @@ class TestALE(unittest.TestCase):
             last_state = env.state
 
     def test_current_screen(self):
-        env = ale.ALE('breakout.bin')
+        env = ale.ALE('breakout')
         tempdir = tempfile.mkdtemp()
         print('tempdir: {}'.format(tempdir), file=sys.stderr)
         for episode in range(6):
@@ -75,7 +75,7 @@ class TestALE(unittest.TestCase):
                 t += 1
 
     def test_reward(self):
-        env = ale.ALE('pong.bin')
+        env = ale.ALE('pong')
         for episode in range(3):
             total_r = 0
             while not env.is_terminal:
