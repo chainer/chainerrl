@@ -5,8 +5,9 @@ from __future__ import absolute_import
 from builtins import *  # NOQA
 from future import standard_library
 standard_library.install_aliases()
-import unittest
+
 import multiprocessing as mp
+import unittest
 
 import chainer
 import chainer.links as L
@@ -104,8 +105,7 @@ class TestAsync(unittest.TestCase):
         assert_same_pointers(opt_a._states, opt_c._states)
 
     def test_shared_link(self):
-        """Check interprocess parameter sharing works if models share links
-        """
+        """Check interprocess parameter sharing works if models share links"""
 
         head = L.Linear(2, 2)
         model_a = chainer.ChainList(head.copy(), L.Linear(2, 3))

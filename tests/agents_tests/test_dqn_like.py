@@ -2,6 +2,7 @@ from __future__ import print_function
 from __future__ import unicode_literals
 from __future__ import division
 from __future__ import absolute_import
+from builtins import *  # NOQA
 from future import standard_library
 standard_library.install_aliases()
 
@@ -9,13 +10,14 @@ from chainer import optimizers
 from chainer import testing
 import numpy as np
 
-from chainerrl.q_function import SingleModelStateQFunctionWithDiscreteAction
-from chainerrl.q_function import FCSIContinuousQFunction
-from chainerrl.q_function import FCLSTMStateQFunction
 from chainerrl.envs.abc import ABC
 from chainerrl.explorers.epsilon_greedy import LinearDecayEpsilonGreedy
-from chainerrl import replay_buffer
 from chainerrl.links.mlp import MLP
+from chainerrl.q_function import FCLSTMStateQFunction
+from chainerrl.q_function import FCSIContinuousQFunction
+from chainerrl.q_function import SingleModelStateQFunctionWithDiscreteAction
+from chainerrl import replay_buffer
+
 from test_training import _TestTraining
 
 

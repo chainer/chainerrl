@@ -4,16 +4,17 @@ from __future__ import division
 from __future__ import absolute_import
 from future import standard_library
 standard_library.install_aliases()
+
+import logging
 import os
 import tempfile
 import unittest
-import logging
 
 from chainer import cuda
 from chainer import testing
 
-from chainerrl.misc import random_seed
 from chainerrl.experiments import train_agent
+from chainerrl.misc import random_seed
 
 
 class _TestTraining(unittest.TestCase):
@@ -60,9 +61,6 @@ class _TestTraining(unittest.TestCase):
             done = False
             reward = 0.0
             while not done:
-                # s = np.expand_dims(obs, 0)
-                # if gpu >= 0:
-                #     s = cuda.to_gpu(s, device=gpu)
                 action = agent.act(obs)
                 if isinstance(action, cuda.cupy.ndarray):
                     action = cuda.to_cpu(action)

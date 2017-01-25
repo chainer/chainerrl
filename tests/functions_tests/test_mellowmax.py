@@ -11,8 +11,8 @@ from chainer.testing import attr
 from chainer.testing import condition
 import numpy
 
-from chainerrl.functions.mellowmax import mellowmax
 from chainerrl.functions.mellowmax import maximum_entropy_mellowmax
+from chainerrl.functions.mellowmax import mellowmax
 
 
 @testing.parameterize(*testing.product({

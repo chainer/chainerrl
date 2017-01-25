@@ -5,13 +5,14 @@ from __future__ import absolute_import
 from builtins import *  # NOQA
 from future import standard_library
 standard_library.install_aliases()
-import unittest
-import random
-import tempfile
-import sys
 
-from PIL import Image
+import random
+import sys
+import tempfile
+import unittest
+
 import numpy as np
+from PIL import Image
 
 from chainerrl.envs import ale
 

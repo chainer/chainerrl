@@ -5,21 +5,22 @@ from __future__ import absolute_import
 from builtins import *  # NOQA
 from future import standard_library
 standard_library.install_aliases()
+
 import logging
 import os
-import unittest
 import tempfile
+import unittest
 
 from chainer import links as L
 from chainer import testing
 
-from chainerrl import policies
-from chainerrl import v_function
 from chainerrl.agents import a3c
 from chainerrl.envs.abc import ABC
 from chainerrl.experiments.train_agent_async import train_agent_async
 from chainerrl.optimizers import rmsprop_async
+from chainerrl import policies
 from chainerrl.recurrent import Recurrent
+from chainerrl import v_function
 
 
 @testing.parameterize(

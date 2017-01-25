@@ -2,17 +2,18 @@ from __future__ import unicode_literals
 from __future__ import print_function
 from __future__ import division
 from __future__ import absolute_import
+from builtins import *  # NOQA
 from future import standard_library
 standard_library.install_aliases()
 
 from chainer import testing
 
 from chainerrl.agents.dpp import DPP
-from chainerrl.agents.dpp import DPPL
 from chainerrl.agents.dpp import DPPGreedy
-from test_dqn_like import _TestDQNOnDiscreteABC
-from test_dqn_like import _TestDQNOnDiscretePOABC
+from chainerrl.agents.dpp import DPPL
 from test_dqn_like import _TestDQNOnContinuousABC
+from test_dqn_like import _TestDQNOnDiscreteABC
+# from test_dqn_like import _TestDQNOnDiscretePOABC
 
 
 def parse_dpp_agent(dpp_type):
@@ -51,6 +52,8 @@ class TestDPPOnContinuousABC(_TestDQNOnContinuousABC):
 
 
 # Currently DPP doesn't work with recurrent models
+# TODO(fujita) make it work
+
 # @testing.parameterize(
 #     *testing.product({
 #         'dpp_type': ['DPP', 'DPPL', 'DPPGreedy'],

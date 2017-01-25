@@ -3,12 +3,13 @@ from __future__ import print_function
 from __future__ import division
 from __future__ import absolute_import
 from future import standard_library
+from builtins import *  # NOQA
 standard_library.install_aliases()
 
 from chainerrl.agents.al import AL
+from test_dqn_like import _TestDQNOnContinuousABC
 from test_dqn_like import _TestDQNOnDiscreteABC
 from test_dqn_like import _TestDQNOnDiscretePOABC
-from test_dqn_like import _TestDQNOnContinuousABC
 
 
 class TestALOnDiscreteABC(_TestDQNOnDiscreteABC):

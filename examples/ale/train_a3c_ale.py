@@ -11,20 +11,21 @@ import os
 import chainer
 from chainer import links as L
 
-from chainerrl import policy
-from chainerrl import v_function
-from chainerrl.links import dqn_head
 from chainerrl.agents import a3c
 from chainerrl.envs import ale
-from chainerrl.misc import random_seed
-from chainerrl.optimizers import rmsprop_async
-from chainerrl.experiments.prepare_output_dir import prepare_output_dir
-from chainerrl.optimizers.nonbias_weight_decay import NonbiasWeightDecay
-from chainerrl.misc.init_like_torch import init_like_torch
-from chainerrl.experiments.train_agent_async import train_agent_async
-from chainerrl.recurrent import RecurrentChainMixin
-from dqn_phi import dqn_phi
 from chainerrl.experiments.evaluator import eval_performance
+from chainerrl.experiments.prepare_output_dir import prepare_output_dir
+from chainerrl.experiments.train_agent_async import train_agent_async
+from chainerrl.links import dqn_head
+from chainerrl.misc.init_like_torch import init_like_torch
+from chainerrl.misc import random_seed
+from chainerrl.optimizers.nonbias_weight_decay import NonbiasWeightDecay
+from chainerrl.optimizers import rmsprop_async
+from chainerrl import policy
+from chainerrl.recurrent import RecurrentChainMixin
+from chainerrl import v_function
+
+from dqn_phi import dqn_phi
 
 
 class A3CFF(chainer.ChainList, a3c.A3CModel):

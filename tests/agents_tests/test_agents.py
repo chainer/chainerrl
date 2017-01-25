@@ -7,23 +7,20 @@ standard_library.install_aliases()
 import os
 import tempfile
 import unittest
-import logging
 
-import chainer
-from chainer import cuda
 from chainer import optimizers
 from chainer import testing
 import gym
 gym.undo_logger_setup()
 
 from chainerrl import agents
-from chainerrl import policies
-from chainerrl import v_function
-from chainerrl import q_function
-from chainerrl import replay_buffer
-from chainerrl import explorers
 from chainerrl.envs.abc import ABC
 from chainerrl.experiments.train_agent import train_agent
+from chainerrl import explorers
+from chainerrl import policies
+from chainerrl import q_function
+from chainerrl import replay_buffer
+from chainerrl import v_function
 
 
 def create_stochastic_policy_for_env(env):
@@ -174,7 +171,8 @@ class TestDoubleDQN(_TestAgentInterface):
         opt.setup(model)
         explorer = explorers.ConstantEpsilonGreedy(
             0.2, random_action_func=lambda: env.action_space.sample())
-        return agents.DoubleDQN(model, opt, rbuf, gamma=0.99, explorer=explorer)
+        return agents.DoubleDQN(
+            model, opt, rbuf, gamma=0.99, explorer=explorer)
 
 
 @testing.parameterize(*testing.product({
@@ -186,7 +184,6 @@ class TestNSQ(_TestAgentInterface):
 
     def create_agent(self, env):
         model = create_state_q_function_for_env(env)
-        rbuf = replay_buffer.ReplayBuffer(10 ** 5)
         opt = optimizers.Adam()
         opt.setup(model)
         explorer = explorers.ConstantEpsilonGreedy(

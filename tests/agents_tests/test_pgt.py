@@ -5,6 +5,7 @@ from __future__ import absolute_import
 from builtins import *  # NOQA
 from future import standard_library
 standard_library.install_aliases()
+
 import unittest
 
 import chainer
@@ -13,16 +14,13 @@ from chainer import optimizers
 from chainer import testing
 import numpy as np
 
-from chainerrl.q_function import FCSAQFunction
-from chainerrl.q_function import FCBNLateActionSAQFunction
-from chainerrl.policies import FCGaussianPolicy
-from chainerrl.policies import FCBNDeterministicPolicy
-from chainerrl.misc import random_seed
+from chainerrl.agents.pgt import PGT
 from chainerrl.envs.abc import ABC
 from chainerrl.explorers.epsilon_greedy import LinearDecayEpsilonGreedy
-from chainerrl.explorers.epsilon_greedy import ConstantEpsilonGreedy
+from chainerrl.misc import random_seed
+from chainerrl.policies import FCGaussianPolicy
+from chainerrl.q_function import FCBNLateActionSAQFunction
 from chainerrl import replay_buffer
-from chainerrl.agents.pgt import PGT
 
 
 class TestPGT(unittest.TestCase):

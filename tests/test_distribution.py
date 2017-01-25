@@ -8,11 +8,10 @@ standard_library.install_aliases()
 
 import unittest
 
-import numpy as np
 import chainer
-import scipy.stats
-from chainer import functions as F
 from chainer import testing
+import numpy as np
+import scipy.stats
 
 from chainerrl import distribution
 
@@ -58,13 +57,11 @@ class TestSoftmaxDistribution(unittest.TestCase):
 
     def test_entropy(self):
         self.distrib.entropy
-        # TODO
-        pass
+        # TODO(fujita)
 
     def test_most_probable(self):
         self.distrib.most_probable
-        # TODO
-        pass
+        # TODO(fujita)
 
 
 @testing.parameterize(*testing.product({
