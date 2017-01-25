@@ -189,7 +189,6 @@ class TestNSQ(_TestAgentInterface):
         explorer = explorers.ConstantEpsilonGreedy(
             0.2, random_action_func=lambda: env.action_space.sample())
         return agents.NSQ(
-            process_idx=0,
             q_function=model,
             optimizer=opt,
             t_max=1,

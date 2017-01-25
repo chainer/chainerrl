@@ -75,9 +75,9 @@ class _TestTraining(unittest.TestCase):
 
     @testing.attr.slow
     def test_training_gpu(self):
-        self._test_training(0, steps=10000)
-        self._test_training(0, steps=300, load_model=True)
+        self._test_training(0, steps=100000)
+        self._test_training(0, steps=0, load_model=True)
 
     @testing.attr.slow
     def test_training_cpu(self):
-        self._test_training(-1, steps=10000)
+        self._test_training(-1, steps=100000)
