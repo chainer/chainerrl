@@ -2,4 +2,5 @@ cached-property
 chainer
 fastcache
 future
+gym
 statistics
