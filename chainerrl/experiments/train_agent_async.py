@@ -114,18 +114,22 @@ def set_shared_objects(agent, shared_objects):
         setattr(agent, attr, new_value)
 
 
-def train_agent_async(outdir, processes, make_env, make_agent,
+def train_agent_async(outdir, processes, make_env,
                       profile=False, steps=8 * 10 ** 7, eval_frequency=10 ** 6,
                       eval_n_runs=10, gamma=0.99, max_episode_len=None,
                       step_offset=0, successful_score=None,
-                      eval_explorer=None):
+                      eval_explorer=None,
+                      agent=None, make_agent=None):
     """Train agent asynchronously.
 
+    One of agent and make_agent must be specified.
+
     Args:
+      agent (Agent): Agent to train
+      make_agent (callable): (process_idx) -> Agent
       processes (int): Number of processes.
       make_env (callable): (process_idx, test) -> env
       model_opt (callable): () -> (models, optimizers)
-      make_agent (callable): (process_idx, models, optimizers) -> agent
       profile (bool): Profile if set True
       steps (int): Number of global time steps for training
     """
@@ -136,9 +140,12 @@ def train_agent_async(outdir, processes, make_env, make_agent,
     counter = mp.Value('l', 0)
     training_done = mp.Value('b', False)  # bool
 
-    agent0 = make_agent(0)
-    shared_objects = extract_shared_objects_from_agent(agent0)
-    set_shared_objects(agent0, shared_objects)
+    if agent is None:
+        assert make_agent is not None
+        agent = make_agent(0)
+
+    shared_objects = extract_shared_objects_from_agent(agent)
+    set_shared_objects(agent, shared_objects)
 
     evaluator = AsyncEvaluator(
         n_runs=eval_n_runs,
@@ -152,15 +159,18 @@ def train_agent_async(outdir, processes, make_env, make_agent,
 
         env = make_env(process_idx, test=False)
         eval_env = make_env(process_idx, test=True)
-        # agent = agent0 if process_idx == 0 else make_agent(process_idx)
-        agent = make_agent(process_idx)
-        set_shared_objects(agent, shared_objects)
+        if make_agent is not None:
+            local_agent = make_agent(process_idx)
+            set_shared_objects(local_agent, shared_objects)
+        else:
+            local_agent = agent
+        local_agent.process_idx = process_idx
 
         def f():
             train_loop(
                 process_idx=process_idx,
                 counter=counter,
-                agent=agent,
+                agent=local_agent,
                 env=env,
                 steps=steps,
                 outdir=outdir,
@@ -179,4 +189,4 @@ def train_agent_async(outdir, processes, make_env, make_agent,
 
     async.run_async(processes, run_func)
 
-    return agent0
+    return agent

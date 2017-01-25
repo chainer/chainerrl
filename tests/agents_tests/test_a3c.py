@@ -68,76 +68,75 @@ class TestA3C(unittest.TestCase):
         def phi(x):
             return x
 
-        def make_agent(process_idx):
-            n_hidden_channels = 20
-            if use_lstm:
-                if discrete:
-                    model = a3c.A3CSharedModel(
-                        shared=L.LSTM(obs_space.low.size, n_hidden_channels),
-                        pi=policies.FCSoftmaxPolicy(
-                            n_hidden_channels, action_space.n,
-                            n_hidden_channels=n_hidden_channels,
-                            n_hidden_layers=2),
-                        v=v_function.FCVFunction(
-                            n_hidden_channels,
-                            n_hidden_channels=n_hidden_channels,
-                            n_hidden_layers=2),
-                    )
-                else:
-                    model = a3c.A3CSharedModel(
-                        shared=L.LSTM(obs_space.low.size, n_hidden_channels),
-                        pi=policies.FCGaussianPolicy(
-                            n_hidden_channels, action_space.low.size,
-                            n_hidden_channels=n_hidden_channels,
-                            n_hidden_layers=2,
-                            bound_mean=True,
-                            min_action=action_space.low,
-                            max_action=action_space.high),
-                        v=v_function.FCVFunction(
-                            n_hidden_channels,
-                            n_hidden_channels=n_hidden_channels,
-                            n_hidden_layers=2),
-                    )
+        n_hidden_channels = 20
+        if use_lstm:
+            if discrete:
+                model = a3c.A3CSharedModel(
+                    shared=L.LSTM(obs_space.low.size, n_hidden_channels),
+                    pi=policies.FCSoftmaxPolicy(
+                        n_hidden_channels, action_space.n,
+                        n_hidden_channels=n_hidden_channels,
+                        n_hidden_layers=2),
+                    v=v_function.FCVFunction(
+                        n_hidden_channels,
+                        n_hidden_channels=n_hidden_channels,
+                        n_hidden_layers=2),
+                )
             else:
-                if discrete:
-                    model = a3c.A3CSeparateModel(
-                        pi=policies.FCSoftmaxPolicy(
-                            obs_space.low.size, action_space.n,
-                            n_hidden_channels=n_hidden_channels,
-                            n_hidden_layers=2),
-                        v=v_function.FCVFunction(
-                            obs_space.low.size,
-                            n_hidden_channels=n_hidden_channels,
-                            n_hidden_layers=2),
-                    )
-                else:
-                    model = a3c.A3CSeparateModel(
-                        pi=policies.FCGaussianPolicy(
-                            obs_space.low.size, action_space.low.size,
-                            n_hidden_channels=n_hidden_channels,
-                            n_hidden_layers=2,
-                            bound_mean=True,
-                            min_action=action_space.low,
-                            max_action=action_space.high),
-                        v=v_function.FCVFunction(
-                            obs_space.low.size,
-                            n_hidden_channels=n_hidden_channels,
-                            n_hidden_layers=2),
-                    )
-            eps = 1e-1 if discrete else 1e-2
-            opt = rmsprop_async.RMSpropAsync(lr=5e-4, eps=eps, alpha=0.99)
-            opt.setup(model)
-            gamma = 0.9
-            beta = 1e-2 if discrete else 1e-3
-            return a3c.A3C(model, opt, t_max=t_max, gamma=gamma, beta=beta,
-                           process_idx=process_idx, phi=phi,
-                           act_deterministically=True)
+                model = a3c.A3CSharedModel(
+                    shared=L.LSTM(obs_space.low.size, n_hidden_channels),
+                    pi=policies.FCGaussianPolicy(
+                        n_hidden_channels, action_space.low.size,
+                        n_hidden_channels=n_hidden_channels,
+                        n_hidden_layers=2,
+                        bound_mean=True,
+                        min_action=action_space.low,
+                        max_action=action_space.high),
+                    v=v_function.FCVFunction(
+                        n_hidden_channels,
+                        n_hidden_channels=n_hidden_channels,
+                        n_hidden_layers=2),
+                )
+        else:
+            if discrete:
+                model = a3c.A3CSeparateModel(
+                    pi=policies.FCSoftmaxPolicy(
+                        obs_space.low.size, action_space.n,
+                        n_hidden_channels=n_hidden_channels,
+                        n_hidden_layers=2),
+                    v=v_function.FCVFunction(
+                        obs_space.low.size,
+                        n_hidden_channels=n_hidden_channels,
+                        n_hidden_layers=2),
+                )
+            else:
+                model = a3c.A3CSeparateModel(
+                    pi=policies.FCGaussianPolicy(
+                        obs_space.low.size, action_space.low.size,
+                        n_hidden_channels=n_hidden_channels,
+                        n_hidden_layers=2,
+                        bound_mean=True,
+                        min_action=action_space.low,
+                        max_action=action_space.high),
+                    v=v_function.FCVFunction(
+                        obs_space.low.size,
+                        n_hidden_channels=n_hidden_channels,
+                        n_hidden_layers=2),
+                )
+        eps = 1e-1 if discrete else 1e-2
+        opt = rmsprop_async.RMSpropAsync(lr=5e-4, eps=eps, alpha=0.99)
+        opt.setup(model)
+        gamma = 0.9
+        beta = 1e-2 if discrete else 1e-3
+        agent = a3c.A3C(model, opt, t_max=t_max, gamma=gamma, beta=beta,
+                        phi=phi,
+                        act_deterministically=True)
 
         max_episode_len = None if episodic else 2
 
-        agent = train_agent_async(
+        train_agent_async(
             outdir=self.outdir, processes=nproc, make_env=make_env,
-            make_agent=make_agent, steps=steps,
+            agent=agent, steps=steps,
             max_episode_len=max_episode_len,
             eval_frequency=500,
             eval_n_runs=5,

@@ -99,21 +99,19 @@ def main():
 
     n_actions = ale.ALE(args.rom).number_of_actions
 
-    def make_agent(process_idx):
-        if args.use_lstm:
-            model = A3CLSTM(n_actions)
-        else:
-            model = A3CFF(n_actions)
-        opt = rmsprop_async.RMSpropAsync(lr=7e-4, eps=1e-1, alpha=0.99)
-        opt.setup(model)
-        opt.add_hook(chainer.optimizer.GradientClipping(40))
-        if args.weight_decay > 0:
-            opt.add_hook(NonbiasWeightDecay(args.weight_decay))
-        agent = a3c.A3C(model, opt, t_max=args.t_max, gamma=0.99,
-                        beta=args.beta, process_idx=process_idx, phi=dqn_phi)
-        if args.load:
-            agent.load(args.load)
-        return agent
+    if args.use_lstm:
+        model = A3CLSTM(n_actions)
+    else:
+        model = A3CFF(n_actions)
+    opt = rmsprop_async.RMSpropAsync(lr=7e-4, eps=1e-1, alpha=0.99)
+    opt.setup(model)
+    opt.add_hook(chainer.optimizer.GradientClipping(40))
+    if args.weight_decay > 0:
+        opt.add_hook(NonbiasWeightDecay(args.weight_decay))
+    agent = a3c.A3C(model, opt, t_max=args.t_max, gamma=0.99,
+                    beta=args.beta, phi=dqn_phi)
+    if args.load:
+        agent.load(args.load)
 
     def make_env(process_idx, test):
         return ale.ALE(args.rom, use_sdl=args.use_sdl,
@@ -121,7 +119,6 @@ def main():
 
     if args.demo:
         env = make_env(0, True)
-        agent = make_agent(0)
         mean, median, stdev = eval_performance(
             env=env,
             agent=agent,
@@ -130,10 +127,10 @@ def main():
             args.eval_n_runs, mean, median, stdev))
     else:
         train_agent_async(
+            agent=agent,
             outdir=args.outdir,
             processes=args.processes,
             make_env=make_env,
-            make_agent=make_agent,
             profile=args.profile,
             steps=args.steps,
             eval_n_runs=args.eval_n_runs,

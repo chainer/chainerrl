@@ -5,6 +5,7 @@ from __future__ import absolute_import
 from builtins import *  # NOQA
 from future import standard_library
 standard_library.install_aliases()
+
 import logging
 import os
 import tempfile
@@ -78,7 +79,7 @@ class TestNSQ(unittest.TestCase):
             opt.setup(q_func)
             explorer = ConstantEpsilonGreedy(
                 process_idx / 10, random_action_func)
-            return nsq.NSQ(process_idx, q_func, opt, t_max=self.t_max,
+            return nsq.NSQ(q_func, opt, t_max=self.t_max,
                            gamma=0.9, i_target=100,
                            explorer=explorer)
 

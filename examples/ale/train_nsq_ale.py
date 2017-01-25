@@ -70,15 +70,16 @@ def main():
     action_space = sample_env.action_space
     assert isinstance(action_space, spaces.Discrete)
 
-    def make_agent(process_idx):
-        q_func = sequence.Sequence(
-            dqn_head.NIPSDQNHead(),
-            L.Linear(256, action_space.n),
-            DiscreteActionValue)
-        opt = rmsprop_async.RMSpropAsync(lr=7e-4, eps=1e-1, alpha=0.99)
-        opt.setup(q_func)
-        # opt.add_hook(chainer.optimizer.GradientClipping(1.0))
+    # Define a model and its optimizer
+    q_func = sequence.Sequence(
+        dqn_head.NIPSDQNHead(),
+        L.Linear(256, action_space.n),
+        DiscreteActionValue)
+    opt = rmsprop_async.RMSpropAsync(lr=7e-4, eps=1e-1, alpha=0.99)
+    opt.setup(q_func)
 
+    # Make process-specific agents to diversify exploration
+    def make_agent(process_idx):
         # Random epsilon assignment described in the original paper
         rand = random.random()
         if rand < 0.4:
@@ -92,7 +93,7 @@ def main():
             action_space.sample)
         # Suppress the explorer logger
         explorer.logger.setLevel(logging.INFO)
-        return nsq.NSQ(process_idx, q_func, opt, t_max=5, gamma=0.99,
+        return nsq.NSQ(q_func, opt, t_max=5, gamma=0.99,
                        i_target=40000,
                        explorer=explorer, phi=dqn_phi)
 
