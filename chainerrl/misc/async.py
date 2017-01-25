@@ -15,7 +15,8 @@ from chainerrl.misc import random_seed
 
 
 def set_shared_params(a, b):
-    """
+    """Set shared params to a link.
+
     Args:
       a (chainer.Link): link whose params are to be replaced
       b (dict): dict that consists of (param_name, multiprocessing.Array)
@@ -29,7 +30,8 @@ def set_shared_params(a, b):
 
 
 def make_params_not_shared(a):
-    """
+    """Make a link's params not shared.
+
     Args:
       a (chainer.Link): link whose params are to be made not shared
     """

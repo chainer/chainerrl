@@ -5,16 +5,15 @@ from __future__ import absolute_import
 from builtins import *  # NOQA
 from future import standard_library
 standard_library.install_aliases()
-from future.utils import with_metaclass
 
 from abc import ABCMeta
 from abc import abstractmethod
 
 import chainer
-from chainer import links as L
+from future.utils import with_metaclass
 
-from chainerrl.recurrent import RecurrentChainMixin
 from chainerrl.links.mlp import MLP
+from chainerrl.recurrent import RecurrentChainMixin
 
 
 class VFunction(with_metaclass(ABCMeta, object)):

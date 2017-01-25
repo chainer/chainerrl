@@ -2,11 +2,9 @@ from __future__ import division
 from __future__ import unicode_literals
 from __future__ import print_function
 from __future__ import absolute_import
+from builtins import *  # NOQA
 from future import standard_library
-from future.utils import with_metaclass
 standard_library.install_aliases()
-
-from logging import getLogger
 
 from chainer import cuda
 import numpy as np

@@ -10,9 +10,9 @@ import chainer
 from chainer import functions as F
 from chainer import links as L
 
+from chainerrl import action_value
 from chainerrl.links.mlp import MLP
 from chainerrl import q_function
-from chainerrl import action_value
 
 
 class DuelingDQN(chainer.Chain, q_function.StateQFunction):

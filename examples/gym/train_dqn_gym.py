@@ -2,34 +2,31 @@ from __future__ import print_function
 from __future__ import unicode_literals
 from __future__ import division
 from __future__ import absolute_import
+from builtins import *  # NOQA
 from future import standard_library
 standard_library.install_aliases()
 
 import argparse
 import sys
 
-from chainer import optimizers
 from chainer import cuda
+from chainer import optimizers
 import gym
 gym.undo_logger_setup()
-import numpy as np
 from gym import spaces
+import numpy as np
 
 from chainerrl.agents.dqn import DQN
-from chainerrl.agents.double_dqn import DoubleDQN
-from chainerrl.misc import random_seed
-from chainerrl import replay_buffer
-from chainerrl.experiments.prepare_output_dir import prepare_output_dir
-from chainerrl.misc.init_like_torch import init_like_torch
-from chainerrl import q_function
-from chainerrl.misc import env_modifiers
-from chainerrl.experiments.train_agent import train_agent_with_evaluation
-from chainerrl.explorers.epsilon_greedy import LinearDecayEpsilonGreedy
-from chainerrl.explorers.additive_gaussian import AdditiveGaussian
-from chainerrl.explorers.additive_ou import AdditiveOU
-from chainerrl.misc import reward_filter
-from chainerrl.links.mlp import MLP
 from chainerrl.experiments.evaluator import eval_performance
+from chainerrl.experiments.prepare_output_dir import prepare_output_dir
+from chainerrl.experiments.train_agent import train_agent_with_evaluation
+from chainerrl.explorers.additive_ou import AdditiveOU
+from chainerrl.explorers.epsilon_greedy import LinearDecayEpsilonGreedy
+from chainerrl.links.mlp import MLP
+from chainerrl.misc import env_modifiers
+from chainerrl.misc import random_seed
+from chainerrl import q_function
+from chainerrl import replay_buffer
 
 
 def main():
@@ -85,7 +82,8 @@ def main():
             # env_modifiers.make_reward_filtered(env, AverageRewardFilter())
             # env_modifiers.make_reward_filtered(
             #     env, reward_filter.NormalizedRewardFilter(scale=0.01))
-        if (args.render_eval and for_eval) or (args.render_train and not for_eval):
+        if ((args.render_eval and for_eval) or
+                (args.render_train and not for_eval)):
             env_modifiers.make_rendered(env)
         return env
 

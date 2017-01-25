@@ -5,12 +5,12 @@ from __future__ import absolute_import
 from future import standard_library
 standard_library.install_aliases()
 
-import os
-import tempfile
-import json
-import subprocess
 import argparse
 import datetime
+import json
+import os
+import subprocess
+import tempfile
 
 
 def prepare_output_dir(args, user_specified_dir=None, argv=None):

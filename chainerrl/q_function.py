@@ -10,18 +10,17 @@ standard_library.install_aliases()
 from abc import ABCMeta
 from abc import abstractmethod
 
-import numpy as np
 import chainer
+from chainer import cuda
 from chainer import functions as F
 from chainer import links as L
-from chainer import cuda
+import numpy as np
 
-from chainerrl.links.mlp_bn import MLPBN
-from chainerrl.links.mlp_wn import MLPWN
-from chainerrl.links.mlp import MLP
 from chainerrl.action_value import DiscreteActionValue
 from chainerrl.action_value import QuadraticActionValue
 from chainerrl.functions.lower_triangular_matrix import lower_triangular_matrix
+from chainerrl.links.mlp import MLP
+from chainerrl.links.mlp_bn import MLPBN
 from chainerrl.recurrent import RecurrentChainMixin
 
 
@@ -75,42 +74,42 @@ class SingleModelStateActionQFunction(
 
 class FCStateQFunctionWithDiscreteAction(
         SingleModelStateQFunctionWithDiscreteAction):
-    """Fully-connected state-input Q-function with discrete actions."""
+    """Fully-connected state-input Q-function with discrete actions.
+
+    Args:
+        n_dim_obs: number of dimensions of observation space
+        n_dim_action: number of dimensions of action space
+        n_hidden_channels: number of hidden channels
+        n_hidden_layers: number of hidden layers
+    """
 
     def __init__(self, ndim_obs, n_actions, n_hidden_channels,
                  n_hidden_layers):
-        """
-        Args:
-          n_dim_obs: number of dimensions of observation space
-          n_dim_action: number of dimensions of action space
-          n_hidden_channels: number of hidden channels
-          n_hidden_layers: number of hidden layers
-        """
         super().__init__(model=MLP(
             in_size=ndim_obs, out_size=n_actions,
             hidden_sizes=[n_hidden_channels] * n_hidden_layers))
 
 
 class FCLSTMStateQFunction(chainer.Chain, StateQFunction, RecurrentChainMixin):
-    """Fully-connected state-input discrete  Q-function."""
+    """Fully-connected state-input discrete  Q-function.
+
+    Args:
+        n_dim_obs: number of dimensions of observation space
+        n_dim_action: number of dimensions of action space
+        n_hidden_channels: number of hidden channels before LSTM
+        n_hidden_layers: number of hidden layers before LSTM
+    """
 
     def __init__(self, n_dim_obs, n_dim_action, n_hidden_channels,
                  n_hidden_layers):
-        """
-        Args:
-          n_dim_obs: number of dimensions of observation space
-          n_dim_action: number of dimensions of action space
-          n_hidden_channels: number of hidden channels before LSTM
-          n_hidden_layers: number of hidden layers before LSTM
-        """
-
         self.n_input_channels = n_dim_obs
         self.n_hidden_layers = n_hidden_layers
         self.n_hidden_channels = n_hidden_channels
         self.state_stack = []
         super().__init__(
             fc=MLP(in_size=self.n_input_channels, out_size=n_hidden_channels,
-                   hidden_sizes=[self.n_hidden_channels] * self.n_hidden_layers),
+                   hidden_sizes=[self.n_hidden_channels] *
+                   self.n_hidden_layers),
             lstm=L.LSTM(n_hidden_channels, n_hidden_channels),
             out=L.Linear(n_hidden_channels, n_dim_action)
         )
@@ -131,20 +130,19 @@ def scale_by_tanh(x, low, high):
 
 
 class FCSIContinuousQFunction(chainer.Chain, StateQFunction):
-    """Fully-connected state-input continuous Q-function."""
+    """Fully-connected state-input continuous Q-function.
+
+    Args:
+        n_input_channels: number of input channels
+        n_dim_action: number of dimensions of action space
+        n_hidden_channels: number of hidden channels
+        n_hidden_layers: number of hidden layers
+        action_space: action_space
+        scale_mu (bool): scale mu by applying tanh if True
+    """
 
     def __init__(self, n_input_channels, n_dim_action, n_hidden_channels,
                  n_hidden_layers, action_space, scale_mu=True):
-        """
-        Args:
-          n_input_channels: number of input channels
-          n_dim_action: number of dimensions of action space
-          n_hidden_channels: number of hidden channels
-          n_hidden_layers: number of hidden layers
-          action_space: action_space
-          scale_mu (bool): scale mu by applying tanh if True
-        """
-
         self.n_input_channels = n_input_channels
         self.n_hidden_layers = n_hidden_layers
         self.n_hidden_channels = n_hidden_channels
@@ -190,26 +188,26 @@ class FCSIContinuousQFunction(chainer.Chain, StateQFunction):
             mat = F.batch_matmul(tril, tril, transb=True)
         else:
             mat = F.expand_dims(mat_diag ** 2, axis=2)
-        return QuadraticActionValue(mu, mat, v, min_action=self.action_space.low,
-                                    max_action=self.action_space.high)
+        return QuadraticActionValue(
+            mu, mat, v, min_action=self.action_space.low,
+            max_action=self.action_space.high)
 
 
 class FCBNSIContinuousQFunction(chainer.Chain, StateQFunction):
-    """Fully-connected state-input continuous Q-function."""
+    """Fully-connected state-input continuous Q-function.
+
+    Args:
+        n_input_channels: number of input channels
+        n_dim_action: number of dimensions of action space
+        n_hidden_channels: number of hidden channels
+        n_hidden_layers: number of hidden layers
+        action_space: action_space
+        scale_mu (bool): scale mu by applying tanh if True
+    """
 
     def __init__(self, n_input_channels, n_dim_action, n_hidden_channels,
                  n_hidden_layers, action_space, scale_mu=True,
                  normalize_input=True):
-        """
-        Args:
-          n_input_channels: number of input channels
-          n_dim_action: number of dimensions of action space
-          n_hidden_channels: number of hidden channels
-          n_hidden_layers: number of hidden layers
-          action_space: action_space
-          scale_mu (bool): scale mu by applying tanh if True
-        """
-
         self.n_input_channels = n_input_channels
         self.n_hidden_layers = n_hidden_layers
         self.n_hidden_channels = n_hidden_channels
@@ -236,7 +234,6 @@ class FCBNSIContinuousQFunction(chainer.Chain, StateQFunction):
         super().__init__(**layers)
 
     def __call__(self, state, test=False):
-        xp = cuda.get_array_module(state)
         h = self.hidden_layers(state, test=test)
         v = self.v(h)
         mu = self.mu(h)
@@ -257,18 +254,17 @@ class FCBNSIContinuousQFunction(chainer.Chain, StateQFunction):
 
 
 class FCSAQFunction(chainer.ChainList, StateActionQFunction):
-    """Fully-connected (s,a)-input continuous Q-function."""
+    """Fully-connected (s,a)-input continuous Q-function.
+
+    Args:
+        n_dim_obs: number of dimensions of observation space
+        n_dim_action: number of dimensions of action space
+        n_hidden_channels: number of hidden channels
+        n_hidden_layers: number of hidden layers
+    """
 
     def __init__(self, n_dim_obs, n_dim_action, n_hidden_channels,
                  n_hidden_layers):
-        """
-        Args:
-          n_dim_obs: number of dimensions of observation space
-          n_dim_action: number of dimensions of action space
-          n_hidden_channels: number of hidden channels
-          n_hidden_layers: number of hidden layers
-        """
-
         self.n_input_channels = n_dim_obs + n_dim_action
         self.n_hidden_layers = n_hidden_layers
         self.n_hidden_channels = n_hidden_channels
@@ -294,18 +290,17 @@ class FCSAQFunction(chainer.ChainList, StateActionQFunction):
 
 class FCLSTMSAQFunction(chainer.Chain, StateActionQFunction,
                         RecurrentChainMixin):
-    """Fully-connected (s,a)-input continuous Q-function."""
+    """Fully-connected (s,a)-input continuous Q-function.
+
+    Args:
+        n_dim_obs: number of dimensions of observation space
+        n_dim_action: number of dimensions of action space
+        n_hidden_channels: number of hidden channels
+        n_hidden_layers: number of hidden layers
+    """
 
     def __init__(self, n_dim_obs, n_dim_action, n_hidden_channels,
                  n_hidden_layers):
-        """
-        Args:
-          n_dim_obs: number of dimensions of observation space
-          n_dim_action: number of dimensions of action space
-          n_hidden_channels: number of hidden channels
-          n_hidden_layers: number of hidden layers
-        """
-
         self.n_input_channels = n_dim_obs + n_dim_action
         self.n_hidden_layers = n_hidden_layers
         self.n_hidden_channels = n_hidden_channels
@@ -324,18 +319,17 @@ class FCLSTMSAQFunction(chainer.Chain, StateActionQFunction,
 
 
 class FCBNSAQFunction(MLPBN, StateActionQFunction):
-    """Fully-connected (s,a)-input continuous Q-function."""
+    """Fully-connected (s,a)-input continuous Q-function.
+
+    Args:
+        n_dim_obs: number of dimensions of observation space
+        n_dim_action: number of dimensions of action space
+        n_hidden_channels: number of hidden channels
+        n_hidden_layers: number of hidden layers
+    """
 
     def __init__(self, n_dim_obs, n_dim_action, n_hidden_channels,
                  n_hidden_layers, normalize_input=True):
-        """
-        Args:
-          n_dim_obs: number of dimensions of observation space
-          n_dim_action: number of dimensions of action space
-          n_hidden_channels: number of hidden channels
-          n_hidden_layers: number of hidden layers
-        """
-
         self.n_input_channels = n_dim_obs + n_dim_action
         self.n_hidden_layers = n_hidden_layers
         self.n_hidden_channels = n_hidden_channels
@@ -357,18 +351,16 @@ class FCBNLateActionSAQFunction(chainer.Chain, StateActionQFunction,
     Actions are not included until the second hidden layer and not normalized.
     This architecture is used in the DDPG paper:
     http://arxiv.org/abs/1509.02971
+
+    Args:
+        n_dim_obs: number of dimensions of observation space
+        n_dim_action: number of dimensions of action space
+        n_hidden_channels: number of hidden channels
+        n_hidden_layers: number of hidden layers
     """
 
     def __init__(self, n_dim_obs, n_dim_action, n_hidden_channels,
                  n_hidden_layers, normalize_input=True):
-        """
-        Args:
-          n_dim_obs: number of dimensions of observation space
-          n_dim_action: number of dimensions of action space
-          n_hidden_channels: number of hidden channels
-          n_hidden_layers: number of hidden layers
-        """
-
         self.n_input_channels = n_dim_obs + n_dim_action
         self.n_hidden_layers = n_hidden_layers
         self.n_hidden_channels = n_hidden_channels
@@ -380,7 +372,8 @@ class FCBNLateActionSAQFunction(chainer.Chain, StateActionQFunction,
                           normalize_output=True),
             mlp=MLP(in_size=n_hidden_channels + n_dim_action,
                     out_size=1,
-                    hidden_sizes=[self.n_input_channels] * (self.n_hidden_layers - 1)))
+                    hidden_sizes=[self.n_input_channels] *
+                    (self.n_hidden_layers - 1)))
         self.output = self.mlp.output
 
     def __call__(self, state, action, test=False):
@@ -396,18 +389,16 @@ class FCLateActionSAQFunction(chainer.Chain, StateActionQFunction,
     Actions are not included until the second hidden layer and not normalized.
     This architecture is used in the DDPG paper:
     http://arxiv.org/abs/1509.02971
+
+    Args:
+        n_dim_obs: number of dimensions of observation space
+        n_dim_action: number of dimensions of action space
+        n_hidden_channels: number of hidden channels
+        n_hidden_layers: number of hidden layers
     """
 
     def __init__(self, n_dim_obs, n_dim_action, n_hidden_channels,
                  n_hidden_layers):
-        """
-        Args:
-          n_dim_obs: number of dimensions of observation space
-          n_dim_action: number of dimensions of action space
-          n_hidden_channels: number of hidden channels
-          n_hidden_layers: number of hidden layers
-        """
-
         self.n_input_channels = n_dim_obs + n_dim_action
         self.n_hidden_layers = n_hidden_layers
         self.n_hidden_channels = n_hidden_channels
@@ -417,7 +408,8 @@ class FCLateActionSAQFunction(chainer.Chain, StateActionQFunction,
                         hidden_sizes=[]),
             mlp=MLP(in_size=n_hidden_channels + n_dim_action,
                     out_size=1,
-                    hidden_sizes=[self.n_input_channels] * (self.n_hidden_layers - 1)))
+                    hidden_sizes=[self.n_input_channels] *
+                    (self.n_hidden_layers - 1)))
         self.output = self.mlp.output
 
     def __call__(self, state, action, test=False):

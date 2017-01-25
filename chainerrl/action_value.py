@@ -12,8 +12,8 @@ from abc import abstractproperty
 
 from cached_property import cached_property
 import chainer
-from chainer import functions as F
 from chainer import cuda
+from chainer import functions as F
 import numpy as np
 
 
@@ -40,14 +40,14 @@ class ActionValue(with_metaclass(ABCMeta, object)):
 
 
 class DiscreteActionValue(ActionValue):
-    """Qfunction output for discrete action space."""
+    """Qfunction output for discrete action space.
+
+    Args:
+        q_values (ndarray or chainer.Variable):
+            Array of Q values whose shape is (batchsize, n_actions)
+    """
 
     def __init__(self, q_values, q_values_formatter=lambda x: x):
-        """
-        Args:
-            q_values (ndarray or chainer.Variable):
-                Array of Q values whose shape is (batchsize, n_actions)
-        """
         assert isinstance(q_values, chainer.Variable)
         self.xp = cuda.get_array_module(q_values.data)
         self.q_values = q_values
@@ -80,7 +80,8 @@ class DiscreteActionValue(ActionValue):
         return self.evaluate_actions(actions) - self.max
 
     def compute_double_advantage(self, actions, argmax_actions):
-        return self.evaluate_actions(actions) - self.evaluate_actions(argmax_actions)
+        return (self.evaluate_actions(actions) -
+                self.evaluate_actions(argmax_actions))
 
     def compute_expectation(self, beta):
         return F.sum(F.softmax(beta * self.q_values) * self.q_values, axis=1)
@@ -95,23 +96,22 @@ class QuadraticActionValue(ActionValue):
     """Qfunction output for continuous action space.
 
     See: http://arxiv.org/abs/1603.00748
+
+    Define a Q(s,a) with A(s,a) in a quadratic form.
+
+    Q(s,a) = V(s,a) + A(s,a)
+    A(s,a) = -1/2 (u - mu(s))^T P(s) (u - mu(s))
+
+    Args:
+        mu (chainer.Variable): mu(s), actions that maximize A(s,a)
+        mat (chainer.Variable): P(s), coefficient matrices of A(s,a).
+          It must be positive definite.
+        v (chainer.Variable): V(s), values of s
+        min_action (ndarray): mininum action, not batched
+        max_action (ndarray): maximum action, not batched
     """
 
     def __init__(self, mu, mat, v, min_action=None, max_action=None):
-        """
-        Define a Q(s,a) with A(s,a) in a quadratic form.
-
-        Q(s,a) = V(s,a) + A(s,a)
-        A(s,a) = -1/2 (u - mu(s))^T P(s) (u - mu(s))
-
-        Args:
-          mu (chainer.Variable): mu(s), actions that maximize A(s,a)
-          mat (chainer.Variable): P(s), coefficient matrices of A(s,a).
-            It must be positive definite.
-          v (chainer.Variable): V(s), values of s
-          min_action (ndarray): mininum action, not batched
-          max_action (ndarray): maximum action, not batched
-        """
         self.xp = cuda.get_array_module(mu.data)
         self.mu = mu
         self.mat = mat
@@ -144,13 +144,15 @@ class QuadraticActionValue(ActionValue):
         a = - 0.5 * \
             F.batch_matmul(F.batch_matmul(
                 u_minus_mu, self.mat, transa=True), u_minus_mu)
-        return F.reshape(a, (self.batch_size,)) + F.reshape(self.v, (self.batch_size,))
+        return (F.reshape(a, (self.batch_size,)) +
+                F.reshape(self.v, (self.batch_size,)))
 
     def compute_advantage(self, actions):
         return self.evaluate_actions(actions) - self.max
 
     def compute_double_advantage(self, actions, argmax_actions):
-        return self.evaluate_actions(actions) - self.evaluate_actions(argmax_actions)
+        return (self.evaluate_actions(actions) -
+                self.evaluate_actions(argmax_actions))
 
     def __repr__(self):
         return 'ContinuousQOutput greedy_actions:{} v:{}'.format(

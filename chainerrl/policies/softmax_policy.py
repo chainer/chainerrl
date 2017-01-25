@@ -11,8 +11,8 @@ logger = getLogger(__name__)
 
 import chainer
 
-from chainerrl.links.mlp import MLP
 from chainerrl import distribution
+from chainerrl.links.mlp import MLP
 from chainerrl import policy
 
 

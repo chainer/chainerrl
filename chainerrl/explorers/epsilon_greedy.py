@@ -2,8 +2,8 @@ from __future__ import division
 from __future__ import unicode_literals
 from __future__ import print_function
 from __future__ import absolute_import
+from builtins import *  # NOQA
 from future import standard_library
-from future.utils import with_metaclass
 standard_library.install_aliases()
 
 from logging import getLogger
@@ -22,16 +22,16 @@ def select_action_epsilon_greedily(epsilon, random_action_func,
 
 
 class ConstantEpsilonGreedy(explorer.Explorer):
-    """Epsilon-greedy with constant epsilon."""
+    """Epsilon-greedy with constant epsilon.
+
+    Args:
+      epsilon: epsilon used
+      random_action_func: function with no argument that returns action
+      logger: logger used
+    """
 
     def __init__(self, epsilon, random_action_func,
                  logger=getLogger(__name__)):
-        """
-        Args:
-          epsilon: epsilon used
-          random_action_func: function with no argument that returns action
-          logger: logger used
-        """
         assert epsilon >= 0 and epsilon <= 1
         self.epsilon = epsilon
         self.random_action_func = random_action_func
@@ -49,18 +49,18 @@ class ConstantEpsilonGreedy(explorer.Explorer):
 
 
 class LinearDecayEpsilonGreedy(explorer.Explorer):
-    """Epsilon-greedy with linearyly decayed epsilon"""
+    """Epsilon-greedy with linearyly decayed epsilon
+
+    Args:
+      start_epsilon: max value of epsilon
+      end_epsilon: min value of epsilon
+      decay_steps: how many steps it takes for epsilon to decay
+      random_action_func: function with no argument that returns action
+      logger: logger used
+    """
 
     def __init__(self, start_epsilon, end_epsilon,
                  decay_steps, random_action_func, logger=getLogger(__name__)):
-        """
-        Args:
-          start_epsilon: max value of epsilon
-          end_epsilon: min value of epsilon
-          decay_steps: how many steps it takes for epsilon to decay
-          random_action_func: function with no argument that returns action
-          logger: logger used
-        """
         assert start_epsilon >= 0 and start_epsilon <= 1
         assert end_epsilon >= 0 and end_epsilon <= 1
         assert decay_steps >= 0

@@ -2,22 +2,22 @@ from __future__ import unicode_literals
 from __future__ import print_function
 from __future__ import division
 from __future__ import absolute_import
+from builtins import *  # NOQA
 from future import standard_library
-from future.utils import with_metaclass
 standard_library.install_aliases()
 
 from abc import ABCMeta
 from abc import abstractmethod
 
+from future.utils import with_metaclass
+
 
 class Agent(with_metaclass(ABCMeta, object)):
-    """Abstract agent class.
-    """
+    """Abstract agent class."""
 
     @abstractmethod
     def act_and_train(self, obs, reward):
-        """
-        Select an action for training.
+        """Select an action for training.
 
         Returns:
             ~object: action
@@ -26,8 +26,7 @@ class Agent(with_metaclass(ABCMeta, object)):
 
     @abstractmethod
     def act(self, obs):
-        """
-        Select an action for evaluation.
+        """Select an action for evaluation.
 
         Returns:
             ~object: action
@@ -36,8 +35,7 @@ class Agent(with_metaclass(ABCMeta, object)):
 
     @abstractmethod
     def stop_episode_and_train(self, state, reward, done=False):
-        """
-        Observe consequences and prepare for a new episode.
+        """Observe consequences and prepare for a new episode.
 
         Returns:
             None
@@ -46,8 +44,7 @@ class Agent(with_metaclass(ABCMeta, object)):
 
     @abstractmethod
     def stop_episode(self):
-        """
-        Prepare for a new episode.
+        """Prepare for a new episode.
 
         Returns:
             None
@@ -56,14 +53,10 @@ class Agent(with_metaclass(ABCMeta, object)):
 
     @abstractmethod
     def save(self, dirname):
-        """
-        Save internal states.
-        """
+        """Save internal states."""
         raise NotImplementedError()
 
     @abstractmethod
     def load(self, dirname):
-        """
-        Load internal states.
-        """
+        """Load internal states."""
         raise NotImplementedError()

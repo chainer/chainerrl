@@ -79,7 +79,8 @@ class Evaluator(object):
         self.max_episode_len = max_episode_len
         self.explorer = explorer
         self.step_offset = step_offset
-        self.prev_eval_t = self.step_offset - self.step_offset % self.eval_frequency
+        self.prev_eval_t = (self.step_offset -
+                            self.step_offset % self.eval_frequency)
 
         # Write a header line first
         with open(os.path.join(self.outdir, 'scores.txt'), 'w') as f:

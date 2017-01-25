@@ -4,25 +4,19 @@ from __future__ import division
 from __future__ import absolute_import
 from builtins import *  # NOQA
 from future import standard_library
-from future.utils import with_metaclass
 standard_library.install_aliases()
 
+from abc import abstractmethod
 from logging import getLogger
 logger = getLogger(__name__)
 
-from abc import ABCMeta
-from abc import abstractmethod
-
 import chainer
-from chainer import cuda
 from chainer import functions as F
 from chainer import links as L
 
-from chainerrl.links.mlp_bn import MLPBN
-from chainerrl.links.mlp import MLP
 from chainerrl import distribution
-from chainerrl import policy
 from chainerrl.functions.bound_by_tanh import bound_by_tanh
+from chainerrl import policy
 
 
 class GaussianPolicy(policy.Policy):
@@ -30,7 +24,8 @@ class GaussianPolicy(policy.Policy):
 
     @abstractmethod
     def compute_mean_and_var(self, x, test=False):
-        """
+        """Compute mean and variance.
+
         Returns:
           tuple of two ~chainer.Variable: mean and variance
         """
@@ -89,7 +84,8 @@ class FCGaussianPolicy(chainer.ChainList, GaussianPolicy):
         return distribution.GaussianDistribution(mean, var=var)
 
 
-class LinearGaussianPolicyWithDiagonalCovariance(chainer.ChainList, GaussianPolicy):
+class LinearGaussianPolicyWithDiagonalCovariance(
+        chainer.ChainList, GaussianPolicy):
     """Linear Gaussian policy whose covariance matrix is diagonal."""
 
     def __init__(self, n_input_channels, action_size):
@@ -109,7 +105,8 @@ class LinearGaussianPolicyWithDiagonalCovariance(chainer.ChainList, GaussianPoli
         return mean, var
 
 
-class LinearGaussianPolicyWithSphericalCovariance(chainer.ChainList, GaussianPolicy):
+class LinearGaussianPolicyWithSphericalCovariance(
+        chainer.ChainList, GaussianPolicy):
     """Linear Gaussian policy whose covariance matrix is spherical."""
 
     def __init__(self, n_input_channels, action_size):

@@ -10,9 +10,9 @@ import multiprocessing as mp
 import os
 import sys
 
-from chainerrl.misc import random_seed
-from chainerrl.misc import async
 from chainerrl.experiments.evaluator import AsyncEvaluator
+from chainerrl.misc import async
+from chainerrl.misc import random_seed
 
 
 def train_loop(process_idx, env, agent, steps, outdir, counter, training_done,
@@ -119,7 +119,8 @@ def train_agent_async(outdir, processes, make_env, make_agent,
                       eval_n_runs=10, gamma=0.99, max_episode_len=None,
                       step_offset=0, successful_score=None,
                       eval_explorer=None):
-    """
+    """Train agent asynchronously.
+
     Args:
       processes (int): Number of processes.
       make_env (callable): (process_idx, test) -> env

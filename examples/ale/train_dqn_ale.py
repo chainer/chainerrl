@@ -7,28 +7,28 @@ from future import standard_library
 standard_library.install_aliases()
 import argparse
 
-from chainer import optimizers
 from chainer import functions as F
 from chainer import links as L
+from chainer import optimizers
 import numpy as np
 
-from chainerrl.links import sequence
 from chainerrl.action_value import DiscreteActionValue
-from chainerrl.links import dqn_head
-from chainerrl.links.dueling_dqn import DuelingDQN
-from chainerrl.agents.dqn import DQN
 from chainerrl.agents.double_dqn import DoubleDQN
+from chainerrl.agents.dqn import DQN
 from chainerrl.agents.pal import PAL
 from chainerrl.envs import ale
+from chainerrl.experiments.evaluator import eval_performance
+from chainerrl.experiments.prepare_output_dir import prepare_output_dir
+from chainerrl.experiments.train_agent import train_agent_with_evaluation
+from chainerrl.explorers.epsilon_greedy import ConstantEpsilonGreedy
+from chainerrl.explorers.epsilon_greedy import LinearDecayEpsilonGreedy
+from chainerrl.functions import oplu
+from chainerrl.links import dqn_head
+from chainerrl.links.dueling_dqn import DuelingDQN
+from chainerrl.links import sequence
+from chainerrl.misc.init_like_torch import init_like_torch
 from chainerrl.misc import random_seed
 from chainerrl import replay_buffer
-from chainerrl.experiments.prepare_output_dir import prepare_output_dir
-from chainerrl.functions import oplu
-from chainerrl.misc.init_like_torch import init_like_torch
-from chainerrl.explorers.epsilon_greedy import LinearDecayEpsilonGreedy
-from chainerrl.explorers.epsilon_greedy import ConstantEpsilonGreedy
-from chainerrl.experiments.train_agent import train_agent_with_evaluation
-from chainerrl.experiments.evaluator import eval_performance
 
 from dqn_phi import dqn_phi
 

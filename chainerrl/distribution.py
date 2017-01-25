@@ -4,16 +4,16 @@ from __future__ import print_function
 from __future__ import absolute_import
 from builtins import *  # NOQA
 from future import standard_library
-from future.utils import with_metaclass
 standard_library.install_aliases()
 
 from abc import ABCMeta
 from abc import abstractmethod
 from abc import abstractproperty
 
+from cached_property import cached_property
 import chainer
 from chainer import functions as F
-from cached_property import cached_property
+from future.utils import with_metaclass
 import numpy as np
 
 from chainerrl.functions import mellowmax
@@ -118,14 +118,14 @@ class CategoricalDistribution(Distribution):
 
 
 class SoftmaxDistribution(CategoricalDistribution):
-    """Softmax distribution."""
+    """Softmax distribution.
+
+    Args:
+        logits (ndarray or chainer.Variable): Logits for softmax
+            distribution.
+    """
 
     def __init__(self, logits, beta=1.0):
-        """
-        Args:
-            logits (ndarray or chainer.Variable): Logits for softmax
-                distribution.
-        """
         self.logits = logits
         self.beta = 1.0
 
@@ -138,7 +138,7 @@ class SoftmaxDistribution(CategoricalDistribution):
         return F.log_softmax(self.beta * self.logits)
 
     def __repr__(self):
-        return 'SoftmaxDistribution(beta={}) logits:{} probs:{} entropy:{}'.format(
+        return 'SoftmaxDistribution(beta={}) logits:{} probs:{} entropy:{}'.format(  # NOQA
             self.beta, self.logits.data, self.all_prob.data, self.entropy.data)
 
 
@@ -146,13 +146,12 @@ class MellowmaxDistribution(CategoricalDistribution):
     """Maximum entropy mellowmax distribution.
 
     See: http://arxiv.org/abs/1612.05628
+
+    Args:
+        values (ndarray or chainer.Variable): Values to apply mellowmax.
     """
 
     def __init__(self, values, omega=8.):
-        """
-        Args:
-            values (ndarray or chainer.Variable): Values to apply mellowmax.
-        """
         self.values = values
         self.omega = omega
 
@@ -165,8 +164,9 @@ class MellowmaxDistribution(CategoricalDistribution):
         return F.log(self.all_prob)
 
     def __repr__(self):
-        return 'MellowmaxDistribution(omega={}) values:{} probs:{} entropy:{}'.format(
-            self.omega, self.values.data, self.all_prob.data, self.entropy.data)
+        return 'MellowmaxDistribution(omega={}) values:{} probs:{} entropy:{}'.format(  # NOQA
+            self.omega, self.values.data, self.all_prob.data,
+            self.entropy.data)
 
 
 def clip_actions(actions, min_action, max_action):
@@ -218,7 +218,8 @@ class ContinuousDeterministicDistribution(Distribution):
     """Continous deterministic distribution.
 
     This distribution is supposed to be used in continuous deterministic
-    policies."""
+    policies.
+    """
 
     def __init__(self, x):
         self.x = _wrap_by_variable(x)

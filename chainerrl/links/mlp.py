@@ -5,13 +5,10 @@ from __future__ import absolute_import
 from builtins import *  # NOQA
 from future import standard_library
 standard_library.install_aliases()
-import random
 
-import numpy as np
 import chainer
 from chainer import functions as F
 from chainer import links as L
-from chainer import cuda
 
 
 class MLP(chainer.Chain):

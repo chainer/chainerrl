@@ -20,13 +20,14 @@ class ReplayBuffer(object):
     def append(self, state, action, reward, next_state=None, next_action=None,
                is_state_terminal=False):
         """Append a transition to this replay buffer
+
         Args:
-          state: s_t
-          action: a_t
-          reward: r_t
-          next_state: s_{t+1} (can be None if terminal)
-          next_action: a_{t+1} (can be None for off-policy algorithms)
-          is_state_terminal (bool)
+            state: s_t
+            action: a_t
+            reward: r_t
+            next_state: s_{t+1} (can be None if terminal)
+            next_action: a_{t+1} (can be None for off-policy algorithms)
+            is_state_terminal (bool)
         """
         experience = dict(state=state, action=action, reward=reward,
                           next_state=next_state, next_action=next_action,
@@ -34,8 +35,7 @@ class ReplayBuffer(object):
         self.memory.append(experience)
 
     def sample(self, n):
-        """Sample n unique samples from this replay buffer
-        """
+        """Sample n unique samples from this replay buffer"""
         assert len(self.memory) >= n
         return random.sample(self.memory, n)
 
@@ -73,13 +73,14 @@ class EpisodicReplayBuffer(object):
     def append(self, state, action, reward, next_state=None, next_action=None,
                is_state_terminal=False):
         """Append a transition to this replay buffer
+
         Args:
-          state: s_t
-          action: a_t
-          reward: r_t
-          next_state: s_{t+1} (can be None if terminal)
-          next_action: a_{t+1} (can be None for off-policy algorithms)
-          is_state_terminal (bool)
+            state: s_t
+            action: a_t
+            reward: r_t
+            next_state: s_{t+1} (can be None if terminal)
+            next_action: a_{t+1} (can be None for off-policy algorithms)
+            is_state_terminal (bool)
         """
         experience = dict(state=state, action=action, reward=reward,
                           next_state=next_state, next_action=next_action,
@@ -89,14 +90,12 @@ class EpisodicReplayBuffer(object):
             self.stop_current_episode()
 
     def sample(self, n):
-        """Sample n unique samples from this replay buffer
-        """
+        """Sample n unique samples from this replay buffer"""
         assert len(self.episodic_memory) >= n
         return random.sample(self.memory, n)
 
     def sample_episodes(self, n_episodes, max_len=None):
-        """Sample n unique samples from this replay buffer
-        """
+        """Sample n unique samples from this replay buffer"""
         assert len(self.episodic_memory) >= n_episodes
         episodes = random.sample(self.episodic_memory, n_episodes)
         if max_len is not None:

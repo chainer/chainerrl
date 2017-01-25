@@ -7,25 +7,25 @@ from future import standard_library
 standard_library.install_aliases()
 import argparse
 
+import chainer
 from chainer import functions as F
 from chainer import links as L
-import chainer
 import gym
 import numpy as np
 
-from chainerrl import policies
-from chainerrl import v_function
 from chainerrl.agents import a3c
+from chainerrl.experiments.evaluator import eval_performance
 from chainerrl.experiments.prepare_output_dir import prepare_output_dir
 from chainerrl.experiments.train_agent_async import train_agent_async
 from chainerrl.links import MLP
 from chainerrl.misc import env_modifiers
-from chainerrl.misc import random_seed
 from chainerrl.misc.init_like_torch import init_like_torch
-from chainerrl.optimizers import rmsprop_async
+from chainerrl.misc import random_seed
 from chainerrl.optimizers.nonbias_weight_decay import NonbiasWeightDecay
+from chainerrl.optimizers import rmsprop_async
+from chainerrl import policies
 from chainerrl.recurrent import RecurrentChainMixin
-from chainerrl.experiments.evaluator import eval_performance
+from chainerrl import v_function
 
 
 def phi(obs):

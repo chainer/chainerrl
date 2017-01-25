@@ -14,10 +14,10 @@ from chainer import functions as F
 from chainer import links as L
 
 from chainerrl import distribution
-from chainerrl import policy
 from chainerrl.functions.bound_by_tanh import bound_by_tanh
 from chainerrl.links.mlp import MLP
 from chainerrl.links.mlp_bn import MLPBN
+from chainerrl import policy
 from chainerrl.recurrent import RecurrentChainMixin
 
 

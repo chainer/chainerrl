@@ -7,8 +7,8 @@ standard_library.install_aliases()
 
 import os
 
-from chainerrl.misc.ask_yes_no import ask_yes_no
 from chainerrl.experiments.evaluator import Evaluator
+from chainerrl.misc.ask_yes_no import ask_yes_no
 
 
 def save_agent(agent, t, outdir, suffix=''):
@@ -25,7 +25,7 @@ def save_agent_replay_buffer(agent, t, outdir, suffix=''):
 
 def ask_and_save_agent_replay_buffer(agent, t, outdir, suffix=''):
     if hasattr(agent, 'replay_buffer') and \
-            ask_yes_no('Replay buffer has {} transitions. Do you save them to a file?'.format(len(agent.replay_buffer))):
+            ask_yes_no('Replay buffer has {} transitions. Do you save them to a file?'.format(len(agent.replay_buffer))):  # NOQA
         save_agent_replay_buffer(agent, t, outdir, suffix=suffix)
 
 
@@ -72,7 +72,7 @@ def train_agent(agent, env, steps, outdir, max_episode_len=None,
                 r = 0
                 done = False
 
-    except:
+    except Exception:
         # Save the current model before being killed
         save_agent(agent, t, outdir, suffix='_except')
         raise
@@ -85,8 +85,7 @@ def train_agent_with_evaluation(
         agent, env, steps, eval_n_runs, eval_frequency,
         outdir, max_episode_len=None, step_offset=0, eval_explorer=None,
         eval_max_episode_len=None, eval_env=None, successful_score=None):
-    """
-    Run a DQN-like agent.
+    """Run a DQN-like agent.
 
     Args:
       agent: Agent.

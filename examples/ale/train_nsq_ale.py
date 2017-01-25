@@ -5,31 +5,29 @@ from __future__ import absolute_import
 from builtins import *  # NOQA
 from future import standard_library
 standard_library.install_aliases()
-import os
+
 import argparse
-import random
 from logging import getLogger
 logger = getLogger(__name__)
+import os
+import random
 
-import chainer
 from chainer import links as L
 
 from chainerrl.action_value import DiscreteActionValue
-from chainerrl.links import sequence
-from chainerrl.links import dqn_head
 from chainerrl.agents import nsq
 from chainerrl.envs import ale
+from chainerrl.experiments.evaluator import eval_performance
+from chainerrl.experiments.prepare_output_dir import prepare_output_dir
+from chainerrl.experiments.train_agent_async import train_agent_async
+from chainerrl.explorers.epsilon_greedy import ConstantEpsilonGreedy
+from chainerrl.explorers.epsilon_greedy import LinearDecayEpsilonGreedy
+from chainerrl.links import dqn_head
+from chainerrl.links import sequence
 from chainerrl.misc import random_seed
 from chainerrl.optimizers import rmsprop_async
-from chainerrl.experiments.prepare_output_dir import prepare_output_dir
-from chainerrl.optimizers.nonbias_weight_decay import NonbiasWeightDecay
-from chainerrl.misc.init_like_torch import init_like_torch
-from chainerrl.experiments.train_agent_async import train_agent_async
-from chainerrl.recurrent import RecurrentChainMixin
-from chainerrl.experiments.evaluator import eval_performance
-from chainerrl.explorers.epsilon_greedy import LinearDecayEpsilonGreedy
-from chainerrl.explorers.epsilon_greedy import ConstantEpsilonGreedy
 from chainerrl import spaces
+
 from dqn_phi import dqn_phi
 
 

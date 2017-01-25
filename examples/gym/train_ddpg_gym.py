@@ -8,24 +8,24 @@ import argparse
 import sys
 
 import chainer
-from chainer import optimizers
 from chainer import cuda
+from chainer import optimizers
 import gym
-import numpy as np
 from gym import spaces
+import numpy as np
 
-from chainerrl import policy
-from chainerrl import q_function
-from chainerrl import replay_buffer
-from chainerrl.agents.ddpg import DDPG, DDPGModel
+from chainerrl.agents.ddpg import DDPG
+from chainerrl.agents.ddpg import DDPGModel
 from chainerrl.experiments.evaluator import eval_performance
 from chainerrl.experiments.prepare_output_dir import prepare_output_dir
 from chainerrl.experiments.train_agent import train_agent_with_evaluation
 from chainerrl.explorers.additive_gaussian import AdditiveGaussian
-from chainerrl.explorers.epsilon_greedy import LinearDecayEpsilonGreedy
 from chainerrl.misc import env_modifiers
-from chainerrl.misc import random_seed
 from chainerrl.misc.init_like_torch import init_like_torch
+from chainerrl.misc import random_seed
+from chainerrl import policy
+from chainerrl import q_function
+from chainerrl import replay_buffer
 
 
 def main():
@@ -49,8 +49,6 @@ def main():
     parser.add_argument('--update-frequency', type=int, default=1000)
     parser.add_argument('--eval-n-runs', type=int, default=100)
     parser.add_argument('--eval-frequency', type=int, default=10 ** 5)
-    #parser.add_argument('--n-x-layers', type=int, default=10)
-    #parser.add_argument('--n-hidden-channels', type=int, default=4)
     parser.add_argument('--gamma', type=float, default=0.995)
     parser.add_argument('--minibatch-size', type=int, default=200)
     parser.add_argument('--render', action='store_true')
@@ -72,7 +70,7 @@ def main():
 
     def make_env():
         env = gym.make(args.env)
-        #env.monitor.start('/tmp', force=True, seed=0)
+        # env.monitor.start('/tmp', force=True, seed=0)
         timestep_limit = env.spec.timestep_limit
         env_modifiers.make_timestep_limited(env, timestep_limit)
         if isinstance(env.action_space, spaces.Box):
