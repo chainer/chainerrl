@@ -102,7 +102,9 @@ class A3C(agent.Agent):
                  keep_loss_scale_same=False,
                  normalize_grad_by_t_max=False,
                  use_average_reward=False, average_reward_tau=1e-2,
-                 act_deterministically=False):
+                 act_deterministically=False,
+                 average_entropy_decay=0.999,
+                 average_value_decay=0.999):
 
         assert isinstance(model, A3CModel)
         # Globally shared model
@@ -127,6 +129,8 @@ class A3C(agent.Agent):
         self.use_average_reward = use_average_reward
         self.average_reward_tau = average_reward_tau
         self.act_deterministically = act_deterministically
+        self.average_value_decay = average_value_decay
+        self.average_entropy_decay = average_entropy_decay
 
         self.t = 0
         self.t_start = 0
@@ -138,6 +142,10 @@ class A3C(agent.Agent):
         self.average_reward = 0
         # A3C won't use a explorer, but this arrtibute is referenced by run_dqn
         self.explorer = None
+
+        # Stats
+        self.average_value = 0
+        self.average_entropy = 0
 
     def sync_parameters(self):
         copy_param.copy_param(target_link=self.model,
@@ -257,9 +265,17 @@ class A3C(agent.Agent):
         if self.process_idx == 0:
             logger.debug('t:%s r:%s a:%s pout:%s',
                          self.t, reward, action, pout)
+        # Update stats
+        self.average_value += (
+            (1 - self.average_value_decay) *
+            (float(vout.data[0]) - self.average_value))
+        self.average_entropy += (
+            (1 - self.average_entropy_decay) *
+            (float(pout.entropy.data[0]) - self.average_entropy))
         return action
 
     def act(self, obs):
+        # Use the process-local model for acting
         with chainer.no_backprop_mode():
             statevar = np.expand_dims(self.phi(obs), 0)
             pout, _ = self.model.pi_and_v(statevar)
@@ -288,6 +304,7 @@ class A3C(agent.Agent):
 
     def save(self, dirname):
         makedirs(dirname, exist_ok=True)
+        # Save the process-local model
         serializers.save_npz(os.path.join(dirname, 'model.npz'), self.model)
         serializers.save_npz(
             os.path.join(dirname, 'optimizer.npz'), self.optimizer)
@@ -305,7 +322,7 @@ class A3C(agent.Agent):
                 opt_filename))
 
     def get_stats_keys(self):
-        return ()
+        return ('average_value', 'average_entropy')
 
     def get_stats_values(self):
-        return ()
+        return (self.average_value, self.average_entropy)
