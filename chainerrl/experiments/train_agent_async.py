@@ -151,6 +151,7 @@ def train_agent_async(outdir, processes, make_env, make_agent,
         random_seed.set_random_seed(process_idx)
 
         env = make_env(process_idx, test=False)
+        eval_env = make_env(process_idx, test=True)
         # agent = agent0 if process_idx == 0 else make_agent(process_idx)
         agent = make_agent(process_idx)
         set_shared_objects(agent, shared_objects)
@@ -166,7 +167,8 @@ def train_agent_async(outdir, processes, make_env, make_agent,
                 max_episode_len=max_episode_len,
                 evaluator=evaluator,
                 successful_score=successful_score,
-                training_done=training_done)
+                training_done=training_done,
+                eval_env=eval_env)
 
         if profile:
             import cProfile
