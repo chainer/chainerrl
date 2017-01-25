@@ -48,5 +48,6 @@ class TestCopyParam(unittest.TestCase):
 
         copy_param.soft_copy_param(target_link=a, source_link=b, tau=0.1)
 
-        np.testing.assert_almost_equal(a.W.data, np.full(a.W.data.shape, 0.595))
+        np.testing.assert_almost_equal(
+            a.W.data, np.full(a.W.data.shape, 0.595))
         np.testing.assert_almost_equal(b.W.data, np.full(b.W.data.shape, 1.0))

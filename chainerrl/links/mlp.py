@@ -43,4 +43,3 @@ class MLP(chainer.Chain):
             for l in self.hidden_layers:
                 h = F.relu(l(h))
         return self.output(h)
-

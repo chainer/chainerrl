@@ -21,7 +21,8 @@ class TestDiscreteActionValue(unittest.TestCase):
         self.action_size = 3
         self.q_values = np.random.normal(
             size=(self.batch_size, self.action_size)).astype(np.float32)
-        self.qout = action_value.DiscreteActionValue(chainer.Variable(self.q_values))
+        self.qout = action_value.DiscreteActionValue(
+            chainer.Variable(self.q_values))
 
     def test_max(self):
         self.assertIsInstance(self.qout.max, chainer.Variable)

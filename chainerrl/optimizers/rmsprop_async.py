@@ -13,7 +13,7 @@ from chainer import optimizer
 class RMSpropAsync(optimizer.GradientMethod):
 
     """RMSprop for asynchronous methods.
-    
+
     The only difference from chainer.optimizers.RMSprop in that the epsilon is
     outside the square root."""
 
