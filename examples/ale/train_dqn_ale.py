@@ -22,7 +22,6 @@ from chainerrl.experiments.prepare_output_dir import prepare_output_dir
 from chainerrl.experiments.train_agent import train_agent_with_evaluation
 from chainerrl.explorers.epsilon_greedy import ConstantEpsilonGreedy
 from chainerrl.explorers.epsilon_greedy import LinearDecayEpsilonGreedy
-from chainerrl.functions import oplu
 from chainerrl.links import dqn_head
 from chainerrl.links.dueling_dqn import DuelingDQN
 from chainerrl.links import sequence
@@ -38,12 +37,8 @@ def parse_activation(activation_str):
         return F.relu
     elif activation_str == 'elu':
         return F.elu
-    elif activation_str == 'oplu':
-        return oplu.oplu
     elif activation_str == 'lrelu':
         return F.leaky_relu
-    elif activation_str == 'oplu':
-        return oplu.oplu
     else:
         raise RuntimeError(
             'Not supported activation: {}'.format(activation_str))
