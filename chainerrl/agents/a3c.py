@@ -80,6 +80,20 @@ class A3C(agent.Agent):
     """A3C: Asynchronous Advantage Actor-Critic.
 
     See http://arxiv.org/abs/1602.01783
+
+    Args:
+        model (A3CModel): Model to train
+        optimizer (chainer.Optimizer): optimizer used to train the model
+        t_max (int): The model is updated after every t_max steps
+        gamma (float): Discount factor [0,1]
+        beta (float): Weight coefficient for the entropy regularizaiton term.
+        process_idx (int): Index of the process.
+        phi (callable): Feature extractor function
+        pi_loss_coef (float): Weight coefficient for the loss of the policy
+        v_loss_coef (float): Weight coefficient for the loss of the value
+            function
+        act_deterministically (bool): If set true, choose most probable actions
+            in act method.
     """
 
     def __init__(self, model, optimizer, t_max, gamma, beta=1e-2,
