@@ -2,6 +2,7 @@ from __future__ import division
 from __future__ import unicode_literals
 from __future__ import print_function
 from __future__ import absolute_import
+from builtins import *  # NOQA
 from future import standard_library
 standard_library.install_aliases()
 
@@ -47,9 +48,10 @@ class AdditiveOU(explorer.Explorer):
             if self.start_with_mu:
                 self.ou_state = np.full(a.shape, self.mu, dtype=np.float32)
             else:
-                sigma_stable = \
-                    self.sigma / np.sqrt(2*self.theta - self.theta**2)
-                self.ou_state = np.random.normal(size=a.shape,
+                sigma_stable = (self.sigma /
+                                np.sqrt(2 * self.theta - self.theta ** 2))
+                self.ou_state = np.random.normal(
+                    size=a.shape,
                     loc=self.mu, scale=sigma_stable).astype(np.float32)
         else:
             self.evolve()
