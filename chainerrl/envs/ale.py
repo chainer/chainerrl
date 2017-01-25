@@ -9,18 +9,17 @@ import collections
 import os
 import sys
 
-import numpy as np
 from ale_python_interface import ALEInterface
-import cv2
 import atari_py
+import cv2
+import numpy as np
 
 from chainerrl import env
 from chainerrl import spaces
 
 
 class ALE(env.Env):
-    """Arcade Learning Environment.
-    """
+    """Arcade Learning Environment."""
 
     def __init__(self, game, seed=None, use_sdl=False, n_last_screens=4,
                  frame_skip=4, treat_life_lost_as_terminal=True,

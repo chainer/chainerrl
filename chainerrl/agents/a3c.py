@@ -10,14 +10,14 @@ import copy
 from logging import getLogger
 import os
 
-import numpy as np
 import chainer
-from chainer import serializers
 from chainer import functions as F
+from chainer import serializers
+import numpy as np
 
-from chainerrl.misc import copy_param
-from chainerrl.misc import async
 from chainerrl import agent
+from chainerrl.misc import async
+from chainerrl.misc import copy_param
 from chainerrl.misc.makedirs import makedirs
 from chainerrl.recurrent import Recurrent
 from chainerrl.recurrent import RecurrentChainMixin

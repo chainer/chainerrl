@@ -17,16 +17,15 @@ class AL(dqn.DQN):
     """Advantage Learning.
 
     See: http://arxiv.org/abs/1512.04860.
+
+    Args:
+      alpha (float): Weight of (persistent) advantages. Convergence
+        is guaranteed only for alpha in [0, 1).
+
+    For other arguments, see DQN.
     """
 
     def __init__(self, *args, **kwargs):
-        """
-        Args:
-          alpha (float): Weight of (persistent) advantages. Convergence
-            is guaranteed only for alpha in [0, 1).
-
-        For other arguments, see DQN.
-        """
         self.alpha = kwargs.pop('alpha', 0.9)
         super().__init__(*args, **kwargs)
 

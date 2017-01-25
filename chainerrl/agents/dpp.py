@@ -4,7 +4,6 @@ from __future__ import print_function
 from __future__ import absolute_import
 from builtins import *  # NOQA
 from future import standard_library
-from future.utils import with_metaclass
 standard_library.install_aliases()
 
 from abc import ABCMeta
@@ -12,6 +11,7 @@ from abc import abstractmethod
 
 import chainer
 import chainer.functions as F
+from future.utils import with_metaclass
 
 from chainerrl.agents.dqn import DQN
 
@@ -74,15 +74,15 @@ class AbstractDPP(with_metaclass(ABCMeta, DQN)):
 
 
 class DPP(AbstractDPP):
-    """Dynamic Policy Programming with softmax operator."""
+    """Dynamic Policy Programming with softmax operator.
+
+    Args:
+      eta (float): Positive constant.
+
+    For other arguments, see DQN.
+    """
 
     def __init__(self, *args, **kwargs):
-        """
-        Args:
-          eta (float): Positive constant.
-
-        For other arguments, see DQN.
-        """
         self.eta = kwargs.pop('eta', 1.0)
         super().__init__(*args, **kwargs)
 
@@ -91,15 +91,15 @@ class DPP(AbstractDPP):
 
 
 class DPPL(AbstractDPP):
-    """Dynamic Policy Programming with L operator."""
+    """Dynamic Policy Programming with L operator.
+
+    Args:
+      eta (float): Positive constant.
+
+    For other arguments, see DQN.
+    """
 
     def __init__(self, *args, **kwargs):
-        """
-        Args:
-          eta (float): Positive constant.
-
-        For other arguments, see DQN.
-        """
         self.eta = kwargs.pop('eta', 1.0)
         super().__init__(*args, **kwargs)
 
@@ -110,7 +110,8 @@ class DPPL(AbstractDPP):
 class DPPGreedy(AbstractDPP):
     """Dynamic Policy Programming with max operator.
 
-    This algorithm corresponds to DPP with eta = infinity."""
+    This algorithm corresponds to DPP with eta = infinity.
+    """
 
     def _l_operator(self, qout):
         return qout.max

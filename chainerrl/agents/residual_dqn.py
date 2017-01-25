@@ -12,8 +12,7 @@ from chainerrl.functions import scale_grad
 
 
 class ResidualDQN(DQN):
-    """DQN that allows maxQ also backpropagate gradients.
-    """
+    """DQN that allows maxQ also backpropagate gradients."""
 
     def __init__(self, *args, **kwargs):
         self.grad_scale = kwargs.pop('grad_scale', 1.0)

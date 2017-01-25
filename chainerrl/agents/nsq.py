@@ -5,18 +5,19 @@ from __future__ import absolute_import
 from builtins import *  # NOQA
 from future import standard_library
 standard_library.install_aliases()
-from logging import getLogger
-import copy
-import os
-import multiprocessing as mp
 
-import numpy as np
+import copy
+from logging import getLogger
+import multiprocessing as mp
+import os
+
 import chainer
 from chainer import functions as F
 from chainer import serializers
+import numpy as np
 
-from chainerrl.misc import copy_param
 from chainerrl.misc import async
+from chainerrl.misc import copy_param
 from chainerrl.misc.makedirs import makedirs
 from chainerrl.recurrent import Recurrent
 from chainerrl.recurrent import state_kept
@@ -82,8 +83,6 @@ class NSQ(object):
             R += self.past_rewards[i]
             q = F.reshape(self.past_action_values[i], (1, 1))
             # Accumulate gradients of Q-function
-            # loss += (R - q) ** 2
-            # loss += F.mean_squared_error(q, chainer.Variable(np.asarray([R])))
             loss += F.sum(F.huber_loss(
                 q, chainer.Variable(np.asarray([[R]], dtype=np.float32)),
                 delta=1.0))
