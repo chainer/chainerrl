@@ -19,7 +19,6 @@ from chainerrl.envs.abc import ABC
 from chainerrl.experiments.train_agent_async import train_agent_async
 from chainerrl.optimizers import rmsprop_async
 from chainerrl import policies
-from chainerrl.recurrent import Recurrent
 from chainerrl import v_function
 
 
@@ -148,7 +147,7 @@ class TestA3C(unittest.TestCase):
         # successful because parameters could be modified by other processes
         # after success. Thus here the successful model is loaded explicitly.
         agent.load(os.path.join(self.outdir, 'successful'))
-        model = agent.model
+        agent.stop_episode()
 
         # Test
         env = make_env(0, True)
@@ -160,12 +159,10 @@ class TestA3C(unittest.TestCase):
             done = False
             reward = 0.0
 
-            if isinstance(model, Recurrent):
-                model.reset_state()
-
             while not done:
                 action = agent.act(obs)
                 print('state:', obs, 'action:', action)
                 obs, reward, done, _ = env.step(action)
                 total_r += reward
             self.assertAlmostEqual(total_r, 1)
+            agent.stop_episode()
