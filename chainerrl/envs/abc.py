@@ -2,15 +2,14 @@ from __future__ import unicode_literals
 from __future__ import print_function
 from __future__ import division
 from __future__ import absolute_import
+from builtins import *  # NOQA
 from future import standard_library
 standard_library.install_aliases()
 
 import numpy as np
-import gym
-gym.undo_logger_setup()
-from gym import spaces
 
 from chainerrl import env
+from chainerrl import spaces
 
 
 class ABC(env.Env):
@@ -23,10 +22,12 @@ class ABC(env.Env):
     Observations are one-hot vectors that represents which state it is now.
     """
 
-    def __init__(self, size=2, discrete=True, partially_observable=False, episodic=True):
+    def __init__(self, size=2, discrete=True, partially_observable=False,
+                 episodic=True, deterministic=False):
         self.size = size
         self.episodic = episodic
         self.partially_observable = partially_observable
+        self.deterministic = deterministic
         self.n_max_offset = 1
         self.n_dim_obs = self.size + 2 + self.n_max_offset
         self.observation_space = spaces.Box(
@@ -35,10 +36,9 @@ class ABC(env.Env):
         if discrete:
             self.action_space = spaces.Discrete(self.size)
         else:
-            n_dim_action = 1
             self.action_space = spaces.Box(
-                low=np.asarray([-0.49] * n_dim_action, dtype=np.float32),
-                high=np.asarray([size - 1 + 0.49] * n_dim_action, dtype=np.float32))
+                low=-np.ones(self.size, dtype=np.float32),
+                high=np.ones(self.size, dtype=np.float32))
 
     def observe(self):
         state_vec = np.zeros((self.n_dim_obs,), dtype=np.float32)
@@ -55,20 +55,25 @@ class ABC(env.Env):
         if self.partially_observable:
             # For partially observable settings, observations are shifted by
             # episode-dependent some offsets.
-            # For stabilizing tests, offsets values are deterministic.
-            self._offset = ((getattr(self, '_offset', 0) + 1) %
-                            (self.n_max_offset + 1))
+            if self.deterministic:
+                self._offset = ((getattr(self, '_offset', 0) + 1) %
+                                (self.n_max_offset + 1))
+            else:
+                self._offset = np.random.randint(self.n_max_offset + 1)
         else:
             self._offset = 0
         return self.observe()
 
     def step(self, action):
         if isinstance(action, np.ndarray):
-            action = np.clip(action, self.action_space.low,
+            action = np.clip(action,
+                             self.action_space.low,
                              self.action_space.high)
-            action = np.around(action)
-            if action.size > 1:
-                action = action[0]
+            if self.deterministic:
+                action = np.argmax(action)
+            else:
+                prob = np.exp(action) / np.exp(action).sum()
+                action = np.random.choice(range(self.size), p=prob)
         if action == self._state:
             # Correct
             self._state += 1

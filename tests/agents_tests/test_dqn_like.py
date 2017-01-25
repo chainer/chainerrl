@@ -4,8 +4,6 @@ from __future__ import division
 from __future__ import absolute_import
 from future import standard_library
 standard_library.install_aliases()
-import os
-import tempfile
 
 from chainer import optimizers
 from chainer import testing
@@ -35,7 +33,7 @@ class _TestDQNLike(_TestTraining):
     def make_dqn_agent(self, env, q_func, opt, explorer, rbuf, gpu):
         raise NotImplementedError()
 
-    def make_env_and_successful_return(self):
+    def make_env_and_successful_return(self, test):
         raise NotImplementedError()
 
     def make_explorer(self, env):
@@ -96,8 +94,8 @@ class _TestDQNOnDiscreteABC(_TestDQNOnABC):
             model=MLP(env.observation_space.low.size,
                       env.action_space.n, (10, 10)))
 
-    def make_env_and_successful_return(self):
-        return ABC(discrete=True), 1
+    def make_env_and_successful_return(self, test):
+        return ABC(discrete=True, deterministic=test), 1
 
 
 class _TestDQNOnDiscretePOABC(_TestDQNOnABC):
@@ -111,8 +109,9 @@ class _TestDQNOnDiscretePOABC(_TestDQNOnABC):
     def make_replay_buffer(self, env):
         return replay_buffer.EpisodicReplayBuffer(10 ** 5)
 
-    def make_env_and_successful_return(self):
-        return ABC(discrete=True, partially_observable=True), 1
+    def make_env_and_successful_return(self, test):
+        return ABC(discrete=True, partially_observable=True,
+                   deterministic=test), 1
 
 
 class _TestDQNOnContinuousABC(_TestDQNOnABC):
@@ -127,5 +126,5 @@ class _TestDQNOnContinuousABC(_TestDQNOnABC):
             n_hidden_layers=2,
             action_space=env.action_space)
 
-    def make_env_and_successful_return(self):
-        return ABC(discrete=False), 1
+    def make_env_and_successful_return(self, test):
+        return ABC(discrete=False, deterministic=test), 1

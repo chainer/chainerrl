@@ -58,7 +58,8 @@ class TestA3C(unittest.TestCase):
         def make_env(process_idx, test):
             size = 2
             return ABC(size=size, discrete=discrete, episodic=episodic or test,
-                       partially_observable=self.use_lstm)
+                       partially_observable=self.use_lstm,
+                       deterministic=test)
 
         sample_env = make_env(0, False)
         action_space = sample_env.action_space
