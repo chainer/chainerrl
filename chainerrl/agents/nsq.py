@@ -31,7 +31,8 @@ class NSQ(object):
 
     def __init__(self, process_idx, q_function, optimizer,
                  t_max, gamma, i_target, explorer, phi=lambda x: x,
-                 clip_reward=True, logger=getLogger(__name__)):
+                 clip_reward=True,
+                 average_q_decay=0.999, logger=getLogger(__name__)):
 
         self.process_idx = process_idx
 
@@ -50,13 +51,15 @@ class NSQ(object):
         self.clip_reward = clip_reward
         self.phi = phi
         self.logger = logger
-        self.t_global = mp.Value('l', 0)
+        self.average_q_decay = average_q_decay
 
+        self.t_global = mp.Value('l', 0)
         self.t = 0
         self.t_start = 0
         self.past_action_values = {}
         self.past_states = {}
         self.past_rewards = {}
+        self.average_q = 0
 
     def sync_parameters(self):
         copy_param.copy_param(target_link=self.q_function,
@@ -139,6 +142,8 @@ class NSQ(object):
         q = qout.evaluate_actions(np.asarray([action]))
         self.past_action_values[self.t] = q
         self.t += 1
+        self.average_q += ((1 - self.average_q_decay) *
+                           (float(q.data[0]) - self.average_q))
         with self.t_global.get_lock():
             self.t_global.value += 1
             t_global = self.t_global.value
@@ -209,7 +214,7 @@ class NSQ(object):
                 opt_filename))
 
     def get_stats_keys(self):
-        return ()
+        return ('average_q',)
 
     def get_stats_values(self):
-        return ()
+        return (self.average_q,)
