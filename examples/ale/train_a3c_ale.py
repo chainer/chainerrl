@@ -76,6 +76,7 @@ def main():
     parser.add_argument('--outdir', type=str, default=None)
     parser.add_argument('--use-sdl', action='store_true')
     parser.add_argument('--t-max', type=int, default=5)
+    parser.add_argument('--max-episode-len', type=int, default=10000)
     parser.add_argument('--beta', type=float, default=1e-2)
     parser.add_argument('--profile', action='store_true')
     parser.add_argument('--steps', type=int, default=8 * 10 ** 7)
@@ -134,7 +135,8 @@ def main():
             profile=args.profile,
             steps=args.steps,
             eval_n_runs=args.eval_n_runs,
-            eval_frequency=args.eval_frequency)
+            eval_frequency=args.eval_frequency,
+            max_episode_len=args.max_episode_len)
 
 
 if __name__ == '__main__':
