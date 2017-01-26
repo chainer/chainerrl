@@ -321,7 +321,7 @@ class DiscreteACER(agent.AsyncAgent):
                     with chainer.no_backprop_mode():
                         last_s = last_transition['next_state']
                         action_distrib, action_value = self.model(
-                            np.expand_dims(last_s, 0))
+                            np.expand_dims(self.phi(last_s), 0))
                         last_v = F.sum(action_distrib.all_prob *
                                        action_value.q_values, axis=1)
                     R = float(last_v.data)
