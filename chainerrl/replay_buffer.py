@@ -71,7 +71,7 @@ class EpisodicReplayBuffer(object):
         self.capacity = capacity
 
     def append(self, state, action, reward, next_state=None, next_action=None,
-               is_state_terminal=False):
+               is_state_terminal=False, **kwargs):
         """Append a transition to this replay buffer
 
         Args:
@@ -84,7 +84,8 @@ class EpisodicReplayBuffer(object):
         """
         experience = dict(state=state, action=action, reward=reward,
                           next_state=next_state, next_action=next_action,
-                          is_state_terminal=is_state_terminal)
+                          is_state_terminal=is_state_terminal,
+                          **kwargs)
         self.current_episode.append(experience)
         if is_state_terminal:
             self.stop_current_episode()

@@ -20,6 +20,7 @@ from chainerrl.experiments.train_agent_async import train_agent_async
 from chainerrl.optimizers import rmsprop_async
 from chainerrl import policies
 from chainerrl import q_function
+from chainerrl.replay_buffer import EpisodicReplayBuffer
 
 
 @testing.parameterize(
@@ -69,6 +70,7 @@ class TestACER(unittest.TestCase):
             return x
 
         n_hidden_channels = 20
+        replay_buffer = EpisodicReplayBuffer(10 ** 6)
         if use_lstm:
             if discrete:
                 model = acer.ACERSharedModel(
@@ -128,9 +130,10 @@ class TestACER(unittest.TestCase):
         opt.setup(model)
         gamma = 0.9
         beta = 1e-2 if discrete else 1e-3
-        agent = acer.DiscreteACER(model, opt, t_max=t_max, gamma=gamma, beta=beta,
-                        phi=phi,
-                        act_deterministically=True)
+        agent = acer.DiscreteACER(model, opt, replay_buffer=replay_buffer,
+                                  t_max=t_max, gamma=gamma, beta=beta,
+                                  phi=phi,
+                                  act_deterministically=True)
 
         max_episode_len = None if episodic else 2
 

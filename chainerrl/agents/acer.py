@@ -23,6 +23,7 @@ from chainerrl.misc.makedirs import makedirs
 from chainerrl.recurrent import Recurrent
 from chainerrl.recurrent import RecurrentChainMixin
 from chainerrl.recurrent import state_kept
+from chainerrl.recurrent import state_reset
 
 logger = getLogger(__name__)
 
@@ -102,12 +103,14 @@ class DiscreteACER(agent.AsyncAgent):
 
     process_idx = None
 
-    def __init__(self, model, optimizer, t_max, gamma, beta=1e-2,
+    def __init__(self, model, optimizer, t_max, gamma, replay_buffer,
+                 beta=1e-2,
                  process_idx=0, phi=lambda x: x,
                  pi_loss_coef=1.0, v_loss_coef=0.5,
                  trust_region_alpha=0.99,
                  trust_region_c=10,
                  trust_region_delta=1,
+                 n_times_replay=8,
                  normalize_loss_by_steps=True,
                  act_deterministically=False,
                  average_entropy_decay=0.999,
@@ -125,6 +128,7 @@ class DiscreteACER(agent.AsyncAgent):
 
         self.optimizer = optimizer
 
+        self.replay_buffer = replay_buffer
         self.t_max = t_max
         self.gamma = gamma
         self.beta = beta
@@ -136,6 +140,7 @@ class DiscreteACER(agent.AsyncAgent):
         self.trust_region_alpha = trust_region_alpha
         self.trust_region_c = trust_region_c
         self.trust_region_delta = trust_region_delta
+        self.n_times_replay = n_times_replay
         self.average_value_decay = average_value_decay
         self.average_entropy_decay = average_entropy_decay
 
@@ -148,6 +153,8 @@ class DiscreteACER(agent.AsyncAgent):
         self.past_values = {}
         self.past_action_distrib = {}
         self.past_avg_action_distrib = {}
+        self.last_state = None
+        self.last_action = None
         # ACER won't use a explorer, but this arrtibute is referenced by
         # run_dqn
         self.explorer = None
@@ -165,9 +172,173 @@ class DiscreteACER(agent.AsyncAgent):
 
     @property
     def shared_attributes(self):
-        return ('shared_model', 'optimizer')
+        return ('shared_model', 'shared_average_model', 'optimizer')
 
-    def update(self, statevar):
+    def update(self, t_start, t_stop, R, states, actions, rewards, values, action_values,
+               action_log_probs, action_entropy,
+               action_distribs, avg_action_distribs, rho=None, rho_a=None, rho_bar=None):
+
+        pi_loss = 0
+        v_loss = 0
+        Q_ret = R
+        del R
+        for i in reversed(range(t_start, t_stop)):
+            Q_ret = rewards[i] + self.gamma * Q_ret
+            v = values[i]
+            if self.process_idx == 0:
+                logger.debug('t:%s s:%s v:%s Q_ret:%s',
+                             i, states[i].sum(), v.data, Q_ret)
+            advantage = Q_ret - v
+            log_prob = action_log_probs[i]
+            entropy = action_entropy[i]
+            action_distrib = action_distribs[i]
+
+            # Compute gradients w.r.t statistics produced by the model
+            with backprop_truncated(action_distrib.logits):
+
+                # Compute g
+                if rho is not None:
+                    # Off-policy
+                    rho_bar = min(self.trust_region_c, rho[i])
+                    g_loss = 0
+                    g_loss += rho_bar * log_prob * float(advantage.data)
+                    correction_weight = np.maximum(
+                        (rho_a[i] - self.trust_region_c) / rho_a[i],
+                        np.zeros_like(rho_a[i]))
+                    with chainer.no_backprop_mode():
+                        correction_advantage = (action_values[i].q_values.data -
+                                                values[i].data)
+                    g_loss += F.sum(correction_weight *
+                                    action_distribs[i].all_log_prob *
+                                    correction_advantage, axis=1)
+                else:
+                    # On-policy
+                    g_loss = log_prob * float(advantage.data)
+                g_loss.backward()
+                g = action_distrib.logits.grad[0]
+                action_distrib.logits.grad = None
+
+                # Compute k
+                kl = compute_discrete_kl(
+                    avg_action_distribs[i],
+                    action_distribs[i])
+                kl.backward()
+                k = action_distrib.logits.grad[0]
+                action_distrib.logits.grad = None
+
+            # Compute gradients w.r.t parameters of the model
+            z = (g -
+                 max(0, ((np.dot(k, g) - self.trust_region_delta) /
+                         np.dot(k, k))))
+            pi_loss -= F.sum(action_distrib.logits * z, axis=1)
+            # Entropy is maximized
+            pi_loss -= self.beta * entropy
+            # Accumulate gradients of value function
+            v_loss += (Q_ret - v) ** 2 / 2
+
+            ba = np.expand_dims(actions[i], 0)
+            Q = float(action_values[i].evaluate_actions(ba).data)
+            Q_ret = min(1, rho[i]) * (Q_ret - Q) + float(values[i].data)
+
+        pi_loss *= self.pi_loss_coef
+        v_loss *= self.v_loss_coef
+
+        if self.normalize_loss_by_steps:
+            pi_loss /= t_stop - t_start
+            v_loss /= t_stop - t_start
+
+        if self.process_idx == 0:
+            logger.debug('pi_loss:%s v_loss:%s', pi_loss.data, v_loss.data)
+
+        total_loss = pi_loss + F.reshape(v_loss, pi_loss.data.shape)
+
+        # Compute gradients using thread-specific model
+        self.model.zerograds()
+        total_loss.backward()
+        # Copy the gradients to the globally shared model
+        self.shared_model.zerograds()
+        copy_param.copy_grad(
+            target_link=self.shared_model, source_link=self.model)
+        # Update the globally shared model
+        if self.process_idx == 0:
+            norm = self.optimizer.compute_grads_norm()
+            logger.debug('grad norm:%s', norm)
+        self.optimizer.update()
+        if self.process_idx == 0:
+            logger.debug('update')
+
+        self.sync_parameters()
+        if isinstance(self.model, Recurrent):
+            self.model.unchain_backward()
+
+    def update_from_replay(self):
+
+        if len(self.replay_buffer) == 0:
+            return
+
+        episode = self.replay_buffer.sample_episodes(1, self.t_max + 1)[0]
+        # print('episode', episode)
+
+        with state_reset(self.model):
+            with state_reset(self.shared_average_model):
+                rewards = {}
+                states = {}
+                actions = {}
+                action_log_probs = {}
+                action_entropy = {}
+                action_distribs = {}
+                avg_action_distribs = {}
+                rho = {}
+                rho_a = {}
+                action_values = {}
+                values = {}
+                for t, transition in enumerate(episode):
+                    s = self.phi(transition['state'])
+                    a = transition['action']
+                    ba = np.expand_dims(a, 0)
+                    bs = np.expand_dims(s, 0)
+                    action_distrib, action_value = self.model(bs)
+                    v = F.sum(action_distrib.all_prob *
+                              action_value.q_values, axis=1)
+                    with chainer.no_backprop_mode():
+                        avg_action_distrib, _ = self.shared_average_model(bs)
+                    states[t] = s
+                    actions[t] = a
+                    action_log_probs[t] = action_distrib.log_prob(ba)
+                    action_entropy[t] = action_distrib.entropy
+                    values[t] = v
+                    action_distribs[t] = action_distrib
+                    avg_action_distribs[t] = avg_action_distrib
+                    rewards[t] = transition['reward']
+                    mu = transition['mu']
+                    action_values[t] = action_value
+                    rho[t] = action_distrib.prob(ba).data / mu.prob(ba).data
+                    rho_a[t] = action_distrib.all_prob.data / mu.all_prob.data
+                last_transition = episode[-1]
+                if last_transition['is_state_terminal']:
+                    R = 0
+                else:
+                    with chainer.no_backprop_mode():
+                        last_s = last_transition['next_state']
+                        action_distrib, action_value = self.model(
+                            np.expand_dims(last_s, 0))
+                        last_v = F.sum(action_distrib.all_prob *
+                                       action_value.q_values, axis=1)
+                    R = float(last_v.data)
+                return self.update(
+                    R=R, t_start=0, t_stop=len(episode),
+                    states=states, rewards=rewards,
+                    actions=actions,
+                    values=values,
+                    action_log_probs=action_log_probs,
+                    action_entropy=action_entropy,
+                    action_distribs=action_distribs,
+                    avg_action_distribs=avg_action_distribs,
+                    rho=rho,
+                    rho_a=rho_a,
+                    action_values=action_values)
+
+    def update_on_policy(self, statevar):
         assert self.t_start < self.t
 
         if statevar is None:
@@ -269,7 +440,9 @@ class DiscreteACER(agent.AsyncAgent):
         self.past_rewards[self.t - 1] = reward
 
         if self.t - self.t_start == self.t_max:
-            self.update(statevar)
+            self.update_on_policy(statevar)
+            for _ in range(self.n_times_replay):
+                self.update_from_replay()
 
         self.past_states[self.t] = statevar
         action_distrib, action_value = self.model(statevar)
@@ -299,6 +472,26 @@ class DiscreteACER(agent.AsyncAgent):
         self.average_entropy += (
             (1 - self.average_entropy_decay) *
             (float(action_distrib.entropy.data[0]) - self.average_entropy))
+
+        if self.last_state is not None:
+            assert self.last_action is not None
+            assert self.last_action_distrib is not None
+            # Add a transition to the replay buffer
+            self.replay_buffer.append(
+                state=self.last_state,
+                action=self.last_action,
+                reward=reward,
+                next_state=state,
+                next_action=action,
+                is_state_terminal=False,
+                mu=self.last_action_distrib,
+            )
+
+        self.last_state = state
+        self.last_action = action
+        self.last_action_distrib = copy.copy(action_distrib)
+        self.last_action_distrib.creator = None
+
         return action
 
     def act(self, obs):
@@ -312,16 +505,36 @@ class DiscreteACER(agent.AsyncAgent):
                 return action_distrib.sample().data[0]
 
     def stop_episode_and_train(self, state, reward, done=False):
+        assert self.last_state is not None
+        assert self.last_action is not None
+
         self.past_rewards[self.t - 1] = reward
         if done:
-            self.update(None)
+            self.update_on_policy(None)
         else:
-            statevar = chainer.Variable(np.expand_dims(self.phi(state), 0))
-            self.update(statevar)
+            statevar = np.expand_dims(self.phi(state), 0)
+            self.update_on_policy(statevar)
+        for _ in range(self.n_times_replay):
+            self.update_from_replay()
 
         if isinstance(self.model, Recurrent):
             self.model.reset_state()
             self.shared_average_model.reset_state()
+
+        # Add a transition to the replay buffer
+        self.replay_buffer.append(
+            state=self.last_state,
+            action=self.last_action,
+            reward=reward,
+            next_state=state,
+            next_action=self.last_action,
+            is_state_terminal=done,
+            mu=self.last_action_distrib)
+        self.replay_buffer.stop_current_episode()
+
+        self.last_state = None
+        self.last_action = None
+        self.last_action_distrib = None
 
     def stop_episode(self):
         if isinstance(self.model, Recurrent):
