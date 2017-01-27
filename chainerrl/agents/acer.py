@@ -189,19 +189,23 @@ class DiscreteACER(agent.AsyncAgent):
         Q_ret = R
         del R
         for i in reversed(range(t_start, t_stop)):
-            Q_ret = rewards[i] + self.gamma * Q_ret
+            r = rewards[i]
             v = values[i]
-            if self.process_idx == 0:
-                logger.debug('t:%s s:%s v:%s Q_ret:%s',
-                             i, states[i].sum(), v.data, Q_ret)
             log_prob = action_log_probs[i]
             entropy = action_entropy[i]
             action_distrib = action_distribs[i]
+            avg_action_distrib = avg_action_distribs[i]
             ba = np.expand_dims(actions[i], 0)
+            action_value = action_values[i]
+
+            Q_ret = r + self.gamma * Q_ret
+            if self.process_idx == 0:
+                logger.debug('t:%s s:%s v:%s Q_ret:%s',
+                             i, states[i].sum(), v.data, Q_ret)
 
             with chainer.no_backprop_mode():
-                Q = float(action_values[i].evaluate_actions(ba).data)
-                advantage = float((Q_ret - v).data)
+                Q = float(action_value.evaluate_actions(ba).data)
+                advantage = Q_ret - float(v.data)
 
             # Compute gradients w.r.t statistics produced by the model
             with backprop_truncated(action_distrib.logits):
@@ -218,7 +222,7 @@ class DiscreteACER(agent.AsyncAgent):
                                 1 - self.trust_region_c / rho_a[i],
                                 np.zeros_like(rho_a[i])) *
                             action_distrib.all_prob.data)
-                        correction_advantage = Q - float(values[i].data)
+                        correction_advantage = Q - float(v.data)
                     g_loss -= F.sum(correction_weight *
                                     action_distrib.all_log_prob *
                                     correction_advantage, axis=1)
@@ -231,8 +235,8 @@ class DiscreteACER(agent.AsyncAgent):
 
                 # Compute k: a direction to increase KL div.
                 neg_kl = -compute_discrete_kl(
-                    avg_action_distribs[i],
-                    action_distribs[i])
+                    avg_action_distrib,
+                    action_distrib)
                 neg_kl.backward()
                 self.average_kl += ((1 - self.average_kl_decay) *
                                     (-float(neg_kl.data) - self.average_kl))
@@ -254,9 +258,9 @@ class DiscreteACER(agent.AsyncAgent):
             v_loss += (Q_ret - v) ** 2 / 2
 
             if rho is not None:
-                Q_ret = min(1, rho[i]) * (Q_ret - Q) + float(values[i].data)
+                Q_ret = min(1, rho[i]) * (Q_ret - Q) + float(v.data)
             else:
-                Q_ret = Q_ret - Q + float(values[i].data)
+                Q_ret = Q_ret - Q + float(v.data)
 
         pi_loss *= self.pi_loss_coef
         v_loss *= self.v_loss_coef
