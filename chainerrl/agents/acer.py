@@ -150,9 +150,11 @@ class DiscreteACER(agent.AsyncAgent):
         self.past_action_log_prob = {}
         self.past_action_entropy = {}
         self.past_states = {}
+        self.past_actions = {}
         self.past_rewards = {}
         self.past_values = {}
         self.past_action_distrib = {}
+        self.past_action_values = {}
         self.past_avg_action_distrib = {}
         self.last_state = None
         self.last_action = None
@@ -177,7 +179,7 @@ class DiscreteACER(agent.AsyncAgent):
 
     def update(self, t_start, t_stop, R, states, actions, rewards, values, action_values,
                action_log_probs, action_entropy,
-               action_distribs, avg_action_distribs, rho=None, rho_a=None, rho_bar=None):
+               action_distribs, avg_action_distribs, rho=None, rho_a=None):
 
         pi_loss = 0
         v_loss = 0
@@ -243,7 +245,10 @@ class DiscreteACER(agent.AsyncAgent):
             # Accumulate gradients of value function
             v_loss += (Q_ret - v) ** 2 / 2
 
-            Q_ret = min(1, rho[i]) * (Q_ret - Q) + float(values[i].data)
+            if rho is not None:
+                Q_ret = min(1, rho[i]) * (Q_ret - Q) + float(values[i].data)
+            else:
+                Q_ret = Q_ret - Q + float(values[i].data)
 
         pi_loss *= self.pi_loss_coef
         v_loss *= self.v_loss_coef
@@ -282,7 +287,6 @@ class DiscreteACER(agent.AsyncAgent):
             return
 
         episode = self.replay_buffer.sample_episodes(1, self.t_max + 1)[0]
-        # print('episode', episode)
 
         with state_reset(self.model):
             with state_reset(self.shared_average_model):
@@ -356,83 +360,25 @@ class DiscreteACER(agent.AsyncAgent):
                               action_value.q_values, axis=1)
             R = float(v.data)
 
-        pi_loss = 0
-        v_loss = 0
-        for i in reversed(range(self.t_start, self.t)):
-            R *= self.gamma
-            R += self.past_rewards[i]
-            v = self.past_values[i]
-            if self.process_idx == 0:
-                logger.debug('t:%s s:%s v:%s R:%s',
-                             i, self.past_states[i].sum(), v.data, R)
-            advantage = R - v
-            # Accumulate gradients of policy
-            log_prob = self.past_action_log_prob[i]
-            entropy = self.past_action_entropy[i]
-            action_distrib = self.past_action_distrib[i]
-
-            # Compute gradients w.r.t statistics produced by the model
-            with backprop_truncated(action_distrib.logits):
-                # Compute g
-                g_loss = -log_prob * float(advantage.data)
-                g_loss.backward()
-                g = action_distrib.logits.grad[0]
-                action_distrib.logits.grad = None
-                # Compute k
-                neg_kl = -compute_discrete_kl(
-                    self.past_avg_action_distrib[i],
-                    self.past_action_distrib[i])
-                neg_kl.backward()
-                k = action_distrib.logits.grad[0]
-                action_distrib.logits.grad = None
-            # Compute gradients w.r.t parameters of the model
-            # print('k', k)
-            # print('g', g)
-            k_factor = max(0, ((np.dot(k, g) - self.trust_region_delta) /
-                               np.dot(k, k)))
-            z = g - k * k_factor
-            pi_loss += F.sum(action_distrib.logits * z, axis=1)
-            # Entropy is maximized
-            pi_loss -= self.beta * entropy
-            # Accumulate gradients of value function
-            v_loss += (v - R) ** 2 / 2
-
-        pi_loss *= self.pi_loss_coef
-        v_loss *= self.v_loss_coef
-
-        if self.normalize_loss_by_steps:
-            pi_loss /= self.t - self.t_start
-            v_loss /= self.t - self.t_start
-
-        if self.process_idx == 0:
-            logger.debug('pi_loss:%s v_loss:%s', pi_loss.data, v_loss.data)
-
-        total_loss = pi_loss + F.reshape(v_loss, pi_loss.data.shape)
-
-        # Compute gradients using thread-specific model
-        self.model.zerograds()
-        total_loss.backward()
-        # Copy the gradients to the globally shared model
-        self.shared_model.zerograds()
-        copy_param.copy_grad(
-            target_link=self.shared_model, source_link=self.model)
-        # Update the globally shared model
-        if self.process_idx == 0:
-            norm = self.optimizer.compute_grads_norm()
-            logger.debug('grad norm:%s', norm)
-        self.optimizer.update()
-        if self.process_idx == 0:
-            logger.debug('update')
-
-        self.sync_parameters()
-        if isinstance(self.model, Recurrent):
-            self.model.unchain_backward()
+        self.update(
+            t_start=self.t_start, t_stop=self.t, R=R,
+            states=self.past_states,
+            actions=self.past_actions,
+            rewards=self.past_rewards,
+            values=self.past_values,
+            action_values=self.past_action_values,
+            action_log_probs=self.past_action_log_prob,
+            action_entropy=self.past_action_entropy,
+            action_distribs=self.past_action_distrib,
+            avg_action_distribs=self.past_avg_action_distrib)
 
         self.past_action_log_prob = {}
         self.past_action_entropy = {}
         self.past_states = {}
+        self.past_actions = {}
         self.past_rewards = {}
         self.past_values = {}
+        self.past_action_values = {}
         self.past_action_distrib = {}
         self.past_avg_action_distrib = {}
 
@@ -451,6 +397,7 @@ class DiscreteACER(agent.AsyncAgent):
 
         self.past_states[self.t] = statevar
         action_distrib, action_value = self.model(statevar)
+        self.past_action_values[self.t] = action_value
         action = action_distrib.sample()
         action.creator = None  # Do not backprop through sampled actions
 
@@ -465,8 +412,11 @@ class DiscreteACER(agent.AsyncAgent):
                 statevar)
         self.past_avg_action_distrib[self.t] = avg_action_distrib
 
-        self.t += 1
         action = action.data[0]
+        self.past_actions[self.t] = action
+
+        self.t += 1
+
         if self.process_idx == 0:
             logger.debug('t:%s r:%s a:%s action_distrib:%s',
                          self.t, reward, action, action_distrib)
