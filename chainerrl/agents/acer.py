@@ -201,11 +201,11 @@ class DiscreteACER(agent.AsyncAgent):
             # Compute gradients w.r.t statistics produced by the model
             with backprop_truncated(action_distrib.logits):
 
-                # Compute g
+                # Compute g: a direction following policy gradients
                 if rho is not None:
                     # Off-policy
                     g_loss = 0
-                    g_loss += (min(self.trust_region_c, rho[i]) *
+                    g_loss -= (min(self.trust_region_c, rho[i]) *
                                log_prob * advantage)
                     with chainer.no_backprop_mode():
                         correction_weight = (
@@ -214,29 +214,30 @@ class DiscreteACER(agent.AsyncAgent):
                                 np.zeros_like(rho_a[i])) *
                             action_distrib.all_prob.data)
                         correction_advantage = Q - float(values[i].data)
-                    g_loss += F.sum(correction_weight *
+                    g_loss -= F.sum(correction_weight *
                                     action_distrib.all_log_prob *
                                     correction_advantage, axis=1)
                 else:
                     # On-policy
-                    g_loss = log_prob * advantage
+                    g_loss = -log_prob * advantage
                 g_loss.backward()
                 g = action_distrib.logits.grad[0]
                 action_distrib.logits.grad = None
 
-                # Compute k
-                kl = compute_discrete_kl(
+                # Compute k: a direction to increase KL div.
+                neg_kl = -compute_discrete_kl(
                     avg_action_distribs[i],
                     action_distribs[i])
-                kl.backward()
+                neg_kl.backward()
                 k = action_distrib.logits.grad[0]
                 action_distrib.logits.grad = None
 
-            # Compute gradients w.r.t parameters of the model
-            z = (g -
-                 max(0, ((np.dot(k, g) - self.trust_region_delta) /
-                         np.dot(k, k))))
-            pi_loss -= F.sum(action_distrib.logits * z, axis=1)
+            # Compute z: combination of g and k to keep small KL div.
+            k_factor = max(0, ((np.dot(k, g) - self.trust_region_delta) /
+                               np.dot(k, k)))
+            z = g - k_factor * k
+            # Backprop z
+            pi_loss += F.sum(action_distrib.logits * z, axis=1)
             # Entropy is maximized
             pi_loss -= self.beta * entropy
             # Accumulate gradients of value function
@@ -373,24 +374,24 @@ class DiscreteACER(agent.AsyncAgent):
             # Compute gradients w.r.t statistics produced by the model
             with backprop_truncated(action_distrib.logits):
                 # Compute g
-                g_loss = log_prob * float(advantage.data)
+                g_loss = -log_prob * float(advantage.data)
                 g_loss.backward()
                 g = action_distrib.logits.grad[0]
                 action_distrib.logits.grad = None
                 # Compute k
-                kl = compute_discrete_kl(
+                neg_kl = -compute_discrete_kl(
                     self.past_avg_action_distrib[i],
                     self.past_action_distrib[i])
-                kl.backward()
+                neg_kl.backward()
                 k = action_distrib.logits.grad[0]
                 action_distrib.logits.grad = None
             # Compute gradients w.r.t parameters of the model
             # print('k', k)
             # print('g', g)
-            z = (g -
-                 max(0, ((np.dot(k, g) - self.trust_region_delta) /
-                         np.dot(k, k))))
-            pi_loss -= F.sum(action_distrib.logits * z, axis=1)
+            k_factor = max(0, ((np.dot(k, g) - self.trust_region_delta) /
+                               np.dot(k, k)))
+            z = g - k * k_factor
+            pi_loss += F.sum(action_distrib.logits * z, axis=1)
             # Entropy is maximized
             pi_loss -= self.beta * entropy
             # Accumulate gradients of value function
