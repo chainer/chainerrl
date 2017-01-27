@@ -28,11 +28,13 @@ from chainerrl.replay_buffer import EpisodicReplayBuffer
         't_max': [1, 2],
         'use_lstm': [False],
         'episodic': [True, False],
+        'n_times_replay': [0, 8],
     }),
     *testing.product({
         't_max': [5],
         'use_lstm': [True, False],
         'episodic': [True, False],
+        'n_times_replay': [0, 8],
     }),
 )
 class TestACER(unittest.TestCase):
@@ -133,6 +135,7 @@ class TestACER(unittest.TestCase):
         agent = acer.DiscreteACER(model, opt, replay_buffer=replay_buffer,
                                   t_max=t_max, gamma=gamma, beta=beta,
                                   phi=phi,
+                                  n_times_replay=self.n_times_replay,
                                   act_deterministically=True)
 
         max_episode_len = None if episodic else 2
