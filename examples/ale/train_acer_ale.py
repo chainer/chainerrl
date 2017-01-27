@@ -99,6 +99,7 @@ def main():
     replay_buffer = EpisodicReplayBuffer(10 ** 6 // args.processes)
     agent = acer.DiscreteACER(model, opt, t_max=args.t_max, gamma=0.99,
                               replay_buffer=replay_buffer,
+                              n_times_replay=args.n_times_replay,
                               beta=args.beta, phi=dqn_phi)
     if args.load:
         agent.load(args.load)
