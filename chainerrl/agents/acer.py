@@ -240,9 +240,12 @@ class DiscreteACER(agent.AsyncAgent):
                 action_distrib.logits.grad = None
 
             # Compute z: combination of g and k to keep small KL div.
-            k_factor = max(0, ((np.dot(k, g) - self.trust_region_delta) /
-                               np.dot(k, k)))
-            z = g - k_factor * k
+            if np.any(k):
+                k_factor = max(0, ((np.dot(k, g) - self.trust_region_delta) /
+                                   np.dot(k, k)))
+                z = g - k_factor * k
+            else:
+                z = g
             # Backprop z
             pi_loss += F.sum(action_distrib.logits * z, axis=1)
             # Entropy is maximized
