@@ -65,6 +65,7 @@ class ACERSharedModel(chainer.Chain, RecurrentChainMixin):
 
 
 def compute_discrete_kl(p, q):
+    """Compute KL divergence between two discrete distributions."""
     return F.sum(p.all_prob * (p.all_log_prob - q.all_log_prob), axis=1)
 
 
