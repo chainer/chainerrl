@@ -69,6 +69,16 @@ def compute_discrete_kl(p, q):
     return F.sum(p.all_prob * (p.all_log_prob - q.all_log_prob), axis=1)
 
 
+def compute_state_value_as_expected_action_value(action_value, action_distrib):
+    """Compute state values as expected action values.
+
+    Note that this does not backprop errrors because it is intended for use in
+    computing target values.
+    """
+    return (action_distrib.all_prob.data *
+            action_value.q_values.data).sum(axis=1)
+
+
 @contextlib.contextmanager
 def backprop_truncated(variable):
     backup = variable.creator
@@ -90,7 +100,7 @@ class DiscreteACER(agent.AsyncAgent):
         beta (float): Weight coefficient for the entropy regularizaiton term.
         phi (callable): Feature extractor function
         pi_loss_coef (float): Weight coefficient for the loss of the policy
-        v_loss_coef (float): Weight coefficient for the loss of the value
+        Q_loss_coef (float): Weight coefficient for the loss of the value
             function
         normalize_loss_by_steps (bool): If set true, losses are normalized by
             the number of steps taken to accumulate the losses
@@ -107,7 +117,7 @@ class DiscreteACER(agent.AsyncAgent):
     def __init__(self, model, optimizer, t_max, gamma, replay_buffer,
                  beta=1e-2,
                  process_idx=0, phi=lambda x: x,
-                 pi_loss_coef=1.0, v_loss_coef=0.5,
+                 pi_loss_coef=1.0, Q_loss_coef=0.5,
                  trust_region_alpha=0.99,
                  trust_region_c=10,
                  trust_region_delta=1,
@@ -136,7 +146,7 @@ class DiscreteACER(agent.AsyncAgent):
         self.beta = beta
         self.phi = phi
         self.pi_loss_coef = pi_loss_coef
-        self.v_loss_coef = v_loss_coef
+        self.Q_loss_coef = Q_loss_coef
         self.normalize_loss_by_steps = normalize_loss_by_steps
         self.act_deterministically = act_deterministically
         self.trust_region_alpha = trust_region_alpha
@@ -185,27 +195,33 @@ class DiscreteACER(agent.AsyncAgent):
                action_distribs, avg_action_distribs, rho=None, rho_a=None):
 
         pi_loss = 0
-        v_loss = 0
+        Q_loss = 0
         Q_ret = R
         del R
         for i in reversed(range(t_start, t_stop)):
             r = rewards[i]
             v = values[i]
             log_prob = action_log_probs[i]
+            assert isinstance(log_prob, chainer.Variable),\
+                "log_prob must be backprop-able"
             entropy = action_entropy[i]
+            assert isinstance(log_prob, chainer.Variable),\
+                "entropy must be backprop-able"
             action_distrib = action_distribs[i]
             avg_action_distrib = avg_action_distribs[i]
             ba = np.expand_dims(actions[i], 0)
             action_value = action_values[i]
 
             Q_ret = r + self.gamma * Q_ret
+            Q = action_value.evaluate_actions(ba)
+            assert isinstance(Q, chainer.Variable), "Q must be backprop-able"
+
             if self.process_idx == 0:
-                logger.debug('t:%s s:%s v:%s Q_ret:%s',
-                             i, states[i].sum(), v.data, Q_ret)
+                logger.debug('t:%s s:%s v:%s Q:%s Q_ret:%s',
+                             i, states[i].sum(), v, float(Q.data), Q_ret)
 
             with chainer.no_backprop_mode():
-                Q = float(action_value.evaluate_actions(ba).data)
-                advantage = Q_ret - float(v.data)
+                advantage = Q_ret - v
 
             # Compute gradients w.r.t statistics produced by the model
             with backprop_truncated(action_distrib.logits):
@@ -222,7 +238,7 @@ class DiscreteACER(agent.AsyncAgent):
                                 1 - self.trust_region_c / rho_a[i],
                                 np.zeros_like(rho_a[i])) *
                             action_distrib.all_prob.data)
-                        correction_advantage = Q - float(v.data)
+                        correction_advantage = float(Q.data) - v
                     g_loss -= F.sum(correction_weight *
                                     action_distrib.all_log_prob *
                                     correction_advantage, axis=1)
@@ -255,24 +271,24 @@ class DiscreteACER(agent.AsyncAgent):
             # Entropy is maximized
             pi_loss -= self.beta * entropy
             # Accumulate gradients of value function
-            v_loss += (Q_ret - v) ** 2 / 2
+            Q_loss += (Q_ret - Q) ** 2 / 2
 
             if rho is not None:
-                Q_ret = min(1, rho[i]) * (Q_ret - Q) + float(v.data)
+                Q_ret = min(1, rho[i]) * (Q_ret - float(Q.data)) + v
             else:
-                Q_ret = Q_ret - Q + float(v.data)
+                Q_ret = Q_ret - float(Q.data) + v
 
         pi_loss *= self.pi_loss_coef
-        v_loss *= self.v_loss_coef
+        Q_loss *= self.Q_loss_coef
 
         if self.normalize_loss_by_steps:
             pi_loss /= t_stop - t_start
-            v_loss /= t_stop - t_start
+            Q_loss /= t_stop - t_start
 
         if self.process_idx == 0:
-            logger.debug('pi_loss:%s v_loss:%s', pi_loss.data, v_loss.data)
+            logger.debug('pi_loss:%s Q_loss:%s', pi_loss.data, Q_loss.data)
 
-        total_loss = pi_loss + F.reshape(v_loss, pi_loss.data.shape)
+        total_loss = pi_loss + F.reshape(Q_loss, pi_loss.data.shape)
 
         # Compute gradients using thread-specific model
         self.model.zerograds()
@@ -286,8 +302,6 @@ class DiscreteACER(agent.AsyncAgent):
             norm = self.optimizer.compute_grads_norm()
             logger.debug('grad norm:%s', norm)
         self.optimizer.update()
-        if self.process_idx == 0:
-            logger.debug('update')
 
         self.sync_parameters()
         if isinstance(self.model, Recurrent):
@@ -319,8 +333,8 @@ class DiscreteACER(agent.AsyncAgent):
                     ba = np.expand_dims(a, 0)
                     bs = np.expand_dims(s, 0)
                     action_distrib, action_value = self.model(bs)
-                    v = F.sum(action_distrib.all_prob *
-                              action_value.q_values, axis=1)
+                    v = compute_state_value_as_expected_action_value(
+                        action_value, action_distrib)
                     with chainer.no_backprop_mode():
                         avg_action_distrib, _ = self.shared_average_model(bs)
                     states[t] = s
@@ -343,9 +357,9 @@ class DiscreteACER(agent.AsyncAgent):
                         last_s = last_transition['next_state']
                         action_distrib, action_value = self.model(
                             np.expand_dims(self.phi(last_s), 0))
-                        last_v = F.sum(action_distrib.all_prob *
-                                       action_value.q_values, axis=1)
-                    R = float(last_v.data)
+                        last_v = compute_state_value_as_expected_action_value(
+                            action_value, action_distrib)
+                    R = last_v
                 return self.update(
                     R=R, t_start=0, t_stop=len(episode),
                     states=states, rewards=rewards,
@@ -368,9 +382,9 @@ class DiscreteACER(agent.AsyncAgent):
             with chainer.no_backprop_mode():
                 with state_kept(self.model):
                     action_distrib, action_value = self.model(statevar)
-                    v = F.sum(action_distrib.all_prob *
-                              action_value.q_values, axis=1)
-            R = float(v.data)
+                    v = compute_state_value_as_expected_action_value(
+                        action_value, action_distrib)
+            R = v
 
         self.update(
             t_start=self.t_start, t_stop=self.t, R=R,
@@ -416,7 +430,8 @@ class DiscreteACER(agent.AsyncAgent):
         # Save values for a later update
         self.past_action_log_prob[self.t] = action_distrib.log_prob(action)
         self.past_action_entropy[self.t] = action_distrib.entropy
-        v = F.sum(action_distrib.all_prob * action_value.q_values, axis=1)
+        v = compute_state_value_as_expected_action_value(
+            action_value, action_distrib)
         self.past_values[self.t] = v
         self.past_action_distrib[self.t] = action_distrib
         with chainer.no_backprop_mode():
@@ -435,7 +450,7 @@ class DiscreteACER(agent.AsyncAgent):
         # Update stats
         self.average_value += (
             (1 - self.average_value_decay) *
-            (float(v.data[0]) - self.average_value))
+            (v - self.average_value))
         self.average_entropy += (
             (1 - self.average_entropy_decay) *
             (float(action_distrib.entropy.data[0]) - self.average_entropy))
