@@ -115,7 +115,8 @@ class DiscreteACER(agent.AsyncAgent):
                  normalize_loss_by_steps=True,
                  act_deterministically=False,
                  average_entropy_decay=0.999,
-                 average_value_decay=0.999):
+                 average_value_decay=0.999,
+                 average_kl_decay=0.999):
 
         # Globally shared model
         self.shared_model = model
@@ -144,6 +145,7 @@ class DiscreteACER(agent.AsyncAgent):
         self.n_times_replay = n_times_replay
         self.average_value_decay = average_value_decay
         self.average_entropy_decay = average_entropy_decay
+        self.average_kl_decay = average_kl_decay
 
         self.t = 0
         self.t_start = 0
@@ -165,6 +167,7 @@ class DiscreteACER(agent.AsyncAgent):
         # Stats
         self.average_value = 0
         self.average_entropy = 0
+        self.average_kl = 0
 
     def sync_parameters(self):
         copy_param.copy_param(target_link=self.model,
@@ -177,8 +180,8 @@ class DiscreteACER(agent.AsyncAgent):
     def shared_attributes(self):
         return ('shared_model', 'shared_average_model', 'optimizer')
 
-    def update(self, t_start, t_stop, R, states, actions, rewards, values, action_values,
-               action_log_probs, action_entropy,
+    def update(self, t_start, t_stop, R, states, actions, rewards, values,
+               action_values, action_log_probs, action_entropy,
                action_distribs, avg_action_distribs, rho=None, rho_a=None):
 
         pi_loss = 0
@@ -231,6 +234,8 @@ class DiscreteACER(agent.AsyncAgent):
                     avg_action_distribs[i],
                     action_distribs[i])
                 neg_kl.backward()
+                self.average_kl += ((1 - self.average_kl_decay) *
+                                    (-float(neg_kl.data) - self.average_kl))
                 k = action_distrib.logits.grad[0]
                 action_distrib.logits.grad = None
 
@@ -516,7 +521,7 @@ class DiscreteACER(agent.AsyncAgent):
                 opt_filename))
 
     def get_stats_keys(self):
-        return ('average_value', 'average_entropy')
+        return ('average_value', 'average_entropy', 'average_kl')
 
     def get_stats_values(self):
-        return (self.average_value, self.average_entropy)
+        return (self.average_value, self.average_entropy, self.average_kl)
