@@ -238,7 +238,7 @@ class DiscreteACER(agent.AsyncAgent):
                                 1 - self.trust_region_c / rho_a[i],
                                 np.zeros_like(rho_a[i])) *
                             action_distrib.all_prob.data)
-                        correction_advantage = float(Q.data) - v
+                        correction_advantage = action_value.q_values.data - v
                     g_loss -= F.sum(correction_weight *
                                     action_distrib.all_log_prob *
                                     correction_advantage, axis=1)
