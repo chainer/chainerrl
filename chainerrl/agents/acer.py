@@ -348,7 +348,8 @@ class DiscreteACER(agent.AsyncAgent):
                     mu = transition['mu']
                     action_values[t] = action_value
                     rho[t] = action_distrib.prob(ba).data / mu.prob(ba).data
-                    rho_all[t] = action_distrib.all_prob.data / mu.all_prob.data
+                    rho_all[t] = (action_distrib.all_prob.data /
+                                  mu.all_prob.data)
                 last_transition = episode[-1]
                 if last_transition['is_state_terminal']:
                     R = 0
