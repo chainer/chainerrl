@@ -70,7 +70,9 @@ def main():
 
     if args.use_lstm:
         model = acer.ACERSharedModel(
-            shared=dqn_head.NIPSDQNHead(),
+            shared=Sequence(
+                dqn_head.NIPSDQNHead(),
+                L.LSTM(256, 256)),
             pi=Sequence(
                 L.Linear(256, n_actions),
                 SoftmaxDistribution),
@@ -80,9 +82,7 @@ def main():
         )
     else:
         model = acer.ACERSharedModel(
-            shared=Sequence(
-                dqn_head.NIPSDQNHead(),
-                L.LSTM(256, 256)),
+            shared=dqn_head.NIPSDQNHead(),
             pi=Sequence(
                 L.Linear(256, n_actions),
                 SoftmaxDistribution),
