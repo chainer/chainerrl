@@ -122,6 +122,7 @@ class DiscreteACER(agent.AsyncAgent):
                  trust_region_c=10,
                  trust_region_delta=1,
                  n_times_replay=8,
+                 replay_start_size=10 ** 4,
                  normalize_loss_by_steps=True,
                  act_deterministically=False,
                  average_entropy_decay=0.999,
@@ -153,6 +154,7 @@ class DiscreteACER(agent.AsyncAgent):
         self.trust_region_c = trust_region_c
         self.trust_region_delta = trust_region_delta
         self.n_times_replay = n_times_replay
+        self.replay_start_size = replay_start_size
         self.average_value_decay = average_value_decay
         self.average_entropy_decay = average_entropy_decay
         self.average_kl_decay = average_kl_decay
@@ -309,7 +311,7 @@ class DiscreteACER(agent.AsyncAgent):
 
     def update_from_replay(self):
 
-        if len(self.replay_buffer) == 0:
+        if len(self.replay_buffer) < self.replay_start_size:
             return
 
         episode = self.replay_buffer.sample_episodes(1, self.t_max)[0]
