@@ -312,7 +312,7 @@ class DiscreteACER(agent.AsyncAgent):
         if len(self.replay_buffer) == 0:
             return
 
-        episode = self.replay_buffer.sample_episodes(1, self.t_max + 1)[0]
+        episode = self.replay_buffer.sample_episodes(1, self.t_max)[0]
 
         with state_reset(self.model):
             with state_reset(self.shared_average_model):
