@@ -192,7 +192,7 @@ class DiscreteACER(agent.AsyncAgent):
 
     def update(self, t_start, t_stop, R, states, actions, rewards, values,
                action_values, action_log_probs, action_entropy,
-               action_distribs, avg_action_distribs, rho=None, rho_a=None):
+               action_distribs, avg_action_distribs, rho=None, rho_all=None):
 
         pi_loss = 0
         Q_loss = 0
@@ -235,8 +235,8 @@ class DiscreteACER(agent.AsyncAgent):
                     with chainer.no_backprop_mode():
                         correction_weight = (
                             np.maximum(
-                                1 - self.trust_region_c / rho_a[i],
-                                np.zeros_like(rho_a[i])) *
+                                1 - self.trust_region_c / rho_all[i],
+                                np.zeros_like(rho_all[i])) *
                             action_distrib.all_prob.data)
                         correction_advantage = action_value.q_values.data - v
                     g_loss -= F.sum(correction_weight *
@@ -324,7 +324,7 @@ class DiscreteACER(agent.AsyncAgent):
                 action_distribs = {}
                 avg_action_distribs = {}
                 rho = {}
-                rho_a = {}
+                rho_all = {}
                 action_values = {}
                 values = {}
                 for t, transition in enumerate(episode):
@@ -348,7 +348,7 @@ class DiscreteACER(agent.AsyncAgent):
                     mu = transition['mu']
                     action_values[t] = action_value
                     rho[t] = action_distrib.prob(ba).data / mu.prob(ba).data
-                    rho_a[t] = action_distrib.all_prob.data / mu.all_prob.data
+                    rho_all[t] = action_distrib.all_prob.data / mu.all_prob.data
                 last_transition = episode[-1]
                 if last_transition['is_state_terminal']:
                     R = 0
@@ -370,7 +370,7 @@ class DiscreteACER(agent.AsyncAgent):
                     action_distribs=action_distribs,
                     avg_action_distribs=avg_action_distribs,
                     rho=rho,
-                    rho_a=rho_a,
+                    rho_all=rho_all,
                     action_values=action_values)
 
     def update_on_policy(self, statevar):
