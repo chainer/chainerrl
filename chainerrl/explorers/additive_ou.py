@@ -22,7 +22,7 @@ class AdditiveOU(explorer.Explorer):
     Args:
         mu (float): Mean of the OU process
         theta (float): Friction to pull towards the mean
-        sigma (float): Scale of noise
+        sigma (float or ndarray): Scale of noise
         start_with_mu (bool): Start the process without noise
     """
 
