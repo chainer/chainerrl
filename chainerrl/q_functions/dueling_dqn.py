@@ -12,10 +12,10 @@ from chainer import links as L
 
 from chainerrl import action_value
 from chainerrl.links.mlp import MLP
-from chainerrl import q_function
+from chainerrl.q_function import StateQFunction
 
 
-class DuelingDQN(chainer.Chain, q_function.StateQFunction):
+class DuelingDQN(chainer.Chain, StateQFunction):
 
     def __init__(self, n_actions, n_input_channels=4,
                  activation=F.relu, bias=0.1):

@@ -24,3 +24,5 @@ class StateActionQFunction(with_metaclass(ABCMeta, object)):
     @abstractmethod
     def __call__(self, x, a, test=False):
         raise NotImplementedError()
+
+from chainerrl.q_functions import *  # NOQA
