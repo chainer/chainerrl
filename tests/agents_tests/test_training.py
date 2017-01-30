@@ -71,6 +71,7 @@ class _TestTraining(unittest.TestCase):
         agent.replay_buffer.save(self.rbuf_filename)
 
     @testing.attr.slow
+    @testing.attr.gpu
     def test_training_gpu(self):
         self._test_training(0, steps=100000)
         self._test_training(0, steps=0, load_model=True)
@@ -78,3 +79,4 @@ class _TestTraining(unittest.TestCase):
     @testing.attr.slow
     def test_training_cpu(self):
         self._test_training(-1, steps=100000)
+        self._test_training(-1, steps=0, load_model=True)
