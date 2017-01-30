@@ -5,7 +5,8 @@ python:
   - "3.5.1"
 # command to install dependencies
 install:
-  - pip install -r requirements.txt
+  - pip install --upgrade pip setuptools wheel
+  - pip install -r requirements.txt --only-binary=numpy,scipy
   - pip install atari_py
   - pip install hacking
 # command to run tests
