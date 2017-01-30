@@ -10,7 +10,6 @@ import os
 import tempfile
 import unittest
 
-from chainer import cuda
 from chainer import testing
 
 from chainerrl.experiments import train_agent
@@ -62,8 +61,6 @@ class _TestTraining(unittest.TestCase):
             reward = 0.0
             while not done:
                 action = agent.act(obs)
-                if isinstance(action, cuda.cupy.ndarray):
-                    action = cuda.to_cpu(action)
                 obs, reward, done, _ = test_env.step(action)
                 total_r += reward
             agent.stop_episode()
