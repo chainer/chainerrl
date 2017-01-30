@@ -10,6 +10,7 @@ install:
   - pip install -r requirements.txt --only-binary=numpy,scipy
   - pip install atari_py
   - pip install hacking
+  - python setup.py develop
 # command to run tests
 script:
   - flake8 .
