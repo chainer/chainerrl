@@ -5,9 +5,9 @@ from __future__ import absolute_import
 from builtins import *  # NOQA
 from future import standard_library
 standard_library.install_aliases()
-import inspect
 
 import chainer
+import funcsigs
 
 from chainerrl.recurrent import RecurrentChainMixin
 
@@ -17,8 +17,10 @@ class Sequence(chainer.ChainList, RecurrentChainMixin):
     def __init__(self, *layers):
         self.layers = layers
         links = [layer for layer in layers if isinstance(layer, chainer.Link)]
-        # Cache the results because getargspec is slow
-        self.argnames = [set(inspect.getargspec(layer)[0])
+        # Cache the signatures because it might be slow
+        self.argnames = [set(funcsigs.signature(layer).parameters)
+                         for layer in layers]
+        self.argnames = [set(funcsigs.signature(layer).parameters)
                          for layer in layers]
         super().__init__(*links)
 

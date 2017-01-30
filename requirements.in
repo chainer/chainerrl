@@ -2,6 +2,7 @@ atari_py
 cached-property
 chainer
 fastcache
+funcsigs
 future
 futures
 gym

@@ -11,6 +11,7 @@ chainer==1.20.0.1
 docutils==0.13.1          # via statistics
 fastcache==1.0.2
 filelock==2.0.7           # via chainer
+funcsigs==1.0.2
 future==0.16.0
 futures==3.0.5
 gym==0.7.2
