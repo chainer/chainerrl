@@ -100,18 +100,18 @@ def main():
 
     action_size = np.asarray(action_space.shape).prod()
     if args.use_bn:
-        q_func = q_function.FCSAQFunction(
+        q_func = q_function.FCBNLateActionSAQFunction(
             obs_size, action_size,
             n_hidden_channels=args.n_hidden_channels,
             n_hidden_layers=args.n_hidden_layers,
-            normalize_input=False)
-        pi = policy.FCDeterministicPolicy(
+            normalize_input=True)
+        pi = policy.FCBNDeterministicPolicy(
             obs_size, action_size=action_size,
             n_hidden_channels=args.n_hidden_channels,
             n_hidden_layers=args.n_hidden_layers,
             min_action=action_space.low, max_action=action_space.high,
             bound_action=True,
-            normalize_input=False)
+            normalize_input=True)
     else:
         q_func = q_function.FCSAQFunction(
             obs_size, action_size,
