@@ -12,6 +12,7 @@ docutils==0.13.1          # via statistics
 fastcache==1.0.2
 filelock==2.0.7           # via chainer
 future==0.16.0
+futures==3.0.5
 gym==0.7.2
 nose==1.3.7               # via chainer
 numpy==1.12.0             # via atari-py, chainer, gym

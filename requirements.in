@@ -3,6 +3,7 @@ cached-property
 chainer
 fastcache
 future
+futures
 gym
 scipy
 statistics
