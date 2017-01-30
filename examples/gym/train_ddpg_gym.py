@@ -24,7 +24,7 @@ from chainerrl.misc import env_modifiers
 from chainerrl.misc.init_like_torch import init_like_torch
 from chainerrl.misc import random_seed
 from chainerrl import policy
-from chainerrl import q_function
+from chainerrl import q_functions
 from chainerrl import replay_buffer
 
 
@@ -100,7 +100,7 @@ def main():
 
     action_size = np.asarray(action_space.shape).prod()
     if args.use_bn:
-        q_func = q_function.FCBNLateActionSAQFunction(
+        q_func = q_functions.FCBNLateActionSAQFunction(
             obs_size, action_size,
             n_hidden_channels=args.n_hidden_channels,
             n_hidden_layers=args.n_hidden_layers,
@@ -113,7 +113,7 @@ def main():
             bound_action=True,
             normalize_input=True)
     else:
-        q_func = q_function.FCSAQFunction(
+        q_func = q_functions.FCSAQFunction(
             obs_size, action_size,
             n_hidden_channels=args.n_hidden_channels,
             n_hidden_layers=args.n_hidden_layers)

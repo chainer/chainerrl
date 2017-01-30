@@ -18,7 +18,7 @@ from chainerrl.envs.abc import ABC
 from chainerrl.experiments.train_agent import train_agent
 from chainerrl import explorers
 from chainerrl import policies
-from chainerrl import q_function
+from chainerrl import q_functions
 from chainerrl import replay_buffer
 from chainerrl import v_function
 
@@ -52,13 +52,13 @@ def create_state_q_function_for_env(env):
     assert isinstance(env.observation_space, gym.spaces.Box)
     ndim_obs = env.observation_space.low.size
     if isinstance(env.action_space, gym.spaces.Discrete):
-        return q_function.FCStateQFunctionWithDiscreteAction(
+        return q_functions.FCStateQFunctionWithDiscreteAction(
             ndim_obs=ndim_obs,
             n_actions=env.action_space.n,
             n_hidden_channels=200,
             n_hidden_layers=2)
     elif isinstance(env.action_space, gym.spaces.Box):
-        return q_function.FCSIContinuousQFunction(
+        return q_functions.FCSIContinuousQFunction(
             n_input_channels=ndim_obs,
             n_dim_action=env.action_space.low.size,
             n_hidden_channels=200,
@@ -72,7 +72,7 @@ def create_state_action_q_function_for_env(env):
     assert isinstance(env.observation_space, gym.spaces.Box)
     assert isinstance(env.action_space, gym.spaces.Box)
     ndim_obs = env.observation_space.low.size
-    return q_function.FCSAQFunction(
+    return q_functions.FCSAQFunction(
         n_dim_obs=ndim_obs,
         n_dim_action=env.action_space.low.size,
         n_hidden_channels=200,

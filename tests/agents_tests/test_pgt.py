@@ -19,7 +19,7 @@ from chainerrl.envs.abc import ABC
 from chainerrl.explorers.epsilon_greedy import LinearDecayEpsilonGreedy
 from chainerrl.misc import random_seed
 from chainerrl.policies import FCGaussianPolicy
-from chainerrl.q_function import FCBNLateActionSAQFunction
+from chainerrl.q_functions import FCBNLateActionSAQFunction
 from chainerrl import replay_buffer
 
 
