@@ -6,6 +6,7 @@ python:
 # command to install dependencies
 install:
   - pip install -r requirements.txt
+  - pip install atari_py
   - pip install hacking
 # command to run tests
 script:
