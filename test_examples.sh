@@ -30,7 +30,7 @@ python examples/gym/train_a3c_gym.py 4 --steps 100 --outdir $outdir/gym/a3c
 model=$(find $outdir/gym/a3c -name "*_finish")
 python examples/gym/train_a3c_gym.py 4 --demo --load $model --eval-n-runs 1
 
-# gym/ddpg
-python examples/gym/train_ddpg_gym.py --steps 100 --replay-start-size 50 --minibatch-size 32 --outdir $outdir/gym/ddpg
+# gym/ddpg (specify non-mujoco env to test without mujoco)
+python examples/gym/train_ddpg_gym.py --steps 100 --replay-start-size 50 --minibatch-size 32 --outdir $outdir/gym/ddpg --env Pendulum-v0
 model=$(find $outdir/gym/ddpg -name "*_finish")
-python examples/gym/train_ddpg_gym.py --demo --load $model --eval-n-runs 1
+python examples/gym/train_ddpg_gym.py --demo --load $model --eval-n-runs 1 --env Pendulum-v0
