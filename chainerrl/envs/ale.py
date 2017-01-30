@@ -45,7 +45,8 @@ class ALE(env.Env):
         ale.setFloat(b'repeat_action_probability', 0.0)
         ale.setBool(b'color_averaging', False)
         if record_screen_dir is not None:
-            ale.setString(b'record_screen_dir', str.encode(record_screen_dir))
+            ale.setString(b'record_screen_dir',
+                          str.encode(str(record_screen_dir)))
         self.frame_skip = frame_skip
         if use_sdl:
             if 'DISPLAY' not in os.environ:
@@ -60,7 +61,7 @@ class ALE(env.Env):
                 ale.setBool(b'sound', True)
             ale.setBool(b'display_screen', True)
 
-        ale.loadROM(str.encode(game_path))
+        ale.loadROM(str.encode(str(game_path)))
 
         assert ale.getFrameNumber() == 0
 
