@@ -11,5 +11,5 @@ install:
 # command to run tests
 script:
   - flake8 .
-  - nosetests -a '!gpu'
+  - nosetests -a '!gpu' -x
   - ./test_examples.sh
