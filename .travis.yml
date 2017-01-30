@@ -15,4 +15,4 @@ install:
 script:
   - flake8 .
   - nosetests -a '!gpu' -x
-  - ./test_examples.sh
+  - ./test_examples.sh -1
