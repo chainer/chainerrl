@@ -19,7 +19,7 @@ from chainerrl.agents.ddpg import DDPGModel
 from chainerrl.experiments.evaluator import eval_performance
 from chainerrl.experiments.prepare_output_dir import prepare_output_dir
 from chainerrl.experiments.train_agent import train_agent_with_evaluation
-from chainerrl.explorers.additive_gaussian import AdditiveGaussian
+from chainerrl.explorers.additive_ou import AdditiveOU
 from chainerrl.misc import env_modifiers
 from chainerrl.misc.init_like_torch import init_like_torch
 from chainerrl.misc import random_seed
@@ -39,22 +39,28 @@ def main():
     parser.add_argument('--gpu', type=int, default=0)
     parser.add_argument('--final-exploration-steps',
                         type=int, default=10 ** 6)
-    parser.add_argument('--start-epsilon', type=float, default=0.4)
-    parser.add_argument('--end-epsilon', type=float, default=0.3)
+    parser.add_argument('--actor-lr', type=float, default=1e-4)
+    parser.add_argument('--critic-lr', type=float, default=1e-3)
     parser.add_argument('--load', type=str, default='')
     parser.add_argument('--steps', type=int, default=10 ** 7)
+    parser.add_argument('--n-hidden-channels', type=int, default=300)
+    parser.add_argument('--n-hidden-layers', type=int, default=3)
     parser.add_argument('--replay-start-size', type=int, default=5000)
+    parser.add_argument('--n-update-times', type=int, default=1)
     parser.add_argument('--target-update-frequency',
-                        type=int, default=5000)
-    parser.add_argument('--update-frequency', type=int, default=1000)
+                        type=int, default=1)
+    parser.add_argument('--target-update-method',
+                        type=str, default='soft', choices=['hard', 'soft'])
+    parser.add_argument('--soft-update-tau', type=float, default=1e-2)
+    parser.add_argument('--update-frequency', type=int, default=4)
     parser.add_argument('--eval-n-runs', type=int, default=100)
     parser.add_argument('--eval-frequency', type=int, default=10 ** 5)
     parser.add_argument('--gamma', type=float, default=0.995)
     parser.add_argument('--minibatch-size', type=int, default=200)
     parser.add_argument('--render', action='store_true')
     parser.add_argument('--demo', action='store_true')
+    parser.add_argument('--use-bn', action='store_true', default=False)
     parser.add_argument('--reward-scale-factor', type=float, default=1e-2)
-    parser.set_defaults(window_visible=True)
     args = parser.parse_args()
 
     if args.seed is not None:
@@ -93,24 +99,39 @@ def main():
     print('Output files are saved in {}'.format(args.outdir))
 
     action_size = np.asarray(action_space.shape).prod()
-    model = DDPGModel(
-        q_func=q_function.FCBNSAQFunction(
-            obs_size, action_size, n_hidden_channels=300, n_hidden_layers=3),
-        policy=policy.FCBNDeterministicPolicy(
+    if args.use_bn:
+        q_func = q_function.FCSAQFunction(
+            obs_size, action_size,
+            n_hidden_channels=args.n_hidden_channels,
+            n_hidden_layers=args.n_hidden_layers,
+            normalize_input=False)
+        pi = policy.FCDeterministicPolicy(
             obs_size, action_size=action_size,
-            n_hidden_layers=2, n_hidden_channels=300,
+            n_hidden_channels=args.n_hidden_channels,
+            n_hidden_layers=args.n_hidden_layers,
+            min_action=action_space.low, max_action=action_space.high,
+            bound_action=True,
+            normalize_input=False)
+    else:
+        q_func = q_function.FCSAQFunction(
+            obs_size, action_size,
+            n_hidden_channels=args.n_hidden_channels,
+            n_hidden_layers=args.n_hidden_layers)
+        pi = policy.FCDeterministicPolicy(
+            obs_size, action_size=action_size,
+            n_hidden_channels=args.n_hidden_channels,
+            n_hidden_layers=args.n_hidden_layers,
             min_action=action_space.low, max_action=action_space.high,
             bound_action=True)
-    )
+    model = DDPGModel(q_func=q_func, policy=pi)
     init_like_torch(model['q_function'])
     init_like_torch(model['policy'])
-    opt_a = optimizers.Adam(alpha=1e-5)
-    opt_c = optimizers.Adam(alpha=1e-3)
+    opt_a = optimizers.Adam(alpha=args.actor_lr)
+    opt_c = optimizers.Adam(alpha=args.critic_lr)
     opt_a.setup(model['policy'])
     opt_c.setup(model['q_function'])
     opt_a.add_hook(chainer.optimizer.GradientClipping(1.0), 'hook_a')
     opt_c.add_hook(chainer.optimizer.GradientClipping(1.0), 'hook_c')
-    # opt_c.add_hook(chainer.optimizer.WeightDecay(1e-4))
 
     rbuf = replay_buffer.ReplayBuffer(5 * 10 ** 5)
 
@@ -123,12 +144,15 @@ def main():
             a = a.astype(np.float32)
         return a
 
-    explorer = AdditiveGaussian(scale=0.4)
+    ou_sigma = (action_space.high - action_space.low) * 0.2
+    explorer = AdditiveOU(sigma=ou_sigma)
     agent = DDPG(model, opt_a, opt_c, rbuf, gamma=args.gamma,
                  explorer=explorer, replay_start_size=args.replay_start_size,
+                 target_update_method=args.target_update_method,
                  target_update_frequency=args.target_update_frequency,
                  update_frequency=args.update_frequency,
-                 n_times_update=10,
+                 soft_update_tau=args.soft_update_tau,
+                 n_times_update=args.n_update_times,
                  phi=phi, gpu=args.gpu, minibatch_size=args.minibatch_size)
     agent.logger.setLevel(logging.DEBUG)
 
