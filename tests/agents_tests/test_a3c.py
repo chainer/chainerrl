@@ -22,18 +22,18 @@ from chainerrl import policies
 from chainerrl import v_function
 
 
-@testing.parameterize(
-    *testing.product({
+@testing.parameterize(*(
+    testing.product({
         't_max': [1, 2],
         'use_lstm': [False],
         'episodic': [True, False],
-    }),
-    *testing.product({
+    }) +
+    testing.product({
         't_max': [5],
         'use_lstm': [True, False],
         'episodic': [True, False],
-    }),
-)
+    })
+))
 class TestA3C(unittest.TestCase):
 
     def setUp(self):
