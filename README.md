@@ -1,6 +1,6 @@
-# Chainer-RL
+# ChainerRL
 
-Chainer-RL is a deep reinforcement learning library built on top of Chainer.
+ChainerRL is a deep reinforcement learning library built on top of Chainer.
 
 ## Requirements
 
