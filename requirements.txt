@@ -20,6 +20,7 @@ protobuf==3.1.0.post1     # via chainer
 pyglet==1.2.4             # via gym
 pyparsing==2.1.10         # via packaging
 requests==2.13.0          # via gym
+scipy==0.18.1
 six==1.10.0               # via atari-py, chainer, gym, packaging, protobuf, setuptools
 statistics==1.0.3.5
 

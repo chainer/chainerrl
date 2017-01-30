@@ -4,4 +4,5 @@ chainer
 fastcache
 future
 gym
+scipy
 statistics
