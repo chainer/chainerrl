@@ -10,6 +10,6 @@ install:
   - pip install hacking
 # command to run tests
 script:
-  - flake8
-  - nosetests -a '!gpu,!slow'
-  - test_examples.sh
+  - flake8 .
+  - nosetests -a '!gpu'
+  - ./test_examples.sh
