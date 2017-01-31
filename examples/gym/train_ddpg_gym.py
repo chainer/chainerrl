@@ -8,7 +8,6 @@ import argparse
 import sys
 
 import chainer
-from chainer import cuda
 from chainer import optimizers
 import gym
 from gym import spaces
@@ -67,8 +66,6 @@ def main():
         random_seed.set_random_seed(args.seed)
 
     def clip_action_filter(a):
-        if isinstance(a, cuda.cupy.ndarray):
-            a = cuda.to_cpu(a)
         return np.clip(a, action_space.low, action_space.high)
 
     def reward_filter(r):
