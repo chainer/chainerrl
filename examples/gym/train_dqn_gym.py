@@ -9,7 +9,6 @@ standard_library.install_aliases()
 import argparse
 import sys
 
-from chainer import cuda
 from chainer import optimizers
 import gym
 gym.undo_logger_setup()
