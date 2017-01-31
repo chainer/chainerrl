@@ -23,7 +23,8 @@ class PGT(dqn.DQN):
     """
 
     def __init__(self, model, actor_optimizer, critic_optimizer, replay_buffer,
-                 gamma, explorer, beta=1e-2, **kwargs):
+                 gamma, explorer, beta=1e-2, act_deterministically=False,
+                 **kwargs):
         super().__init__(model, None, replay_buffer, gamma, explorer, **kwargs)
 
         # Aliases for convenience
@@ -35,6 +36,7 @@ class PGT(dqn.DQN):
         self.actor_optimizer = actor_optimizer
         self.critic_optimizer = critic_optimizer
         self.beta = beta
+        self.act_deterministically = act_deterministically
 
         self.average_actor_loss = 0.0
         self.average_critic_loss = 0.0
@@ -110,7 +112,10 @@ class PGT(dqn.DQN):
     def act(self, state):
 
         s = self._batch_states([state])
-        action = self.policy(s, test=True).sample()
+        if self.act_deterministically:
+            action = self.policy(s, test=True).most_probable
+        else:
+            action = self.policy(s, test=True).sample()
         # Q is not needed here, but log it just for information
         q = self.q_function(s, action, test=True)
 

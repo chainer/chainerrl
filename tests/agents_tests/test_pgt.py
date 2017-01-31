@@ -6,60 +6,26 @@ from builtins import *  # NOQA
 from future import standard_library
 standard_library.install_aliases()
 
-import unittest
-
 import chainer
-from chainer import cuda
+from chainer import functions as F
+from chainer import links as L
 from chainer import optimizers
-from chainer import testing
 import numpy as np
 
 from chainerrl.agents.pgt import PGT
 from chainerrl.envs.abc import ABC
 from chainerrl.explorers.epsilon_greedy import LinearDecayEpsilonGreedy
-from chainerrl.misc import random_seed
-from chainerrl.policies import FCGaussianPolicy
-from chainerrl.q_function import FCBNLateActionSAQFunction
+from chainerrl.links import Sequence
+from chainerrl import policies
+from chainerrl import q_function
 from chainerrl import replay_buffer
 
+from test_training import _TestTraining
 
-class TestPGT(unittest.TestCase):
 
-    def setUp(self):
-        import logging
-        logging.basicConfig(level=logging.DEBUG)
+class _TestPGTOnABC(_TestTraining):
 
-    def make_model(self, env):
-        ndim_obs = env.observation_space.low.size
-        ndim_action = env.action_space.low.size
-        policy = FCGaussianPolicy(n_input_channels=ndim_obs,
-                                  n_hidden_layers=2,
-                                  n_hidden_channels=50,
-                                  action_size=ndim_action,
-                                  min_action=env.action_space.low,
-                                  max_action=env.action_space.high)
-
-        q_func = FCBNLateActionSAQFunction(n_dim_obs=ndim_obs,
-                                           n_dim_action=ndim_action,
-                                           n_hidden_layers=2,
-                                           n_hidden_channels=50)
-
-        return chainer.Chain(policy=policy, q_function=q_func)
-
-    def _test_abc(self, gpu):
-
-        random_seed.set_random_seed(0)
-
-        env = ABC(discrete=False)
-
-        def random_action_func():
-            a = env.action_space.sample()
-            return a.astype(np.float32)
-
-        explorer = LinearDecayEpsilonGreedy(
-            1.0, 0.1, 1000, random_action_func)
-        # explorer = ConstantEpsilonGreedy(0, random_action_func)
-
+    def make_agent(self, env, gpu):
         model = self.make_model(env)
         policy = model['policy']
         q_func = model['q_function']
@@ -70,58 +36,108 @@ class TestPGT(unittest.TestCase):
         critic_opt = optimizers.Adam(alpha=1e-3)
         critic_opt.setup(q_func)
 
-        rbuf = replay_buffer.ReplayBuffer(10 ** 5)
+        explorer = self.make_explorer(env)
+        rbuf = self.make_replay_buffer(env)
+        return self.make_pgt_agent(env=env, model=model,
+                                   actor_opt=actor_opt, critic_opt=critic_opt,
+                                   explorer=explorer, rbuf=rbuf, gpu=gpu)
 
-        agent = PGT(model, actor_opt, critic_opt, rbuf, gpu=gpu, gamma=0.9,
-                    explorer=explorer, replay_start_size=100,
-                    target_update_method='soft', target_update_frequency=1)
+    def make_pgt_agent(self, env, model, actor_opt, critic_opt, explorer,
+                       rbuf, gpu):
+        raise NotImplementedError()
 
-        total_r = 0
-        episode_r = 0
-
-        obs = env.reset()
-        done = False
-        reward = 0.0
-
-        # Train
-        t = 0
-        while t < 5000:
-            episode_r += reward
-            total_r += reward
-
-            if done:
-                agent.stop_episode_and_train(obs, reward, done=done)
-                print(('t:{} explorer:{} episode_r:{}'.format(
-                    t, agent.explorer, episode_r)))
-                episode_r = 0
-                obs = env.reset()
-                done = False
-                reward = 0.0
+    def make_explorer(self, env):
+        def random_action_func():
+            a = env.action_space.sample()
+            if isinstance(a, np.ndarray):
+                return a.astype(np.float32)
             else:
-                action = agent.act_and_train(obs, reward)
-                obs, reward, done, _ = env.step(action)
-                t += 1
+                return a
+        return LinearDecayEpsilonGreedy(1.0, 0.2, 1000, random_action_func)
 
-        # Test
-        total_r = 0.0
-        obs = env.reset()
-        done = False
-        reward = 0.0
-        while not done:
-            s = np.expand_dims(obs, 0)
-            if gpu >= 0:
-                s = cuda.to_gpu(s, device=gpu)
-            action = policy(chainer.Variable(s), test=True).sample().data[0]
-            if isinstance(action, cuda.cupy.ndarray):
-                action = cuda.to_cpu(action)
-            obs, reward, done, _ = env.step(action)
-            total_r += reward
-        self.assertAlmostEqual(total_r, 1)
+    def make_replay_buffer(self, env):
+        return replay_buffer.ReplayBuffer(10 ** 5)
 
-    @testing.attr.slow
-    def test_abc_continuous_gpu(self):
-        self._test_abc(0)
 
-    @testing.attr.slow
-    def test_abc_continuous_cpu(self):
-        self._test_abc(-1)
+class _TestPGTOnContinuousPOABC(_TestPGTOnABC):
+
+    def make_model(self, env):
+        n_dim_obs = env.observation_space.low.size
+        n_dim_action = env.action_space.low.size
+        n_hidden_channels = 50
+        policy = Sequence(
+            L.Linear(n_dim_obs, n_hidden_channels),
+            F.relu,
+            L.Linear(n_hidden_channels, n_hidden_channels),
+            F.relu,
+            L.LSTM(n_hidden_channels, n_hidden_channels),
+            policies.FCGaussianPolicy(
+                n_input_channels=n_hidden_channels,
+                action_size=n_dim_action,
+                min_action=env.action_space.low,
+                max_action=env.action_space.high)
+        )
+
+        q_func = q_function.FCLSTMSAQFunction(
+            n_dim_obs=n_dim_obs,
+            n_dim_action=n_dim_action,
+            n_hidden_layers=2,
+            n_hidden_channels=n_hidden_channels)
+
+        return chainer.Chain(policy=policy, q_function=q_func)
+
+    def make_env_and_successful_return(self, test):
+        return ABC(discrete=False, partially_observable=True,
+                   deterministic=test), 1
+
+    def make_replay_buffer(self, env):
+        return replay_buffer.EpisodicReplayBuffer(10 ** 5)
+
+
+class _TestPGTOnContinuousABC(_TestPGTOnABC):
+
+    def make_model(self, env):
+        n_dim_obs = env.observation_space.low.size
+        n_dim_action = env.action_space.low.size
+        n_hidden_channels = 50
+
+        policy = policies.FCGaussianPolicy(
+            n_input_channels=n_dim_obs,
+            n_hidden_layers=2,
+            n_hidden_channels=n_hidden_channels,
+            action_size=n_dim_action,
+            min_action=env.action_space.low,
+            max_action=env.action_space.high)
+
+        q_func = q_function.FCSAQFunction(
+            n_dim_obs=n_dim_obs,
+            n_dim_action=n_dim_action,
+            n_hidden_layers=2,
+            n_hidden_channels=n_hidden_channels)
+
+        return chainer.Chain(policy=policy, q_function=q_func)
+
+    def make_env_and_successful_return(self, test):
+        return ABC(discrete=False, deterministic=test), 1
+
+
+# Currently PGT does not support recurrent models
+# class TestPGTOnContinuousPOABC(_TestPGTOnContinuousPOABC):
+#
+#     def make_pgt_agent(self, env, model, actor_opt, critic_opt, explorer,
+#                        rbuf, gpu):
+#         return PGT(model, actor_opt, critic_opt, rbuf, gpu=gpu, gamma=0.9,
+#                    explorer=explorer, replay_start_size=100,
+#                    target_update_method='soft', target_update_frequency=1,
+#                    episodic_update=True, update_frequency=1,
+#                    act_deterministically=True)
+
+
+class TestPGTOnContinuousABC(_TestPGTOnContinuousABC):
+
+    def make_pgt_agent(self, env, model, actor_opt, critic_opt, explorer,
+                       rbuf, gpu):
+        return PGT(model, actor_opt, critic_opt, rbuf, gpu=gpu, gamma=0.9,
+                   explorer=explorer, replay_start_size=100,
+                   target_update_method='soft', target_update_frequency=1,
+                   episodic_update=False, act_deterministically=True)
