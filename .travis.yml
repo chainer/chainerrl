@@ -9,6 +9,12 @@ install:
   - pip install -r requirements.txt --only-binary=numpy,scipy
   - pip install atari_py
   - pip install hacking
+  - git clone https://github.com/mgbellemare/Arcade-Learning-Environment.git
+  - cd Arcade-Learning-Environment
+  - cmake -DUSE_SDL=OFF -DUSE_RLGLUE=OFF -DBUILD_EXAMPLES=OFF
+  - make
+  - python setup.py install
+  - cd ..
   - python setup.py develop
 # command to run tests
 script:
