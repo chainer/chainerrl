@@ -6,5 +6,6 @@ funcsigs
 future
 futures
 gym
+pillow
 scipy
 statistics
