@@ -18,6 +18,8 @@ install:
   - python setup.py develop
 # command to run tests
 script:
-  - flake8 .
-  - nosetests -a '!gpu' -x
+  - flake8 chainerrl
+  - flake8 tests
+  - flake8 examples
+  - nosetests -a '!gpu' -x tests
   - ./test_examples.sh -1
