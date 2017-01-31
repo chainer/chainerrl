@@ -21,5 +21,5 @@ script:
   - flake8 chainerrl
   - flake8 tests
   - flake8 examples
-  - travis_wait 30 nosetests -a '!gpu' -xv tests
+  - nosetests -a '!gpu,!slow' -x tests
   - ./test_examples.sh -1
