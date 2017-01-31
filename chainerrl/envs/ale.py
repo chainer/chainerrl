@@ -8,14 +8,31 @@ standard_library.install_aliases()
 import collections
 import os
 import sys
+import warnings
 
 from ale_python_interface import ALEInterface
 import atari_py
-import cv2
 import numpy as np
 
 from chainerrl import env
 from chainerrl import spaces
+
+
+try:
+    import cv2
+
+    def imresize(img, size):
+        return cv2.resize(img, size, interpolation=cv2.INTER_LINEAR)
+
+except Exception:
+    from PIL import Image
+
+    warnings.warn(
+        'Since cv2 is not available PIL will be used instead to resize images.'
+        ' This might affect the resulting images.')
+
+    def imresize(img, size):
+        return np.asarray(Image.fromarray(img).resize(size, Image.BILINEAR))
 
 
 class ALE(env.Env):
@@ -91,8 +108,7 @@ class ALE(env.Env):
         assert img.shape == (210, 160)
         if self.crop_or_scale == 'crop':
             # Shrink (210, 160) -> (110, 84)
-            img = cv2.resize(img, (84, 110),
-                             interpolation=cv2.INTER_LINEAR)
+            img = imresize(img, (84, 110))
             assert img.shape == (110, 84)
             # Crop (110, 84) -> (84, 84)
             unused_height = 110 - 84
@@ -100,8 +116,7 @@ class ALE(env.Env):
             top_crop = unused_height - bottom_crop
             img = img[top_crop: 110 - bottom_crop, :]
         elif self.crop_or_scale == 'scale':
-            img = cv2.resize(img, (84, 84),
-                             interpolation=cv2.INTER_LINEAR)
+            img = imresize(img, (84, 84))
         else:
             raise RuntimeError('crop_or_scale must be either crop or scale')
         assert img.shape == (84, 84)
