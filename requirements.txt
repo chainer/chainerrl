@@ -1,7 +1,7 @@
 atari_py
 cached-property
 chainer
-fastcache
+fastcache; python_version<'3.2'
 funcsigs; python_version<'3.5'
 future
 futures; python_version<'3.2'
