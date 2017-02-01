@@ -23,10 +23,10 @@ from chainerrl.experiments.train_agent import train_agent_with_evaluation
 from chainerrl.explorers.epsilon_greedy import ConstantEpsilonGreedy
 from chainerrl.explorers.epsilon_greedy import LinearDecayEpsilonGreedy
 from chainerrl.links import dqn_head
-from chainerrl.q_functions import DuelingDQN
 from chainerrl.links import sequence
 from chainerrl.misc.init_like_torch import init_like_torch
 from chainerrl.misc import random_seed
+from chainerrl.q_functions import DuelingDQN
 from chainerrl import replay_buffer
 
 from dqn_phi import dqn_phi
