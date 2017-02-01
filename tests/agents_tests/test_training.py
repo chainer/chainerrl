@@ -10,7 +10,6 @@ import os
 import tempfile
 import unittest
 
-from chainer import cuda
 from chainer import testing
 
 from chainerrl.experiments import train_agent
@@ -48,7 +47,7 @@ class _TestTraining(unittest.TestCase):
         # Train
         train_agent.train_agent_with_evaluation(
             agent=agent, env=env, steps=steps, outdir=self.tmpdir,
-            eval_frequency=500, eval_n_runs=5, successful_score=1,
+            eval_frequency=200, eval_n_runs=5, successful_score=1,
             eval_env=test_env)
 
         agent.stop_episode()
@@ -62,8 +61,6 @@ class _TestTraining(unittest.TestCase):
             reward = 0.0
             while not done:
                 action = agent.act(obs)
-                if isinstance(action, cuda.cupy.ndarray):
-                    action = cuda.to_cpu(action)
                 obs, reward, done, _ = test_env.step(action)
                 total_r += reward
             agent.stop_episode()
@@ -74,6 +71,7 @@ class _TestTraining(unittest.TestCase):
         agent.replay_buffer.save(self.rbuf_filename)
 
     @testing.attr.slow
+    @testing.attr.gpu
     def test_training_gpu(self):
         self._test_training(0, steps=100000)
         self._test_training(0, steps=0, load_model=True)
@@ -81,3 +79,4 @@ class _TestTraining(unittest.TestCase):
     @testing.attr.slow
     def test_training_cpu(self):
         self._test_training(-1, steps=100000)
+        self._test_training(-1, steps=0, load_model=True)

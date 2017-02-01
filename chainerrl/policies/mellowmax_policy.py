@@ -12,10 +12,10 @@ logger = getLogger(__name__)
 import chainer
 
 from chainerrl import distribution
-from chainerrl import policy
+from chainerrl.policy import Policy
 
 
-class MellowmaxPolicy(chainer.Chain, policy.Policy):
+class MellowmaxPolicy(chainer.Chain, Policy):
     """Mellowmax policy.
 
     See: http://arxiv.org/abs/1612.05628

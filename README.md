@@ -1,10 +1,10 @@
-# Chainer-RL
+# ChainerRL
 
-Chainer-RL is a deep reinforcement learning library built on top of Chainer.
+ChainerRL is a deep reinforcement learning library built on top of Chainer.
 
 ## Requirements
 
-- Python 2.7.6+, 3.4.3+, 3.5.1+
+- Python 2.7.6+, 3.5.1+
 - Chainer 1.20.1+
 - cached-property
 - fastcache
