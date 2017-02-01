@@ -4,7 +4,7 @@ chainer
 fastcache
 funcsigs; python_version<='3.5'
 future
-futures
+futures; python_version<='3.2'
 gym
 numpy>=1.10.4
 pillow
