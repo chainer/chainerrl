@@ -19,8 +19,8 @@ from chainerrl.envs.abc import ABC
 from chainerrl.experiments.train_agent_async import train_agent_async
 from chainerrl.explorers.epsilon_greedy import ConstantEpsilonGreedy
 from chainerrl.optimizers import rmsprop_async
-from chainerrl.q_function import FCLSTMStateQFunction
-from chainerrl.q_function import FCStateQFunctionWithDiscreteAction
+from chainerrl.q_functions import FCLSTMStateQFunction
+from chainerrl.q_functions import FCStateQFunctionWithDiscreteAction
 
 
 @testing.parameterize(*(

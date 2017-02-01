@@ -15,8 +15,8 @@ from chainerrl.envs.abc import ABC
 from chainerrl.explorers.epsilon_greedy import LinearDecayEpsilonGreedy
 from chainerrl.policy import FCBNDeterministicPolicy
 from chainerrl.policy import FCLSTMDeterministicPolicy
-from chainerrl.q_function import FCBNLateActionSAQFunction
-from chainerrl.q_function import FCLSTMSAQFunction
+from chainerrl.q_functions import FCBNLateActionSAQFunction
+from chainerrl.q_functions import FCLSTMSAQFunction
 from chainerrl import replay_buffer
 
 from test_training import _TestTraining

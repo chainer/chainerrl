@@ -24,7 +24,7 @@ from chainerrl.explorers.epsilon_greedy import LinearDecayEpsilonGreedy
 from chainerrl.links.mlp import MLP
 from chainerrl.misc import env_modifiers
 from chainerrl.misc import random_seed
-from chainerrl import q_function
+from chainerrl import q_functions
 from chainerrl import replay_buffer
 
 
@@ -95,7 +95,7 @@ def main():
     if isinstance(action_space, spaces.Box):
         action_size = action_space.low.size
         # Use NAF to apply DQN to continuous action spaces
-        q_func = q_function.FCSIContinuousQFunction(
+        q_func = q_functions.FCSIContinuousQFunction(
             obs_size, action_size,
             n_hidden_channels=args.n_hidden_channels,
             n_hidden_layers=args.n_hidden_layers,
@@ -103,7 +103,7 @@ def main():
         explorer = AdditiveOU()
     else:
         n_actions = action_space.n
-        q_func = q_function.SingleModelStateQFunctionWithDiscreteAction(
+        q_func = q_functions.SingleModelStateQFunctionWithDiscreteAction(
             model=MLP(obs_size, n_actions,
                       (args.n_hidden_channels,) * args.n_hidden_layers)
         )
