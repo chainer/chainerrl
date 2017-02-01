@@ -25,7 +25,7 @@ def parse_dpp_agent(dpp_type):
 @testing.parameterize(
     *testing.product({
         'dpp_type': ['DPP', 'DPPL', 'DPPGreedy'],
-    }),
+    })
 )
 class TestDPPOnDiscreteABC(_TestDQNOnDiscreteABC):
 
@@ -40,7 +40,7 @@ class TestDPPOnDiscreteABC(_TestDQNOnDiscreteABC):
 @testing.parameterize(
     *testing.product({
         'dpp_type': ['DPPGreedy'],
-    }),
+    })
 )
 class TestDPPOnContinuousABC(_TestDQNOnContinuousABC):
 

@@ -1,0 +1,25 @@
+language: python
+cache: pip
+python:
+  - "2.7"
+  - "3.5.1"
+# command to install dependencies
+install:
+  - pip install --upgrade pip setuptools wheel
+  - pip install -r requirements.txt --only-binary=numpy,scipy
+  - pip install atari_py
+  - pip install hacking
+  - git clone https://github.com/mgbellemare/Arcade-Learning-Environment.git
+  - cd Arcade-Learning-Environment
+  - cmake -DUSE_SDL=OFF -DUSE_RLGLUE=OFF -DBUILD_EXAMPLES=OFF
+  - make
+  - python setup.py install
+  - cd ..
+  - python setup.py develop
+# command to run tests
+script:
+  - flake8 chainerrl
+  - flake8 tests
+  - flake8 examples
+  - nosetests -a '!gpu,!slow' -x tests
+  - ./test_examples.sh -1

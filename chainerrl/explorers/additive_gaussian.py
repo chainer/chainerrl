@@ -6,7 +6,6 @@ from builtins import *  # NOQA
 from future import standard_library
 standard_library.install_aliases()
 
-from chainer import cuda
 import numpy as np
 
 from chainerrl import explorer
@@ -22,8 +21,6 @@ class AdditiveGaussian(explorer.Explorer):
         a = greedy_action_func()
         noise = np.random.normal(
             scale=self.scale, size=a.shape).astype(np.float32)
-        if isinstance(a, cuda.cupy.ndarray):
-            noise = cuda.to_gpu(noise)
         return a + noise
 
     def __repr__(self):

@@ -9,7 +9,6 @@ standard_library.install_aliases()
 import argparse
 import sys
 
-from chainer import cuda
 from chainer import optimizers
 import gym
 gym.undo_logger_setup()
@@ -67,8 +66,6 @@ def main():
         random_seed.set_random_seed(args.seed)
 
     def clip_action_filter(a):
-        if isinstance(a, cuda.cupy.ndarray):
-            a = cuda.to_cpu(a)
         return np.clip(a, action_space.low, action_space.high)
 
     def make_env(for_eval):

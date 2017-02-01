@@ -8,7 +8,6 @@ standard_library.install_aliases()
 
 from logging import getLogger
 
-from chainer import cuda
 import numpy as np
 
 from chainerrl import explorer
@@ -57,8 +56,6 @@ class AdditiveOU(explorer.Explorer):
             self.evolve()
         noise = self.ou_state
         self.logger.debug('t:%s noise:%s', t, noise)
-        if isinstance(a, cuda.cupy.ndarray):
-            noise = cuda.to_gpu(noise)
         return a + noise
 
     def __repr__(self):
