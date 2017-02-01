@@ -20,8 +20,6 @@ class Sequence(chainer.ChainList, RecurrentChainMixin):
         # Cache the signatures because it might be slow
         self.argnames = [set(funcsigs.signature(layer).parameters)
                          for layer in layers]
-        self.argnames = [set(funcsigs.signature(layer).parameters)
-                         for layer in layers]
         super().__init__(*links)
 
     def __call__(self, x, **kwargs):
