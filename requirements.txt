@@ -9,4 +9,4 @@ gym
 numpy>=1.10.4
 pillow
 scipy
-statistics
+statistics; python_version<'3.4'
