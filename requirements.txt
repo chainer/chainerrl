@@ -6,6 +6,7 @@ funcsigs; python_version<='3.5'
 future
 futures
 gym
+numpy>=1.10.4
 pillow
 scipy
 statistics
