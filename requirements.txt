@@ -2,9 +2,9 @@ atari_py
 cached-property
 chainer
 fastcache
-funcsigs; python_version<='3.5'
+funcsigs; python_version<'3.5'
 future
-futures; python_version<='3.2'
+futures; python_version<'3.2'
 gym
 numpy>=1.10.4
 pillow
