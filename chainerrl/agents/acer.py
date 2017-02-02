@@ -474,8 +474,7 @@ class DiscreteACER(agent.AsyncAgent):
 
         self.last_state = state
         self.last_action = action
-        self.last_action_distrib = copy.copy(action_distrib)
-        self.last_action_distrib.creator = None
+        self.last_action_distrib = action_distrib.copy()
 
         return action
 
