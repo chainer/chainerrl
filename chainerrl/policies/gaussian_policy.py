@@ -16,10 +16,10 @@ from chainer import links as L
 
 from chainerrl import distribution
 from chainerrl.functions.bound_by_tanh import bound_by_tanh
-from chainerrl import policy
+from chainerrl.policy import Policy
 
 
-class GaussianPolicy(policy.Policy):
+class GaussianPolicy(Policy):
     """Abstract Gaussian policy."""
 
     @abstractmethod

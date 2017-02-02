@@ -17,12 +17,12 @@ from chainerrl import distribution
 from chainerrl.functions.bound_by_tanh import bound_by_tanh
 from chainerrl.links.mlp import MLP
 from chainerrl.links.mlp_bn import MLPBN
-from chainerrl import policy
+from chainerrl.policy import Policy
 from chainerrl.recurrent import RecurrentChainMixin
 
 
 class ContinuousDeterministicPolicy(
-        chainer.Chain, policy.Policy, RecurrentChainMixin):
+        chainer.Chain, Policy, RecurrentChainMixin):
     """Continuous deterministic policy.
 
     Args:

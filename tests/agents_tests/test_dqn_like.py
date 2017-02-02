@@ -13,9 +13,9 @@ import numpy as np
 from chainerrl.envs.abc import ABC
 from chainerrl.explorers.epsilon_greedy import LinearDecayEpsilonGreedy
 from chainerrl.links.mlp import MLP
-from chainerrl.q_function import FCLSTMStateQFunction
-from chainerrl.q_function import FCSIContinuousQFunction
-from chainerrl.q_function import SingleModelStateQFunctionWithDiscreteAction
+from chainerrl.q_functions import FCLSTMStateQFunction
+from chainerrl.q_functions import FCSIContinuousQFunction
+from chainerrl.q_functions import SingleModelStateQFunctionWithDiscreteAction
 from chainerrl import replay_buffer
 
 from test_training import _TestTraining
@@ -48,13 +48,15 @@ class _TestDQNLike(_TestTraining):
         raise NotImplementedError()
 
     @testing.attr.slow
+    @testing.attr.gpu
     def test_training_gpu(self):
         self._test_training(0, steps=1000)
-        self._test_training(0, steps=300, load_model=True)
+        self._test_training(0, steps=0, load_model=True)
 
     @testing.attr.slow
     def test_training_cpu(self):
         self._test_training(-1, steps=1000)
+        self._test_training(-1, steps=0, load_model=True)
 
 
 class _TestDQNOnABC(_TestDQNLike):

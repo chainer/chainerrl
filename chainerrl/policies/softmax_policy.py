@@ -13,10 +13,10 @@ import chainer
 
 from chainerrl import distribution
 from chainerrl.links.mlp import MLP
-from chainerrl import policy
+from chainerrl.policy import Policy
 
 
-class SoftmaxPolicy(chainer.Chain, policy.Policy):
+class SoftmaxPolicy(chainer.Chain, Policy):
     """Softmax policy that uses Boltzmann distributions.
 
     Args:

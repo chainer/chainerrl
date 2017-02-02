@@ -9,7 +9,6 @@ standard_library.install_aliases()
 import argparse
 import sys
 
-from chainer import cuda
 from chainer import optimizers
 import gym
 gym.undo_logger_setup()
@@ -25,7 +24,7 @@ from chainerrl.explorers.epsilon_greedy import LinearDecayEpsilonGreedy
 from chainerrl.links.mlp import MLP
 from chainerrl.misc import env_modifiers
 from chainerrl.misc import random_seed
-from chainerrl import q_function
+from chainerrl import q_functions
 from chainerrl import replay_buffer
 
 
@@ -67,8 +66,6 @@ def main():
         random_seed.set_random_seed(args.seed)
 
     def clip_action_filter(a):
-        if isinstance(a, cuda.cupy.ndarray):
-            a = cuda.to_cpu(a)
         return np.clip(a, action_space.low, action_space.high)
 
     def make_env(for_eval):
@@ -98,7 +95,7 @@ def main():
     if isinstance(action_space, spaces.Box):
         action_size = action_space.low.size
         # Use NAF to apply DQN to continuous action spaces
-        q_func = q_function.FCSIContinuousQFunction(
+        q_func = q_functions.FCSIContinuousQFunction(
             obs_size, action_size,
             n_hidden_channels=args.n_hidden_channels,
             n_hidden_layers=args.n_hidden_layers,
@@ -106,7 +103,7 @@ def main():
         explorer = AdditiveOU()
     else:
         n_actions = action_space.n
-        q_func = q_function.SingleModelStateQFunctionWithDiscreteAction(
+        q_func = q_functions.SingleModelStateQFunctionWithDiscreteAction(
             model=MLP(obs_size, n_actions,
                       (args.n_hidden_channels,) * args.n_hidden_layers)
         )
