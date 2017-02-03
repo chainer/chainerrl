@@ -118,6 +118,7 @@ class DiscreteACER(agent.AsyncAgent):
                  beta=1e-2,
                  process_idx=0, phi=lambda x: x,
                  pi_loss_coef=1.0, Q_loss_coef=0.5,
+                 use_trust_region=True,
                  trust_region_alpha=0.99,
                  trust_region_c=10,
                  trust_region_delta=1,
@@ -150,6 +151,7 @@ class DiscreteACER(agent.AsyncAgent):
         self.Q_loss_coef = Q_loss_coef
         self.normalize_loss_by_steps = normalize_loss_by_steps
         self.act_deterministically = act_deterministically
+        self.use_trust_region = use_trust_region
         self.trust_region_alpha = trust_region_alpha
         self.trust_region_c = trust_region_c
         self.trust_region_delta = trust_region_delta
@@ -252,17 +254,19 @@ class DiscreteACER(agent.AsyncAgent):
                 action_distrib.logits.grad = None
 
                 # Compute k: a direction to increase KL div.
-                neg_kl = -compute_discrete_kl(
-                    avg_action_distrib,
-                    action_distrib)
-                neg_kl.backward()
-                self.average_kl += ((1 - self.average_kl_decay) *
-                                    (-float(neg_kl.data) - self.average_kl))
-                k = action_distrib.logits.grad[0]
-                action_distrib.logits.grad = None
+                if self.use_trust_region:
+                    neg_kl = -compute_discrete_kl(
+                        avg_action_distrib,
+                        action_distrib)
+                    neg_kl.backward()
+                    self.average_kl += (
+                        (1 - self.average_kl_decay) *
+                        (-float(neg_kl.data) - self.average_kl))
+                    k = action_distrib.logits.grad[0]
+                    action_distrib.logits.grad = None
 
             # Compute z: combination of g and k to keep small KL div.
-            if np.any(k):
+            if self.use_trust_region and np.any(k):
                 k_factor = max(0, ((np.dot(k, g) - self.trust_region_delta) /
                                    np.dot(k, k)))
                 z = g - k_factor * k
