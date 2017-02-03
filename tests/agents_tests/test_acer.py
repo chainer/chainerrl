@@ -29,12 +29,16 @@ from chainerrl.replay_buffer import EpisodicReplayBuffer
         'use_lstm': [False],
         'episodic': [True, False],
         'n_times_replay': [0, 8],
+        'disable_online_update': [True, False],
+        'use_trust_region': [True, False],
     }),
     *testing.product({
         't_max': [5],
         'use_lstm': [True, False],
         'episodic': [True, False],
         'n_times_replay': [0, 8],
+        'disable_online_update': [True, False],
+        'use_trust_region': [True, False],
     }),
 )
 class TestACER(unittest.TestCase):
@@ -132,11 +136,18 @@ class TestACER(unittest.TestCase):
         opt.setup(model)
         gamma = 0.9
         beta = 1e-2 if discrete else 1e-3
-        agent = acer.DiscreteACER(model, opt, replay_buffer=replay_buffer,
-                                  t_max=t_max, gamma=gamma, beta=beta,
-                                  phi=phi,
-                                  n_times_replay=self.n_times_replay,
-                                  act_deterministically=True)
+        if self.n_times_replay == 0 and self.disable_online_update:
+            # At least one of them must be enabled
+            self.disable_online_update = False
+        agent = acer.DiscreteACER(
+            model, opt, replay_buffer=replay_buffer,
+            t_max=t_max, gamma=gamma, beta=beta,
+            phi=phi,
+            n_times_replay=self.n_times_replay,
+            act_deterministically=True,
+            disable_online_update=self.disable_online_update,
+            replay_start_size=10,
+            use_trust_region=self.use_trust_region)
 
         max_episode_len = None if episodic else 2
 
