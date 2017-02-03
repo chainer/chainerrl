@@ -122,6 +122,7 @@ class DiscreteACER(agent.AsyncAgent):
                  trust_region_alpha=0.99,
                  trust_region_c=10,
                  trust_region_delta=1,
+                 disable_online_update=False,
                  n_times_replay=8,
                  replay_start_size=10 ** 4,
                  normalize_loss_by_steps=True,
@@ -155,6 +156,7 @@ class DiscreteACER(agent.AsyncAgent):
         self.trust_region_alpha = trust_region_alpha
         self.trust_region_c = trust_region_c
         self.trust_region_delta = trust_region_delta
+        self.disable_online_update = disable_online_update
         self.n_times_replay = n_times_replay
         self.replay_start_size = replay_start_size
         self.average_value_decay = average_value_decay
@@ -162,16 +164,6 @@ class DiscreteACER(agent.AsyncAgent):
         self.average_kl_decay = average_kl_decay
 
         self.t = 0
-        self.t_start = 0
-        self.past_action_log_prob = {}
-        self.past_action_entropy = {}
-        self.past_states = {}
-        self.past_actions = {}
-        self.past_rewards = {}
-        self.past_values = {}
-        self.past_action_distrib = {}
-        self.past_action_values = {}
-        self.past_avg_action_distrib = {}
         self.last_state = None
         self.last_action = None
         # ACER won't use a explorer, but this arrtibute is referenced by
@@ -183,6 +175,20 @@ class DiscreteACER(agent.AsyncAgent):
         self.average_entropy = 0
         self.average_kl = 0
 
+        self.init_history_data_for_online_update()
+
+    def init_history_data_for_online_update(self):
+        self.past_action_log_prob = {}
+        self.past_action_entropy = {}
+        self.past_states = {}
+        self.past_actions = {}
+        self.past_rewards = {}
+        self.past_values = {}
+        self.past_action_distrib = {}
+        self.past_action_values = {}
+        self.past_avg_action_distrib = {}
+        self.t_start = self.t
+
     def sync_parameters(self):
         copy_param.copy_param(target_link=self.model,
                               source_link=self.shared_model)
@@ -193,6 +199,63 @@ class DiscreteACER(agent.AsyncAgent):
     @property
     def shared_attributes(self):
         return ('shared_model', 'shared_average_model', 'optimizer')
+
+    def compute_one_step_pi_loss(self, advantage, action_distrib, log_prob,
+                                 rho, rho_all, action_value, v,
+                                 avg_action_distrib):
+        # Compute gradients w.r.t statistics produced by the model
+
+        # Compute g: a direction following policy gradients
+        if rho is not None:
+            # Off-policy
+            g_loss = 0
+            g_loss -= (min(self.trust_region_c, rho) *
+                       log_prob * advantage)
+            with chainer.no_backprop_mode():
+                correction_weight = (
+                    np.maximum(
+                        1 - self.trust_region_c / rho_all,
+                        np.zeros_like(rho_all)) *
+                    action_distrib.all_prob.data)
+                correction_advantage = action_value.q_values.data - v
+            g_loss -= F.sum(correction_weight *
+                            action_distrib.all_log_prob *
+                            correction_advantage, axis=1)
+        else:
+            # On-policy
+            g_loss = -log_prob * advantage
+
+        with backprop_truncated(action_distrib.logits):
+            g_loss.backward()
+        g = action_distrib.logits.grad[0]
+        action_distrib.logits.grad = None
+
+        # Compute k: a direction to increase KL div.
+        if self.use_trust_region:
+            neg_kl = -compute_discrete_kl(
+                avg_action_distrib,
+                action_distrib)
+            self.average_kl += (
+                (1 - self.average_kl_decay) *
+                (-float(neg_kl.data) - self.average_kl))
+            with backprop_truncated(action_distrib.logits):
+                neg_kl.backward()
+            k = action_distrib.logits.grad[0]
+            action_distrib.logits.grad = None
+
+        # Compute z: combination of g and k to keep small KL div.
+        if self.use_trust_region and np.any(k):
+            k_factor = max(0, ((np.dot(k, g) - self.trust_region_delta) /
+                               np.dot(k, k)))
+            z = g - k_factor * k
+        else:
+            z = g
+        pi_loss = 0
+        # Backprop z
+        pi_loss += F.sum(action_distrib.logits * z, axis=1)
+        # Entropy is maximized
+        pi_loss -= self.beta * action_distrib.entropy
+        return pi_loss
 
     def update(self, t_start, t_stop, R, states, actions, rewards, values,
                action_values, action_log_probs, action_entropy,
@@ -217,67 +280,28 @@ class DiscreteACER(agent.AsyncAgent):
             action_value = action_values[i]
 
             Q_ret = r + self.gamma * Q_ret
-            Q = action_value.evaluate_actions(ba)
-            assert isinstance(Q, chainer.Variable), "Q must be backprop-able"
-
-            if self.process_idx == 0:
-                logger.debug('t:%s s:%s v:%s Q:%s Q_ret:%s',
-                             i, states[i].sum(), v, float(Q.data), Q_ret)
 
             with chainer.no_backprop_mode():
                 advantage = Q_ret - v
 
-            # Compute gradients w.r.t statistics produced by the model
-            with backprop_truncated(action_distrib.logits):
+            pi_loss += self.compute_one_step_pi_loss(
+                advantage=advantage,
+                action_distrib=action_distrib,
+                log_prob=log_prob,
+                rho=rho[i] if rho else None,
+                rho_all=rho_all[i] if rho_all else None,
+                action_value=action_value,
+                v=v,
+                avg_action_distrib=avg_action_distrib)
 
-                # Compute g: a direction following policy gradients
-                if rho is not None:
-                    # Off-policy
-                    g_loss = 0
-                    g_loss -= (min(self.trust_region_c, rho[i]) *
-                               log_prob * advantage)
-                    with chainer.no_backprop_mode():
-                        correction_weight = (
-                            np.maximum(
-                                1 - self.trust_region_c / rho_all[i],
-                                np.zeros_like(rho_all[i])) *
-                            action_distrib.all_prob.data)
-                        correction_advantage = action_value.q_values.data - v
-                    g_loss -= F.sum(correction_weight *
-                                    action_distrib.all_log_prob *
-                                    correction_advantage, axis=1)
-                else:
-                    # On-policy
-                    g_loss = -log_prob * advantage
-                g_loss.backward()
-                g = action_distrib.logits.grad[0]
-                action_distrib.logits.grad = None
-
-                # Compute k: a direction to increase KL div.
-                if self.use_trust_region:
-                    neg_kl = -compute_discrete_kl(
-                        avg_action_distrib,
-                        action_distrib)
-                    neg_kl.backward()
-                    self.average_kl += (
-                        (1 - self.average_kl_decay) *
-                        (-float(neg_kl.data) - self.average_kl))
-                    k = action_distrib.logits.grad[0]
-                    action_distrib.logits.grad = None
-
-            # Compute z: combination of g and k to keep small KL div.
-            if self.use_trust_region and np.any(k):
-                k_factor = max(0, ((np.dot(k, g) - self.trust_region_delta) /
-                                   np.dot(k, k)))
-                z = g - k_factor * k
-            else:
-                z = g
-            # Backprop z
-            pi_loss += F.sum(action_distrib.logits * z, axis=1)
-            # Entropy is maximized
-            pi_loss -= self.beta * entropy
             # Accumulate gradients of value function
+            Q = action_value.evaluate_actions(ba)
+            assert isinstance(Q, chainer.Variable), "Q must be backprop-able"
             Q_loss += (Q_ret - Q) ** 2 / 2
+
+            if self.process_idx == 0:
+                logger.debug('t:%s s:%s v:%s Q:%s Q_ret:%s',
+                             i, states[i].sum(), v, float(Q.data), Q_ret)
 
             if rho is not None:
                 Q_ret = min(1, rho[i]) * (Q_ret - float(Q.data)) + v
@@ -383,39 +407,29 @@ class DiscreteACER(agent.AsyncAgent):
     def update_on_policy(self, statevar):
         assert self.t_start < self.t
 
-        if statevar is None:
-            R = 0
-        else:
-            with chainer.no_backprop_mode():
-                with state_kept(self.model):
-                    action_distrib, action_value = self.model(statevar)
-                    v = compute_state_value_as_expected_action_value(
-                        action_value, action_distrib)
-            R = v
+        if not self.disable_online_update:
+            if statevar is None:
+                R = 0
+            else:
+                with chainer.no_backprop_mode():
+                    with state_kept(self.model):
+                        action_distrib, action_value = self.model(statevar)
+                        v = compute_state_value_as_expected_action_value(
+                            action_value, action_distrib)
+                R = v
+            self.update(
+                t_start=self.t_start, t_stop=self.t, R=R,
+                states=self.past_states,
+                actions=self.past_actions,
+                rewards=self.past_rewards,
+                values=self.past_values,
+                action_values=self.past_action_values,
+                action_log_probs=self.past_action_log_prob,
+                action_entropy=self.past_action_entropy,
+                action_distribs=self.past_action_distrib,
+                avg_action_distribs=self.past_avg_action_distrib)
 
-        self.update(
-            t_start=self.t_start, t_stop=self.t, R=R,
-            states=self.past_states,
-            actions=self.past_actions,
-            rewards=self.past_rewards,
-            values=self.past_values,
-            action_values=self.past_action_values,
-            action_log_probs=self.past_action_log_prob,
-            action_entropy=self.past_action_entropy,
-            action_distribs=self.past_action_distrib,
-            avg_action_distribs=self.past_avg_action_distrib)
-
-        self.past_action_log_prob = {}
-        self.past_action_entropy = {}
-        self.past_states = {}
-        self.past_actions = {}
-        self.past_rewards = {}
-        self.past_values = {}
-        self.past_action_values = {}
-        self.past_action_distrib = {}
-        self.past_avg_action_distrib = {}
-
-        self.t_start = self.t
+        self.init_history_data_for_online_update()
 
     def act_and_train(self, state, reward):
 
