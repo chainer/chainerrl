@@ -177,7 +177,6 @@ class DiscreteACER(agent.AttributeSavingMixin, agent.AsyncAgent):
 
     def init_history_data_for_online_update(self):
         self.past_action_log_prob = {}
-        self.past_action_entropy = {}
         self.past_states = {}
         self.past_actions = {}
         self.past_rewards = {}
@@ -256,7 +255,7 @@ class DiscreteACER(agent.AttributeSavingMixin, agent.AsyncAgent):
         return pi_loss
 
     def update(self, t_start, t_stop, R, states, actions, rewards, values,
-               action_values, action_log_probs, action_entropy,
+               action_values, action_log_probs,
                action_distribs, avg_action_distribs, rho=None, rho_all=None):
 
         pi_loss = 0
@@ -269,8 +268,6 @@ class DiscreteACER(agent.AttributeSavingMixin, agent.AsyncAgent):
             log_prob = action_log_probs[i]
             assert isinstance(log_prob, chainer.Variable),\
                 "log_prob must be backprop-able"
-            assert isinstance(log_prob, chainer.Variable),\
-                "entropy must be backprop-able"
             action_distrib = action_distribs[i]
             avg_action_distrib = avg_action_distribs[i]
             ba = np.expand_dims(actions[i], 0)
@@ -347,7 +344,6 @@ class DiscreteACER(agent.AttributeSavingMixin, agent.AsyncAgent):
                 states = {}
                 actions = {}
                 action_log_probs = {}
-                action_entropy = {}
                 action_distribs = {}
                 avg_action_distribs = {}
                 rho = {}
@@ -367,7 +363,6 @@ class DiscreteACER(agent.AttributeSavingMixin, agent.AsyncAgent):
                     states[t] = s
                     actions[t] = a
                     action_log_probs[t] = action_distrib.log_prob(ba)
-                    action_entropy[t] = action_distrib.entropy
                     values[t] = v
                     action_distribs[t] = action_distrib
                     avg_action_distribs[t] = avg_action_distrib
@@ -394,7 +389,6 @@ class DiscreteACER(agent.AttributeSavingMixin, agent.AsyncAgent):
                     actions=actions,
                     values=values,
                     action_log_probs=action_log_probs,
-                    action_entropy=action_entropy,
                     action_distribs=action_distribs,
                     avg_action_distribs=avg_action_distribs,
                     rho=rho,
@@ -422,7 +416,6 @@ class DiscreteACER(agent.AttributeSavingMixin, agent.AsyncAgent):
                 values=self.past_values,
                 action_values=self.past_action_values,
                 action_log_probs=self.past_action_log_prob,
-                action_entropy=self.past_action_entropy,
                 action_distribs=self.past_action_distrib,
                 avg_action_distribs=self.past_avg_action_distrib)
 
@@ -447,7 +440,6 @@ class DiscreteACER(agent.AttributeSavingMixin, agent.AsyncAgent):
 
         # Save values for a later update
         self.past_action_log_prob[self.t] = action_distrib.log_prob(action)
-        self.past_action_entropy[self.t] = action_distrib.entropy
         v = compute_state_value_as_expected_action_value(
             action_value, action_distrib)
         self.past_values[self.t] = v
