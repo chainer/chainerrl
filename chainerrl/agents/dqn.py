@@ -36,14 +36,20 @@ def _to_device(obj, gpu):
             return cuda.to_cpu(obj)
 
 
-def batch_experiences(experiences, xp, phi):
+def batch_states(states, phi, xp=np):
+    states = [phi(s) for s in states]
+    return xp.asarray(states)
+
+
+def batch_experiences(experiences, xp, phi, batch_states):
     return {
-        'state': xp.asarray([phi(elem['state']) for elem in experiences]),
+        'state': batch_states(
+            [elem['state'] for elem in experiences], phi, xp),
         'action': xp.asarray([elem['action'] for elem in experiences]),
         'reward': xp.asarray(
             [elem['reward'] for elem in experiences], dtype=np.float32),
-        'next_state': xp.asarray(
-            [phi(elem['next_state']) for elem in experiences]),
+        'next_state': batch_states(
+            [elem['next_state'] for elem in experiences], phi, xp),
         'next_action': xp.asarray(
             [elem['next_action'] for elem in experiences]),
         'is_state_terminal': xp.asarray(
@@ -124,7 +130,8 @@ class DQN(agent.Agent):
                  average_loss_decay=0.99,
                  batch_accumulator='mean', episodic_update=False,
                  episodic_update_len=None,
-                 logger=getLogger(__name__)):
+                 logger=getLogger(__name__),
+                 batch_states=batch_states):
         self.model = q_function
         self.q_function = q_function  # For backward compatibility
 
@@ -158,6 +165,7 @@ class DQN(agent.Agent):
         self.batch_accumulator = batch_accumulator
         assert batch_accumulator in ('mean', 'sum')
         self.logger = logger
+        self.batch_states = batch_states
 
         self.t = 0
         self.last_state = None
@@ -210,7 +218,8 @@ class DQN(agent.Agent):
           None
         """
 
-        exp_batch = batch_experiences(experiences, xp=self.xp, phi=self.phi)
+        exp_batch = batch_experiences(experiences, xp=self.xp, phi=self.phi,
+                                      batch_states=self.batch_states)
         loss = self._compute_loss(
             exp_batch, self.gamma, errors_out=errors_out)
 
@@ -238,7 +247,9 @@ class DQN(agent.Agent):
                             break
                         transitions.append(ep[i])
                     batch = batch_experiences(transitions,
-                                              xp=self.xp, phi=self.phi)
+                                              xp=self.xp,
+                                              phi=self.phi,
+                                              batch_state=self.batch_states)
                     if i == 0:
                         self.input_initial_batch_to_target_model(batch)
                     loss += self._compute_loss(batch, self.gamma)
@@ -249,8 +260,7 @@ class DQN(agent.Agent):
 
     def _batch_states(self, states):
         """Generate an input batch array from a list of states"""
-        states = [self.phi(s) for s in states]
-        return self.xp.asarray(states)
+        return self.batch_states(states, self.phi)
 
     def _compute_target_values(self, exp_batch, gamma):
 
@@ -265,8 +275,7 @@ class DQN(agent.Agent):
         return batch_rewards + self.gamma * (1.0 - batch_terminal) * next_q_max
 
     def _compute_y_and_t(self, exp_batch, gamma):
-
-        batch_size = exp_batch['state'].shape[0]
+        batch_size = exp_batch['reward'].shape[0]
 
         # Compute Q-values for current states
         batch_state = exp_batch['state']
