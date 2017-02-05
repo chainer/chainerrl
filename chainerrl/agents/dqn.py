@@ -36,7 +36,7 @@ def _to_device(obj, gpu):
             return cuda.to_cpu(obj)
 
 
-def batch_states(states, phi, xp=np):
+def batch_states(states, xp, phi):
     states = [phi(s) for s in states]
     return xp.asarray(states)
 
@@ -44,12 +44,12 @@ def batch_states(states, phi, xp=np):
 def batch_experiences(experiences, xp, phi, batch_states):
     return {
         'state': batch_states(
-            [elem['state'] for elem in experiences], phi, xp),
+            [elem['state'] for elem in experiences], xp, phi),
         'action': xp.asarray([elem['action'] for elem in experiences]),
         'reward': xp.asarray(
             [elem['reward'] for elem in experiences], dtype=np.float32),
         'next_state': batch_states(
-            [elem['next_state'] for elem in experiences], phi, xp),
+            [elem['next_state'] for elem in experiences], xp, phi),
         'next_action': xp.asarray(
             [elem['next_action'] for elem in experiences]),
         'is_state_terminal': xp.asarray(
@@ -249,7 +249,7 @@ class DQN(agent.Agent):
                     batch = batch_experiences(transitions,
                                               xp=self.xp,
                                               phi=self.phi,
-                                              batch_state=self.batch_states)
+                                              batch_states=self.batch_states)
                     if i == 0:
                         self.input_initial_batch_to_target_model(batch)
                     loss += self._compute_loss(batch, self.gamma)
@@ -260,7 +260,7 @@ class DQN(agent.Agent):
 
     def _batch_states(self, states):
         """Generate an input batch array from a list of states"""
-        return self.batch_states(states, self.phi)
+        return self.batch_states(states, xp=self.xp, phi=self.phi)
 
     def _compute_target_values(self, exp_batch, gamma):
 
