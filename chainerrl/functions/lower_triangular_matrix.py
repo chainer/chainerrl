@@ -3,12 +3,17 @@ from __future__ import division
 from __future__ import absolute_import
 from future import standard_library
 standard_library.install_aliases()
-import fastcache
-import numpy as np
 
 from chainer import cuda
 from chainer import function
 from chainer.utils import type_check
+import numpy as np
+
+try:
+    # For Python 3.2 and later
+    from functools import lru_cache
+except Exception:
+    from fastcache import clru_cache as lru_cache
 
 
 def _get_batch_diagonal_cpu(array):
@@ -25,7 +30,7 @@ def _set_batch_diagonal_cpu(array, diag_val):
     array[:, rows, cols] = diag_val
 
 
-@fastcache.clru_cache()
+@lru_cache()
 def _diagonal_idx_array(batch_size, n):
     idx_offsets = np.arange(
         start=0, stop=batch_size * n * n, step=n * n, dtype=np.int32).reshape(
@@ -35,7 +40,7 @@ def _diagonal_idx_array(batch_size, n):
     return cuda.to_gpu(idx + idx_offsets)
 
 
-@fastcache.clru_cache()
+@lru_cache()
 def _non_diagonal_idx_array(batch_size, n):
     idx_offsets = np.arange(
         start=0, stop=batch_size * n * n, step=n * n, dtype=np.int32).reshape(
