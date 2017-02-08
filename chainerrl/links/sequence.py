@@ -7,15 +7,22 @@ from future import standard_library
 standard_library.install_aliases()
 
 import chainer
-import funcsigs
 
 from chainerrl.recurrent import RecurrentChainMixin
 
+try:
+    # For Python 3.5 and later
+    from inspect import Parameter
+    from inspect import signature
+except Exception:
+    from funcsigs import Parameter
+    from funcsigs import signature
+
 
 def accept_variable_arguments(func):
-    for param in funcsigs.signature(func).parameters.values():
-        if param.kind in (funcsigs.Parameter.VAR_POSITIONAL,
-                          funcsigs.Parameter.VAR_KEYWORD):
+    for param in signature(func).parameters.values():
+        if param.kind in (Parameter.VAR_POSITIONAL,
+                          Parameter.VAR_KEYWORD):
             return True
     return False
 
@@ -27,7 +34,7 @@ class Sequence(chainer.ChainList, RecurrentChainMixin):
         self.layers = layers
         links = [layer for layer in layers if isinstance(layer, chainer.Link)]
         # Cache the signatures because it might be slow
-        self.argnames = [set(funcsigs.signature(layer).parameters)
+        self.argnames = [set(signature(layer).parameters)
                          for layer in layers]
         self.accept_var_args = [accept_variable_arguments(layer)
                                 for layer in layers]
