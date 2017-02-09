@@ -81,7 +81,7 @@ def compute_value_loss(y, t, clip_delta=True, batch_accumulator='mean'):
     return loss
 
 
-class DQN(agent.Agent):
+class DQN(agent.AttributeSavingMixin, agent.Agent):
     """Deep Q-Network algorithm.
 
     Args:
@@ -112,6 +112,8 @@ class DQN(agent.Agent):
             for update if set int and episodic_update=True
         logger (Logger): Logger used
     """
+
+    saved_attributes = ('model', 'target_model', 'optimizer')
 
     def __init__(self, q_function, optimizer, replay_buffer, gamma,
                  explorer, gpu=-1, replay_start_size=50000,
@@ -330,23 +332,6 @@ class DQN(agent.Agent):
             model.to_gpu(self.gpu)
         else:
             model.to_cpu()
-
-    @property
-    def saved_attributes(self):
-        return ('model', 'target_model', 'optimizer')
-
-    def save(self, dirname):
-        makedirs(dirname, exist_ok=True)
-        for attr in self.saved_attributes:
-            serializers.save_npz(
-                os.path.join(dirname, '{}.npz'.format(attr)),
-                getattr(self, attr))
-
-    def load(self, dirname):
-        for attr in self.saved_attributes:
-            serializers.load_npz(
-                os.path.join(dirname, '{}.npz'.format(attr)),
-                getattr(self, attr))
 
     def act(self, state):
         qout = self.model(self._batch_states([state]), test=True)
