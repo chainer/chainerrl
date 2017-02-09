@@ -74,6 +74,14 @@ class Agent(with_metaclass(ABCMeta, object)):
         """
         pass
 
+    @abstractmethod
+    def get_statistics(self):
+        """Get statistics of the agent.
+
+        Returns:
+            dict of values
+        """
+        pass
 
 class AttributeSavingMixin(object):
     """Mixin that provides save and load functionalities."""

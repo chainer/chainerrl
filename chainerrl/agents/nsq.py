@@ -9,22 +9,20 @@ standard_library.install_aliases()
 import copy
 from logging import getLogger
 import multiprocessing as mp
-import os
 
 import chainer
 from chainer import functions as F
-from chainer import serializers
 import numpy as np
 
 from chainerrl.agent import AsyncAgent
+from chainerrl.agent import AttributeSavingMixin
 from chainerrl.misc import async
 from chainerrl.misc import copy_param
-from chainerrl.misc.makedirs import makedirs
 from chainerrl.recurrent import Recurrent
 from chainerrl.recurrent import state_kept
 
 
-class NSQ(AsyncAgent):
+class NSQ(AttributeSavingMixin, AsyncAgent):
     """Asynchronous N-step Q-Learning.
 
     See http://arxiv.org/abs/1602.01783
@@ -43,6 +41,7 @@ class NSQ(AsyncAgent):
     """
 
     process_idx = None
+    saved_attributes = ['q_function', 'target_q_function', 'optimizer']
 
     def __init__(self, q_function, optimizer,
                  t_max, gamma, i_target, explorer, phi=lambda x: x,
@@ -196,38 +195,12 @@ class NSQ(AsyncAgent):
             self.shared_q_function.reset_state()
             self.target_q_function.reset_state()
 
-    def save(self, dirname):
-        makedirs(dirname, exist_ok=True)
-        serializers.save_npz(os.path.join(dirname, 'q_function.npz'),
-                             self.q_function)
-        serializers.save_npz(os.path.join(dirname, 'target_q_function.npz'),
-                             self.target_q_function)
-        serializers.save_npz(os.path.join(dirname, 'optimizer.npz'),
-                             self.optimizer)
-
     def load(self, dirname):
-        serializers.load_npz(os.path.join(
-            dirname, 'q_function.npz'), self.q_function)
+        super().load(dirname)
         copy_param.copy_param(target_link=self.shared_q_function,
                               source_link=self.q_function)
 
-        target_filename = os.path.join(dirname, 'target_q_function.npz')
-        if os.path.exists(target_filename):
-            serializers.load_npz(target_filename, self.target_q_function)
-        else:
-            print('WARNING: {0} was not found'.format(target_filename))
-            copy_param.copy_param(target_link=self.target_q_function,
-                                  source_link=self.q_function)
-
-        opt_filename = os.path.join(dirname, 'optimizer.npz')
-        if os.path.exists(opt_filename):
-            serializers.load_npz(opt_filename, self.optimizer)
-        else:
-            print('WARNING: {0} was not found, so loaded only a model'.format(
-                opt_filename))
-
-    def get_stats_keys(self):
-        return ('average_q',)
-
-    def get_stats_values(self):
-        return (self.average_q,)
+    def get_statistics(self):
+        return [
+            ('average_q', self.average_q),
+        ]
