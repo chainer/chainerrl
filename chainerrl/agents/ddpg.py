@@ -329,13 +329,6 @@ class DDPG(AttributeSavingMixin, Agent):
                           self.t, action.data[0], q.data)
         return cuda.to_cpu(action.data[0])
 
-    def get_stats_keys(self):
-        return ('average_q', 'average_actor_loss', 'average_critic_loss')
-
-    def get_stats_values(self):
-        return (self.average_q, self.average_actor_loss,
-                self.average_critic_loss)
-
     def stop_episode_and_train(self, state, reward, done=False):
 
         if self.clip_reward:
@@ -366,3 +359,10 @@ class DDPG(AttributeSavingMixin, Agent):
         """Generate an input batch array from a list of states"""
         states = [self.phi(s) for s in states]
         return self.xp.asarray(states)
+
+    def get_statistics(self):
+        return [
+            ('average_q', self.average_q),
+            ('average_actor_loss', self.average_actor_loss),
+            ('average_critic_loss', self.average_critic_loss),
+        ]

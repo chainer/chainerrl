@@ -383,8 +383,8 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
             self.model.reset_state()
         self.replay_buffer.stop_current_episode()
 
-    def get_stats_keys(self):
-        return ('average_q', 'average_loss')
-
-    def get_stats_values(self):
-        return (self.average_q, self.average_loss)
+    def get_statistics(self):
+        return [
+            ('average_q', self.average_q),
+            ('average_loss', self.average_loss),
+        ]

@@ -8,17 +8,14 @@ standard_library.install_aliases()
 
 import copy
 from logging import getLogger
-import os
 
 import chainer
 from chainer import functions as F
-from chainer import serializers
 import numpy as np
 
 from chainerrl import agent
 from chainerrl.misc import async
 from chainerrl.misc import copy_param
-from chainerrl.misc.makedirs import makedirs
 from chainerrl.recurrent import Recurrent
 from chainerrl.recurrent import RecurrentChainMixin
 from chainerrl.recurrent import state_kept
@@ -76,7 +73,7 @@ class A3CSharedModel(chainer.Chain, A3CModel, RecurrentChainMixin):
         return pout, vout
 
 
-class A3C(agent.AsyncAgent):
+class A3C(agent.AttributeSavingMixin, agent.AsyncAgent):
     """A3C: Asynchronous Advantage Actor-Critic.
 
     See http://arxiv.org/abs/1602.01783
@@ -97,6 +94,7 @@ class A3C(agent.AsyncAgent):
     """
 
     process_idx = None
+    saved_attributes = ['model', 'optimizer']
 
     def __init__(self, model, optimizer, t_max, gamma, beta=1e-2,
                  process_idx=0, clip_reward=True, phi=lambda x: x,
@@ -303,27 +301,13 @@ class A3C(agent.AsyncAgent):
         if isinstance(self.model, Recurrent):
             self.model.reset_state()
 
-    def save(self, dirname):
-        makedirs(dirname, exist_ok=True)
-        # Save the process-local model
-        serializers.save_npz(os.path.join(dirname, 'model.npz'), self.model)
-        serializers.save_npz(
-            os.path.join(dirname, 'optimizer.npz'), self.optimizer)
-
     def load(self, dirname):
-        serializers.load_npz(os.path.join(dirname, 'model.npz'), self.model)
+        super().load(dirname)
         copy_param.copy_param(target_link=self.shared_model,
                               source_link=self.model)
 
-        opt_filename = os.path.join(dirname, 'optimizer.npz')
-        if os.path.exists(opt_filename):
-            serializers.load_npz(opt_filename, self.optimizer)
-        else:
-            print('WARNING: {0} was not found, so loaded only a model'.format(
-                opt_filename))
-
-    def get_stats_keys(self):
-        return ('average_value', 'average_entropy')
-
-    def get_stats_values(self):
-        return (self.average_value, self.average_entropy)
+    def get_statistics(self):
+        return [
+            ('average_value', self.average_value),
+            ('average_entropy', self.average_entropy),
+        ]
