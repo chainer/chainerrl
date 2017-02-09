@@ -4,13 +4,18 @@ ChainerRL is a deep reinforcement learning library built on top of Chainer.
 
 ## Requirements
 
-- Python 2.7.6+, 3.5.1+
-- Chainer 1.20.1+
+For Python 3.5.1+, requirements are:
+
+- atari_py
+- chainer>=1.20.1
 - cached-property
-- fastcache
-- statistics
 - future
 - gym
+- numpy>=1.10.4
+- pillow
+- scipy
+
+For Python 2.7.6+, you need additional requirements. See requirements.txt.
 
 ## Agents
 

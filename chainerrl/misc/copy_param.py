@@ -47,3 +47,9 @@ def copy_grad(target_link, source_link):
     target_params = dict(target_link.namedparams())
     for param_name, param in source_link.namedparams():
         target_params[param_name].grad[:] = param.grad
+
+
+def synchronize_parameters(src, dst, method, tau=None):
+    {'hard': lambda: copy_param(dst, src),
+     'soft': lambda: soft_copy_param(dst, src, tau),
+     }[method]()
