@@ -79,7 +79,11 @@ class Agent(with_metaclass(ABCMeta, object)):
         """Get statistics of the agent.
 
         Returns:
-            dict of values
+            List of two-item tuples. The first item in a tuple is a str that
+            represents the name of item, while the second item is a value to be
+            recorded.
+
+            Example: [('average_loss': 0), ('average_value': 1), ...]
         """
         pass
 
