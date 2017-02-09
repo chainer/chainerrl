@@ -83,6 +83,7 @@ class Agent(with_metaclass(ABCMeta, object)):
         """
         pass
 
+
 class AttributeSavingMixin(object):
     """Mixin that provides save and load functionalities."""
 
