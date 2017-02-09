@@ -9,17 +9,14 @@ standard_library.install_aliases()
 import contextlib
 import copy
 from logging import getLogger
-import os
 
 import chainer
 from chainer import functions as F
-from chainer import serializers
 import numpy as np
 
 from chainerrl import agent
 from chainerrl.misc import async
 from chainerrl.misc import copy_param
-from chainerrl.misc.makedirs import makedirs
 from chainerrl.recurrent import Recurrent
 from chainerrl.recurrent import RecurrentChainMixin
 from chainerrl.recurrent import state_kept
@@ -87,7 +84,7 @@ def backprop_truncated(variable):
     variable.creator = backup
 
 
-class DiscreteACER(agent.AsyncAgent):
+class DiscreteACER(agent.AttributeSavingMixin, agent.AsyncAgent):
     """Discrete ACER (Actor-Critic with Experience Replay).
 
     See http://arxiv.org/abs/1611.01224
@@ -113,6 +110,7 @@ class DiscreteACER(agent.AsyncAgent):
     """
 
     process_idx = None
+    saved_attributes = ['model', 'optimizer']
 
     def __init__(self, model, optimizer, t_max, gamma, replay_buffer,
                  beta=1e-2,
@@ -271,7 +269,6 @@ class DiscreteACER(agent.AsyncAgent):
             log_prob = action_log_probs[i]
             assert isinstance(log_prob, chainer.Variable),\
                 "log_prob must be backprop-able"
-            entropy = action_entropy[i]
             assert isinstance(log_prob, chainer.Variable),\
                 "entropy must be backprop-able"
             action_distrib = action_distribs[i]
@@ -543,27 +540,14 @@ class DiscreteACER(agent.AsyncAgent):
             self.model.reset_state()
             self.shared_average_model.reset_state()
 
-    def save(self, dirname):
-        makedirs(dirname, exist_ok=True)
-        # Save the process-local model
-        serializers.save_npz(os.path.join(dirname, 'model.npz'), self.model)
-        serializers.save_npz(
-            os.path.join(dirname, 'optimizer.npz'), self.optimizer)
-
     def load(self, dirname):
-        serializers.load_npz(os.path.join(dirname, 'model.npz'), self.model)
+        super().load(dirname)
         copy_param.copy_param(target_link=self.shared_model,
                               source_link=self.model)
 
-        opt_filename = os.path.join(dirname, 'optimizer.npz')
-        if os.path.exists(opt_filename):
-            serializers.load_npz(opt_filename, self.optimizer)
-        else:
-            print('WARNING: {0} was not found, so loaded only a model'.format(
-                opt_filename))
-
-    def get_stats_keys(self):
-        return ('average_value', 'average_entropy', 'average_kl')
-
-    def get_stats_values(self):
-        return (self.average_value, self.average_entropy, self.average_kl)
+    def get_statistics(self):
+        return [
+            ('average_value', self.average_value),
+            ('average_entropy', self.average_entropy),
+            ('average_kl', self.average_kl),
+        ]
