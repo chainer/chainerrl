@@ -293,4 +293,3 @@ class PGT(AttributeSavingMixin, Agent):
         return (self.average_q,
                 self.average_actor_loss,
                 self.average_critic_loss)
-
