@@ -10,20 +10,18 @@ from concurrent.futures import ThreadPoolExecutor
 import copy
 from future.utils import native
 from logging import getLogger
-import os
 import threading
 
 import chainer
 from chainer import cuda
 import chainer.functions as F
-from chainer import serializers
 import numpy as np
 
 from chainerrl import agent
-from chainerrl.misc import copy_param
-from chainerrl.misc.makedirs import makedirs
+from chainerrl.misc.copy_param import synchronize_parameters
 from chainerrl.recurrent import Recurrent
 from chainerrl.recurrent import state_reset
+from chainerrl.replay_buffer import batch_experiences
 
 
 def _to_device(obj, gpu):
@@ -34,21 +32,6 @@ def _to_device(obj, gpu):
             return cuda.to_gpu(obj, gpu)
         else:
             return cuda.to_cpu(obj)
-
-
-def batch_experiences(experiences, xp, phi):
-    return {
-        'state': xp.asarray([phi(elem['state']) for elem in experiences]),
-        'action': xp.asarray([elem['action'] for elem in experiences]),
-        'reward': xp.asarray(
-            [elem['reward'] for elem in experiences], dtype=np.float32),
-        'next_state': xp.asarray(
-            [phi(elem['next_state']) for elem in experiences]),
-        'next_action': xp.asarray(
-            [elem['next_action'] for elem in experiences]),
-        'is_state_terminal': xp.asarray(
-            [elem['is_state_terminal'] for elem in experiences],
-            dtype=np.float32)}
 
 
 def compute_value_loss(y, t, clip_delta=True, batch_accumulator='mean'):
@@ -186,15 +169,11 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
         if self.target_model is None:
             self.target_model = copy.deepcopy(self.model)
         else:
-            if self.target_update_method == 'hard':
-                self.logger.debug('sync')
-                copy_param.copy_param(self.target_model, self.model)
-            elif self.target_update_method == 'soft':
-                copy_param.soft_copy_param(
-                    self.target_model, self.model, self.soft_update_tau)
-            else:
-                raise RuntimeError('Unknown target update method: {}'.format(
-                    self.target_update_method))
+            synchronize_parameters(
+                src=self.model,
+                dst=self.target_model,
+                method=self.target_update_method,
+                tau=self.soft_update_tau)
 
     def update(self, experiences, errors_out=None):
         """Update the model from experiences
