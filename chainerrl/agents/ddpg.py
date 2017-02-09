@@ -8,7 +8,6 @@ standard_library.install_aliases()
 
 import copy
 from logging import getLogger
-import threading
 
 import chainer
 from chainer import cuda
@@ -22,6 +21,7 @@ from chainerrl.recurrent import Recurrent
 from chainerrl.recurrent import RecurrentChainMixin
 from chainerrl.recurrent import state_kept
 from chainerrl.replay_buffer import batch_experiences
+from chainerrl.replay_buffer import ReplayUpdator
 
 
 class DDPGModel(chainer.Chain, RecurrentChainMixin):
@@ -50,7 +50,6 @@ class DDPG(AttributeSavingMixin, Agent):
         phi (callable): Feature extractor applied to observations
         target_update_method (str): 'hard' or 'soft'.
         soft_update_tau (float): Tau of soft target update.
-        async_update (bool): Update model in a different thread if set True
         n_times_update (int): Number of repetition of update
         average_q_decay (float): Decay rate of average Q, only used for
             recording statistics
@@ -75,7 +74,7 @@ class DDPG(AttributeSavingMixin, Agent):
                  target_update_frequency=10000,
                  clip_reward=True, phi=lambda x: x,
                  target_update_method='hard',
-                 soft_update_tau=1e-2, async_update=False,
+                 soft_update_tau=1e-2,
                  n_times_update=1, average_q_decay=0.999,
                  average_loss_decay=0.99,
                  episodic_update=False,
@@ -95,34 +94,34 @@ class DDPG(AttributeSavingMixin, Agent):
         self.gamma = gamma
         self.explorer = explorer
         self.gpu = gpu
-        assert minibatch_size <= replay_start_size
-        self.replay_start_size = replay_start_size
-        self.minibatch_size = minibatch_size
-        self.update_frequency = update_frequency
         self.target_update_frequency = target_update_frequency
         self.clip_reward = clip_reward
         self.phi = phi
         self.target_update_method = target_update_method
         self.soft_update_tau = soft_update_tau
-        self.async_update = async_update
-        self.n_times_update = n_times_update
         self.logger = logger
-        self.episodic_update = episodic_update
-        self.episodic_update_len = episodic_update_len
         self.average_q_decay = average_q_decay
         self.average_loss_decay = average_loss_decay
         self.actor_optimizer = actor_optimizer
         self.critic_optimizer = critic_optimizer
+        if episodic_update:
+            update_func = self.update_from_episodes
+        else:
+            update_func = self.update
+        self.replay_updator = ReplayUpdator(
+            replay_buffer=replay_buffer,
+            update_func=update_func,
+            batchsize=minibatch_size,
+            episodic_update=episodic_update,
+            episodic_update_len=episodic_update_len,
+            n_times_update=n_times_update,
+            replay_start_size=replay_start_size,
+            update_frequency=update_frequency,
+        )
 
         self.t = 0
         self.last_state = None
         self.last_action = None
-        self.lock = threading.Lock()
-        if self.async_update:
-            self.update_executor = ThreadPoolExecutor(max_workers=1)
-            self.update_executor.submit(
-                lambda: cuda.get_device(gpu).use()).result()
-            self.update_future = None
         self.target_model = copy.deepcopy(self.model)
         self.average_q = 0
         self.average_actor_loss = 0.0
@@ -286,10 +285,6 @@ class DDPG(AttributeSavingMixin, Agent):
 
         self.logger.debug('t:%s r:%s', self.t, reward)
 
-        if self.async_update and self.update_future:
-            self.update_future.result()
-            self.update_future = None
-
         if self.clip_reward:
             reward = np.clip(reward, -1, 1)
 
@@ -315,31 +310,9 @@ class DDPG(AttributeSavingMixin, Agent):
         self.last_state = state
         self.last_action = action
 
-        self.update_if_necessary()
+        self.replay_updator.update_if_necessary(self.t)
 
         return self.last_action
-
-    def update_if_necessary(self):
-        if self.t < self.replay_start_size:
-            return
-        if self.t % self.update_frequency != 0:
-            return
-
-        def update_func():
-            for _ in range(self.n_times_update):
-                if self.episodic_update:
-                    episodes = self.replay_buffer.sample_episodes(
-                        self.minibatch_size, self.episodic_update_len)
-                    self.update_from_episodes(episodes)
-                else:
-                    experiences = self.replay_buffer.sample(
-                        self.minibatch_size)
-                    self.update(experiences)
-
-        if self.async_update:
-            self.update_future = self.update_executor.submit(update_func)
-        else:
-            update_func()
 
     def act(self, state):
 
@@ -370,10 +343,6 @@ class DDPG(AttributeSavingMixin, Agent):
 
         assert self.last_state is not None
         assert self.last_action is not None
-
-        if self.async_update and self.update_future:
-            self.update_future.result()
-            self.update_future = None
 
         # Add a transition to the replay buffer
         self.replay_buffer.append(
