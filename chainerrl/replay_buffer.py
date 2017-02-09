@@ -124,3 +124,66 @@ class EpisodicReplayBuffer(object):
                 for _ in range(len(discarded_episode)):
                     self.memory.popleft()
         assert not self.current_episode
+
+
+def batch_experiences(experiences, xp, phi):
+    return {
+        'state': xp.asarray([phi(elem['state']) for elem in experiences]),
+        'action': xp.asarray([elem['action'] for elem in experiences]),
+        'reward': xp.asarray(
+            [elem['reward'] for elem in experiences], dtype=np.float32),
+        'next_state': xp.asarray(
+            [phi(elem['next_state']) for elem in experiences]),
+        'next_action': xp.asarray(
+            [elem['next_action'] for elem in experiences]),
+        'is_state_terminal': xp.asarray(
+            [elem['is_state_terminal'] for elem in experiences],
+            dtype=np.float32)}
+
+
+class ReplayUpdator(object):
+    """Object that handles update schedule and configurations.
+
+    Args:
+        replay_buffer (ReplayBuffer): Replay buffer
+        update_func (callable): Callable that accepts one of these:
+            (1) a list of transition dicts (if episodic_update=False)
+            (2) a list of lists of transition dicts (if episodic_update=True)
+        replay_start_size (int): if the replay buffer's size is less than
+            replay_start_size, skip update
+        batchsize (int): Minibatch size
+        update_frequency (int): Model update frequency in step
+        n_times_update (int): Number of repetition of update
+        episodic_update (bool): Use full episodes for update if set True
+        episodic_update_len (int or None): Subsequences of this length are used
+            for update if set int and episodic_update=True
+    """
+
+    def __init__(self, replay_buffer, update_func, batchsize, episodic_update,
+                 n_times_update, replay_start_size, update_frequency,
+                 episodic_update_len=None):
+
+        assert batchsize <= replay_start_size
+        self.replay_buffer = replay_buffer
+        self.update_func = update_func
+        self.batchsize = batchsize
+        self.episodic_update = episodic_update
+        self.episodic_update_len = episodic_update_len
+        self.n_times_update = n_times_update
+        self.replay_start_size = replay_start_size
+        self.update_frequency = update_frequency
+
+    def update_if_necessary(self, iteration):
+        if len(self.replay_buffer) < self.replay_start_size:
+            return
+        if iteration % self.update_frequency != 0:
+            return
+
+        for _ in range(self.n_times_update):
+            if self.episodic_update:
+                episodes = self.replay_buffer.sample_episodes(
+                    self.batchsize, self.episodic_update_len)
+                self.update_func(episodes)
+            else:
+                transitions = self.replay_buffer.sample(self.batchsize)
+                self.update_func(transitions)

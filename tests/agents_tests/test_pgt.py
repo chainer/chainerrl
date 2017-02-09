@@ -140,4 +140,4 @@ class TestPGTOnContinuousABC(_TestPGTOnContinuousABC):
         return PGT(model, actor_opt, critic_opt, rbuf, gpu=gpu, gamma=0.9,
                    explorer=explorer, replay_start_size=100,
                    target_update_method='soft', target_update_frequency=1,
-                   episodic_update=False, act_deterministically=True)
+                   act_deterministically=True)
