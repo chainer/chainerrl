@@ -286,10 +286,9 @@ class PGT(AttributeSavingMixin, Agent):
         return self.explorer.select_action(
             self.t, lambda: self.act(state))
 
-    def get_stats_keys(self):
-        return ('average_q', 'average_actor_loss', 'average_critic_loss')
-
-    def get_stats_values(self):
-        return (self.average_q,
-                self.average_actor_loss,
-                self.average_critic_loss)
+    def get_statistics(self):
+        return [
+            ('average_q', self.average_q),
+            ('average_actor_loss', self.average_actor_loss),
+            ('average_critic_loss', self.average_critic_loss),
+        ]

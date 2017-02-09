@@ -84,8 +84,9 @@ class Evaluator(object):
 
         # Write a header line first
         with open(os.path.join(self.outdir, 'scores.txt'), 'w') as f:
+            custom_columns = tuple(t[0] for t in self.agent.get_statistics())
             column_names = (('steps', 'elapsed', 'mean', 'median', 'stdev') +
-                            self.agent.get_stats_keys())
+                            custom_columns)
             print('\t'.join(column_names), file=f)
 
     def evaluate_and_update_max_score(self, t):
@@ -93,8 +94,8 @@ class Evaluator(object):
             self.env, self.agent, self.n_runs,
             max_episode_len=self.max_episode_len, explorer=self.explorer)
         elapsed = time.time() - self.start_time
-        values = (t, elapsed, mean, median, stdev) + \
-            self.agent.get_stats_values()
+        custom_values = tuple(tup[1] for tup in self.agent.get_statistics())
+        values = (t, elapsed, mean, median, stdev) + custom_values
         record_stats(self.outdir, values)
         if mean > self.max_score:
             update_best_model(self.agent, self.outdir, t, self.max_score, mean)
@@ -144,8 +145,8 @@ class AsyncEvaluator(object):
             env, agent, self.n_runs,
             max_episode_len=self.max_episode_len, explorer=self.explorer)
         elapsed = time.time() - self.start_time
-        values = (t, elapsed, mean, median, stdev) + \
-            agent.get_stats_values()
+        custom_values = tuple(tup[1] for tup in agent.get_statistics())
+        values = (t, elapsed, mean, median, stdev) + custom_values
         record_stats(self.outdir, values)
         with self._max_score.get_lock():
             if mean > self._max_score.value:
@@ -156,8 +157,9 @@ class AsyncEvaluator(object):
 
     def write_header(self, agent):
         with open(os.path.join(self.outdir, 'scores.txt'), 'w') as f:
+            custom_columns = tuple(t[0] for t in agent.get_statistics())
             column_names = (('steps', 'elapsed', 'mean', 'median', 'stdev') +
-                            agent.get_stats_keys())
+                            custom_columns)
             print('\t'.join(column_names), file=f)
 
     def evaluate_if_necessary(self, t, env, agent):
