@@ -10,6 +10,7 @@ import os
 
 import chainer
 from chainer import links as L
+import numpy as np
 
 from chainerrl.action_value import DiscreteActionValue
 from chainerrl.agents import acer
@@ -20,6 +21,7 @@ from chainerrl.experiments.prepare_output_dir import prepare_output_dir
 from chainerrl.experiments.train_agent_async import train_agent_async
 from chainerrl.links import dqn_head
 from chainerrl.links import Sequence
+from chainerrl.misc import env_modifiers
 from chainerrl.misc import random_seed
 from chainerrl.optimizers.nonbias_weight_decay import NonbiasWeightDecay
 from chainerrl.optimizers import rmsprop_async
@@ -43,6 +45,7 @@ def main():
     parser.add_argument('--outdir', type=str, default=None)
     parser.add_argument('--use-sdl', action='store_true')
     parser.add_argument('--t-max', type=int, default=20)
+    parser.add_argument('--replay-start-size', type=int, default=10000)
     parser.add_argument('--n-times-replay', type=int, default=8)
     parser.add_argument('--max-episode-len', type=int, default=10000)
     parser.add_argument('--beta', type=float, default=1e-3)
@@ -100,13 +103,20 @@ def main():
     agent = acer.DiscreteACER(model, opt, t_max=args.t_max, gamma=0.99,
                               replay_buffer=replay_buffer,
                               n_times_replay=args.n_times_replay,
+                              replay_start_size=args.replay_start_size,
                               beta=args.beta, phi=dqn_phi)
+
     if args.load:
         agent.load(args.load)
 
     def make_env(process_idx, test):
-        return ale.ALE(args.rom, use_sdl=args.use_sdl,
-                       treat_life_lost_as_terminal=not test)
+        env = ale.ALE(args.rom, use_sdl=args.use_sdl,
+                      treat_life_lost_as_terminal=not test)
+        if not test:
+            env_modifiers.make_reward_filtered(
+                env, lambda x: np.clip(x, -1, 1))
+
+        return env
 
     if args.demo:
         env = make_env(0, True)
