@@ -23,24 +23,24 @@ from chainerrl import q_function
 from chainerrl.replay_buffer import EpisodicReplayBuffer
 
 
-@testing.parameterize(
-    *testing.product({
+@testing.parameterize(*(
+    testing.product({
         't_max': [1, 2],
         'use_lstm': [False],
         'episodic': [True, False],
         'n_times_replay': [0, 8],
         'disable_online_update': [True, False],
         'use_trust_region': [True, False],
-    }),
-    *testing.product({
+    }) +
+    testing.product({
         't_max': [5],
         'use_lstm': [True, False],
         'episodic': [True, False],
         'n_times_replay': [0, 8],
         'disable_online_update': [True, False],
         'use_trust_region': [True, False],
-    }),
-)
+    })
+))
 class TestACER(unittest.TestCase):
 
     def setUp(self):
