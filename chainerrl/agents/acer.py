@@ -254,9 +254,10 @@ class DiscreteACER(agent.AttributeSavingMixin, agent.AsyncAgent):
         pi_loss -= self.beta * action_distrib.entropy
         return pi_loss
 
-    def update(self, t_start, t_stop, R, states, actions, rewards, values,
-               action_values, action_log_probs,
-               action_distribs, avg_action_distribs, rho=None, rho_all=None):
+    def compute_loss_for_discrete_actions(
+            self, t_start, t_stop, R, states, actions, rewards, values,
+            action_values, action_log_probs,
+            action_distribs, avg_action_distribs, rho=None, rho_all=None):
 
         pi_loss = 0
         Q_loss = 0
@@ -312,7 +313,79 @@ class DiscreteACER(agent.AttributeSavingMixin, agent.AsyncAgent):
         if self.process_idx == 0:
             logger.debug('pi_loss:%s Q_loss:%s', pi_loss.data, Q_loss.data)
 
-        total_loss = pi_loss + F.reshape(Q_loss, pi_loss.data.shape)
+        return pi_loss + F.reshape(Q_loss, pi_loss.data.shape)
+
+    def compute_loss_for_continuous_actions(
+            self, t_start, t_stop, R, states, actions, rewards, values,
+            action_values, action_log_probs,
+            action_distribs, avg_action_distribs, rho=None, rho_all=None):
+
+        pi_loss = 0
+        Q_loss = 0
+        Q_ret = R
+        Q_opc = R
+        del R
+        for i in reversed(range(t_start, t_stop)):
+            r = rewards[i]
+            v = values[i]
+            log_prob = action_log_probs[i]
+            assert isinstance(log_prob, chainer.Variable),\
+                "log_prob must be backprop-able"
+            action_distrib = action_distribs[i]
+            avg_action_distrib = avg_action_distribs[i]
+            ba = np.expand_dims(actions[i], 0)
+            action_value = action_values[i]
+
+            Q_ret = r + self.gamma * Q_ret
+
+            with chainer.no_backprop_mode():
+                advantage = Q_ret - v
+
+            pi_loss += self.compute_one_step_pi_loss(
+                advantage=advantage,
+                action_distrib=action_distrib,
+                log_prob=log_prob,
+                rho=rho[i] if rho else None,
+                rho_all=rho_all[i] if rho_all else None,
+                action_value=action_value,
+                v=v,
+                avg_action_distrib=avg_action_distrib)
+
+            # Accumulate gradients of value function
+            Q = action_value.evaluate_actions(ba)
+            assert isinstance(Q, chainer.Variable), "Q must be backprop-able"
+            Q_loss += (Q_ret - Q) ** 2 / 2
+
+            if self.process_idx == 0:
+                logger.debug('t:%s s:%s v:%s Q:%s Q_ret:%s',
+                             i, states[i].sum(), v, float(Q.data), Q_ret)
+
+            if rho is not None:
+                Q_ret = min(1, rho[i]) * (Q_ret - float(Q.data)) + v
+            else:
+                Q_ret = Q_ret - float(Q.data) + v
+            Q_opc = Q_opc - float(Q.data) + v
+
+        pi_loss *= self.pi_loss_coef
+        Q_loss *= self.Q_loss_coef
+
+        if self.normalize_loss_by_steps:
+            pi_loss /= t_stop - t_start
+            Q_loss /= t_stop - t_start
+
+        if self.process_idx == 0:
+            logger.debug('pi_loss:%s Q_loss:%s', pi_loss.data, Q_loss.data)
+
+        return pi_loss + F.reshape(Q_loss, pi_loss.data.shape)
+
+    def update(self, t_start, t_stop, R, states, actions, rewards, values,
+               action_values, action_log_probs,
+               action_distribs, avg_action_distribs, rho=None, rho_all=None):
+
+        total_loss = self.compute_loss_for_discrete_actions(
+            t_start, t_stop, R, states, actions, rewards, values,
+            action_values, action_log_probs,
+            action_distribs, avg_action_distribs, rho, rho_all)
 
         # Compute gradients using thread-specific model
         self.model.zerograds()
