@@ -126,18 +126,26 @@ class EpisodicReplayBuffer(object):
         assert not self.current_episode
 
 
-def batch_experiences(experiences, xp, phi):
+def batch_states(states, xp, phi):
+    states = [phi(s) for s in states]
+    return xp.asarray(states)
+
+
+def batch_experiences(experiences, xp, phi, batch_states=batch_states):
+
     return {
-        'state': xp.asarray([phi(elem['state']) for elem in experiences]),
+        'state': batch_states(
+            [elem['state'] for elem in experiences], xp, phi),
         'action': xp.asarray([elem['action'] for elem in experiences]),
         'reward': xp.asarray(
             [elem['reward'] for elem in experiences], dtype=np.float32),
-        'next_state': xp.asarray(
-            [phi(elem['next_state']) for elem in experiences]),
+        'next_state': batch_states(
+            [elem['next_state'] for elem in experiences], xp, phi),
         'next_action': xp.asarray(
             [elem['next_action'] for elem in experiences]),
         'is_state_terminal': xp.asarray(
             [elem['is_state_terminal'] for elem in experiences],
+
             dtype=np.float32)}
 
 

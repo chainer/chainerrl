@@ -20,6 +20,7 @@ from chainerrl.misc.copy_param import synchronize_parameters
 from chainerrl.recurrent import Recurrent
 from chainerrl.recurrent import state_reset
 from chainerrl.replay_buffer import batch_experiences
+from chainerrl.replay_buffer import batch_states
 from chainerrl.replay_buffer import ReplayUpdator
 
 
@@ -107,7 +108,8 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
                  average_loss_decay=0.99,
                  batch_accumulator='mean', episodic_update=False,
                  episodic_update_len=None,
-                 logger=getLogger(__name__)):
+                 logger=getLogger(__name__),
+                 batch_states=batch_states):
         self.model = q_function
         self.q_function = q_function  # For backward compatibility
 
@@ -135,6 +137,7 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
         self.batch_accumulator = batch_accumulator
         assert batch_accumulator in ('mean', 'sum')
         self.logger = logger
+        self.batch_states = batch_states
         if episodic_update:
             update_func = self.update_from_episodes
         else:
@@ -189,7 +192,8 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
           None
         """
 
-        exp_batch = batch_experiences(experiences, xp=self.xp, phi=self.phi)
+        exp_batch = batch_experiences(experiences, xp=self.xp, phi=self.phi,
+                                      batch_states=self.batch_states)
         loss = self._compute_loss(
             exp_batch, self.gamma, errors_out=errors_out)
 
@@ -217,7 +221,9 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
                             break
                         transitions.append(ep[i])
                     batch = batch_experiences(transitions,
-                                              xp=self.xp, phi=self.phi)
+                                              xp=self.xp,
+                                              phi=self.phi,
+                                              batch_states=self.batch_states)
                     if i == 0:
                         self.input_initial_batch_to_target_model(batch)
                     loss += self._compute_loss(batch, self.gamma)
@@ -225,11 +231,6 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
                 self.optimizer.zero_grads()
                 loss.backward()
                 self.optimizer.update()
-
-    def _batch_states(self, states):
-        """Generate an input batch array from a list of states"""
-        states = [self.phi(s) for s in states]
-        return self.xp.asarray(states)
 
     def _compute_target_values(self, exp_batch, gamma):
 
@@ -244,8 +245,7 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
         return batch_rewards + self.gamma * (1.0 - batch_terminal) * next_q_max
 
     def _compute_y_and_t(self, exp_batch, gamma):
-
-        batch_size = exp_batch['state'].shape[0]
+        batch_size = exp_batch['reward'].shape[0]
 
         # Compute Q-values for current states
         batch_state = exp_batch['state']
@@ -296,7 +296,7 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
         """
         if not states:
             return []
-        batch_x = self._batch_states(states)
+        batch_x = self.batch_states(states, self.xp, self.phi)
         q_values = list(cuda.to_cpu(
             self.model(batch_x, test=True).q_values))
         return q_values
@@ -308,7 +308,8 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
             model.to_cpu()
 
     def act(self, state):
-        qout = self.model(self._batch_states([state]), test=True)
+        qout = self.model(self.batch_states([state], self.xp, self.phi),
+                          test=True)
         action = cuda.to_cpu(qout.greedy_actions.data)[0]
         action_var = chainer.Variable(self.xp.asarray([action]))
         q = float(qout.evaluate_actions(action_var).data)
