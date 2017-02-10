@@ -17,5 +17,3 @@ class VFunction(with_metaclass(ABCMeta, object)):
     @abstractmethod
     def __call__(self, x, test=False):
         raise NotImplementedError()
-
-from chainerrl.v_functions import *  # NOQA
