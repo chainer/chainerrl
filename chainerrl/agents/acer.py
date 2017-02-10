@@ -125,6 +125,7 @@ class DiscreteACER(agent.AttributeSavingMixin, agent.AsyncAgent):
                  replay_start_size=10 ** 4,
                  normalize_loss_by_steps=True,
                  act_deterministically=False,
+                 eps_division=1e-6,
                  average_entropy_decay=0.999,
                  average_value_decay=0.999,
                  average_kl_decay=0.999):
@@ -157,6 +158,7 @@ class DiscreteACER(agent.AttributeSavingMixin, agent.AsyncAgent):
         self.disable_online_update = disable_online_update
         self.n_times_replay = n_times_replay
         self.replay_start_size = replay_start_size
+        self.eps_division = eps_division
         self.average_value_decay = average_value_decay
         self.average_entropy_decay = average_entropy_decay
         self.average_kl_decay = average_kl_decay
@@ -211,7 +213,8 @@ class DiscreteACER(agent.AttributeSavingMixin, agent.AsyncAgent):
             with chainer.no_backprop_mode():
                 correction_weight = (
                     np.maximum(
-                        1 - self.trust_region_c / rho_all,
+                        1 - self.trust_region_c /
+                        (rho_all + self.eps_division),
                         np.zeros_like(rho_all)) *
                     action_distrib.all_prob.data)
                 correction_advantage = action_value.q_values.data - v
@@ -243,7 +246,7 @@ class DiscreteACER(agent.AttributeSavingMixin, agent.AsyncAgent):
         # Compute z: combination of g and k to keep small KL div.
         if self.use_trust_region and np.any(k):
             k_factor = max(0, ((np.dot(k, g) - self.trust_region_delta) /
-                               np.dot(k, k)))
+                               (np.dot(k, k) + self.eps_division)))
             z = g - k_factor * k
         else:
             z = g
@@ -369,9 +372,10 @@ class DiscreteACER(agent.AttributeSavingMixin, agent.AsyncAgent):
                     rewards[t] = transition['reward']
                     mu = transition['mu']
                     action_values[t] = action_value
-                    rho[t] = action_distrib.prob(ba).data / mu.prob(ba).data
+                    rho[t] = (action_distrib.prob(ba).data /
+                              (mu.prob(ba).data + self.eps_division))
                     rho_all[t] = (action_distrib.all_prob.data /
-                                  mu.all_prob.data)
+                                  (mu.all_prob.data + self.eps_division))
                 last_transition = episode[-1]
                 if last_transition['is_state_terminal']:
                     R = 0
