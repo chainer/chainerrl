@@ -9,8 +9,12 @@ standard_library.install_aliases()
 from abc import ABCMeta
 from abc import abstractmethod
 from abc import abstractproperty
+import os
 
+from chainer import serializers
 from future.utils import with_metaclass
+
+from chainerrl.misc.makedirs import makedirs
 
 
 class Agent(with_metaclass(ABCMeta, object)):
@@ -54,13 +58,58 @@ class Agent(with_metaclass(ABCMeta, object)):
 
     @abstractmethod
     def save(self, dirname):
-        """Save internal states."""
-        raise NotImplementedError()
+        """Save internal states.
+
+        Returns:
+            None
+        """
+        pass
 
     @abstractmethod
     def load(self, dirname):
+        """Load internal states.
+
+        Returns:
+            None
+        """
+        pass
+
+    @abstractmethod
+    def get_statistics(self):
+        """Get statistics of the agent.
+
+        Returns:
+            List of two-item tuples. The first item in a tuple is a str that
+            represents the name of item, while the second item is a value to be
+            recorded.
+
+            Example: [('average_loss': 0), ('average_value': 1), ...]
+        """
+        pass
+
+
+class AttributeSavingMixin(object):
+    """Mixin that provides save and load functionalities."""
+
+    @abstractproperty
+    def saved_attributes(self):
+        """Specify attribute names to save or load as a tuple of str."""
+        pass
+
+    def save(self, dirname):
+        """Save internal states."""
+        makedirs(dirname, exist_ok=True)
+        for attr in self.saved_attributes:
+            serializers.save_npz(
+                os.path.join(dirname, '{}.npz'.format(attr)),
+                getattr(self, attr))
+
+    def load(self, dirname):
         """Load internal states."""
-        raise NotImplementedError()
+        for attr in self.saved_attributes:
+            serializers.load_npz(
+                os.path.join(dirname, '{}.npz'.format(attr)),
+                getattr(self, attr))
 
 
 class AsyncAgent(with_metaclass(ABCMeta, Agent)):

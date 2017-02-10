@@ -22,8 +22,3 @@ class Policy(object):
             Distribution of actions
         """
         raise NotImplementedError()
-
-
-from chainerrl.policies.softmax_policy import *  # NOQA
-from chainerrl.policies.gaussian_policy import *  # NOQA
-from chainerrl.policies.deterministic_policy import *  # NOQA

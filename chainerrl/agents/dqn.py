@@ -6,24 +6,21 @@ from builtins import *  # NOQA
 from future import standard_library
 standard_library.install_aliases()
 
-from concurrent.futures import ThreadPoolExecutor
 import copy
 from future.utils import native
 from logging import getLogger
-import os
-import threading
 
 import chainer
 from chainer import cuda
 import chainer.functions as F
-from chainer import serializers
 import numpy as np
 
 from chainerrl import agent
-from chainerrl.misc import copy_param
-from chainerrl.misc.makedirs import makedirs
+from chainerrl.misc.copy_param import synchronize_parameters
 from chainerrl.recurrent import Recurrent
 from chainerrl.recurrent import state_reset
+from chainerrl.replay_buffer import batch_experiences, batch_states
+from chainerrl.replay_buffer import ReplayUpdator
 
 
 def _to_device(obj, gpu):
@@ -34,27 +31,6 @@ def _to_device(obj, gpu):
             return cuda.to_gpu(obj, gpu)
         else:
             return cuda.to_cpu(obj)
-
-
-def batch_states(states, xp, phi):
-    states = [phi(s) for s in states]
-    return xp.asarray(states)
-
-
-def batch_experiences(experiences, xp, phi, batch_states):
-    return {
-        'state': batch_states(
-            [elem['state'] for elem in experiences], xp, phi),
-        'action': xp.asarray([elem['action'] for elem in experiences]),
-        'reward': xp.asarray(
-            [elem['reward'] for elem in experiences], dtype=np.float32),
-        'next_state': batch_states(
-            [elem['next_state'] for elem in experiences], xp, phi),
-        'next_action': xp.asarray(
-            [elem['next_action'] for elem in experiences]),
-        'is_state_terminal': xp.asarray(
-            [elem['is_state_terminal'] for elem in experiences],
-            dtype=np.float32)}
 
 
 def compute_value_loss(y, t, clip_delta=True, batch_accumulator='mean'):
@@ -87,7 +63,7 @@ def compute_value_loss(y, t, clip_delta=True, batch_accumulator='mean'):
     return loss
 
 
-class DQN(agent.Agent):
+class DQN(agent.AttributeSavingMixin, agent.Agent):
     """Deep Q-Network algorithm.
 
     Args:
@@ -106,7 +82,6 @@ class DQN(agent.Agent):
         phi (callable): Feature extractor applied to observations
         target_update_method (str): 'hard' or 'soft'.
         soft_update_tau (float): Tau of soft target update.
-        async_update (bool): Update model in a different thread if set True
         n_times_update (int): Number of repetition of update
         average_q_decay (float): Decay rate of average Q, only used for
             recording statistics
@@ -119,13 +94,15 @@ class DQN(agent.Agent):
         logger (Logger): Logger used
     """
 
+    saved_attributes = ('model', 'target_model', 'optimizer')
+
     def __init__(self, q_function, optimizer, replay_buffer, gamma,
                  explorer, gpu=-1, replay_start_size=50000,
                  minibatch_size=32, update_frequency=1,
                  target_update_frequency=10000, clip_delta=True,
                  clip_reward=True, phi=lambda x: x,
                  target_update_method='hard',
-                 soft_update_tau=1e-2, async_update=False,
+                 soft_update_tau=1e-2,
                  n_times_update=1, average_q_decay=0.999,
                  average_loss_decay=0.99,
                  batch_accumulator='mean', episodic_update=False,
@@ -150,34 +127,34 @@ class DQN(agent.Agent):
         self.gamma = gamma
         self.explorer = explorer
         self.gpu = gpu
-        assert minibatch_size <= replay_start_size
-        self.replay_start_size = replay_start_size
-        self.minibatch_size = minibatch_size
-        self.update_frequency = update_frequency
         self.target_update_frequency = target_update_frequency
         self.clip_delta = clip_delta
         self.clip_reward = clip_reward
         self.phi = phi
         self.target_update_method = target_update_method
         self.soft_update_tau = soft_update_tau
-        self.async_update = async_update
-        self.n_times_update = n_times_update
         self.batch_accumulator = batch_accumulator
         assert batch_accumulator in ('mean', 'sum')
         self.logger = logger
         self.batch_states = batch_states
+        if episodic_update:
+            update_func = self.update_from_episodes
+        else:
+            update_func = self.update
+        self.replay_updator = ReplayUpdator(
+            replay_buffer=replay_buffer,
+            update_func=update_func,
+            batchsize=minibatch_size,
+            episodic_update=episodic_update,
+            episodic_update_len=episodic_update_len,
+            n_times_update=n_times_update,
+            replay_start_size=replay_start_size,
+            update_frequency=update_frequency,
+        )
 
         self.t = 0
         self.last_state = None
         self.last_action = None
-        self.lock = threading.Lock()
-        if self.async_update:
-            self.update_executor = ThreadPoolExecutor(max_workers=1)
-            self.update_executor.submit(
-                lambda: cuda.get_device(gpu).use()).result()
-            self.update_future = None
-        self.episodic_update = episodic_update
-        self.episodic_update_len = episodic_update_len
         self.target_model = None
         self.sync_target_network()
         # For backward compatibility
@@ -192,15 +169,11 @@ class DQN(agent.Agent):
         if self.target_model is None:
             self.target_model = copy.deepcopy(self.model)
         else:
-            if self.target_update_method == 'hard':
-                self.logger.debug('sync')
-                copy_param.copy_param(self.target_model, self.model)
-            elif self.target_update_method == 'soft':
-                copy_param.soft_copy_param(
-                    self.target_model, self.model, self.soft_update_tau)
-            else:
-                raise RuntimeError('Unknown target update method: {}'.format(
-                    self.target_update_method))
+            synchronize_parameters(
+                src=self.model,
+                dst=self.target_model,
+                method=self.target_update_method,
+                tau=self.soft_update_tau)
 
     def update(self, experiences, errors_out=None):
         """Update the model from experiences
@@ -257,10 +230,6 @@ class DQN(agent.Agent):
                 self.optimizer.zero_grads()
                 loss.backward()
                 self.optimizer.update()
-
-    def _batch_states(self, states):
-        """Generate an input batch array from a list of states"""
-        return self.batch_states(states, xp=self.xp, phi=self.phi)
 
     def _compute_target_values(self, exp_batch, gamma):
 
@@ -319,7 +288,6 @@ class DQN(agent.Agent):
     def compute_q_values(self, states):
         """Compute Q-values
 
-        This function is thread-safe.
         Args:
           states (list of cupy.ndarray or numpy.ndarray)
         Returns:
@@ -327,11 +295,9 @@ class DQN(agent.Agent):
         """
         if not states:
             return []
-        self.lock.acquire()
-        batch_x = self._batch_states(states)
+        batch_x = self.batch_states(states, self.xp, self.phi)
         q_values = list(cuda.to_cpu(
             self.model(batch_x, test=True).q_values))
-        self.lock.release()
         return q_values
 
     def _to_my_device(self, model):
@@ -340,25 +306,9 @@ class DQN(agent.Agent):
         else:
             model.to_cpu()
 
-    @property
-    def saved_attributes(self):
-        return ('model', 'target_model', 'optimizer')
-
-    def save(self, dirname):
-        makedirs(dirname, exist_ok=True)
-        for attr in self.saved_attributes:
-            serializers.save_npz(
-                os.path.join(dirname, '{}.npz'.format(attr)),
-                getattr(self, attr))
-
-    def load(self, dirname):
-        for attr in self.saved_attributes:
-            serializers.load_npz(
-                os.path.join(dirname, '{}.npz'.format(attr)),
-                getattr(self, attr))
-
     def act(self, state):
-        qout = self.model(self._batch_states([state]), test=True)
+        qout = self.model(self.batch_states([state], self.xp, self.phi),
+                          test=True)
         action = cuda.to_cpu(qout.greedy_actions.data)[0]
         action_var = chainer.Variable(self.xp.asarray([action]))
         q = float(qout.evaluate_actions(action_var).data)
@@ -370,35 +320,9 @@ class DQN(agent.Agent):
         self.logger.debug('t:%s a:%s q:%s qout:%s', self.t, action, q, qout)
         return action
 
-    def update_if_necessary(self):
-        if self.t < self.replay_start_size:
-            return
-        if self.t % self.update_frequency != 0:
-            return
-
-        def update_func():
-            for _ in range(self.n_times_update):
-                if self.episodic_update:
-                    episodes = self.replay_buffer.sample_episodes(
-                        self.minibatch_size, self.episodic_update_len)
-                    self.update_from_episodes(episodes)
-                else:
-                    experiences = self.replay_buffer.sample(
-                        self.minibatch_size)
-                    self.update(experiences)
-
-        if self.async_update:
-            self.update_future = self.update_executor.submit(update_func)
-        else:
-            update_func()
-
     def act_and_train(self, state, reward):
 
         self.logger.debug('t:%s r:%s', self.t, reward)
-
-        if self.async_update and self.update_future:
-            self.update_future.result()
-            self.update_future = None
 
         if self.clip_reward:
             reward = np.clip(reward, -1, 1)
@@ -425,7 +349,7 @@ class DQN(agent.Agent):
         self.last_state = state
         self.last_action = action
 
-        self.update_if_necessary()
+        self.replay_updator.update_if_necessary(self.t)
 
         return self.last_action
 
@@ -440,10 +364,6 @@ class DQN(agent.Agent):
 
         assert self.last_state is not None
         assert self.last_action is not None
-
-        if self.async_update and self.update_future:
-            self.update_future.result()
-            self.update_future = None
 
         # Add a transition to the replay buffer
         self.replay_buffer.append(
@@ -463,8 +383,8 @@ class DQN(agent.Agent):
             self.model.reset_state()
         self.replay_buffer.stop_current_episode()
 
-    def get_stats_keys(self):
-        return ('average_q', 'average_loss')
-
-    def get_stats_values(self):
-        return (self.average_q, self.average_loss)
+    def get_statistics(self):
+        return [
+            ('average_q', self.average_q),
+            ('average_loss', self.average_loss),
+        ]
