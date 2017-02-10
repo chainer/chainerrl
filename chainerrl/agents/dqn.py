@@ -19,7 +19,8 @@ from chainerrl import agent
 from chainerrl.misc.copy_param import synchronize_parameters
 from chainerrl.recurrent import Recurrent
 from chainerrl.recurrent import state_reset
-from chainerrl.replay_buffer import batch_experiences, batch_states
+from chainerrl.replay_buffer import batch_experiences
+from chainerrl.replay_buffer import batch_states
 from chainerrl.replay_buffer import ReplayUpdator
 
 
