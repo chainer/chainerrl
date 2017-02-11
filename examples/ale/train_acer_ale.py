@@ -93,8 +93,7 @@ def main():
                 L.Linear(256, n_actions),
                 DiscreteActionValue),
         )
-    opt = rmsprop_async.RMSpropAsync(
-        lr=7e-4, eps=1e-1 / args.t_max ** 2, alpha=0.99)
+    opt = rmsprop_async.RMSpropAsync(lr=7e-4, eps=4e-3, alpha=0.99)
     opt.setup(model)
     opt.add_hook(chainer.optimizer.GradientClipping(40))
     if args.weight_decay > 0:
