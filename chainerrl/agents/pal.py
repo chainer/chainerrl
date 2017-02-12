@@ -32,7 +32,7 @@ class PAL(dqn.DQN):
     def _compute_y_and_t(self, exp_batch, gamma):
 
         batch_state = exp_batch['state']
-        batch_size = len(batch_state)
+        batch_size = len(exp_batch['reward'])
 
         qout = self.q_function(batch_state, test=False)
 
