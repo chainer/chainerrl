@@ -21,6 +21,7 @@ from chainerrl.recurrent import Recurrent
 from chainerrl.recurrent import RecurrentChainMixin
 from chainerrl.recurrent import state_kept
 from chainerrl.replay_buffer import batch_experiences
+from chainerrl.replay_buffer import batch_states
 from chainerrl.replay_buffer import ReplayUpdator
 
 
@@ -82,7 +83,8 @@ class DDPG(AttributeSavingMixin, Agent):
                  average_loss_decay=0.99,
                  episodic_update=False,
                  episodic_update_len=None,
-                 logger=getLogger(__name__)):
+                 logger=getLogger(__name__),
+                 batch_states=batch_states):
 
         self.model = model
 
@@ -119,6 +121,7 @@ class DDPG(AttributeSavingMixin, Agent):
             replay_start_size=replay_start_size,
             update_frequency=update_frequency,
         )
+        self.batch_states = batch_states
 
         self.t = 0
         self.last_state = None
@@ -164,7 +167,7 @@ class DDPG(AttributeSavingMixin, Agent):
         batch_state = batch['state']
         batch_actions = batch['action']
         batch_next_actions = batch['next_action']
-        batchsize = len(batch_state)
+        batchsize = len(batch_rewards)
 
         with chainer.no_backprop_mode():
             # Target policy observes s_{t+1}
@@ -212,7 +215,7 @@ class DDPG(AttributeSavingMixin, Agent):
 
         batch_state = batch['state']
         batch_action = batch['action']
-        batch_size = batch_state.shape[0]
+        batch_size = len(batch_action)
 
         # Estimated policy observes s_t
         onpolicy_actions = self.policy(batch_state, test=False).sample()
@@ -317,7 +320,7 @@ class DDPG(AttributeSavingMixin, Agent):
 
     def act(self, state):
 
-        s = self._batch_states([state])
+        s = self.batch_states([state], self.xp, self.phi)
         action = self.policy(s, test=True).sample()
         # Q is not needed here, but log it just for information
         q = self.q_function(s, action, test=True)
@@ -355,11 +358,6 @@ class DDPG(AttributeSavingMixin, Agent):
         if isinstance(self.model, Recurrent):
             self.model.reset_state()
         self.replay_buffer.stop_current_episode()
-
-    def _batch_states(self, states):
-        """Generate an input batch array from a list of states"""
-        states = [self.phi(s) for s in states]
-        return self.xp.asarray(states)
 
     def get_statistics(self):
         return [
