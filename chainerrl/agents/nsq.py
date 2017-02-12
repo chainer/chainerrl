@@ -20,6 +20,7 @@ from chainerrl.misc import async
 from chainerrl.misc import copy_param
 from chainerrl.recurrent import Recurrent
 from chainerrl.recurrent import state_kept
+from chainerrl.replay_buffer import batch_states
 
 
 class NSQ(AttributeSavingMixin, AsyncAgent):
@@ -46,7 +47,8 @@ class NSQ(AttributeSavingMixin, AsyncAgent):
     def __init__(self, q_function, optimizer,
                  t_max, gamma, i_target, explorer, phi=lambda x: x,
                  clip_reward=True,
-                 average_q_decay=0.999, logger=getLogger(__name__)):
+                 average_q_decay=0.999, logger=getLogger(__name__),
+                 batch_states=batch_states):
 
         self.shared_q_function = q_function
         self.target_q_function = copy.deepcopy(q_function)
@@ -64,6 +66,7 @@ class NSQ(AttributeSavingMixin, AsyncAgent):
         self.phi = phi
         self.logger = logger
         self.average_q_decay = average_q_decay
+        self.batch_states = batch_states
 
         self.t_global = mp.Value('l', 0)
         self.t = 0
@@ -133,7 +136,7 @@ class NSQ(AttributeSavingMixin, AsyncAgent):
         if self.clip_reward:
             reward = np.clip(reward, -1, 1)
 
-        statevar = chainer.Variable(np.expand_dims(self.phi(obs), 0))
+        statevar = self.batch_states([obs], np, self.phi)
 
         self.past_rewards[self.t - 1] = reward
 
@@ -145,10 +148,6 @@ class NSQ(AttributeSavingMixin, AsyncAgent):
             # Evaluate it to update states
             self.target_q_function(statevar)
         qout = self.q_function(statevar)
-        if self.process_idx == 0:
-            self.logger.debug(
-                't_global: %s t_local: %s obs: %s r: %s action_value: %s',
-                self.t_global.value, self.t, statevar.data.sum(), reward, qout)
         action = self.explorer.select_action(
             self.t_global.value, lambda: qout.greedy_actions.data[0])
         q = qout.evaluate_actions(np.asarray([action]))
@@ -168,7 +167,7 @@ class NSQ(AttributeSavingMixin, AsyncAgent):
         return action
 
     def act(self, obs):
-        statevar = chainer.Variable(np.expand_dims(self.phi(obs), 0))
+        statevar = self.batch_states([obs], np, self.phi)
         qout = self.q_function(statevar)
         self.logger.debug('act action_value: %s', qout)
         return qout.greedy_actions.data[0]
@@ -181,7 +180,7 @@ class NSQ(AttributeSavingMixin, AsyncAgent):
         if done:
             self.update(None)
         else:
-            statevar = chainer.Variable(np.expand_dims(self.phi(state), 0))
+            statevar = self.batch_states([state], np, self.phi)
             self.update(statevar)
 
         if isinstance(self.q_function, Recurrent):
