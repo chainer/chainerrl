@@ -36,7 +36,7 @@ def eval_performance(env, agent, n_runs, max_episode_len=None,
         # As mixing float and numpy float causes errors in statistics
         # functions, here every score is cast to float.
         scores.append(float(test_r))
-        print('test_{}:'.format(i), test_r)
+        print('test episode:', i, 'R:', test_r)
     mean = statistics.mean(scores)
     median = statistics.median(scores)
     if n_runs >= 2:

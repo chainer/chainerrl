@@ -53,8 +53,9 @@ def train_agent(agent, env, steps, outdir, max_episode_len=None,
 
             if done or episode_len == max_episode_len or t == steps:
                 agent.stop_episode_and_train(obs, r, done=done)
-                print('{} t:{} episode_idx:{} explorer:{} episode_r:{}'.format(
-                    outdir, t, episode_idx, agent.explorer, episode_r))
+                print('outdir:{} step:{} episode:{} R:{}'.format(
+                    outdir, t, episode_idx, episode_r))
+                print('statistics:{}'.format(agent.get_statistics()))
                 if evaluator is not None:
                     evaluator.evaluate_if_necessary(t)
                     if (successful_score is not None and
