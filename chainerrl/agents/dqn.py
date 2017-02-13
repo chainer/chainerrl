@@ -73,7 +73,7 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
         replay_buffer (ReplayBuffer): Replay buffer
         gamma (float): Discount factor
         explorer (Explorer): Explorer that specifies an exploration strategy.
-        gpu (int): GPU device id. -1 for CPU.
+        gpu (int): GPU device id if not None nor negative.
         replay_start_size (int): if the replay buffer's size is less than
             replay_start_size, skip update
         minibatch_size (int): Minibatch size
@@ -98,7 +98,7 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
     saved_attributes = ('model', 'target_model', 'optimizer')
 
     def __init__(self, q_function, optimizer, replay_buffer, gamma,
-                 explorer, gpu=-1, replay_start_size=50000,
+                 explorer, gpu=None, replay_start_size=50000,
                  minibatch_size=32, update_frequency=1,
                  target_update_frequency=10000, clip_delta=True,
                  clip_reward=True, phi=lambda x: x,
@@ -117,12 +117,11 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
         # 1.15 only accepts int and long, so here we should use a native type.
         gpu = native(gpu)
 
-        if gpu >= 0:
+        if gpu is not None and gpu >= 0:
             cuda.get_device(gpu).use()
             self.model.to_gpu(device=gpu)
-            self.xp = cuda.cupy
-        else:
-            self.xp = np
+
+        self.xp = self.model.xp
         self.replay_buffer = replay_buffer
         self.optimizer = optimizer
         self.gamma = gamma
