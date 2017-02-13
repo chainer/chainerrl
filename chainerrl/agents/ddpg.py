@@ -33,6 +33,9 @@ class DDPGModel(chainer.Chain, RecurrentChainMixin):
 class DDPG(AttributeSavingMixin, Agent):
     """Deep Deterministic Policy Gradients.
 
+    This can be used as SVG(0) by specifying a Gaussina policy instead of a
+    deterministic policy.
+
     Args:
         model (DDPGModel): DDPG model that contains both a policy and a
             Q-function
