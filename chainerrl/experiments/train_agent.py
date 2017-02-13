@@ -9,6 +9,7 @@ import os
 
 from chainerrl.experiments.evaluator import Evaluator
 from chainerrl.misc.ask_yes_no import ask_yes_no
+from chainerrl.misc.makedirs import makedirs
 
 
 def save_agent(agent, t, outdir, suffix=''):
@@ -84,7 +85,8 @@ def train_agent(agent, env, steps, outdir, max_episode_len=None,
 def train_agent_with_evaluation(
         agent, env, steps, eval_n_runs, eval_frequency,
         outdir, max_episode_len=None, step_offset=0, eval_explorer=None,
-        eval_max_episode_len=None, eval_env=None, successful_score=None):
+        eval_max_episode_len=None, eval_env=None, successful_score=None,
+        render=False):
     """Run a DQN-like agent.
 
     Args:
@@ -101,6 +103,8 @@ def train_agent_with_evaluation(
       successful_score (float): Finish training if the mean score is greater
           or equal to this value if not None
     """
+
+    makedirs(outdir, exist_ok=True)
 
     if eval_env is None:
         eval_env = env
