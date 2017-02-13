@@ -75,13 +75,11 @@ class PGT(AttributeSavingMixin, Agent):
 
         self.model = model
 
-        if gpu >= 0:
+        if gpu is not None and gpu >= 0:
             cuda.get_device(gpu).use()
             self.model.to_gpu(device=gpu)
-            self.xp = cuda.cupy
-        else:
-            self.xp = np
 
+        self.xp = self.model.xp
         self.replay_buffer = replay_buffer
         self.gamma = gamma
         self.explorer = explorer
