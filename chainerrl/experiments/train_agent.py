@@ -8,14 +8,9 @@ standard_library.install_aliases()
 import os
 
 from chainerrl.experiments.evaluator import Evaluator
+from chainerrl.experiments.evaluator import save_agent
 from chainerrl.misc.ask_yes_no import ask_yes_no
 from chainerrl.misc.makedirs import makedirs
-
-
-def save_agent(agent, t, outdir, suffix=''):
-    dirname = os.path.join(outdir, '{}{}'.format(t, suffix))
-    agent.save(dirname)
-    print('Saved the agent to {}'.format(dirname))
 
 
 def save_agent_replay_buffer(agent, t, outdir, suffix=''):

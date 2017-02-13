@@ -51,17 +51,17 @@ def record_stats(outdir, values):
         print('\t'.join(str(x) for x in values), file=f)
 
 
-def save_agent_model(agent, t, outdir, suffix=''):
+def save_agent(agent, t, outdir, suffix=''):
     dirname = os.path.join(outdir, '{}{}'.format(t, suffix))
     agent.save(dirname)
-    print('Saved the current model to {}'.format(dirname))
+    print('Saved the agent to {}'.format(dirname))
 
 
 def update_best_model(agent, outdir, t, old_max_score, new_max_score):
     # Save the best model so far
     print('The best score is updated {} -> {}'.format(
         old_max_score, new_max_score))
-    save_agent_model(agent, t, outdir)
+    save_agent(agent, t, outdir)
 
 
 class Evaluator(object):
