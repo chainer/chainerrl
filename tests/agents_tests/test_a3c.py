@@ -127,7 +127,7 @@ class TestA3C(unittest.TestCase):
         opt = rmsprop_async.RMSpropAsync(lr=5e-4, eps=eps, alpha=0.99)
         opt.setup(model)
         gamma = 0.9
-        beta = 1e-2 if discrete else 1e-3
+        beta = 1e-2
         agent = a3c.A3C(model, opt, t_max=t_max, gamma=gamma, beta=beta,
                         phi=phi,
                         act_deterministically=True)
