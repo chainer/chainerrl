@@ -7,7 +7,6 @@ from future import standard_library
 standard_library.install_aliases()
 
 import copy
-from future.utils import native
 from logging import getLogger
 
 import chainer
@@ -112,10 +111,6 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
                  batch_states=batch_states):
         self.model = q_function
         self.q_function = q_function  # For backward compatibility
-
-        # Future's builtins.int is a new type that inherit long, but Chainer
-        # 1.15 only accepts int and long, so here we should use a native type.
-        gpu = native(gpu)
 
         if gpu is not None and gpu >= 0:
             cuda.get_device(gpu).use()
