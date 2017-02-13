@@ -41,7 +41,7 @@ def train_agent(agent, env, steps, outdir, max_episode_len=None,
 
     episode_len = 0
     try:
-        while t < steps:
+        while True:
 
             # a_t
             action = agent.act_and_train(obs, r)
@@ -51,7 +51,7 @@ def train_agent(agent, env, steps, outdir, max_episode_len=None,
             episode_r += r
             episode_len += 1
 
-            if done or episode_len == max_episode_len:
+            if done or episode_len == max_episode_len or t == steps:
                 agent.stop_episode_and_train(obs, r, done=done)
                 print('{} t:{} episode_idx:{} explorer:{} episode_r:{}'.format(
                     outdir, t, episode_idx, agent.explorer, episode_r))
@@ -60,6 +60,8 @@ def train_agent(agent, env, steps, outdir, max_episode_len=None,
                     if (successful_score is not None and
                             evaluator.max_score >= successful_score):
                         break
+                if t == steps:
+                    break
                 # Start a new episode
                 episode_r = 0
                 episode_idx += 1
