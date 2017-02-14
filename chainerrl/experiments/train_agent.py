@@ -41,7 +41,7 @@ def train_agent(agent, env, steps, outdir, max_episode_len=None,
 
     episode_len = 0
     try:
-        while True:
+        while t < steps:
 
             # a_t
             action = agent.act_and_train(obs, r)
