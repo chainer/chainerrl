@@ -46,6 +46,6 @@ To test chainerrl modules, install `nose` and run `nosetests`.
 
 To test examples, run `test_examples.sh`.
 
-# License
+## License
 
 [MIT License](LICENSE).
