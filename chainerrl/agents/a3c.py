@@ -15,8 +15,8 @@ import numpy as np
 
 from chainerrl import agent
 from chainerrl.misc import async
-from chainerrl.misc import copy_param
 from chainerrl.misc.batch_states import batch_states
+from chainerrl.misc import copy_param
 from chainerrl.recurrent import Recurrent
 from chainerrl.recurrent import RecurrentChainMixin
 from chainerrl.recurrent import state_kept
