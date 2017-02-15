@@ -11,6 +11,8 @@ import random
 import numpy as np
 import six.moves.cPickle as pickle
 
+from chainerrl.misc.batch_states import batch_states
+
 
 class ReplayBuffer(object):
 
@@ -124,11 +126,6 @@ class EpisodicReplayBuffer(object):
                 for _ in range(len(discarded_episode)):
                     self.memory.popleft()
         assert not self.current_episode
-
-
-def batch_states(states, xp, phi):
-    states = [phi(s) for s in states]
-    return xp.asarray(states)
 
 
 def batch_experiences(experiences, xp, phi, batch_states=batch_states):
