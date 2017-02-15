@@ -33,6 +33,9 @@ class DDPGModel(chainer.Chain, RecurrentChainMixin):
 class DDPG(AttributeSavingMixin, Agent):
     """Deep Deterministic Policy Gradients.
 
+    This can be used as SVG(0) by specifying a Gaussina policy instead of a
+    deterministic policy.
+
     Args:
         model (DDPGModel): DDPG model that contains both a policy and a
             Q-function
@@ -41,7 +44,7 @@ class DDPG(AttributeSavingMixin, Agent):
         replay_buffer (ReplayBuffer): Replay buffer
         gamma (float): Discount factor
         explorer (Explorer): Explorer that specifies an exploration strategy.
-        gpu (int): GPU device id. -1 for CPU.
+        gpu (int): GPU device id if not None nor negative.
         replay_start_size (int): if the replay buffer's size is less than
             replay_start_size, skip update
         minibatch_size (int): Minibatch size
@@ -69,7 +72,7 @@ class DDPG(AttributeSavingMixin, Agent):
 
     def __init__(self, model, actor_optimizer, critic_optimizer, replay_buffer,
                  gamma, explorer,
-                 gpu=-1, replay_start_size=50000,
+                 gpu=None, replay_start_size=50000,
                  minibatch_size=32, update_frequency=1,
                  target_update_frequency=10000,
                  clip_reward=True, phi=lambda x: x,
@@ -83,13 +86,11 @@ class DDPG(AttributeSavingMixin, Agent):
 
         self.model = model
 
-        if gpu >= 0:
+        if gpu is not None and gpu >= 0:
             cuda.get_device(gpu).use()
             self.model.to_gpu(device=gpu)
-            self.xp = cuda.cupy
-        else:
-            self.xp = np
 
+        self.xp = self.model.xp
         self.replay_buffer = replay_buffer
         self.gamma = gamma
         self.explorer = explorer

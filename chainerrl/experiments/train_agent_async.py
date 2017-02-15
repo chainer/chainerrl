@@ -43,9 +43,10 @@ def train_loop(process_idx, env, agent, steps, outdir, counter, training_done,
             if done or episode_len == max_episode_len:
                 agent.stop_episode_and_train(obs, r, done)
                 if process_idx == 0:
-                    print('{} global_t:{} local_t:{} lr:{} r:{}'.format(
+                    print('outdir:{} global_step:{} local_step:{} lr:{} R:{}'.format(  # NOQA
                         outdir, global_t, local_t, agent.optimizer.lr,
                         episode_r))
+                    print('statistics:{}'.format(agent.get_statistics()))
                 if evaluator is not None:
                     eval_score = evaluator.evaluate_if_necessary(
                         global_t, env=eval_env, agent=agent)
@@ -93,13 +94,13 @@ def train_loop(process_idx, env, agent, steps, outdir, counter, training_done,
         # Save the final model
         dirname = os.path.join(outdir, '{}_finish'.format(steps))
         agent.save(dirname)
-        print('Saved the final model to {}'.format(dirname))
+        print('Saved the final agent to {}'.format(dirname))
 
     if successful:
         # Save the successful model
         dirname = os.path.join(outdir, 'successful')
         agent.save(dirname)
-        print('Saved the successful model to {}'.format(dirname))
+        print('Saved the successful agent to {}'.format(dirname))
 
 
 def extract_shared_objects_from_agent(agent):
