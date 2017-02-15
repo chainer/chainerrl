@@ -1,21 +1,22 @@
 # ChainerRL
 
-ChainerRL is a deep reinforcement learning library built on top of Chainer.
+ChainerRL is a deep reinforcement learning library that implements various state-of-the-art deep reinforcement algorithms in Python using Chainer, a flexible deep learning framework.
 
-## Requirements
+## Installation
 
-For Python 3.5.1+, requirements are:
+ChainerRL can be installed via PyPI:
+```
+pip install chainerrl
+```
 
-- atari_py
-- chainer>=1.20.1
-- cached-property
-- future
-- gym
-- numpy>=1.10.4
-- pillow
-- scipy
+It can also be installed from the source code:
+```
+python setup.py install
+```
 
-For Python 2.7.6+, you need additional requirements. See requirements.txt.
+## Getting started
+
+You can try [ChainerRL Quickstart Guide](examples/quickstart/quickstart.ipynb) first, or check the [examples](examples) ready for Atari 2600 and Open AI Gym.
 
 ## Agents
 
@@ -33,7 +34,7 @@ Following agents have been implemented:
 - DDPG (Deep Deterministic Poilcy Gradients)
 - PGT (Policy Gradient Theorem)
 
-Q-function based agents can utilize Normalized Advantage Functions (NAFs) to tackle continuous-action problems as well as DQN-like discrete output networks.
+Q-function based agents can utilize a Normalized Advantage Function (NAF) to tackle continuous-action problems as well as DQN-like discrete output networks.
 
 ## Environments
 
