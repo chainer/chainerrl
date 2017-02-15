@@ -292,7 +292,6 @@ class A3C(agent.AttributeSavingMixin, agent.AsyncAgent):
             self.update(None)
         else:
             statevar = self.batch_states([state], np, self.phi)
-
             self.update(statevar)
 
         if isinstance(self.model, Recurrent):
