@@ -15,11 +15,11 @@ import chainer.functions as F
 import numpy as np
 
 from chainerrl import agent
+from chainerrl.misc.batch_states import batch_states
 from chainerrl.misc.copy_param import synchronize_parameters
 from chainerrl.recurrent import Recurrent
 from chainerrl.recurrent import state_reset
 from chainerrl.replay_buffer import batch_experiences
-from chainerrl.replay_buffer import batch_states
 from chainerrl.replay_buffer import ReplayUpdator
 
 
