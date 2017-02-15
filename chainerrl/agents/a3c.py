@@ -16,15 +16,12 @@ import numpy as np
 from chainerrl import agent
 from chainerrl.misc import async
 from chainerrl.misc import copy_param
+from chainerrl.misc.batch_states import batch_states
 from chainerrl.recurrent import Recurrent
 from chainerrl.recurrent import RecurrentChainMixin
 from chainerrl.recurrent import state_kept
 
 logger = getLogger(__name__)
-
-
-def prepare_state(state, phi):
-    return F.reshape(phi(state), (1, -1))
 
 
 class A3CModel(chainer.Link):
@@ -109,7 +106,7 @@ class A3C(agent.AttributeSavingMixin, agent.AsyncAgent):
                  act_deterministically=False,
                  average_entropy_decay=0.999,
                  average_value_decay=0.999,
-                 prepare_state=prepare_state):
+                 batch_states=batch_states):
 
         assert isinstance(model, A3CModel)
         # Globally shared model
@@ -135,7 +132,7 @@ class A3C(agent.AttributeSavingMixin, agent.AsyncAgent):
         self.act_deterministically = act_deterministically
         self.average_value_decay = average_value_decay
         self.average_entropy_decay = average_entropy_decay
-        self.prepare_state = prepare_state
+        self.batch_states = batch_states
 
         self.t = 0
         self.t_start = 0
@@ -248,7 +245,7 @@ class A3C(agent.AttributeSavingMixin, agent.AsyncAgent):
         if self.clip_reward:
             reward = np.clip(reward, -1, 1)
 
-        statevar = self.prepare_state(state, self.phi)
+        statevar = self.batch_states([state], np, self.phi)
 
         self.past_rewards[self.t - 1] = reward
 
@@ -279,7 +276,7 @@ class A3C(agent.AttributeSavingMixin, agent.AsyncAgent):
     def act(self, obs):
         # Use the process-local model for acting
         with chainer.no_backprop_mode():
-            statevar = self.prepare_state(obs, self.phi)
+            statevar = self.batch_states([obs], np, self.phi)
             pout, _ = self.model.pi_and_v(statevar)
             if self.act_deterministically:
                 return pout.most_probable.data[0]
@@ -294,7 +291,8 @@ class A3C(agent.AttributeSavingMixin, agent.AsyncAgent):
         if done:
             self.update(None)
         else:
-            statevar = self.prepare_state(state, self.phi)
+            statevar = self.batch_states([state], np, self.phi)
+
             self.update(statevar)
 
         if isinstance(self.model, Recurrent):
