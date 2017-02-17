@@ -17,6 +17,11 @@ python examples/ale/train_a3c_ale.py 4 pong --steps 100 --outdir $outdir/ale/a3c
 model=$(find $outdir/ale/a3c -name "*_finish")
 python examples/ale/train_a3c_ale.py 4 pong --demo --load $model --eval-n-runs 1
 
+# ale/acer
+python examples/ale/train_acer_ale.py 4 pong --steps 100 --outdir $outdir/ale/acer
+model=$(find $outdir/ale/acer -name "*_finish")
+python examples/ale/train_acer_ale.py 4 pong --demo --load $model --eval-n-runs 1
+
 # ale/nsq
 python examples/ale/train_nsq_ale.py 4 pong --steps 100 --outdir $outdir/ale/nsq
 model=$(find $outdir/ale/nsq -name "*_finish")
@@ -31,6 +36,11 @@ python examples/gym/train_dqn_gym.py --demo --load $model --eval-n-runs 1 --gpu 
 python examples/gym/train_a3c_gym.py 4 --steps 100 --outdir $outdir/gym/a3c
 model=$(find $outdir/gym/a3c -name "*_finish")
 python examples/gym/train_a3c_gym.py 4 --demo --load $model --eval-n-runs 1
+
+# gym/acer
+python examples/gym/train_acer_gym.py 4 --steps 100 --outdir $outdir/gym/acer
+model=$(find $outdir/gym/acer -name "*_finish")
+python examples/gym/train_acer_gym.py 4 --demo --load $model --eval-n-runs 1
 
 # gym/ddpg (specify non-mujoco env to test without mujoco)
 python examples/gym/train_ddpg_gym.py --steps 100 --replay-start-size 50 --minibatch-size 32 --outdir $outdir/gym/ddpg --env Pendulum-v0 --gpu $gpu
