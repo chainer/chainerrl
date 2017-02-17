@@ -12,7 +12,7 @@ import unittest
 
 from chainer import testing
 
-from chainerrl.experiments import train_agent
+from chainerrl.experiments import train_agent_with_evaluation
 from chainerrl.misc import random_seed
 
 
@@ -45,7 +45,7 @@ class _TestTraining(unittest.TestCase):
             agent.replay_buffer.load(self.rbuf_filename)
 
         # Train
-        train_agent.train_agent_with_evaluation(
+        train_agent_with_evaluation(
             agent=agent, env=env, steps=steps, outdir=self.tmpdir,
             eval_frequency=200, eval_n_runs=5, successful_score=1,
             eval_env=test_env)
