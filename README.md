@@ -25,6 +25,7 @@ You can try [ChainerRL Quickstart Guide](examples/quickstart/quickstart.ipynb) f
 | DQN (including DoubleDQN etc.) | o | o (NAF) | o | x |
 | DDPG | x | o | o | x |
 | A3C | o | o | o | o |
+| ACER | o | x | o | o |
 | NSQ (N-step Q-learning) | o | o (NAF) | o | o |
 
 Following algorithms have been implemented in ChainerRL:
