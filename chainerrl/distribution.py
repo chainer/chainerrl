@@ -26,6 +26,13 @@ def _wrap_by_variable(x):
         return chainer.Variable(x)
 
 
+def _unwrap_variable(x):
+    if isinstance(x, chainer.Variable):
+        return x.data
+    else:
+        return x
+
+
 def _sample_discrete_actions(batch_probs):
     """Sample a batch of actions from a batch of action probabilities.
 
@@ -78,6 +85,15 @@ class Distribution(with_metaclass(ABCMeta, object)):
 
         Returns:
             chainer.Variable
+        """
+        raise NotImplementedError()
+
+    @abstractmethod
+    def copy(self, x):
+        """Copy a distribion unchained from the computation graph.
+
+        Returns:
+            Distribution
         """
         raise NotImplementedError()
 
@@ -137,6 +153,10 @@ class SoftmaxDistribution(CategoricalDistribution):
     def all_log_prob(self):
         return F.log_softmax(self.beta * self.logits)
 
+    def copy(self):
+        return SoftmaxDistribution(_unwrap_variable(self.logits).copy(),
+                                   beta=self.beta)
+
     def __repr__(self):
         return 'SoftmaxDistribution(beta={}) logits:{} probs:{} entropy:{}'.format(  # NOQA
             self.beta, self.logits.data, self.all_prob.data, self.entropy.data)
@@ -162,6 +182,10 @@ class MellowmaxDistribution(CategoricalDistribution):
     @cached_property
     def all_log_prob(self):
         return F.log(self.all_prob)
+
+    def copy(self):
+        return MellowmaxDistribution(_unwrap_variable(self.values).copy(),
+                                     omega=self.omega)
 
     def __repr__(self):
         return 'MellowmaxDistribution(omega={}) values:{} probs:{} entropy:{}'.format(  # NOQA
@@ -209,6 +233,10 @@ class GaussianDistribution(Distribution):
         return 0.5 * self.mean.data.shape[1] * (np.log(2 * np.pi) + 1) + \
             0.5 * F.sum(self.ln_var, axis=1)
 
+    def copy(self):
+        return GaussianDistribution(_unwrap_variable(self.mean).copy(),
+                                    _unwrap_variable(self.var).copy())
+
     def __repr__(self):
         return 'GaussianPolicyOutput mean:{} ln_var:{} entropy:{}'.format(
             self.mean.data, self.ln_var.data, self.entropy.data)
@@ -237,6 +265,10 @@ class ContinuousDeterministicDistribution(Distribution):
 
     def prob(self, x):
         raise RuntimeError('Not defined')
+
+    def copy(self):
+        return ContinuousDeterministicDistribution(
+            _unwrap_variable(self.x).copy())
 
     def log_prob(self, x):
         raise RuntimeError('Not defined')
