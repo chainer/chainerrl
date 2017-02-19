@@ -77,7 +77,6 @@ def main():
         env = gym.make(args.env)
         if args.monitor:
             env = gym.wrappers.Monitor(env, args.outdir)
-        env_modifiers.make_timestep_limited(env, env.spec.timestep_limit)
         if isinstance(env.action_space, spaces.Box):
             env_modifiers.make_action_filtered(env, clip_action_filter)
         if not for_eval:
@@ -89,7 +88,8 @@ def main():
         return env
 
     env = make_env(for_eval=False)
-    timestep_limit = env.spec.timestep_limit
+    timestep_limit = env.spec.tags.get(
+        'wrapper_config.TimeLimit.max_episode_steps')
     obs_size = np.asarray(env.observation_space.shape).prod()
     action_space = env.action_space
 

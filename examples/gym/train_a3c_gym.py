@@ -131,6 +131,8 @@ def main():
         return env
 
     sample_env = gym.make(args.env)
+    timestep_limit = env.spec.tags.get(
+        'wrapper_config.TimeLimit.max_episode_steps')
     obs_space = sample_env.observation_space
     action_space = sample_env.action_space
 
@@ -160,7 +162,7 @@ def main():
             env=env,
             agent=agent,
             n_runs=args.eval_n_runs,
-            max_episode_len=sample_env.spec.timestep_limit)
+            max_episode_len=timestep_limit)
         print('n_runs: {} mean: {} median: {} stdev'.format(
             args.eval_n_runs, mean, median, stdev))
     else:
@@ -173,7 +175,7 @@ def main():
             steps=args.steps,
             eval_n_runs=args.eval_n_runs,
             eval_frequency=args.eval_frequency,
-            max_episode_len=sample_env.spec.timestep_limit)
+            max_episode_len=timestep_limit)
 
 
 if __name__ == '__main__':
