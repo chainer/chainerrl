@@ -312,12 +312,10 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
         self.average_q *= self.average_q_decay
         self.average_q += (1 - self.average_q_decay) * q
 
-        self.logger.debug('t:%s a:%s q:%s qout:%s', self.t, action, q, qout)
+        self.logger.debug('t:%s q:%s action_value:%s', self.t, q, qout)
         return action
 
     def act_and_train(self, state, reward):
-
-        self.logger.debug('t:%s r:%s', self.t, reward)
 
         if self.clip_reward:
             reward = np.clip(reward, -1, 1)
@@ -345,6 +343,8 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
         self.last_action = action
 
         self.replay_updator.update_if_necessary(self.t)
+
+        self.logger.debug('t:%s r:%s a:%s', self.t, reward, action)
 
         return self.last_action
 
