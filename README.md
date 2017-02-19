@@ -25,13 +25,15 @@ You can try [ChainerRL Quickstart Guide](examples/quickstart/quickstart.ipynb) f
 | DQN (including DoubleDQN etc.) | o | o (NAF) | o | x |
 | DDPG | x | o | o | x |
 | A3C | o | o | o | o |
+| ACER | o | x | o | o |
 | NSQ (N-step Q-learning) | o | o (NAF) | o | o |
 
 Following algorithms have been implemented in ChainerRL:
 - A3C (Asynchronous Advantage Actor-Critic)
+- ACER (Actor-Critic with Experience Replay) (only the discrete-action version for now)
 - Asynchronous N-step Q-learning
 - DQN (including Double DQN, Persistent Advantage Learning (PAL), Double PAL, Dynamic Policy Programming (DPP))
-- DDPG (Deep Deterministic Poilcy Gradients)
+- DDPG (Deep Deterministic Poilcy Gradients) (including SVG(0))
 - PGT (Policy Gradient Theorem)
 
 Q-function based algorithms such as DQN can utilize a Normalized Advantage Function (NAF) to tackle continuous-action problems as well as DQN-like discrete output networks.
