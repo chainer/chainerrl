@@ -13,6 +13,7 @@ from chainer import optimizers
 import gym
 gym.undo_logger_setup()
 from gym import spaces
+import gym.wrappers
 import numpy as np
 
 from chainerrl.agents.dqn import DQN

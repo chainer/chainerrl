@@ -11,6 +11,7 @@ import chainer
 from chainer import functions as F
 from chainer import links as L
 import gym
+import gym.wrappers
 import numpy as np
 
 from chainerrl.agents import a3c

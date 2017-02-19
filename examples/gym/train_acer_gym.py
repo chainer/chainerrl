@@ -11,6 +11,7 @@ import chainer
 from chainer import functions as F
 from chainer import links as L
 import gym
+import gym.wrappers
 import numpy as np
 
 from chainerrl.action_value import DiscreteActionValue
@@ -54,6 +55,7 @@ def main():
     parser.add_argument('--demo', action='store_true', default=False)
     parser.add_argument('--load', type=str, default='')
     parser.add_argument('--logger-level', type=int, default=logging.DEBUG)
+    parser.add_argument('--monitor', action='store_true')
     args = parser.parse_args()
 
     logging.getLogger().setLevel(args.logger_level)
@@ -65,6 +67,8 @@ def main():
 
     def make_env(process_idx, test):
         env = gym.make(args.env)
+        if args.monitor and process_idx == 0:
+            env = gym.wrappers.Monitor(env, args.outdir)
         # Scale rewards observed by agents
         if not test:
             env_modifiers.make_reward_filtered(
