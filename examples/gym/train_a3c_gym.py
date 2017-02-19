@@ -11,6 +11,7 @@ import chainer
 from chainer import functions as F
 from chainer import links as L
 import gym
+import gym.wrappers
 import numpy as np
 
 from chainerrl.agents import a3c
@@ -63,8 +64,6 @@ class A3CLSTMGaussian(chainer.ChainList, a3c.A3CModel, RecurrentChainMixin):
         self.v_head = L.Linear(obs_size, hidden_size)
         self.pi_lstm = L.LSTM(hidden_size, lstm_size)
         self.v_lstm = L.LSTM(hidden_size, lstm_size)
-        # self.pi = policy.FCGaussianPolicy(lstm_size, action_size)
-        # self.pi = policy.LinearGaussianPolicyWithSphericalCovariance(
         self.pi = policies.LinearGaussianPolicyWithDiagonalCovariance(
             lstm_size, action_size)
         self.v = v_function.FCVFunction(lstm_size)
@@ -109,6 +108,7 @@ def main():
     parser.add_argument('--demo', action='store_true', default=False)
     parser.add_argument('--load', type=str, default='')
     parser.add_argument('--logger-level', type=int, default=logging.DEBUG)
+    parser.add_argument('--monitor', action='store_true')
     args = parser.parse_args()
 
     logging.getLogger().setLevel(args.logger_level)
@@ -120,6 +120,8 @@ def main():
 
     def make_env(process_idx, test):
         env = gym.make(args.env)
+        if args.monitor and process_idx == 0:
+            env = gym.wrappers.Monitor(env, args.outdir)
         # Scale rewards observed by agents
         if not test:
             env_modifiers.make_reward_filtered(
