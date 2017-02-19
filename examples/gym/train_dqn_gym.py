@@ -93,7 +93,7 @@ def main():
     if isinstance(action_space, spaces.Box):
         action_size = action_space.low.size
         # Use NAF to apply DQN to continuous action spaces
-        q_func = q_functions.FCSIContinuousQFunction(
+        q_func = q_functions.FCQuadraticStateQFunction(
             obs_size, action_size,
             n_hidden_channels=args.n_hidden_channels,
             n_hidden_layers=args.n_hidden_layers,

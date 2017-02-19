@@ -95,7 +95,8 @@ class FCLSTMStateQFunction(chainer.Chain, StateQFunction, RecurrentChainMixin):
         return DiscreteActionValue(self.out(h))
 
 
-class FCSIContinuousQFunction(chainer.Chain, StateQFunction):
+class FCQuadraticStateQFunction(
+        chainer.Chain, StateQFunction):
     """Fully-connected state-input continuous Q-function.
 
     Args:
@@ -159,7 +160,7 @@ class FCSIContinuousQFunction(chainer.Chain, StateQFunction):
             max_action=self.action_space.high)
 
 
-class FCBNSIContinuousQFunction(chainer.Chain, StateQFunction):
+class FCBNQuadraticStateQFunction(chainer.Chain, StateQFunction):
     """Fully-connected state-input continuous Q-function.
 
     Args:
