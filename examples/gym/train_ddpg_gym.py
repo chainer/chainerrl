@@ -80,8 +80,6 @@ def main():
         env = gym.make(args.env)
         if args.monitor:
             env = gym.wrappers.Monitor(env, args.outdir)
-        timestep_limit = env.spec.timestep_limit
-        env_modifiers.make_timestep_limited(env, timestep_limit)
         if isinstance(env.action_space, spaces.Box):
             env_modifiers.make_action_filtered(env, clip_action_filter)
         env_modifiers.make_reward_filtered(env, reward_filter)
@@ -94,6 +92,8 @@ def main():
         return env
 
     env = make_env()
+    timestep_limit = env.spec.tags.get(
+        'wrapper_config.TimeLimit.max_episode_steps')
     obs_size = np.asarray(env.observation_space.shape).prod()
     action_space = env.action_space
 
@@ -162,14 +162,16 @@ def main():
         mean, median, stdev = eval_performance(
             env=env,
             agent=agent,
-            n_runs=args.eval_n_runs)
+            n_runs=args.eval_n_runs,
+            max_episode_len=timestep_limit)
         print('n_runs: {} mean: {} median: {} stdev'.format(
             args.eval_n_runs, mean, median, stdev))
     else:
         train_agent_with_evaluation(
             agent=agent, env=env, steps=args.steps,
             eval_n_runs=args.eval_n_runs, eval_frequency=args.eval_frequency,
-            outdir=args.outdir)
+            outdir=args.outdir,
+            max_episode_len=timestep_limit)
 
 if __name__ == '__main__':
     main()

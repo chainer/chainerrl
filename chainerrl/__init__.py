@@ -50,8 +50,9 @@ q_function.SingleModelStateActionQFunction = \
 q_function.FCStateQFunctionWithDiscreteAction = \
     q_functions.FCStateQFunctionWithDiscreteAction
 q_function.FCLSTMStateQFunction = q_functions.FCLSTMStateQFunction
-q_function.FCSIContinuousQFunction = q_functions.FCSIContinuousQFunction
-q_function.FCBNSIContinuousQFunction = q_functions.FCBNSIContinuousQFunction
+q_function.FCQuadraticStateQFunction = q_functions.FCQuadraticStateQFunction
+q_function.FCBNQuadraticStateQFunction = \
+    q_functions.FCBNQuadraticStateQFunction
 
 v_function.SingleModelVFunction = v_functions.SingleModelVFunction
 v_function.FCVFunction = v_functions.FCVFunction

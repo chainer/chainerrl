@@ -58,7 +58,7 @@ def create_state_q_function_for_env(env):
             n_hidden_channels=200,
             n_hidden_layers=2)
     elif isinstance(env.action_space, gym.spaces.Box):
-        return q_functions.FCSIContinuousQFunction(
+        return q_functions.FCQuadraticStateQFunction(
             n_input_channels=ndim_obs,
             n_dim_action=env.action_space.low.size,
             n_hidden_channels=200,
