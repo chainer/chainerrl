@@ -59,8 +59,12 @@ def main():
     parser.add_argument('--minibatch-size', type=int, default=32)
     parser.add_argument('--render-train', action='store_true')
     parser.add_argument('--render-eval', action='store_true')
+    parser.add_argument('--monitor', action='store_true')
     parser.add_argument('--reward-scale-factor', type=float, default=1e-3)
     args = parser.parse_args()
+
+    args.outdir = prepare_output_dir(args, args.outdir, argv=sys.argv)
+    print('Output files are saved in {}'.format(args.outdir))
 
     if args.seed is not None:
         random_seed.set_random_seed(args.seed)
@@ -70,15 +74,14 @@ def main():
 
     def make_env(for_eval):
         env = gym.make(args.env)
+        if args.monitor:
+            env = gym.wrappers.Monitor(env, args.outdir)
         env_modifiers.make_timestep_limited(env, env.spec.timestep_limit)
         if isinstance(env.action_space, spaces.Box):
             env_modifiers.make_action_filtered(env, clip_action_filter)
         if not for_eval:
             env_modifiers.make_reward_filtered(
                 env, lambda x: x * args.reward_scale_factor)
-            # env_modifiers.make_reward_filtered(env, AverageRewardFilter())
-            # env_modifiers.make_reward_filtered(
-            #     env, reward_filter.NormalizedRewardFilter(scale=0.01))
         if ((args.render_eval and for_eval) or
                 (args.render_train and not for_eval)):
             env_modifiers.make_rendered(env)
@@ -88,9 +91,6 @@ def main():
     timestep_limit = env.spec.timestep_limit
     obs_size = np.asarray(env.observation_space.shape).prod()
     action_space = env.action_space
-
-    args.outdir = prepare_output_dir(args, args.outdir, argv=sys.argv)
-    print('Output files are saved in {}'.format(args.outdir))
 
     if isinstance(action_space, spaces.Box):
         action_size = action_space.low.size
