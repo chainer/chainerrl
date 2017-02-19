@@ -11,6 +11,7 @@ import chainer
 from chainer import optimizers
 import gym
 from gym import spaces
+import gym.wrappers
 import numpy as np
 
 from chainerrl.agents.ddpg import DDPG
@@ -59,8 +60,12 @@ def main():
     parser.add_argument('--render', action='store_true')
     parser.add_argument('--demo', action='store_true')
     parser.add_argument('--use-bn', action='store_true', default=False)
+    parser.add_argument('--monitor', action='store_true')
     parser.add_argument('--reward-scale-factor', type=float, default=1e-2)
     args = parser.parse_args()
+
+    args.outdir = prepare_output_dir(args, args.outdir, argv=sys.argv)
+    print('Output files are saved in {}'.format(args.outdir))
 
     if args.seed is not None:
         random_seed.set_random_seed(args.seed)
@@ -73,7 +78,8 @@ def main():
 
     def make_env():
         env = gym.make(args.env)
-        # env.monitor.start('/tmp', force=True, seed=0)
+        if args.monitor:
+            env = gym.wrappers.Monitor(env, args.outdir)
         timestep_limit = env.spec.timestep_limit
         env_modifiers.make_timestep_limited(env, timestep_limit)
         if isinstance(env.action_space, spaces.Box):
@@ -88,12 +94,8 @@ def main():
         return env
 
     env = make_env()
-    # timestep_limit = sample_env.spec.timestep_limit
     obs_size = np.asarray(env.observation_space.shape).prod()
     action_space = env.action_space
-
-    args.outdir = prepare_output_dir(args, args.outdir, argv=sys.argv)
-    print('Output files are saved in {}'.format(args.outdir))
 
     action_size = np.asarray(action_space.shape).prod()
     if args.use_bn:
