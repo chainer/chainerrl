@@ -22,7 +22,6 @@ from chainerrl.experiments.prepare_output_dir import prepare_output_dir
 from chainerrl.experiments.train_agent import train_agent_with_evaluation
 from chainerrl.explorers.additive_ou import AdditiveOU
 from chainerrl.explorers.epsilon_greedy import LinearDecayEpsilonGreedy
-from chainerrl.links.mlp import MLP
 from chainerrl.misc import env_modifiers
 from chainerrl.misc import random_seed
 from chainerrl import q_functions
@@ -39,20 +38,18 @@ def main():
     parser.add_argument('--seed', type=int, default=None)
     parser.add_argument('--gpu', type=int, default=0)
     parser.add_argument('--final-exploration-steps',
-                        type=int, default=10 ** 5)
+                        type=int, default=10 ** 4)
     parser.add_argument('--start-epsilon', type=float, default=1.0)
     parser.add_argument('--end-epsilon', type=float, default=0.1)
     parser.add_argument('--demo', action='store_true', default=False)
     parser.add_argument('--load', type=str, default=None)
-    parser.add_argument('--steps', type=int, default=10 ** 7)
-    parser.add_argument('--replay-start-size', type=int, default=10 ** 4)
-    parser.add_argument('--target-update-frequency',
-                        type=int, default=10 ** 4)
-    parser.add_argument('--target-update-method',
-                        type=str, default='hard')
+    parser.add_argument('--steps', type=int, default=10 ** 5)
+    parser.add_argument('--replay-start-size', type=int, default=10 ** 3)
+    parser.add_argument('--target-update-frequency', type=int, default=10 ** 2)
+    parser.add_argument('--target-update-method', type=str, default='hard')
     parser.add_argument('--soft-update-tau', type=float, default=1e-2)
-    parser.add_argument('--update-frequency', type=int, default=16)
-    parser.add_argument('--eval-n-runs', type=int, default=10)
+    parser.add_argument('--update-frequency', type=int, default=1)
+    parser.add_argument('--eval-n-runs', type=int, default=100)
     parser.add_argument('--eval-frequency', type=int, default=10 ** 4)
     parser.add_argument('--n-hidden-channels', type=int, default=100)
     parser.add_argument('--n-hidden-layers', type=int, default=2)
@@ -90,7 +87,7 @@ def main():
     env = make_env(for_eval=False)
     timestep_limit = env.spec.tags.get(
         'wrapper_config.TimeLimit.max_episode_steps')
-    obs_size = np.asarray(env.observation_space.shape).prod()
+    obs_size = env.observation_space.low.size
     action_space = env.action_space
 
     if isinstance(action_space, spaces.Box):
@@ -101,26 +98,21 @@ def main():
             n_hidden_channels=args.n_hidden_channels,
             n_hidden_layers=args.n_hidden_layers,
             action_space=action_space)
-        explorer = AdditiveOU()
+        # Use the Ornstein-Uhlenbeck process for exploration
+        ou_sigma = (action_space.high - action_space.low) * 0.2
+        explorer = AdditiveOU(sigma=ou_sigma)
     else:
         n_actions = action_space.n
-        q_func = q_functions.SingleModelStateQFunctionWithDiscreteAction(
-            model=MLP(obs_size, n_actions,
-                      (args.n_hidden_channels,) * args.n_hidden_layers)
-        )
-
-        def random_action():
-            a = action_space.sample()
-            if isinstance(a, np.ndarray):
-                a = a.astype(np.float32)
-            return a
-
+        q_func = q_functions.FCStateQFunctionWithDiscreteAction(
+            obs_size, n_actions,
+            n_hidden_channels=args.n_hidden_channels,
+            n_hidden_layers=args.n_hidden_layers)
+        # Use epsilon-greedy for exploration
         explorer = LinearDecayEpsilonGreedy(
             args.start_epsilon, args.end_epsilon, args.final_exploration_steps,
-            random_action)
+            action_space.sample)
 
     opt = optimizers.Adam()
-
     opt.setup(q_func)
 
     rbuf = replay_buffer.ReplayBuffer(5 * 10 ** 5)
