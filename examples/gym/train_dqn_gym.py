@@ -146,7 +146,8 @@ def main():
         mean, median, stdev = eval_performance(
             env=eval_env,
             agent=agent,
-            n_runs=args.eval_n_runs)
+            n_runs=args.eval_n_runs,
+            max_episode_len=timestep_limit)
         print('n_runs: {} mean: {} median: {} stdev'.format(
             args.eval_n_runs, mean, median, stdev))
     else:

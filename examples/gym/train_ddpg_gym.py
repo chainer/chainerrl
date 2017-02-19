@@ -80,7 +80,6 @@ def main():
         env = gym.make(args.env)
         if args.monitor:
             env = gym.wrappers.Monitor(env, args.outdir)
-        env_modifiers.make_timestep_limited(env, timestep_limit)
         if isinstance(env.action_space, spaces.Box):
             env_modifiers.make_action_filtered(env, clip_action_filter)
         env_modifiers.make_reward_filtered(env, reward_filter)
@@ -163,7 +162,8 @@ def main():
         mean, median, stdev = eval_performance(
             env=env,
             agent=agent,
-            n_runs=args.eval_n_runs)
+            n_runs=args.eval_n_runs,
+            max_episode_len=timestep_limit)
         print('n_runs: {} mean: {} median: {} stdev'.format(
             args.eval_n_runs, mean, median, stdev))
     else:
