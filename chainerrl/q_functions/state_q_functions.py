@@ -215,5 +215,6 @@ class FCBNSIContinuousQFunction(chainer.Chain, StateQFunction):
             mat = F.batch_matmul(tril, tril, transb=True)
         else:
             mat = F.expand_dims(mat_diag ** 2, axis=2)
-        return ContinuousQOutput(mu, mat, v, min_action=self.action_space.low,
-                                 max_action=self.action_space.high)
+        return QuadraticActionValue(
+            mu, mat, v, min_action=self.action_space.low,
+            max_action=self.action_space.high)
