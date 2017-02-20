@@ -7,8 +7,6 @@ from future import standard_library
 standard_library.install_aliases()
 
 import argparse
-from logging import getLogger
-logger = getLogger(__name__)
 import os
 import random
 
@@ -59,8 +57,11 @@ def main():
     print('Output files are saved in {}'.format(args.outdir))
 
     def make_env(process_idx, test):
-        return ale.ALE(args.rom, use_sdl=args.use_sdl,
-                       treat_life_lost_as_terminal=not test)
+        env = ale.ALE(args.rom, use_sdl=args.use_sdl,
+                      treat_life_lost_as_terminal=not test)
+        if not test:
+            misc.env_modifiers.make_reward_clipped(env, -1, 1)
+        return env
 
     sample_env = make_env(0, test=False)
     action_space = sample_env.action_space

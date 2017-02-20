@@ -110,8 +110,11 @@ def main():
         agent.load(args.load)
 
     def make_env(process_idx, test):
-        return ale.ALE(args.rom, use_sdl=args.use_sdl,
-                       treat_life_lost_as_terminal=not test)
+        env = ale.ALE(args.rom, use_sdl=args.use_sdl,
+                      treat_life_lost_as_terminal=not test)
+        if not test:
+            misc.env_modifiers.make_reward_clipped(env, -1, 1)
+        return env
 
     if args.demo:
         env = make_env(0, True)

@@ -100,6 +100,7 @@ def main():
 
     # In training, life loss is considered as terminal states
     env = ale.ALE(args.rom, use_sdl=args.use_sdl)
+    misc.env_modifiers.make_reward_clipped(env, -1, 1)
     # In testing, an episode is terminated  when all lives are lost
     eval_env = ale.ALE(args.rom, use_sdl=args.use_sdl,
                        treat_life_lost_as_terminal=False)

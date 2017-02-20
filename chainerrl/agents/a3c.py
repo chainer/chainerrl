@@ -98,7 +98,7 @@ class A3C(agent.AttributeSavingMixin, agent.AsyncAgent):
     saved_attributes = ['model', 'optimizer']
 
     def __init__(self, model, optimizer, t_max, gamma, beta=1e-2,
-                 process_idx=0, clip_reward=True, phi=lambda x: x,
+                 process_idx=0, phi=lambda x: x,
                  pi_loss_coef=1.0, v_loss_coef=0.5,
                  keep_loss_scale_same=False,
                  normalize_grad_by_t_max=False,
@@ -121,7 +121,6 @@ class A3C(agent.AttributeSavingMixin, agent.AsyncAgent):
         self.t_max = t_max
         self.gamma = gamma
         self.beta = beta
-        self.clip_reward = clip_reward
         self.phi = phi
         self.pi_loss_coef = pi_loss_coef
         self.v_loss_coef = v_loss_coef
@@ -242,9 +241,6 @@ class A3C(agent.AttributeSavingMixin, agent.AsyncAgent):
 
     def act_and_train(self, state, reward):
 
-        if self.clip_reward:
-            reward = np.clip(reward, -1, 1)
-
         statevar = self.batch_states([state], np, self.phi)
 
         self.past_rewards[self.t - 1] = reward
@@ -284,9 +280,6 @@ class A3C(agent.AttributeSavingMixin, agent.AsyncAgent):
                 return pout.sample().data[0]
 
     def stop_episode_and_train(self, state, reward, done=False):
-        if self.clip_reward:
-            reward = np.clip(reward, -1, 1)
-
         self.past_rewards[self.t - 1] = reward
         if done:
             self.update(None)
