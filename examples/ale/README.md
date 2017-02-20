@@ -1,7 +1,7 @@
 # Examples for Arcade Learning Environment
 
 - `train_a3c_ale.py`: A3C
-- `train_a3c_ale.py`: DiscreteACER
+- `train_acer_ale.py`: DiscreteACER
 - `train_nsq_ale.py`: NSQ (n-step Q-learning)
 - `train_dqn_ale.py`: DQN, DoubleDQN or PAL
 
