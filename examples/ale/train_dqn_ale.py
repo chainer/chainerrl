@@ -13,19 +13,12 @@ from chainer import optimizers
 import numpy as np
 
 from chainerrl.action_value import DiscreteActionValue
-from chainerrl.agents.double_dqn import DoubleDQN
-from chainerrl.agents.dqn import DQN
-from chainerrl.agents.pal import PAL
+from chainerrl import agents
 from chainerrl.envs import ale
-from chainerrl.experiments.evaluator import eval_performance
-from chainerrl.experiments.prepare_output_dir import prepare_output_dir
-from chainerrl.experiments.train_agent import train_agent_with_evaluation
-from chainerrl.explorers.epsilon_greedy import ConstantEpsilonGreedy
-from chainerrl.explorers.epsilon_greedy import LinearDecayEpsilonGreedy
-from chainerrl.links import dqn_head
-from chainerrl.links import sequence
-from chainerrl.misc.init_like_torch import init_like_torch
-from chainerrl.misc import random_seed
+from chainerrl import experiments
+from chainerrl import explorers
+from chainerrl import links
+from chainerrl import misc
 from chainerrl.q_functions import DuelingDQN
 from chainerrl import replay_buffer
 
@@ -46,13 +39,13 @@ def parse_activation(activation_str):
 
 def parse_arch(arch, n_actions, activation):
     if arch == 'nature':
-        return sequence.Sequence(
-            dqn_head.NatureDQNHead(activation=activation),
+        return links.Sequence(
+            links.NatureDQNHead(activation=activation),
             L.Linear(512, n_actions),
             DiscreteActionValue)
     elif arch == 'nips':
-        return sequence.Sequence(
-            dqn_head.NIPSDQNHead(activation=activation),
+        return links.Sequence(
+            links.NIPSDQNHead(activation=activation),
             L.Linear(256, n_actions),
             DiscreteActionValue)
     elif arch == 'dueling':
@@ -62,7 +55,9 @@ def parse_arch(arch, n_actions, activation):
 
 
 def parse_agent(agent):
-    return {'DQN': DQN, 'DoubleDQN': DoubleDQN, 'PAL': PAL}[agent]
+    return {'DQN': agents.DQN,
+            'DoubleDQN': agents.DoubleDQN,
+            'PAL': agents.PAL}[agent]
 
 
 def main():
@@ -98,33 +93,33 @@ def main():
     args = parser.parse_args()
 
     if args.seed is not None:
-        random_seed.set_random_seed(args.seed)
+        misc.set_random_seed(args.seed)
 
+    args.outdir = experiments.prepare_output_dir(args, args.outdir)
+    print('Output files are saved in {}'.format(args.outdir))
+
+    # In training, life loss is considered as terminal states
     env = ale.ALE(args.rom, use_sdl=args.use_sdl)
+    # In testing, an episode is terminated  when all lives are lost
     eval_env = ale.ALE(args.rom, use_sdl=args.use_sdl,
                        treat_life_lost_as_terminal=False)
-
-    args.outdir = prepare_output_dir(args, args.outdir)
-
-    print('Output files are saved in {}'.format(args.outdir))
 
     n_actions = env.number_of_actions
     activation = parse_activation(args.activation)
     q_func = parse_arch(args.arch, n_actions, activation)
-    init_like_torch(q_func)
 
     # Use the same hyper parameters as the Nature paper's
     opt = optimizers.RMSpropGraves(
         lr=2.5e-4, alpha=0.95, momentum=0.0, eps=1e-2)
 
     opt.setup(q_func)
-    # opt.add_hook(chainer.optimizer.GradientClipping(1.0))
 
     rbuf = replay_buffer.ReplayBuffer(10 ** 6)
 
-    explorer = LinearDecayEpsilonGreedy(1.0, 0.1,
-                                        args.final_exploration_frames,
-                                        lambda: np.random.randint(n_actions))
+    explorer = explorers.LinearDecayEpsilonGreedy(
+        1.0, 0.1,
+        args.final_exploration_frames,
+        lambda: np.random.randint(n_actions))
     Agent = parse_agent(args.agent)
     agent = Agent(q_func, opt, rbuf, gpu=args.gpu, gamma=0.99,
                   explorer=explorer, replay_start_size=args.replay_start_size,
@@ -137,16 +132,17 @@ def main():
         agent.load(args.load)
 
     if args.demo:
-        mean, median, stdev = eval_performance(
+        mean, median, stdev = experiments.eval_performance(
             env=eval_env,
             agent=agent,
             n_runs=args.eval_n_runs)
         print('n_runs: {} mean: {} median: {} stdev'.format(
             args.eval_n_runs, mean, median, stdev))
     else:
-        eval_explorer = ConstantEpsilonGreedy(
+        # In testing DQN, randomly select 5% of actions
+        eval_explorer = explorers.ConstantEpsilonGreedy(
             5e-2, lambda: np.random.randint(n_actions))
-        train_agent_with_evaluation(
+        experiments.train_agent_with_evaluation(
             agent=agent, env=env, steps=args.steps,
             eval_n_runs=args.eval_n_runs, eval_frequency=args.eval_frequency,
             outdir=args.outdir, eval_explorer=eval_explorer,

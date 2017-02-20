@@ -17,13 +17,9 @@ import gym.wrappers
 import numpy as np
 
 from chainerrl.agents.dqn import DQN
-from chainerrl.experiments.evaluator import eval_performance
-from chainerrl.experiments.prepare_output_dir import prepare_output_dir
-from chainerrl.experiments.train_agent import train_agent_with_evaluation
-from chainerrl.explorers.additive_ou import AdditiveOU
-from chainerrl.explorers.epsilon_greedy import LinearDecayEpsilonGreedy
-from chainerrl.misc import env_modifiers
-from chainerrl.misc import random_seed
+from chainerrl import experiments
+from chainerrl import explorers
+from chainerrl import misc
 from chainerrl import q_functions
 from chainerrl import replay_buffer
 
@@ -61,11 +57,12 @@ def main():
     parser.add_argument('--reward-scale-factor', type=float, default=1e-3)
     args = parser.parse_args()
 
-    args.outdir = prepare_output_dir(args, args.outdir, argv=sys.argv)
+    args.outdir = experiments.prepare_output_dir(
+        args, args.outdir, argv=sys.argv)
     print('Output files are saved in {}'.format(args.outdir))
 
     if args.seed is not None:
-        random_seed.set_random_seed(args.seed)
+        misc.set_random_seed(args.seed)
 
     def clip_action_filter(a):
         return np.clip(a, action_space.low, action_space.high)
@@ -75,13 +72,13 @@ def main():
         if args.monitor:
             env = gym.wrappers.Monitor(env, args.outdir)
         if isinstance(env.action_space, spaces.Box):
-            env_modifiers.make_action_filtered(env, clip_action_filter)
+            misc.env_modifiers.make_action_filtered(env, clip_action_filter)
         if not for_eval:
-            env_modifiers.make_reward_filtered(
+            misc.env_modifiers.make_reward_filtered(
                 env, lambda x: x * args.reward_scale_factor)
         if ((args.render_eval and for_eval) or
                 (args.render_train and not for_eval)):
-            env_modifiers.make_rendered(env)
+            misc.env_modifiers.make_rendered(env)
         return env
 
     env = make_env(for_eval=False)
@@ -100,7 +97,7 @@ def main():
             action_space=action_space)
         # Use the Ornstein-Uhlenbeck process for exploration
         ou_sigma = (action_space.high - action_space.low) * 0.2
-        explorer = AdditiveOU(sigma=ou_sigma)
+        explorer = explorers.AdditiveOU(sigma=ou_sigma)
     else:
         n_actions = action_space.n
         q_func = q_functions.FCStateQFunctionWithDiscreteAction(
@@ -108,7 +105,7 @@ def main():
             n_hidden_channels=args.n_hidden_channels,
             n_hidden_layers=args.n_hidden_layers)
         # Use epsilon-greedy for exploration
-        explorer = LinearDecayEpsilonGreedy(
+        explorer = explorers.LinearDecayEpsilonGreedy(
             args.start_epsilon, args.end_epsilon, args.final_exploration_steps,
             action_space.sample)
 
@@ -135,7 +132,7 @@ def main():
     eval_env = make_env(for_eval=True)
 
     if args.demo:
-        mean, median, stdev = eval_performance(
+        mean, median, stdev = experiments.eval_performance(
             env=eval_env,
             agent=agent,
             n_runs=args.eval_n_runs,
@@ -143,7 +140,7 @@ def main():
         print('n_runs: {} mean: {} median: {} stdev'.format(
             args.eval_n_runs, mean, median, stdev))
     else:
-        train_agent_with_evaluation(
+        experiments.train_agent_with_evaluation(
             agent=agent, env=env, steps=args.steps,
             eval_n_runs=args.eval_n_runs, eval_frequency=args.eval_frequency,
             outdir=args.outdir, eval_env=eval_env,
