@@ -13,12 +13,9 @@ from chainer import links as L
 
 from chainerrl.agents import a3c
 from chainerrl.envs import ale
-from chainerrl.experiments.evaluator import eval_performance
-from chainerrl.experiments.prepare_output_dir import prepare_output_dir
-from chainerrl.experiments.train_agent_async import train_agent_async
-from chainerrl.links import dqn_head
-from chainerrl.misc.init_like_torch import init_like_torch
-from chainerrl.misc import random_seed
+from chainerrl import experiments
+from chainerrl import links
+from chainerrl import misc
 from chainerrl.optimizers.nonbias_weight_decay import NonbiasWeightDecay
 from chainerrl.optimizers import rmsprop_async
 from chainerrl import policy
@@ -31,12 +28,11 @@ from dqn_phi import dqn_phi
 class A3CFF(chainer.ChainList, a3c.A3CModel):
 
     def __init__(self, n_actions):
-        self.head = dqn_head.NIPSDQNHead()
+        self.head = links.NIPSDQNHead()
         self.pi = policy.FCSoftmaxPolicy(
             self.head.n_output_channels, n_actions)
         self.v = v_function.FCVFunction(self.head.n_output_channels)
         super().__init__(self.head, self.pi, self.v)
-        init_like_torch(self)
 
     def pi_and_v(self, state):
         out = self.head(state)
@@ -46,14 +42,13 @@ class A3CFF(chainer.ChainList, a3c.A3CModel):
 class A3CLSTM(chainer.ChainList, a3c.A3CModel, RecurrentChainMixin):
 
     def __init__(self, n_actions):
-        self.head = dqn_head.NIPSDQNHead()
+        self.head = links.NIPSDQNHead()
         self.pi = policy.FCSoftmaxPolicy(
             self.head.n_output_channels, n_actions)
         self.v = v_function.FCVFunction(self.head.n_output_channels)
         self.lstm = L.LSTM(self.head.n_output_channels,
                            self.head.n_output_channels)
         super().__init__(self.head, self.lstm, self.pi, self.v)
-        init_like_torch(self)
 
     def pi_and_v(self, state):
         h = self.head(state)
@@ -92,9 +87,9 @@ def main():
     args = parser.parse_args()
 
     if args.seed is not None:
-        random_seed.set_random_seed(args.seed)
+        misc.set_random_seed(args.seed)
 
-    args.outdir = prepare_output_dir(args, args.outdir)
+    args.outdir = experiments.prepare_output_dir(args, args.outdir)
 
     print('Output files are saved in {}'.format(args.outdir))
 
@@ -115,19 +110,22 @@ def main():
         agent.load(args.load)
 
     def make_env(process_idx, test):
-        return ale.ALE(args.rom, use_sdl=args.use_sdl,
-                       treat_life_lost_as_terminal=not test)
+        env = ale.ALE(args.rom, use_sdl=args.use_sdl,
+                      treat_life_lost_as_terminal=not test)
+        if not test:
+            misc.env_modifiers.make_reward_clipped(env, -1, 1)
+        return env
 
     if args.demo:
         env = make_env(0, True)
-        mean, median, stdev = eval_performance(
+        mean, median, stdev = experiments.eval_performance(
             env=env,
             agent=agent,
             n_runs=args.eval_n_runs)
         print('n_runs: {} mean: {} median: {} stdev'.format(
             args.eval_n_runs, mean, median, stdev))
     else:
-        train_agent_async(
+        experiments.train_agent_async(
             agent=agent,
             outdir=args.outdir,
             processes=args.processes,

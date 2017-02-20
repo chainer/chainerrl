@@ -10,19 +10,14 @@ import os
 
 import chainer
 from chainer import links as L
-import numpy as np
 
 from chainerrl.action_value import DiscreteActionValue
 from chainerrl.agents import acer
 from chainerrl.distribution import SoftmaxDistribution
 from chainerrl.envs import ale
-from chainerrl.experiments.evaluator import eval_performance
-from chainerrl.experiments.prepare_output_dir import prepare_output_dir
-from chainerrl.experiments.train_agent_async import train_agent_async
-from chainerrl.links import dqn_head
-from chainerrl.links import Sequence
-from chainerrl.misc import env_modifiers
-from chainerrl.misc import random_seed
+from chainerrl import experiments
+from chainerrl import links
+from chainerrl import misc
 from chainerrl.optimizers.nonbias_weight_decay import NonbiasWeightDecay
 from chainerrl.optimizers import rmsprop_async
 from chainerrl.replay_buffer import EpisodicReplayBuffer
@@ -63,9 +58,9 @@ def main():
     args = parser.parse_args()
 
     if args.seed is not None:
-        random_seed.set_random_seed(args.seed)
+        misc.set_random_seed(args.seed)
 
-    args.outdir = prepare_output_dir(args, args.outdir)
+    args.outdir = experiments.prepare_output_dir(args, args.outdir)
 
     print('Output files are saved in {}'.format(args.outdir))
 
@@ -73,23 +68,23 @@ def main():
 
     if args.use_lstm:
         model = acer.ACERSharedModel(
-            shared=Sequence(
-                dqn_head.NIPSDQNHead(),
+            shared=links.Sequence(
+                links.NIPSDQNHead(),
                 L.LSTM(256, 256)),
-            pi=Sequence(
+            pi=links.Sequence(
                 L.Linear(256, n_actions),
                 SoftmaxDistribution),
-            q=Sequence(
+            q=links.Sequence(
                 L.Linear(256, n_actions),
                 DiscreteActionValue),
         )
     else:
         model = acer.ACERSharedModel(
-            shared=dqn_head.NIPSDQNHead(),
-            pi=Sequence(
+            shared=links.NIPSDQNHead(),
+            pi=links.Sequence(
                 L.Linear(256, n_actions),
                 SoftmaxDistribution),
-            q=Sequence(
+            q=links.Sequence(
                 L.Linear(256, n_actions),
                 DiscreteActionValue),
         )
@@ -112,21 +107,20 @@ def main():
         env = ale.ALE(args.rom, use_sdl=args.use_sdl,
                       treat_life_lost_as_terminal=not test)
         if not test:
-            env_modifiers.make_reward_filtered(
-                env, lambda x: np.clip(x, -1, 1))
+            misc.env_modifiers.make_reward_clipped(env, -1, 1)
 
         return env
 
     if args.demo:
         env = make_env(0, True)
-        mean, median, stdev = eval_performance(
+        mean, median, stdev = experiments.eval_performance(
             env=env,
             agent=agent,
             n_runs=args.eval_n_runs)
         print('n_runs: {} mean: {} median: {} stdev'.format(
             args.eval_n_runs, mean, median, stdev))
     else:
-        train_agent_async(
+        experiments.train_agent_async(
             agent=agent,
             outdir=args.outdir,
             processes=args.processes,
