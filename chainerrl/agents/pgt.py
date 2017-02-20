@@ -16,6 +16,7 @@ import numpy as np
 
 from chainerrl.agent import Agent
 from chainerrl.agent import AttributeSavingMixin
+from chainerrl.misc.batch_states import batch_states
 from chainerrl.misc.copy_param import synchronize_parameters
 from chainerrl.recurrent import Recurrent
 from chainerrl.replay_buffer import ReplayUpdator
@@ -71,7 +72,8 @@ class PGT(AttributeSavingMixin, Agent):
                  soft_update_tau=1e-2,
                  n_times_update=1, average_q_decay=0.999,
                  average_loss_decay=0.99,
-                 logger=getLogger(__name__)):
+                 logger=getLogger(__name__),
+                 batch_states=batch_states):
 
         self.model = model
 
@@ -104,6 +106,7 @@ class PGT(AttributeSavingMixin, Agent):
             replay_start_size=replay_start_size,
             update_frequency=update_frequency,
         )
+        self.batch_states = batch_states
 
         self.t = 0
         self.last_state = None
@@ -135,14 +138,14 @@ class PGT(AttributeSavingMixin, Agent):
         batch_size = len(experiences)
 
         # Store necessary data in arrays
-        batch_state = self._batch_states(
-            [elem['state'] for elem in experiences])
+        batch_state = self.batch_states(
+            [elem['state'] for elem in experiences], self.xp, self.phi)
 
         batch_actions = self.xp.asarray(
             [elem['action'] for elem in experiences])
 
-        batch_next_state = self._batch_states(
-            [elem['next_state'] for elem in experiences])
+        batch_next_state = self.batch_states(
+            [elem['next_state'] for elem in experiences], self.xp, self.phi)
 
         batch_rewards = self.xp.asarray(
             [[elem['reward']] for elem in experiences], dtype=np.float32)
@@ -229,7 +232,7 @@ class PGT(AttributeSavingMixin, Agent):
 
     def act(self, state):
 
-        s = self._batch_states([state])
+        s = self.batch_states([state], self.xp, self.phi)
         if self.act_deterministically:
             action = self.policy(s, test=True).most_probable
         else:
@@ -267,11 +270,6 @@ class PGT(AttributeSavingMixin, Agent):
         if isinstance(self.model, Recurrent):
             self.model.reset_state()
         self.replay_buffer.stop_current_episode()
-
-    def _batch_states(self, states):
-        """Generate an input batch array from a list of states"""
-        states = [self.phi(s) for s in states]
-        return self.xp.asarray(states)
 
     def select_action(self, state):
         return self.explorer.select_action(
