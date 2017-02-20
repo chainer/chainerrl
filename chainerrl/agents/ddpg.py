@@ -12,7 +12,6 @@ from logging import getLogger
 import chainer
 from chainer import cuda
 import chainer.functions as F
-import numpy as np
 
 from chainerrl.agent import Agent
 from chainerrl.agent import AttributeSavingMixin
@@ -75,7 +74,7 @@ class DDPG(AttributeSavingMixin, Agent):
                  gpu=None, replay_start_size=50000,
                  minibatch_size=32, update_frequency=1,
                  target_update_frequency=10000,
-                 clip_reward=True, phi=lambda x: x,
+                 phi=lambda x: x,
                  target_update_method='hard',
                  soft_update_tau=1e-2,
                  n_times_update=1, average_q_decay=0.999,
@@ -96,7 +95,6 @@ class DDPG(AttributeSavingMixin, Agent):
         self.explorer = explorer
         self.gpu = gpu
         self.target_update_frequency = target_update_frequency
-        self.clip_reward = clip_reward
         self.phi = phi
         self.target_update_method = target_update_method
         self.soft_update_tau = soft_update_tau
@@ -286,9 +284,6 @@ class DDPG(AttributeSavingMixin, Agent):
 
         self.logger.debug('t:%s r:%s', self.t, reward)
 
-        if self.clip_reward:
-            reward = np.clip(reward, -1, 1)
-
         greedy_action = self.act(state)
         action = self.explorer.select_action(self.t, lambda: greedy_action)
         self.t += 1
@@ -331,9 +326,6 @@ class DDPG(AttributeSavingMixin, Agent):
         return cuda.to_cpu(action.data[0])
 
     def stop_episode_and_train(self, state, reward, done=False):
-
-        if self.clip_reward:
-            reward = np.clip(reward, -1, 1)
 
         assert self.last_state is not None
         assert self.last_action is not None

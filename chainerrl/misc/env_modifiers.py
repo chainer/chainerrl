@@ -6,6 +6,8 @@ from future import standard_library
 from builtins import *  # NOQA
 standard_library.install_aliases()
 
+import numpy as np
+
 
 def make_rendered(env, *render_args, **render_kwargs):
     base_step = env.step
@@ -62,6 +64,10 @@ def make_reward_filtered(env, reward_filter):
         return observation, reward, done, info
 
     env.step = step
+
+
+def make_reward_clipped(env, low, high):
+    make_reward_filtered(env, lambda x: np.clip(x, low, high))
 
 
 def make_action_repeated(env, n_times):

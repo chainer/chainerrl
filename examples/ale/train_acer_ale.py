@@ -10,7 +10,6 @@ import os
 
 import chainer
 from chainer import links as L
-import numpy as np
 
 from chainerrl.action_value import DiscreteActionValue
 from chainerrl.agents import acer
@@ -108,8 +107,7 @@ def main():
         env = ale.ALE(args.rom, use_sdl=args.use_sdl,
                       treat_life_lost_as_terminal=not test)
         if not test:
-            misc.env_modifiers.make_reward_filtered(
-                env, lambda x: np.clip(x, -1, 1))
+            misc.env_modifiers.make_reward_clipped(env, -1, 1)
 
         return env
 

@@ -45,7 +45,6 @@ class NSQ(AttributeSavingMixin, AsyncAgent):
 
     def __init__(self, q_function, optimizer,
                  t_max, gamma, i_target, explorer, phi=lambda x: x,
-                 clip_reward=True,
                  average_q_decay=0.999, logger=getLogger(__name__)):
 
         self.shared_q_function = q_function
@@ -60,7 +59,6 @@ class NSQ(AttributeSavingMixin, AsyncAgent):
         self.gamma = gamma
         self.explorer = explorer
         self.i_target = i_target
-        self.clip_reward = clip_reward
         self.phi = phi
         self.logger = logger
         self.average_q_decay = average_q_decay
@@ -130,9 +128,6 @@ class NSQ(AttributeSavingMixin, AsyncAgent):
 
     def act_and_train(self, obs, reward):
 
-        if self.clip_reward:
-            reward = np.clip(reward, -1, 1)
-
         statevar = chainer.Variable(np.expand_dims(self.phi(obs), 0))
 
         self.past_rewards[self.t - 1] = reward
@@ -174,9 +169,6 @@ class NSQ(AttributeSavingMixin, AsyncAgent):
         return qout.greedy_actions.data[0]
 
     def stop_episode_and_train(self, state, reward, done=False):
-        if self.clip_reward:
-            reward = np.clip(reward, -1, 1)
-
         self.past_rewards[self.t - 1] = reward
         if done:
             self.update(None)
