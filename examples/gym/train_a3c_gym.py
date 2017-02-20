@@ -15,13 +15,9 @@ import gym.wrappers
 import numpy as np
 
 from chainerrl.agents import a3c
-from chainerrl.experiments.evaluator import eval_performance
-from chainerrl.experiments.prepare_output_dir import prepare_output_dir
-from chainerrl.experiments.train_agent_async import train_agent_async
-from chainerrl.links import MLP
-from chainerrl.misc import env_modifiers
-from chainerrl.misc.init_like_torch import init_like_torch
-from chainerrl.misc import random_seed
+from chainerrl import experiments
+from chainerrl import links
+from chainerrl import misc
 from chainerrl.optimizers.nonbias_weight_decay import NonbiasWeightDecay
 from chainerrl.optimizers import rmsprop_async
 from chainerrl import policies
@@ -37,8 +33,8 @@ class A3CFFSoftmax(chainer.ChainList, a3c.A3CModel):
 
     def __init__(self, ndim_obs, n_actions, hidden_sizes=(200, 200)):
         self.pi = policies.SoftmaxPolicy(
-            model=MLP(ndim_obs, n_actions, hidden_sizes))
-        self.v = MLP(ndim_obs, 1, hidden_sizes=hidden_sizes)
+            model=links.MLP(ndim_obs, n_actions, hidden_sizes))
+        self.v = links.MLP(ndim_obs, 1, hidden_sizes=hidden_sizes)
         super().__init__(self.pi, self.v)
 
     def pi_and_v(self, state):
@@ -49,8 +45,8 @@ class A3CFFMellowmax(chainer.ChainList, a3c.A3CModel):
 
     def __init__(self, ndim_obs, n_actions, hidden_sizes=(200, 200)):
         self.pi = policies.MellowmaxPolicy(
-            model=MLP(ndim_obs, n_actions, hidden_sizes))
-        self.v = MLP(ndim_obs, 1, hidden_sizes=hidden_sizes)
+            model=links.MLP(ndim_obs, n_actions, hidden_sizes))
+        self.v = links.MLP(ndim_obs, 1, hidden_sizes=hidden_sizes)
         super().__init__(self.pi, self.v)
 
     def pi_and_v(self, state):
@@ -69,7 +65,6 @@ class A3CLSTMGaussian(chainer.ChainList, a3c.A3CModel, RecurrentChainMixin):
         self.v = v_function.FCVFunction(lstm_size)
         super().__init__(self.pi_head, self.v_head,
                          self.pi_lstm, self.v_lstm, self.pi, self.v)
-        init_like_torch(self)
 
     def pi_and_v(self, state):
 
@@ -114,9 +109,9 @@ def main():
     logging.getLogger().setLevel(args.logger_level)
 
     if args.seed is not None:
-        random_seed.set_random_seed(args.seed)
+        misc.set_random_seed(args.seed)
 
-    args.outdir = prepare_output_dir(args, args.outdir)
+    args.outdir = experiments.prepare_output_dir(args, args.outdir)
 
     def make_env(process_idx, test):
         env = gym.make(args.env)
@@ -124,10 +119,10 @@ def main():
             env = gym.wrappers.Monitor(env, args.outdir)
         # Scale rewards observed by agents
         if not test:
-            env_modifiers.make_reward_filtered(
+            misc.env_modifiers.make_reward_filtered(
                 env, lambda x: x * args.reward_scale_factor)
         if args.render and process_idx == 0 and not test:
-            env_modifiers.make_rendered(env)
+            misc.env_modifiers.make_rendered(env)
         return env
 
     sample_env = gym.make(args.env)
@@ -158,7 +153,7 @@ def main():
 
     if args.demo:
         env = make_env(0, True)
-        mean, median, stdev = eval_performance(
+        mean, median, stdev = experiments.eval_performance(
             env=env,
             agent=agent,
             n_runs=args.eval_n_runs,
@@ -166,7 +161,7 @@ def main():
         print('n_runs: {} mean: {} median: {} stdev'.format(
             args.eval_n_runs, mean, median, stdev))
     else:
-        train_agent_async(
+        experiments.train_agent_async(
             agent=agent,
             outdir=args.outdir,
             processes=args.processes,
