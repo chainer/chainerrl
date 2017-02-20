@@ -17,11 +17,9 @@ from chainerrl import agent
 from chainerrl.misc import async
 from chainerrl.misc.batch_states import batch_states
 from chainerrl.misc import copy_param
-from chainerrl.misc.batch_states import batch_states
 from chainerrl.recurrent import Recurrent
 from chainerrl.recurrent import RecurrentChainMixin
 from chainerrl.recurrent import state_kept
-from chainerrl.replay_buffer import batch_states
 
 logger = getLogger(__name__)
 

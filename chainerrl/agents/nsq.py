@@ -17,10 +17,10 @@ import numpy as np
 from chainerrl.agent import AsyncAgent
 from chainerrl.agent import AttributeSavingMixin
 from chainerrl.misc import async
+from chainerrl.misc.batch_states import batch_states
 from chainerrl.misc import copy_param
 from chainerrl.recurrent import Recurrent
 from chainerrl.recurrent import state_kept
-from chainerrl.replay_buffer import batch_states
 
 
 class NSQ(AttributeSavingMixin, AsyncAgent):
