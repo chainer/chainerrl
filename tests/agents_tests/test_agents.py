@@ -141,6 +141,24 @@ class TestA3C(_TestAgentInterface):
 
 
 @testing.parameterize(*testing.product({
+    'discrete': [True],
+    'partially_observable': [False],
+    'episodic': [False],
+}))
+class TestDiscreteACER(_TestAgentInterface):
+
+    def create_agent(self, env):
+        model = agents.acer.ACERSeparateModel(
+            pi=create_stochastic_policy_for_env(env),
+            q=create_state_q_function_for_env(env))
+        opt = optimizers.Adam()
+        opt.setup(model)
+        rbuf = replay_buffer.EpisodicReplayBuffer(10 ** 4)
+        return agents.DiscreteACER(model, opt, t_max=1, gamma=0.99,
+                                   replay_buffer=rbuf)
+
+
+@testing.parameterize(*testing.product({
     'discrete': [True, False],
     'partially_observable': [False],
     'episodic': [False],

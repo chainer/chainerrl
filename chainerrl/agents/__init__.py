@@ -1,4 +1,5 @@
 from chainerrl.agents.a3c import A3C  # NOQA
+from chainerrl.agents.acer import DiscreteACER  # NOQA
 from chainerrl.agents.al import AL  # NOQA
 from chainerrl.agents.ddpg import DDPG  # NOQA
 from chainerrl.agents.double_dqn import DoubleDQN  # NOQA
