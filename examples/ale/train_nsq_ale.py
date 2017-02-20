@@ -7,8 +7,6 @@ from future import standard_library
 standard_library.install_aliases()
 
 import argparse
-from logging import getLogger
-logger = getLogger(__name__)
 import os
 import random
 
@@ -17,14 +15,10 @@ from chainer import links as L
 from chainerrl.action_value import DiscreteActionValue
 from chainerrl.agents import nsq
 from chainerrl.envs import ale
-from chainerrl.experiments.evaluator import eval_performance
-from chainerrl.experiments.prepare_output_dir import prepare_output_dir
-from chainerrl.experiments.train_agent_async import train_agent_async
-from chainerrl.explorers.epsilon_greedy import ConstantEpsilonGreedy
-from chainerrl.explorers.epsilon_greedy import LinearDecayEpsilonGreedy
-from chainerrl.links import dqn_head
-from chainerrl.links import sequence
-from chainerrl.misc import random_seed
+from chainerrl import experiments
+from chainerrl import explorers
+from chainerrl import links
+from chainerrl import misc
 from chainerrl.optimizers import rmsprop_async
 from chainerrl import spaces
 
@@ -56,23 +50,26 @@ def main():
     args = parser.parse_args()
 
     if args.seed is not None:
-        random_seed.set_random_seed(args.seed)
+        misc.set_random_seed(args.seed)
 
-    args.outdir = prepare_output_dir(args, args.outdir)
+    args.outdir = experiments.prepare_output_dir(args, args.outdir)
 
     print('Output files are saved in {}'.format(args.outdir))
 
     def make_env(process_idx, test):
-        return ale.ALE(args.rom, use_sdl=args.use_sdl,
-                       treat_life_lost_as_terminal=not test)
+        env = ale.ALE(args.rom, use_sdl=args.use_sdl,
+                      treat_life_lost_as_terminal=not test)
+        if not test:
+            misc.env_modifiers.make_reward_clipped(env, -1, 1)
+        return env
 
     sample_env = make_env(0, test=False)
     action_space = sample_env.action_space
     assert isinstance(action_space, spaces.Discrete)
 
     # Define a model and its optimizer
-    q_func = sequence.Sequence(
-        dqn_head.NIPSDQNHead(),
+    q_func = links.Sequence(
+        links.NIPSDQNHead(),
         L.Linear(256, action_space.n),
         DiscreteActionValue)
     opt = rmsprop_async.RMSpropAsync(lr=7e-4, eps=1e-1, alpha=0.99)
@@ -88,7 +85,7 @@ def main():
             epsilon_target = 0.01
         else:
             epsilon_target = 0.5
-        explorer = LinearDecayEpsilonGreedy(
+        explorer = explorers.LinearDecayEpsilonGreedy(
             1, epsilon_target, args.final_exploration_frames,
             action_space.sample)
         # Suppress the explorer logger
@@ -100,15 +97,15 @@ def main():
     if args.demo:
         env = make_env(0, True)
         agent = make_agent(0)
-        mean, median, stdev = eval_performance(
+        mean, median, stdev = experiments.eval_performance(
             env=env,
             agent=agent,
             n_runs=args.eval_n_runs)
         print('n_runs: {} mean: {} median: {} stdev'.format(
             args.eval_n_runs, mean, median, stdev))
     else:
-        explorer = ConstantEpsilonGreedy(0.05, action_space.sample)
-        train_agent_async(
+        explorer = explorers.ConstantEpsilonGreedy(0.05, action_space.sample)
+        experiments.train_agent_async(
             outdir=args.outdir,
             processes=args.processes,
             make_env=make_env,

@@ -12,10 +12,7 @@ import numpy as np
 
 from chainerrl.envs.abc import ABC
 from chainerrl.explorers.epsilon_greedy import LinearDecayEpsilonGreedy
-from chainerrl.links.mlp import MLP
-from chainerrl.q_functions import FCLSTMStateQFunction
-from chainerrl.q_functions import FCSIContinuousQFunction
-from chainerrl.q_functions import SingleModelStateQFunctionWithDiscreteAction
+from chainerrl import q_functions
 from chainerrl import replay_buffer
 
 from test_training import _TestTraining
@@ -94,9 +91,8 @@ class _TestDQNOnABC(_TestDQNLike):
 class _TestDQNOnDiscreteABC(_TestDQNOnABC):
 
     def make_q_func(self, env):
-        return SingleModelStateQFunctionWithDiscreteAction(
-            model=MLP(env.observation_space.low.size,
-                      env.action_space.n, (10, 10)))
+        return q_functions.FCStateQFunctionWithDiscreteAction(
+            env.observation_space.low.size, env.action_space.n, 10, 10)
 
     def make_env_and_successful_return(self, test):
         return ABC(discrete=True, deterministic=test), 1
@@ -105,10 +101,11 @@ class _TestDQNOnDiscreteABC(_TestDQNOnABC):
 class _TestDQNOnDiscretePOABC(_TestDQNOnABC):
 
     def make_q_func(self, env):
-        return FCLSTMStateQFunction(n_dim_obs=env.observation_space.low.size,
-                                    n_dim_action=env.action_space.n,
-                                    n_hidden_channels=10,
-                                    n_hidden_layers=1)
+        return q_functions.FCLSTMStateQFunction(
+            n_dim_obs=env.observation_space.low.size,
+            n_dim_action=env.action_space.n,
+            n_hidden_channels=10,
+            n_hidden_layers=1)
 
     def make_replay_buffer(self, env):
         return replay_buffer.EpisodicReplayBuffer(10 ** 5)
@@ -123,7 +120,7 @@ class _TestDQNOnContinuousABC(_TestDQNOnABC):
     def make_q_func(self, env):
         n_dim_action = env.action_space.low.size
         n_dim_obs = env.observation_space.low.size
-        return FCSIContinuousQFunction(
+        return q_functions.FCQuadraticStateQFunction(
             n_input_channels=n_dim_obs,
             n_dim_action=n_dim_action,
             n_hidden_channels=20,

@@ -12,10 +12,10 @@ from logging import getLogger
 import chainer
 from chainer import cuda
 import chainer.functions as F
-import numpy as np
 
 from chainerrl.agent import Agent
 from chainerrl.agent import AttributeSavingMixin
+from chainerrl.misc.batch_states import batch_states
 from chainerrl.misc.copy_param import synchronize_parameters
 from chainerrl.recurrent import Recurrent
 from chainerrl.recurrent import RecurrentChainMixin
@@ -33,6 +33,9 @@ class DDPGModel(chainer.Chain, RecurrentChainMixin):
 class DDPG(AttributeSavingMixin, Agent):
     """Deep Deterministic Policy Gradients.
 
+    This can be used as SVG(0) by specifying a Gaussina policy instead of a
+    deterministic policy.
+
     Args:
         model (DDPGModel): DDPG model that contains both a policy and a
             Q-function
@@ -41,7 +44,7 @@ class DDPG(AttributeSavingMixin, Agent):
         replay_buffer (ReplayBuffer): Replay buffer
         gamma (float): Discount factor
         explorer (Explorer): Explorer that specifies an exploration strategy.
-        gpu (int): GPU device id. -1 for CPU.
+        gpu (int): GPU device id if not None nor negative.
         replay_start_size (int): if the replay buffer's size is less than
             replay_start_size, skip update
         minibatch_size (int): Minibatch size
@@ -69,33 +72,31 @@ class DDPG(AttributeSavingMixin, Agent):
 
     def __init__(self, model, actor_optimizer, critic_optimizer, replay_buffer,
                  gamma, explorer,
-                 gpu=-1, replay_start_size=50000,
+                 gpu=None, replay_start_size=50000,
                  minibatch_size=32, update_frequency=1,
                  target_update_frequency=10000,
-                 clip_reward=True, phi=lambda x: x,
+                 phi=lambda x: x,
                  target_update_method='hard',
                  soft_update_tau=1e-2,
                  n_times_update=1, average_q_decay=0.999,
                  average_loss_decay=0.99,
                  episodic_update=False,
                  episodic_update_len=None,
-                 logger=getLogger(__name__)):
+                 logger=getLogger(__name__),
+                 batch_states=batch_states):
 
         self.model = model
 
-        if gpu >= 0:
+        if gpu is not None and gpu >= 0:
             cuda.get_device(gpu).use()
             self.model.to_gpu(device=gpu)
-            self.xp = cuda.cupy
-        else:
-            self.xp = np
 
+        self.xp = self.model.xp
         self.replay_buffer = replay_buffer
         self.gamma = gamma
         self.explorer = explorer
         self.gpu = gpu
         self.target_update_frequency = target_update_frequency
-        self.clip_reward = clip_reward
         self.phi = phi
         self.target_update_method = target_update_method
         self.soft_update_tau = soft_update_tau
@@ -118,6 +119,7 @@ class DDPG(AttributeSavingMixin, Agent):
             replay_start_size=replay_start_size,
             update_frequency=update_frequency,
         )
+        self.batch_states = batch_states
 
         self.t = 0
         self.last_state = None
@@ -163,7 +165,7 @@ class DDPG(AttributeSavingMixin, Agent):
         batch_state = batch['state']
         batch_actions = batch['action']
         batch_next_actions = batch['next_action']
-        batchsize = len(batch_state)
+        batchsize = len(batch_rewards)
 
         with chainer.no_backprop_mode():
             # Target policy observes s_{t+1}
@@ -211,7 +213,7 @@ class DDPG(AttributeSavingMixin, Agent):
 
         batch_state = batch['state']
         batch_action = batch['action']
-        batch_size = batch_state.shape[0]
+        batch_size = len(batch_action)
 
         # Estimated policy observes s_t
         onpolicy_actions = self.policy(batch_state, test=False).sample()
@@ -285,9 +287,6 @@ class DDPG(AttributeSavingMixin, Agent):
 
         self.logger.debug('t:%s r:%s', self.t, reward)
 
-        if self.clip_reward:
-            reward = np.clip(reward, -1, 1)
-
         greedy_action = self.act(state)
         action = self.explorer.select_action(self.t, lambda: greedy_action)
         self.t += 1
@@ -316,7 +315,7 @@ class DDPG(AttributeSavingMixin, Agent):
 
     def act(self, state):
 
-        s = self._batch_states([state])
+        s = self.batch_states([state], self.xp, self.phi)
         action = self.policy(s, test=True).sample()
         # Q is not needed here, but log it just for information
         q = self.q_function(s, action, test=True)
@@ -330,9 +329,6 @@ class DDPG(AttributeSavingMixin, Agent):
         return cuda.to_cpu(action.data[0])
 
     def stop_episode_and_train(self, state, reward, done=False):
-
-        if self.clip_reward:
-            reward = np.clip(reward, -1, 1)
 
         assert self.last_state is not None
         assert self.last_action is not None
@@ -354,11 +350,6 @@ class DDPG(AttributeSavingMixin, Agent):
         if isinstance(self.model, Recurrent):
             self.model.reset_state()
         self.replay_buffer.stop_current_episode()
-
-    def _batch_states(self, states):
-        """Generate an input batch array from a list of states"""
-        states = [self.phi(s) for s in states]
-        return self.xp.asarray(states)
 
     def get_statistics(self):
         return [

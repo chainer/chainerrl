@@ -87,7 +87,7 @@ class DiscreteActionValue(ActionValue):
         return F.sum(F.softmax(beta * self.q_values) * self.q_values, axis=1)
 
     def __repr__(self):
-        return 'DiscreteQOutput greedy_actions:{} q_values:{}'.format(
+        return 'DiscreteActionValue greedy_actions:{} q_values:{}'.format(
             self.greedy_actions.data,
             self.q_values_formatter(self.q_values.data))
 
@@ -155,5 +155,5 @@ class QuadraticActionValue(ActionValue):
                 self.evaluate_actions(argmax_actions))
 
     def __repr__(self):
-        return 'ContinuousQOutput greedy_actions:{} v:{}'.format(
+        return 'QuadraticActionValue greedy_actions:{} v:{}'.format(
             self.greedy_actions.data, self.v.data)

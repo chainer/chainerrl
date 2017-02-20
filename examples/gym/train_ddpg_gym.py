@@ -11,17 +11,14 @@ import chainer
 from chainer import optimizers
 import gym
 from gym import spaces
+import gym.wrappers
 import numpy as np
 
 from chainerrl.agents.ddpg import DDPG
 from chainerrl.agents.ddpg import DDPGModel
-from chainerrl.experiments.evaluator import eval_performance
-from chainerrl.experiments.prepare_output_dir import prepare_output_dir
-from chainerrl.experiments.train_agent import train_agent_with_evaluation
-from chainerrl.explorers.additive_ou import AdditiveOU
-from chainerrl.misc import env_modifiers
-from chainerrl.misc.init_like_torch import init_like_torch
-from chainerrl.misc import random_seed
+from chainerrl import experiments
+from chainerrl import explorers
+from chainerrl import misc
 from chainerrl import policy
 from chainerrl import q_functions
 from chainerrl import replay_buffer
@@ -59,11 +56,16 @@ def main():
     parser.add_argument('--render', action='store_true')
     parser.add_argument('--demo', action='store_true')
     parser.add_argument('--use-bn', action='store_true', default=False)
+    parser.add_argument('--monitor', action='store_true')
     parser.add_argument('--reward-scale-factor', type=float, default=1e-2)
     args = parser.parse_args()
 
+    args.outdir = experiments.prepare_output_dir(
+        args, args.outdir, argv=sys.argv)
+    print('Output files are saved in {}'.format(args.outdir))
+
     if args.seed is not None:
-        random_seed.set_random_seed(args.seed)
+        misc.set_random_seed(args.seed)
 
     def clip_action_filter(a):
         return np.clip(a, action_space.low, action_space.high)
@@ -73,14 +75,13 @@ def main():
 
     def make_env():
         env = gym.make(args.env)
-        # env.monitor.start('/tmp', force=True, seed=0)
-        timestep_limit = env.spec.timestep_limit
-        env_modifiers.make_timestep_limited(env, timestep_limit)
+        if args.monitor:
+            env = gym.wrappers.Monitor(env, args.outdir)
         if isinstance(env.action_space, spaces.Box):
-            env_modifiers.make_action_filtered(env, clip_action_filter)
-        env_modifiers.make_reward_filtered(env, reward_filter)
+            misc.env_modifiers.make_action_filtered(env, clip_action_filter)
+        misc.env_modifiers.make_reward_filtered(env, reward_filter)
         if args.render:
-            env_modifiers.make_rendered(env)
+            misc.env_modifiers.make_rendered(env)
 
         def __exit__(self, *args):
             pass
@@ -88,12 +89,10 @@ def main():
         return env
 
     env = make_env()
-    # timestep_limit = sample_env.spec.timestep_limit
+    timestep_limit = env.spec.tags.get(
+        'wrapper_config.TimeLimit.max_episode_steps')
     obs_size = np.asarray(env.observation_space.shape).prod()
     action_space = env.action_space
-
-    args.outdir = prepare_output_dir(args, args.outdir, argv=sys.argv)
-    print('Output files are saved in {}'.format(args.outdir))
 
     action_size = np.asarray(action_space.shape).prod()
     if args.use_bn:
@@ -121,8 +120,6 @@ def main():
             min_action=action_space.low, max_action=action_space.high,
             bound_action=True)
     model = DDPGModel(q_func=q_func, policy=pi)
-    init_like_torch(model['q_function'])
-    init_like_torch(model['policy'])
     opt_a = optimizers.Adam(alpha=args.actor_lr)
     opt_c = optimizers.Adam(alpha=args.critic_lr)
     opt_a.setup(model['policy'])
@@ -142,7 +139,7 @@ def main():
         return a
 
     ou_sigma = (action_space.high - action_space.low) * 0.2
-    explorer = AdditiveOU(sigma=ou_sigma)
+    explorer = explorers.AdditiveOU(sigma=ou_sigma)
     agent = DDPG(model, opt_a, opt_c, rbuf, gamma=args.gamma,
                  explorer=explorer, replay_start_size=args.replay_start_size,
                  target_update_method=args.target_update_method,
@@ -157,17 +154,19 @@ def main():
         agent.load(args.load)
 
     if args.demo:
-        mean, median, stdev = eval_performance(
+        mean, median, stdev = experiments.eval_performance(
             env=env,
             agent=agent,
-            n_runs=args.eval_n_runs)
+            n_runs=args.eval_n_runs,
+            max_episode_len=timestep_limit)
         print('n_runs: {} mean: {} median: {} stdev'.format(
             args.eval_n_runs, mean, median, stdev))
     else:
-        train_agent_with_evaluation(
+        experiments.train_agent_with_evaluation(
             agent=agent, env=env, steps=args.steps,
             eval_n_runs=args.eval_n_runs, eval_frequency=args.eval_frequency,
-            outdir=args.outdir)
+            outdir=args.outdir,
+            max_episode_len=timestep_limit)
 
 if __name__ == '__main__':
     main()

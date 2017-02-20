@@ -7,15 +7,14 @@ from future import standard_library
 standard_library.install_aliases()
 
 import copy
-from future.utils import native
 from logging import getLogger
 
 import chainer
 from chainer import cuda
 import chainer.functions as F
-import numpy as np
 
 from chainerrl import agent
+from chainerrl.misc.batch_states import batch_states
 from chainerrl.misc.copy_param import synchronize_parameters
 from chainerrl.recurrent import Recurrent
 from chainerrl.recurrent import state_reset
@@ -72,7 +71,7 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
         replay_buffer (ReplayBuffer): Replay buffer
         gamma (float): Discount factor
         explorer (Explorer): Explorer that specifies an exploration strategy.
-        gpu (int): GPU device id. -1 for CPU.
+        gpu (int): GPU device id if not None nor negative.
         replay_start_size (int): if the replay buffer's size is less than
             replay_start_size, skip update
         minibatch_size (int): Minibatch size
@@ -97,30 +96,26 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
     saved_attributes = ('model', 'target_model', 'optimizer')
 
     def __init__(self, q_function, optimizer, replay_buffer, gamma,
-                 explorer, gpu=-1, replay_start_size=50000,
+                 explorer, gpu=None, replay_start_size=50000,
                  minibatch_size=32, update_frequency=1,
                  target_update_frequency=10000, clip_delta=True,
-                 clip_reward=True, phi=lambda x: x,
+                 phi=lambda x: x,
                  target_update_method='hard',
                  soft_update_tau=1e-2,
                  n_times_update=1, average_q_decay=0.999,
                  average_loss_decay=0.99,
                  batch_accumulator='mean', episodic_update=False,
                  episodic_update_len=None,
-                 logger=getLogger(__name__)):
+                 logger=getLogger(__name__),
+                 batch_states=batch_states):
         self.model = q_function
         self.q_function = q_function  # For backward compatibility
 
-        # Future's builtins.int is a new type that inherit long, but Chainer
-        # 1.15 only accepts int and long, so here we should use a native type.
-        gpu = native(gpu)
-
-        if gpu >= 0:
+        if gpu is not None and gpu >= 0:
             cuda.get_device(gpu).use()
             self.model.to_gpu(device=gpu)
-            self.xp = cuda.cupy
-        else:
-            self.xp = np
+
+        self.xp = self.model.xp
         self.replay_buffer = replay_buffer
         self.optimizer = optimizer
         self.gamma = gamma
@@ -128,13 +123,13 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
         self.gpu = gpu
         self.target_update_frequency = target_update_frequency
         self.clip_delta = clip_delta
-        self.clip_reward = clip_reward
         self.phi = phi
         self.target_update_method = target_update_method
         self.soft_update_tau = soft_update_tau
         self.batch_accumulator = batch_accumulator
         assert batch_accumulator in ('mean', 'sum')
         self.logger = logger
+        self.batch_states = batch_states
         if episodic_update:
             update_func = self.update_from_episodes
         else:
@@ -189,7 +184,8 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
           None
         """
 
-        exp_batch = batch_experiences(experiences, xp=self.xp, phi=self.phi)
+        exp_batch = batch_experiences(experiences, xp=self.xp, phi=self.phi,
+                                      batch_states=self.batch_states)
         loss = self._compute_loss(
             exp_batch, self.gamma, errors_out=errors_out)
 
@@ -217,7 +213,9 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
                             break
                         transitions.append(ep[i])
                     batch = batch_experiences(transitions,
-                                              xp=self.xp, phi=self.phi)
+                                              xp=self.xp,
+                                              phi=self.phi,
+                                              batch_states=self.batch_states)
                     if i == 0:
                         self.input_initial_batch_to_target_model(batch)
                     loss += self._compute_loss(batch, self.gamma)
@@ -225,11 +223,6 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
                 self.optimizer.zero_grads()
                 loss.backward()
                 self.optimizer.update()
-
-    def _batch_states(self, states):
-        """Generate an input batch array from a list of states"""
-        states = [self.phi(s) for s in states]
-        return self.xp.asarray(states)
 
     def _compute_target_values(self, exp_batch, gamma):
 
@@ -244,8 +237,7 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
         return batch_rewards + self.gamma * (1.0 - batch_terminal) * next_q_max
 
     def _compute_y_and_t(self, exp_batch, gamma):
-
-        batch_size = exp_batch['state'].shape[0]
+        batch_size = exp_batch['reward'].shape[0]
 
         # Compute Q-values for current states
         batch_state = exp_batch['state']
@@ -296,7 +288,7 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
         """
         if not states:
             return []
-        batch_x = self._batch_states(states)
+        batch_x = self.batch_states(states, self.xp, self.phi)
         q_values = list(cuda.to_cpu(
             self.model(batch_x, test=True).q_values))
         return q_values
@@ -308,7 +300,8 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
             model.to_cpu()
 
     def act(self, state):
-        qout = self.model(self._batch_states([state]), test=True)
+        qout = self.model(self.batch_states([state], self.xp, self.phi),
+                          test=True)
         action = cuda.to_cpu(qout.greedy_actions.data)[0]
         action_var = chainer.Variable(self.xp.asarray([action]))
         q = float(qout.evaluate_actions(action_var).data)
@@ -317,15 +310,10 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
         self.average_q *= self.average_q_decay
         self.average_q += (1 - self.average_q_decay) * q
 
-        self.logger.debug('t:%s a:%s q:%s qout:%s', self.t, action, q, qout)
+        self.logger.debug('t:%s q:%s action_value:%s', self.t, q, qout)
         return action
 
     def act_and_train(self, state, reward):
-
-        self.logger.debug('t:%s r:%s', self.t, reward)
-
-        if self.clip_reward:
-            reward = np.clip(reward, -1, 1)
 
         greedy_action = self.act(state)
         action = self.explorer.select_action(self.t, lambda: greedy_action)
@@ -351,6 +339,8 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
 
         self.replay_updator.update_if_necessary(self.t)
 
+        self.logger.debug('t:%s r:%s a:%s', self.t, reward, action)
+
         return self.last_action
 
     def stop_episode_and_train(self, state, reward, done=False):
@@ -358,9 +348,6 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
 
         This function must be called once when an episode terminates.
         """
-
-        if self.clip_reward:
-            reward = np.clip(reward, -1, 1)
 
         assert self.last_state is not None
         assert self.last_action is not None

@@ -1,58 +1,53 @@
 # ChainerRL
 
-ChainerRL is a deep reinforcement learning library built on top of Chainer.
+ChainerRL is a deep reinforcement learning library that implements various state-of-the-art deep reinforcement algorithms in Python using Chainer, a flexible deep learning framework.
 
-## Requirements
+## Installation
 
-For Python 3.5.1+, requirements are:
+ChainerRL can be installed via PyPI:
+```
+pip install chainerrl
+```
 
-- atari_py
-- chainer>=1.20.1
-- cached-property
-- future
-- gym
-- numpy>=1.10.4
-- pillow
-- scipy
+It can also be installed from the source code:
+```
+python setup.py install
+```
 
-For Python 2.7.6+, you need additional requirements. See requirements.txt.
+## Getting started
 
-## Agents
+You can try [ChainerRL Quickstart Guide](examples/quickstart/quickstart.ipynb) first, or check the [examples](examples) ready for Atari 2600 and Open AI Gym.
 
-| Agent | Discrete Action | Continous Action | Recurrent Model | CPU Async Training |
-|:------|:---------------:|:----------------:|:---------------:|:--------------:|
+## Algorithms
+
+| Algorithm | Discrete Action | Continous Action | Recurrent Model | CPU Async Training |
+|:----------|:---------------:|:----------------:|:---------------:|:------------------:|
 | DQN (including DoubleDQN etc.) | o | o (NAF) | o | x |
 | DDPG | x | o | o | x |
 | A3C | o | o | o | o |
+| ACER | o | x | o | o |
 | NSQ (N-step Q-learning) | o | o (NAF) | o | o |
 
-Following agents have been implemented: 
+Following algorithms have been implemented in ChainerRL:
 - A3C (Asynchronous Advantage Actor-Critic)
+- ACER (Actor-Critic with Experience Replay) (only the discrete-action version for now)
 - Asynchronous N-step Q-learning
 - DQN (including Double DQN, Persistent Advantage Learning (PAL), Double PAL, Dynamic Policy Programming (DPP))
-- DDPG (Deep Deterministic Poilcy Gradients)
+- DDPG (Deep Deterministic Poilcy Gradients) (including SVG(0))
 - PGT (Policy Gradient Theorem)
 
-Q-function based agents can utilize Normalized Advantage Functions (NAFs) to tackle continuous-action problems as well as DQN-like discrete output networks.
+Q-function based algorithms such as DQN can utilize a Normalized Advantage Function (NAF) to tackle continuous-action problems as well as DQN-like discrete output networks.
 
 ## Environments
 
-Environments that support OpenAI Gym's interface (`reset`, `step` and `close` functions) can be used.
+Environments that support the subset of OpenAI Gym's interface (`reset` and `step` methods) can be used.
 
-Additionally, following environments have been implemented in this library:
-- ALE (https://github.com/mgbellemare/Arcade-Learning-Environment)
-
-## How to use
-
-To get started,
-```
-pip install -r requirements.txt
-python setup.py develop
-```
-Please see the examples in the `examples` directory.
-
-## How to test
+## Testing
 
 To test chainerrl modules, install `nose` and run `nosetests`.
 
 To test examples, run `test_examples.sh`.
+
+## License
+
+[MIT License](LICENSE).
