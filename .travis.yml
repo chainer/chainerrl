@@ -28,4 +28,4 @@ script:
   - flake8 examples
   - nosetests -a '!gpu,!slow' -x tests
   - ./test_examples.sh -1
-  - jupyter nbconvert --to notebook --execute examples/quickstart/quickstart.ipynb --ExecutePreprocessor.timeout=300
+  - if [[ $TRAVIS_PYTHON_VERSION == 3.5.1 ]]; then jupyter nbconvert --to notebook --execute examples/quickstart/quickstart.ipynb --ExecutePreprocessor.timeout=300; fi
