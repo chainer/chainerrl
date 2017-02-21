@@ -49,6 +49,10 @@ To test chainerrl modules, install `nose` and run `nosetests`.
 
 To test examples, run `test_examples.sh`.
 
+## Contributing
+
+Any kind of contribution to ChainerRL would be highly appreciated! If you are interested in contributing to ChainerRL, please read [CONTRIBUTING.md](CONTRIBUTING.md).
+
 ## License
 
 [MIT License](LICENSE).
