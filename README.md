@@ -51,7 +51,7 @@ To test examples, run `test_examples.sh`.
 
 ## Contributing
 
-Please read [CONTRIBUTING.md](CONTRIBUTING.md)
+Any kind of contribution to ChainerRL would be highly appreciated! Please read [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## License
 
