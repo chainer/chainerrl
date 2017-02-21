@@ -1,6 +1,6 @@
 # Contributing to ChainerRL
 
-Any kind of contribution to ChainerRL is highly appreciated!
+Any kind of contribution to ChainerRL would be highly appreciated!
 
 Contribution examples:
 - Thumbing up to good issues or pull requests :+1:
