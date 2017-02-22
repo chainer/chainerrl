@@ -67,7 +67,11 @@ class Distribution(with_metaclass(ABCMeta, object)):
 
     @abstractmethod
     def sample(self):
-        """Sample from distributions."""
+        """Sample from distributions.
+
+        Returns:
+            chainer.Variable
+        """
         raise NotImplementedError()
 
     @abstractmethod
@@ -99,7 +103,31 @@ class Distribution(with_metaclass(ABCMeta, object)):
 
     @abstractproperty
     def most_probable(self):
-        """Most probable data points."""
+        """Most probable data points.
+
+        Returns:
+            chainer.Variable
+        """
+        raise NotImplementedError()
+
+    @abstractproperty
+    def kl(self, distrib):
+        """Compute KL divergence D_KL(P|Q).
+
+        Args:
+            distrib (Distribution): Distribution Q.
+        Returns:
+            chainer.Variable
+        """
+        raise NotImplementedError()
+
+    @abstractproperty
+    def params(self):
+        """Learnable parameters of this distribution.
+
+        Returns:
+            tuple of chainer.Variable
+        """
         raise NotImplementedError()
 
 
@@ -133,6 +161,10 @@ class CategoricalDistribution(Distribution):
     def all_log_prob(self):
         raise NotImplementedError()
 
+    def kl(self, distrib):
+        return F.sum(
+            self.all_prob * (self.all_log_prob - distrib.all_log_prob), axis=1)
+
 
 class SoftmaxDistribution(CategoricalDistribution):
     """Softmax distribution.
@@ -145,6 +177,10 @@ class SoftmaxDistribution(CategoricalDistribution):
     def __init__(self, logits, beta=1.0):
         self.logits = logits
         self.beta = 1.0
+
+    @property
+    def params(self):
+        return (self.logits,)
 
     @cached_property
     def all_prob(self):
@@ -177,6 +213,10 @@ class MellowmaxDistribution(CategoricalDistribution):
     def __init__(self, values, omega=8.):
         self.values = values
         self.omega = omega
+
+    @property
+    def params(self):
+        return (self.values,)
 
     @cached_property
     def all_prob(self):
@@ -212,6 +252,10 @@ class GaussianDistribution(Distribution):
         self.var = _wrap_by_variable(var)
         self.ln_var = F.log(var)
 
+    @property
+    def params(self):
+        return (self.mean, self.var)
+
     @cached_property
     def most_probable(self):
         return self.mean
@@ -235,15 +279,22 @@ class GaussianDistribution(Distribution):
         # Differential entropy of Gaussian is:
         #   0.5 * (log(2 * pi * var) + 1)
         #   = 0.5 * (log(2 * pi) + log var + 1)
-        return 0.5 * self.mean.data.shape[1] * (np.log(2 * np.pi) + 1) + \
-            0.5 * F.sum(self.ln_var, axis=1)
+        with chainer.force_backprop_mode():
+            return 0.5 * self.mean.data.shape[1] * (np.log(2 * np.pi) + 1) + \
+                0.5 * F.sum(self.ln_var, axis=1)
 
     def copy(self):
         return GaussianDistribution(_unwrap_variable(self.mean).copy(),
                                     _unwrap_variable(self.var).copy())
 
+    def kl(self, q):
+        return F.sum(0.5 * self.ln_var -
+                     0.5 * q.ln_var +
+                     (self.var + (self.mean - q.mean) ** 2) / (2 * q.var) -
+                     0.5, axis=1)
+
     def __repr__(self):
-        return 'GaussianPolicyOutput mean:{} ln_var:{} entropy:{}'.format(
+        return 'GaussianDistribution mean:{} ln_var:{} entropy:{}'.format(
             self.mean.data, self.ln_var.data, self.entropy.data)
 
 
@@ -277,3 +328,10 @@ class ContinuousDeterministicDistribution(Distribution):
 
     def log_prob(self, x):
         raise RuntimeError('Not defined')
+
+    def kl(self, distrib):
+        raise RuntimeError('Not defined')
+
+    @property
+    def params(self):
+        return (self.x,)
