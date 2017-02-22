@@ -68,6 +68,12 @@ class TestSoftmaxDistribution(unittest.TestCase):
         self.distrib.most_probable
         # TODO(fujita)
 
+    def test_self_kl(self):
+        kl = self.distrib.kl(self.distrib)
+        for b in range(self.batch_size):
+            np.testing.assert_allclose(
+                kl.data[b], np.zeros_like(kl.data[b]), rtol=1e-5)
+
     def test_copy(self):
         another = self.distrib.copy()
         self.assertIsNot(self.distrib, another)
@@ -125,6 +131,12 @@ class TestMellowmaxDistribution(unittest.TestCase):
     def test_most_probable(self):
         self.distrib.most_probable
         # TODO(fujita)
+
+    def test_self_kl(self):
+        kl = self.distrib.kl(self.distrib)
+        for b in range(self.batch_size):
+            np.testing.assert_allclose(
+                kl.data[b], np.zeros_like(kl.data[b]), rtol=1e-5)
 
     def test_copy(self):
         another = self.distrib.copy()
@@ -189,6 +201,24 @@ class TestGaussianDistribution(unittest.TestCase):
                 self.mean[b], cov).entropy()
             np.testing.assert_allclose(
                 entropy.data[b], desired_entropy, rtol=1e-5)
+
+    def test_self_kl(self):
+        kl = self.distrib.kl(self.distrib)
+        for b in range(self.batch_size):
+            np.testing.assert_allclose(
+                kl.data[b], np.zeros_like(kl.data[b]), rtol=1e-5)
+
+    def test_kl(self):
+        # Compare it to chainer.functions.gaussian_kl_divergence
+        standard = distribution.GaussianDistribution(
+            mean=np.zeros((self.batch_size, self.ndim), dtype=np.float32),
+            var=np.ones((self.batch_size, self.ndim), dtype=np.float32))
+        kl = self.distrib.kl(standard)
+        chainer_kl = chainer.functions.gaussian_kl_divergence(
+            self.distrib.mean, self.distrib.ln_var)
+        np.testing.assert_allclose(kl.data.sum(),
+                                   chainer_kl.data,
+                                   rtol=1e-5)
 
     def test_copy(self):
         another = self.distrib.copy()
