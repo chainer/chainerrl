@@ -62,7 +62,8 @@ class DiscreteActionValue(ActionValue):
 
     @cached_property
     def max(self):
-        return F.select_item(self.q_values, self.greedy_actions)
+        with chainer.force_backprop_mode():
+            return F.select_item(self.q_values, self.greedy_actions)
 
     def sample_epsilon_greedy_actions(self, epsilon):
         assert self.q_values.data.shape[0] == 1, \
@@ -124,21 +125,23 @@ class QuadraticActionValue(ActionValue):
 
     @cached_property
     def greedy_actions(self):
-        a = self.mu
-        if self.min_action is not None:
-            a = F.maximum(
-                self.xp.broadcast_to(self.min_action, a.data.shape), a)
-        if self.max_action is not None:
-            a = F.minimum(
-                self.xp.broadcast_to(self.max_action, a.data.shape), a)
-        return a
+        with chainer.force_backprop_mode():
+            a = self.mu
+            if self.min_action is not None:
+                a = F.maximum(
+                    self.xp.broadcast_to(self.min_action, a.data.shape), a)
+            if self.max_action is not None:
+                a = F.minimum(
+                    self.xp.broadcast_to(self.max_action, a.data.shape), a)
+            return a
 
     @cached_property
     def max(self):
-        if self.min_action is None and self.max_action is None:
-            return F.reshape(self.v, (self.batch_size,))
-        else:
-            return self.evaluate_actions(self.greedy_actions)
+        with chainer.force_backprop_mode():
+            if self.min_action is None and self.max_action is None:
+                return F.reshape(self.v, (self.batch_size,))
+            else:
+                return self.evaluate_actions(self.greedy_actions)
 
     def evaluate_actions(self, actions):
         u_minus_mu = actions - self.mu

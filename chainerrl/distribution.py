@@ -108,7 +108,8 @@ class CategoricalDistribution(Distribution):
 
     @cached_property
     def entropy(self):
-        return - F.sum(self.all_prob * self.all_log_prob, axis=1)
+        with chainer.force_backprop_mode():
+            return - F.sum(self.all_prob * self.all_log_prob, axis=1)
 
     @cached_property
     def most_probable(self):
@@ -147,11 +148,13 @@ class SoftmaxDistribution(CategoricalDistribution):
 
     @cached_property
     def all_prob(self):
-        return F.softmax(self.beta * self.logits)
+        with chainer.force_backprop_mode():
+            return F.softmax(self.beta * self.logits)
 
     @cached_property
     def all_log_prob(self):
-        return F.log_softmax(self.beta * self.logits)
+        with chainer.force_backprop_mode():
+            return F.log_softmax(self.beta * self.logits)
 
     def copy(self):
         return SoftmaxDistribution(_unwrap_variable(self.logits).copy(),
@@ -177,11 +180,13 @@ class MellowmaxDistribution(CategoricalDistribution):
 
     @cached_property
     def all_prob(self):
-        return mellowmax.maximum_entropy_mellowmax(self.values)
+        with chainer.force_backprop_mode():
+            return mellowmax.maximum_entropy_mellowmax(self.values)
 
     @cached_property
     def all_log_prob(self):
-        return F.log(self.all_prob)
+        with chainer.force_backprop_mode():
+            return F.log(self.all_prob)
 
     def copy(self):
         return MellowmaxDistribution(_unwrap_variable(self.values).copy(),
