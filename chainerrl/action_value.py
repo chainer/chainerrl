@@ -161,3 +161,34 @@ class QuadraticActionValue(ActionValue):
     def __repr__(self):
         return 'QuadraticActionValue greedy_actions:{} v:{}'.format(
             self.greedy_actions.data, self.v.data)
+
+
+class SingleActionValue(ActionValue):
+    """ActionValue that can evaluate only a single action."""
+
+    def __init__(self, evaluator, maximizer=None):
+        self.evaluator = evaluator
+        self.maximizer = maximizer
+
+    @cached_property
+    def greedy_actions(self):
+        with chainer.force_backprop_mode():
+            return self.maximizer()
+
+    @cached_property
+    def max(self):
+        with chainer.force_backprop_mode():
+            return self.evaluator(self.greedy_actions)
+
+    def evaluate_actions(self, actions):
+        return self.evaluator(actions)
+
+    def compute_advantage(self, actions):
+        return self.evaluator(actions) - self.max
+
+    def compute_double_advantage(self, actions, argmax_actions):
+        return (self.evaluate_actions(actions) -
+                self.evaluate_actions(argmax_actions))
+
+    def __repr__(self):
+        return 'SingleActionValue'
