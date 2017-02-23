@@ -92,6 +92,8 @@ class A3C(agent.AttributeSavingMixin, agent.AsyncAgent):
             function
         act_deterministically (bool): If set true, choose most probable actions
             in act method.
+        batch_states (callable): method which makes a batch of observations.
+            default is `chainerrl.misc.batch_states.batch_states`
     """
 
     process_idx = None

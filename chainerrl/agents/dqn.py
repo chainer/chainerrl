@@ -91,6 +91,8 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
         episodic_update_len (int or None): Subsequences of this length are used
             for update if set int and episodic_update=True
         logger (Logger): Logger used
+        batch_states (callable): method which makes a batch of observations.
+            default is `chainerrl.misc.batch_states.batch_states`
     """
 
     saved_attributes = ('model', 'target_model', 'optimizer')
