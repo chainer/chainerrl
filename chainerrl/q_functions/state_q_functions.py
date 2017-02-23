@@ -59,10 +59,11 @@ class FCStateQFunctionWithDiscreteAction(
     """
 
     def __init__(self, ndim_obs, n_actions, n_hidden_channels,
-                 n_hidden_layers):
+                 n_hidden_layers, nonlinearity=F.relu):
         super().__init__(model=MLP(
             in_size=ndim_obs, out_size=n_actions,
-            hidden_sizes=[n_hidden_channels] * n_hidden_layers))
+            hidden_sizes=[n_hidden_channels] * n_hidden_layers,
+            nonlinearity=nonlinearity))
 
 
 class FCLSTMStateQFunction(chainer.Chain, StateQFunction, RecurrentChainMixin):

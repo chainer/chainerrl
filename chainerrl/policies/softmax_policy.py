@@ -10,6 +10,7 @@ from logging import getLogger
 logger = getLogger(__name__)
 
 import chainer
+from chainer import functions as F
 
 from chainerrl import distribution
 from chainerrl.links.mlp import MLP
@@ -40,7 +41,7 @@ class FCSoftmaxPolicy(SoftmaxPolicy):
 
     def __init__(self, n_input_channels, n_actions,
                  n_hidden_layers=0, n_hidden_channels=None,
-                 beta=1.0):
+                 beta=1.0, nonlinearity=F.relu):
         self.n_input_channels = n_input_channels
         self.n_actions = n_actions
         self.n_hidden_layers = n_hidden_layers
@@ -50,5 +51,6 @@ class FCSoftmaxPolicy(SoftmaxPolicy):
         super().__init__(
             model=MLP(n_input_channels,
                       n_actions,
-                      (n_hidden_channels,) * n_hidden_layers),
+                      (n_hidden_channels,) * n_hidden_layers,
+                      nonlinearity=nonlinearity),
             beta=self.beta)

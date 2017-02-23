@@ -42,7 +42,7 @@ class FCGaussianPolicy(chainer.ChainList, GaussianPolicy):
     def __init__(self, n_input_channels, action_size,
                  n_hidden_layers=0, n_hidden_channels=None,
                  min_action=None, max_action=None, bound_mean=False,
-                 var_type='spherical'):
+                 var_type='spherical', nonlinearity=F.relu):
 
         self.n_input_channels = n_input_channels
         self.action_size = action_size
@@ -51,6 +51,7 @@ class FCGaussianPolicy(chainer.ChainList, GaussianPolicy):
         self.min_action = min_action
         self.max_action = max_action
         self.bound_mean = bound_mean
+        self.nonlinearity = nonlinearity
         var_size = {'spherical': 1, 'diagonal': action_size}[var_type]
 
         self.hidden_layers = []
@@ -72,7 +73,7 @@ class FCGaussianPolicy(chainer.ChainList, GaussianPolicy):
     def compute_mean_and_var(self, x, test=False):
         h = x
         for layer in self.hidden_layers:
-            h = F.relu(layer(h))
+            h = self.nonlinearity(layer(h))
         mean = self.mean_layer(h)
         if self.bound_mean:
             mean = bound_by_tanh(mean, self.min_action, self.max_action)
