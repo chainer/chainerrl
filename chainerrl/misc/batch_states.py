@@ -7,7 +7,7 @@ def batch_states(states, xp, phi):
         phi (callable): Feature extractor applied to observations
 
     Return:
-        the object which will be inputed to the model.
+        the object which will be given as input to the model.
     """
 
     states = [phi(s) for s in states]
