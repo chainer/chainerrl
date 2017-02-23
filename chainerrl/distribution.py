@@ -288,10 +288,10 @@ class GaussianDistribution(Distribution):
                                     _unwrap_variable(self.var).copy())
 
     def kl(self, q):
-        return F.sum(0.5 * self.ln_var -
-                     0.5 * q.ln_var +
-                     (self.var + (self.mean - q.mean) ** 2) / (2 * q.var) -
-                     0.5, axis=1)
+        p = self
+        return 0.5 * F.sum(q.ln_var - p.ln_var +
+                           (p.var + (p.mean - q.mean) ** 2) / q.var -
+                           1, axis=1)
 
     def __repr__(self):
         return 'GaussianDistribution mean:{} ln_var:{} entropy:{}'.format(
