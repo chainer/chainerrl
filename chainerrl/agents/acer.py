@@ -14,7 +14,10 @@ import chainer
 from chainer import functions as F
 import numpy as np
 
+from chainerrl.action_value import SingleActionValue
 from chainerrl import agent
+from chainerrl import distribution
+from chainerrl import links
 from chainerrl.misc import async
 from chainerrl.misc import copy_param
 from chainerrl.recurrent import Recurrent
@@ -23,6 +26,85 @@ from chainerrl.recurrent import state_kept
 from chainerrl.recurrent import state_reset
 
 logger = getLogger(__name__)
+
+
+def compute_importance(pi, mu, x, eps_division):
+    return float(pi.prob(x).data) / (float(mu.prob(x).data) + eps_division)
+
+
+def compute_full_importance(pi, mu, eps_division):
+    return pi.all_prob.data / (mu.all_prob.data + eps_division)
+
+
+def compute_policy_gradient_full_correction(
+        action_distrib, action_distrib_mu, action_value, v,
+        trust_region_c, eps_division):
+    """Compute off-policy bias correction term wrt all actions."""
+    with chainer.no_backprop_mode():
+        rho_all = compute_full_importance(action_distrib, action_distrib_mu,
+                                          eps_division)
+        correction_weight = (
+            np.maximum(1 - trust_region_c / (rho_all + eps_division),
+                       np.zeros_like(rho_all)) *
+            action_distrib.all_prob.data[0])
+        correction_advantage = action_value.q_values.data[0] - float(v.data[0])
+    return -F.sum(correction_weight *
+                  action_distrib.all_log_prob *
+                  correction_advantage, axis=1)
+
+
+def compute_policy_gradient_sample_correction(
+        action_distrib, action_distrib_mu, action_value, v,
+        trust_region_c, eps_division):
+    """Compute off-policy bias correction term wrt a sampled action."""
+    with chainer.no_backprop_mode():
+        sample_action = action_distrib.sample().data
+        rho_dash = compute_importance(
+            action_distrib, action_distrib_mu, sample_action, eps_division)
+        correction_weight = np.maximum(
+            1 - trust_region_c / (rho_dash + eps_division), 0)
+        q = float(action_value.evaluate_actions(sample_action).data[0])
+        correction_advantage = q - float(v.data[0])
+    return -(correction_weight *
+             action_distrib.log_prob(sample_action) *
+             correction_advantage)
+
+
+def compute_policy_gradient_loss(action, advantage, action_distrib,
+                                 action_distrib_mu, action_value, v,
+                                 trust_region_c, eps_division):
+    """Compute policy gradient loss with off-policy bias correction."""
+    assert np.isscalar(advantage)
+    log_prob = action_distrib.log_prob(action)
+    if action_distrib_mu is not None:
+        # Off-policy
+        rho = compute_importance(
+            action_distrib, action_distrib_mu, action, eps_division)
+        g_loss = 0
+        # Truncated off-policy policy gradient term
+        g_loss -= min(trust_region_c, rho) * log_prob * advantage
+        # Bias correction term
+        if isinstance(action_distrib,
+                      distribution.CategoricalDistribution):
+            g_loss += compute_policy_gradient_full_correction(
+                action_distrib=action_distrib,
+                action_distrib_mu=action_distrib_mu,
+                action_value=action_value,
+                v=v,
+                trust_region_c=trust_region_c,
+                eps_division=eps_division)
+        else:
+            g_loss += compute_policy_gradient_sample_correction(
+                action_distrib=action_distrib,
+                action_distrib_mu=action_distrib_mu,
+                action_value=action_value,
+                v=v,
+                trust_region_c=trust_region_c,
+                eps_division=eps_division)
+    else:
+        # On-policy
+        g_loss = -log_prob * advantage
+    return g_loss
 
 
 class ACERSeparateModel(chainer.Chain, RecurrentChainMixin):
@@ -37,12 +119,54 @@ class ACERSeparateModel(chainer.Chain, RecurrentChainMixin):
         super().__init__(pi=pi, q=q)
 
     def __call__(self, obs):
-        pout = self.pi(obs)
-        qout = self.q(obs)
-        return pout, qout
+        action_distrib = self.pi(obs)
+        action_value = self.q(obs)
+        v = F.sum(action_distrib.all_prob *
+                  action_value.q_values, axis=1)
+        return action_distrib, action_value, v
 
 
-class ACERSharedModel(chainer.Chain, RecurrentChainMixin):
+class ACERSDNSeparateModel(chainer.Chain, RecurrentChainMixin):
+    """ACER model that consists of a separate policy and V-function.
+
+    Args:
+        pi (Policy): Policy.
+        v (VFunction): V-function.
+        adv (StateActionQFunction): Advantage function.
+    """
+
+    def __init__(self, pi, v, adv, n=5):
+        super().__init__(pi=pi, v=v, adv=adv)
+        self.n = n
+
+    def __call__(self, obs):
+        action_distrib = self.pi(obs)
+        v = self.v(obs)
+
+        def evaluator(action):
+            adv_mean = sum(self.adv(obs, action_distrib.sample().data)
+                           for _ in range(self.n)) / self.n
+            return v + self.adv(obs, action) - adv_mean
+
+        action_value = SingleActionValue(evaluator)
+
+        return action_distrib, action_value, v
+
+
+class ACERSDNSharedModel(links.Sequence):
+    """ACER model where the policy and V-function share parameters.
+
+    Args:
+        shared (Link): Shared part. Nonlinearity must be included in it.
+        pi (Policy): Policy that receives output of shared as input.
+        q (QFunction): Q-function that receives output of shared as input.
+    """
+
+    def __init__(self, shared, pi, v, adv):
+        super().__init__(shared, ACERSDNSeparateModel(pi, v, adv))
+
+
+class ACERSharedModel(links.Sequence):
     """ACER model where the policy and V-function share parameters.
 
     Args:
@@ -52,45 +176,29 @@ class ACERSharedModel(chainer.Chain, RecurrentChainMixin):
     """
 
     def __init__(self, shared, pi, q):
-        super().__init__(shared=shared, pi=pi, q=q)
-
-    def __call__(self, obs):
-        h = self.shared(obs)
-        pout = self.pi(h)
-        qout = self.q(h)
-        return pout, qout
-
-
-def compute_discrete_kl(p, q):
-    """Compute KL divergence between two discrete distributions."""
-    return F.sum(p.all_prob * (p.all_log_prob - q.all_log_prob), axis=1)
-
-
-def compute_state_value_as_expected_action_value(action_value, action_distrib):
-    """Compute state values as expected action values.
-
-    Note that this does not backprop errrors because it is intended for use in
-    computing target values.
-    """
-    return (action_distrib.all_prob.data *
-            action_value.q_values.data).sum(axis=1)
+        super().__init__(shared, ACERSeparateModel(pi, q))
 
 
 @contextlib.contextmanager
-def backprop_truncated(variable):
-    backup = variable.creator
-    variable.creator = None
+def backprop_truncated(*variables):
+    backup = [v.creator for v in variables]
+    for v in variables:
+        v.creator = None
     yield
-    variable.creator = backup
+    for v, backup_creator in zip(variables, backup):
+        v.creator = backup_creator
 
 
-class DiscreteACER(agent.AttributeSavingMixin, agent.AsyncAgent):
-    """Discrete ACER (Actor-Critic with Experience Replay).
+class ACER(agent.AttributeSavingMixin, agent.AsyncAgent):
+    """ACER (Actor-Critic with Experience Replay).
 
     See http://arxiv.org/abs/1611.01224
 
     Args:
-        model (ACERModel): Model to train
+        model (ACERModel): Model to train. It must be a callable that accepts
+            observations as input and return three values: action distributions
+            (Distribution), Q values (ActionValue) and state values
+            (chainer.Variable).
         optimizer (chainer.Optimizer): optimizer used to train the model
         t_max (int): The model is updated after every t_max local steps
         gamma (float): Discount factor [0,1]
@@ -178,7 +286,6 @@ class DiscreteACER(agent.AttributeSavingMixin, agent.AsyncAgent):
         self.init_history_data_for_online_update()
 
     def init_history_data_for_online_update(self):
-        self.past_action_log_prob = {}
         self.past_states = {}
         self.past_actions = {}
         self.past_rewards = {}
@@ -199,157 +306,100 @@ class DiscreteACER(agent.AttributeSavingMixin, agent.AsyncAgent):
     def shared_attributes(self):
         return ('shared_model', 'shared_average_model', 'optimizer')
 
-    def compute_one_step_pi_loss(self, advantage, action_distrib, log_prob,
-                                 rho, rho_all, action_value, v,
+    def compute_one_step_pi_loss(self, action, advantage, action_distrib,
+                                 action_distrib_mu, action_value, v,
                                  avg_action_distrib):
-        # Compute gradients w.r.t statistics produced by the model
+        assert np.isscalar(advantage)
 
-        # Compute g: a direction following policy gradients
-        if rho is not None:
-            # Off-policy
-            g_loss = 0
-            g_loss -= (min(self.trust_region_c, rho) *
-                       log_prob * advantage)
-            with chainer.no_backprop_mode():
-                correction_weight = (
-                    np.maximum(
-                        1 - self.trust_region_c /
-                        (rho_all + self.eps_division),
-                        np.zeros_like(rho_all)) *
-                    action_distrib.all_prob.data)
-                correction_advantage = action_value.q_values.data - v
-            g_loss -= F.sum(correction_weight *
-                            action_distrib.all_log_prob *
-                            correction_advantage, axis=1)
-        else:
-            # On-policy
-            g_loss = -log_prob * advantage
+        g_loss = compute_policy_gradient_loss(
+            action=action,
+            advantage=advantage,
+            action_distrib=action_distrib,
+            action_distrib_mu=action_distrib_mu,
+            action_value=action_value,
+            v=v,
+            trust_region_c=self.trust_region_c,
+            eps_division=self.eps_division)
 
-        with backprop_truncated(action_distrib.logits):
-            g_loss.backward()
-        g = action_distrib.logits.grad[0]
-        action_distrib.logits.grad = None
-
-        # Compute k: a direction to increase KL div.
         if self.use_trust_region:
-            neg_kl = -compute_discrete_kl(
-                avg_action_distrib,
-                action_distrib)
+            # Compute g: a direction following policy gradients
+            with backprop_truncated(*action_distrib.params):
+                g_loss.backward()
+            g = [p.grad[0] for p in action_distrib.params]
+            for p in action_distrib.params:
+                p.cleargrad()
+
+            # Compute k: a direction to increase KL div.
+            kl = avg_action_distrib.kl(action_distrib)
             self.average_kl += (
                 (1 - self.average_kl_decay) *
-                (-float(neg_kl.data) - self.average_kl))
-            with backprop_truncated(action_distrib.logits):
-                neg_kl.backward()
-            k = action_distrib.logits.grad[0]
-            action_distrib.logits.grad = None
+                (-float(kl.data) - self.average_kl))
+            with backprop_truncated(*action_distrib.params):
+                (-kl).backward()
+            k = [p.grad[0] for p in action_distrib.params]
+            for p in action_distrib.params:
+                p.cleargrad()
 
-        # Compute z: combination of g and k to keep small KL div.
-        if self.use_trust_region and np.any(k):
-            k_factor = max(0, ((np.dot(k, g) - self.trust_region_delta) /
-                               (np.dot(k, k) + self.eps_division)))
-            z = g - k_factor * k
+            # Compute z: combination of g and k to keep small KL div.
+            kg_dot = sum(np.dot(kp.ravel(), gp.ravel())
+                         for kp, gp in zip(k, g))
+            kk_dot = sum(np.dot(kp.ravel(), kp.ravel()) for kp in k)
+            k_factor = max(0, ((kg_dot - self.trust_region_delta) /
+                               (kk_dot + self.eps_division)))
+            z = [gp - k_factor * kp for kp, gp in zip(k, g)]
+            pi_loss = 0
+            for p, zp in zip(action_distrib.params, z):
+                pi_loss += F.sum(p * zp, axis=1)
         else:
-            z = g
-        pi_loss = 0
-        # Backprop z
-        pi_loss += F.sum(action_distrib.logits * z, axis=1)
+            pi_loss = g_loss
         # Entropy is maximized
         pi_loss -= self.beta * action_distrib.entropy
         return pi_loss
 
-    def compute_loss_for_discrete_actions(
+    def compute_loss(
             self, t_start, t_stop, R, states, actions, rewards, values,
-            action_values, action_log_probs,
-            action_distribs, avg_action_distribs, rho=None, rho_all=None):
+            action_values, action_distribs, action_distribs_mu,
+            avg_action_distribs):
 
-        pi_loss = 0
-        Q_loss = 0
-        Q_ret = R
-        del R
-        for i in reversed(range(t_start, t_stop)):
-            r = rewards[i]
-            v = values[i]
-            log_prob = action_log_probs[i]
-            assert isinstance(log_prob, chainer.Variable),\
-                "log_prob must be backprop-able"
-            action_distrib = action_distribs[i]
-            avg_action_distrib = avg_action_distribs[i]
-            ba = np.expand_dims(actions[i], 0)
-            action_value = action_values[i]
-
-            Q_ret = r + self.gamma * Q_ret
-
-            with chainer.no_backprop_mode():
-                advantage = Q_ret - v
-
-            pi_loss += self.compute_one_step_pi_loss(
-                advantage=advantage,
-                action_distrib=action_distrib,
-                log_prob=log_prob,
-                rho=rho[i] if rho else None,
-                rho_all=rho_all[i] if rho_all else None,
-                action_value=action_value,
-                v=v,
-                avg_action_distrib=avg_action_distrib)
-
-            # Accumulate gradients of value function
-            Q = action_value.evaluate_actions(ba)
-            assert isinstance(Q, chainer.Variable), "Q must be backprop-able"
-            Q_loss += (Q_ret - Q) ** 2 / 2
-
-            if self.process_idx == 0:
-                logger.debug('t:%s s:%s v:%s Q:%s Q_ret:%s',
-                             i, states[i].sum(), v, float(Q.data), Q_ret)
-
-            if rho is not None:
-                Q_ret = min(1, rho[i]) * (Q_ret - float(Q.data)) + v
-            else:
-                Q_ret = Q_ret - float(Q.data) + v
-
-        pi_loss *= self.pi_loss_coef
-        Q_loss *= self.Q_loss_coef
-
-        if self.normalize_loss_by_steps:
-            pi_loss /= t_stop - t_start
-            Q_loss /= t_stop - t_start
-
-        if self.process_idx == 0:
-            logger.debug('pi_loss:%s Q_loss:%s', pi_loss.data, Q_loss.data)
-
-        return pi_loss + F.reshape(Q_loss, pi_loss.data.shape)
-
-    def compute_loss_for_continuous_actions(
-            self, t_start, t_stop, R, states, actions, rewards, values,
-            action_values, action_log_probs,
-            action_distribs, avg_action_distribs, rho=None, rho_all=None):
-
+        assert np.isscalar(R)
         pi_loss = 0
         Q_loss = 0
         Q_ret = R
         Q_opc = R
+        discrete = isinstance(action_distribs[t_start],
+                              distribution.CategoricalDistribution)
         del R
         for i in reversed(range(t_start, t_stop)):
             r = rewards[i]
             v = values[i]
-            log_prob = action_log_probs[i]
-            assert isinstance(log_prob, chainer.Variable),\
-                "log_prob must be backprop-able"
             action_distrib = action_distribs[i]
+            action_distrib_mu = (action_distribs_mu[i]
+                                 if action_distribs_mu else None)
             avg_action_distrib = avg_action_distribs[i]
-            ba = np.expand_dims(actions[i], 0)
             action_value = action_values[i]
+            ba = np.expand_dims(actions[i], 0)
+            if action_distrib_mu is not None:
+                rho = float(compute_importance(
+                    action_distrib, action_distrib_mu, ba, self.eps_division))
+            else:
+                rho = 1
 
             Q_ret = r + self.gamma * Q_ret
+            Q_opc = r + self.gamma * Q_opc
 
-            with chainer.no_backprop_mode():
-                advantage = Q_ret - v
-
+            assert np.isscalar(Q_ret)
+            assert np.isscalar(Q_opc)
+            if discrete:
+                # Discrete ACER uses Q_ret
+                advantage = Q_ret - float(v.data)
+            else:
+                # Continuous ACER uses Q_opc
+                advantage = Q_opc - float(v.data)
             pi_loss += self.compute_one_step_pi_loss(
+                action=ba,
                 advantage=advantage,
                 action_distrib=action_distrib,
-                log_prob=log_prob,
-                rho=rho[i] if rho else None,
-                rho_all=rho_all[i] if rho_all else None,
+                action_distrib_mu=action_distrib_mu,
                 action_value=action_value,
                 v=v,
                 avg_action_distrib=avg_action_distrib)
@@ -359,15 +409,28 @@ class DiscreteACER(agent.AttributeSavingMixin, agent.AsyncAgent):
             assert isinstance(Q, chainer.Variable), "Q must be backprop-able"
             Q_loss += (Q_ret - Q) ** 2 / 2
 
-            if self.process_idx == 0:
-                logger.debug('t:%s s:%s v:%s Q:%s Q_ret:%s',
-                             i, states[i].sum(), v, float(Q.data), Q_ret)
+            if not discrete:
+                assert isinstance(v, chainer.Variable), \
+                    "v must be backprop-able"
+                v_target = (min(1, rho) * (Q_ret - float(Q.data)) +
+                            float(v.data))
+                Q_loss += (v_target - v) ** 2 / 2
 
-            if rho is not None:
-                Q_ret = min(1, rho[i]) * (Q_ret - float(Q.data)) + v
+            if self.process_idx == 0:
+                logger.debug('t:%s v:%s Q:%s Q_ret:%s',
+                             i, float(v.data), float(Q.data), Q_ret)
+
+            if action_distrib_mu is not None:
+                # Off-policy
+                if discrete:
+                    c = min(1, rho)
+                else:
+                    c = min(1, rho ** (1 / ba.size))
+                Q_ret = c * (Q_ret - float(Q.data)) + float(v.data)
             else:
-                Q_ret = Q_ret - float(Q.data) + v
-            Q_opc = Q_opc - float(Q.data) + v
+                # On-policy
+                Q_ret = Q_ret - float(Q.data) + float(v.data)
+            Q_opc = Q_opc - float(Q.data) + float(v.data)
 
         pi_loss *= self.pi_loss_coef
         Q_loss *= self.Q_loss_coef
@@ -382,13 +445,23 @@ class DiscreteACER(agent.AttributeSavingMixin, agent.AsyncAgent):
         return pi_loss + F.reshape(Q_loss, pi_loss.data.shape)
 
     def update(self, t_start, t_stop, R, states, actions, rewards, values,
-               action_values, action_log_probs,
-               action_distribs, avg_action_distribs, rho=None, rho_all=None):
+               action_values, action_distribs, action_distribs_mu,
+               avg_action_distribs):
 
-        total_loss = self.compute_loss_for_discrete_actions(
-            t_start, t_stop, R, states, actions, rewards, values,
-            action_values, action_log_probs,
-            action_distribs, avg_action_distribs, rho, rho_all)
+        assert np.isscalar(R)
+
+        total_loss = self.compute_loss(
+            t_start=t_start,
+            t_stop=t_stop,
+            R=R,
+            states=states,
+            actions=actions,
+            rewards=rewards,
+            values=values,
+            action_values=action_values,
+            action_distribs=action_distribs,
+            action_distribs_mu=action_distribs_mu,
+            avg_action_distribs=avg_action_distribs)
 
         # Compute gradients using thread-specific model
         self.model.zerograds()
@@ -419,57 +492,44 @@ class DiscreteACER(agent.AttributeSavingMixin, agent.AsyncAgent):
                 rewards = {}
                 states = {}
                 actions = {}
-                action_log_probs = {}
                 action_distribs = {}
+                action_distribs_mu = {}
                 avg_action_distribs = {}
-                rho = {}
-                rho_all = {}
                 action_values = {}
                 values = {}
                 for t, transition in enumerate(episode):
                     s = self.phi(transition['state'])
                     a = transition['action']
-                    ba = np.expand_dims(a, 0)
                     bs = np.expand_dims(s, 0)
-                    action_distrib, action_value = self.model(bs)
-                    v = compute_state_value_as_expected_action_value(
-                        action_value, action_distrib)
+                    action_distrib, action_value, v = self.model(bs)
                     with chainer.no_backprop_mode():
-                        avg_action_distrib, _ = self.shared_average_model(bs)
+                        avg_action_distrib, _, _ = \
+                            self.shared_average_model(bs)
                     states[t] = s
                     actions[t] = a
-                    action_log_probs[t] = action_distrib.log_prob(ba)
                     values[t] = v
                     action_distribs[t] = action_distrib
                     avg_action_distribs[t] = avg_action_distrib
                     rewards[t] = transition['reward']
-                    mu = transition['mu']
+                    action_distribs_mu[t] = transition['mu']
                     action_values[t] = action_value
-                    rho[t] = (action_distrib.prob(ba).data /
-                              (mu.prob(ba).data + self.eps_division))
-                    rho_all[t] = (action_distrib.all_prob.data /
-                                  (mu.all_prob.data + self.eps_division))
                 last_transition = episode[-1]
                 if last_transition['is_state_terminal']:
                     R = 0
                 else:
                     with chainer.no_backprop_mode():
                         last_s = last_transition['next_state']
-                        action_distrib, action_value = self.model(
+                        action_distrib, action_value, last_v = self.model(
                             np.expand_dims(self.phi(last_s), 0))
-                        last_v = compute_state_value_as_expected_action_value(
-                            action_value, action_distrib)
-                    R = last_v
+                    R = float(last_v.data)
                 return self.update(
                     R=R, t_start=0, t_stop=len(episode),
                     states=states, rewards=rewards,
                     actions=actions,
                     values=values,
-                    action_log_probs=action_log_probs,
                     action_distribs=action_distribs,
+                    action_distribs_mu=action_distribs_mu,
                     avg_action_distribs=avg_action_distribs,
-                    rho=rho,
-                    rho_all=rho_all,
                     action_values=action_values)
 
     def update_on_policy(self, statevar):
@@ -481,10 +541,8 @@ class DiscreteACER(agent.AttributeSavingMixin, agent.AsyncAgent):
             else:
                 with chainer.no_backprop_mode():
                     with state_kept(self.model):
-                        action_distrib, action_value = self.model(statevar)
-                        v = compute_state_value_as_expected_action_value(
-                            action_value, action_distrib)
-                R = v
+                        action_distrib, action_value, v = self.model(statevar)
+                R = float(v.data)
             self.update(
                 t_start=self.t_start, t_stop=self.t, R=R,
                 states=self.past_states,
@@ -492,8 +550,8 @@ class DiscreteACER(agent.AttributeSavingMixin, agent.AsyncAgent):
                 rewards=self.past_rewards,
                 values=self.past_values,
                 action_values=self.past_action_values,
-                action_log_probs=self.past_action_log_prob,
                 action_distribs=self.past_action_distrib,
+                action_distribs_mu=None,
                 avg_action_distribs=self.past_avg_action_distrib)
 
         self.init_history_data_for_online_update()
@@ -510,23 +568,18 @@ class DiscreteACER(agent.AttributeSavingMixin, agent.AsyncAgent):
                 self.update_from_replay()
 
         self.past_states[self.t] = statevar
-        action_distrib, action_value = self.model(statevar)
+        action_distrib, action_value, v = self.model(statevar)
         self.past_action_values[self.t] = action_value
-        action = action_distrib.sample()
-        action.creator = None  # Do not backprop through sampled actions
+        action = action_distrib.sample().data[0]
 
         # Save values for a later update
-        self.past_action_log_prob[self.t] = action_distrib.log_prob(action)
-        v = compute_state_value_as_expected_action_value(
-            action_value, action_distrib)
         self.past_values[self.t] = v
         self.past_action_distrib[self.t] = action_distrib
         with chainer.no_backprop_mode():
-            avg_action_distrib, _ = self.shared_average_model(
+            avg_action_distrib, _, _ = self.shared_average_model(
                 statevar)
         self.past_avg_action_distrib[self.t] = avg_action_distrib
 
-        action = action.data[0]
         self.past_actions[self.t] = action
 
         self.t += 1
@@ -537,7 +590,7 @@ class DiscreteACER(agent.AttributeSavingMixin, agent.AsyncAgent):
         # Update stats
         self.average_value += (
             (1 - self.average_value_decay) *
-            (v - self.average_value))
+            (float(v.data[0]) - self.average_value))
         self.average_entropy += (
             (1 - self.average_entropy_decay) *
             (float(action_distrib.entropy.data[0]) - self.average_entropy))
@@ -566,7 +619,7 @@ class DiscreteACER(agent.AttributeSavingMixin, agent.AsyncAgent):
         # Use the process-local model for acting
         with chainer.no_backprop_mode():
             statevar = np.expand_dims(self.phi(obs), 0)
-            action_distrib, _ = self.model(statevar)
+            action_distrib, _, _ = self.model(statevar)
             if self.act_deterministically:
                 return action_distrib.most_probable.data[0]
             else:
