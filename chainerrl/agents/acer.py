@@ -36,13 +36,13 @@ def compute_full_importance(pi, mu, eps_division):
 
 def compute_policy_gradient_full_correction(
         action_distrib, action_distrib_mu, action_value, v,
-        trust_region_c, eps_division):
+        truncation_threshold, eps_division):
     """Compute off-policy bias correction term wrt all actions."""
     with chainer.no_backprop_mode():
         rho_all = compute_full_importance(action_distrib, action_distrib_mu,
                                           eps_division)
         correction_weight = (
-            np.maximum(1 - trust_region_c / (rho_all + eps_division),
+            np.maximum(1 - truncation_threshold / (rho_all + eps_division),
                        np.zeros_like(rho_all)) *
             action_distrib.all_prob.data[0])
         correction_advantage = action_value.q_values.data[0] - float(v.data[0])
@@ -53,14 +53,14 @@ def compute_policy_gradient_full_correction(
 
 def compute_policy_gradient_sample_correction(
         action_distrib, action_distrib_mu, action_value, v,
-        trust_region_c, eps_division):
+        truncation_threshold, eps_division):
     """Compute off-policy bias correction term wrt a sampled action."""
     with chainer.no_backprop_mode():
         sample_action = action_distrib.sample().data
         rho_dash = compute_importance(
             action_distrib, action_distrib_mu, sample_action, eps_division)
         correction_weight = np.maximum(
-            1 - trust_region_c / (rho_dash + eps_division), 0)
+            1 - truncation_threshold / (rho_dash + eps_division), 0)
         q = float(action_value.evaluate_actions(sample_action).data[0])
         correction_advantage = q - float(v.data[0])
     return -(correction_weight *
@@ -70,7 +70,7 @@ def compute_policy_gradient_sample_correction(
 
 def compute_policy_gradient_loss(action, advantage, action_distrib,
                                  action_distrib_mu, action_value, v,
-                                 trust_region_c, eps_division):
+                                 truncation_threshold, eps_division):
     """Compute policy gradient loss with off-policy bias correction."""
     assert np.isscalar(advantage)
     log_prob = action_distrib.log_prob(action)
@@ -80,7 +80,7 @@ def compute_policy_gradient_loss(action, advantage, action_distrib,
             action_distrib, action_distrib_mu, action, eps_division)
         g_loss = 0
         # Truncated off-policy policy gradient term
-        g_loss -= min(trust_region_c, rho) * log_prob * advantage
+        g_loss -= min(truncation_threshold, rho) * log_prob * advantage
         # Bias correction term
         if isinstance(action_distrib,
                       distribution.CategoricalDistribution):
@@ -89,7 +89,7 @@ def compute_policy_gradient_loss(action, advantage, action_distrib,
                 action_distrib_mu=action_distrib_mu,
                 action_value=action_value,
                 v=v,
-                trust_region_c=trust_region_c,
+                truncation_threshold=truncation_threshold,
                 eps_division=eps_division)
         else:
             g_loss += compute_policy_gradient_sample_correction(
@@ -97,7 +97,7 @@ def compute_policy_gradient_loss(action, advantage, action_distrib,
                 action_distrib_mu=action_distrib_mu,
                 action_value=action_value,
                 v=v,
-                trust_region_c=trust_region_c,
+                truncation_threshold=truncation_threshold,
                 eps_division=eps_division)
     else:
         # On-policy
@@ -224,7 +224,7 @@ class ACER(agent.AttributeSavingMixin, agent.AsyncAgent):
                  pi_loss_coef=1.0, Q_loss_coef=0.5,
                  use_trust_region=True,
                  trust_region_alpha=0.99,
-                 trust_region_c=10,
+                 truncation_threshold=10,
                  trust_region_delta=1,
                  disable_online_update=False,
                  n_times_replay=8,
@@ -260,7 +260,7 @@ class ACER(agent.AttributeSavingMixin, agent.AsyncAgent):
         self.act_deterministically = act_deterministically
         self.use_trust_region = use_trust_region
         self.trust_region_alpha = trust_region_alpha
-        self.trust_region_c = trust_region_c
+        self.truncation_threshold = truncation_threshold
         self.trust_region_delta = trust_region_delta
         self.disable_online_update = disable_online_update
         self.n_times_replay = n_times_replay
@@ -318,7 +318,7 @@ class ACER(agent.AttributeSavingMixin, agent.AsyncAgent):
             action_distrib_mu=action_distrib_mu,
             action_value=action_value,
             v=v,
-            trust_region_c=self.trust_region_c,
+            truncation_threshold=self.truncation_threshold,
             eps_division=self.eps_division)
 
         if self.use_trust_region:
