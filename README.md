@@ -1,7 +1,7 @@
 # ChainerRL
 [![Build Status](https://travis-ci.org/pfnet/chainerrl.svg?branch=master)](https://travis-ci.org/pfnet/chainerrl)
 
-ChainerRL is a deep reinforcement learning library that implements various state-of-the-art deep reinforcement algorithms in Python using Chainer, a flexible deep learning framework.
+ChainerRL is a deep reinforcement learning library that implements various state-of-the-art deep reinforcement algorithms in Python using [Chainer](https://github.com/pfnet/chainer), a flexible deep learning framework.
 
 ## Installation
 
