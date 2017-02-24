@@ -16,6 +16,7 @@ import numpy as np
 
 from chainerrl import agent
 from chainerrl.misc import async
+from chainerrl.misc.batch_states import batch_states
 from chainerrl.misc import copy_param
 from chainerrl.recurrent import Recurrent
 from chainerrl.recurrent import RecurrentChainMixin
@@ -107,6 +108,8 @@ class DiscreteACER(agent.AttributeSavingMixin, agent.AsyncAgent):
             to record statistics.
         average_value_decay (float): Decay rate of average value. Used only
             to record statistics.
+        batch_states (callable): method which makes a batch of observations.
+            default is `chainerrl.misc.batch_states.batch_states`
     """
 
     process_idx = None
@@ -128,7 +131,8 @@ class DiscreteACER(agent.AttributeSavingMixin, agent.AsyncAgent):
                  eps_division=1e-6,
                  average_entropy_decay=0.999,
                  average_value_decay=0.999,
-                 average_kl_decay=0.999):
+                 average_kl_decay=0.999,
+                 batch_states=batch_states):
 
         # Globally shared model
         self.shared_model = model
@@ -162,6 +166,7 @@ class DiscreteACER(agent.AttributeSavingMixin, agent.AsyncAgent):
         self.average_value_decay = average_value_decay
         self.average_entropy_decay = average_entropy_decay
         self.average_kl_decay = average_kl_decay
+        self.batch_states = batch_states
 
         self.t = 0
         self.last_state = None
@@ -354,16 +359,15 @@ class DiscreteACER(agent.AttributeSavingMixin, agent.AsyncAgent):
                 action_values = {}
                 values = {}
                 for t, transition in enumerate(episode):
-                    s = self.phi(transition['state'])
                     a = transition['action']
                     ba = np.expand_dims(a, 0)
-                    bs = np.expand_dims(s, 0)
+                    bs = self.batch_states([transition['state']], np, self.phi)
                     action_distrib, action_value = self.model(bs)
                     v = compute_state_value_as_expected_action_value(
                         action_value, action_distrib)
                     with chainer.no_backprop_mode():
                         avg_action_distrib, _ = self.shared_average_model(bs)
-                    states[t] = s
+                    states[t] = bs[0]
                     actions[t] = a
                     action_log_probs[t] = action_distrib.log_prob(ba)
                     values[t] = v
@@ -383,7 +387,7 @@ class DiscreteACER(agent.AttributeSavingMixin, agent.AsyncAgent):
                     with chainer.no_backprop_mode():
                         last_s = last_transition['next_state']
                         action_distrib, action_value = self.model(
-                            np.expand_dims(self.phi(last_s), 0))
+                            self.batch_states([last_s], np, self.phi))
                         last_v = compute_state_value_as_expected_action_value(
                             action_value, action_distrib)
                     R = last_v
@@ -427,7 +431,7 @@ class DiscreteACER(agent.AttributeSavingMixin, agent.AsyncAgent):
 
     def act_and_train(self, state, reward):
 
-        statevar = np.expand_dims(self.phi(state), 0)
+        statevar = self.batch_states([state], np, self.phi)
 
         self.past_rewards[self.t - 1] = reward
 
@@ -492,7 +496,7 @@ class DiscreteACER(agent.AttributeSavingMixin, agent.AsyncAgent):
     def act(self, obs):
         # Use the process-local model for acting
         with chainer.no_backprop_mode():
-            statevar = np.expand_dims(self.phi(obs), 0)
+            statevar = self.batch_states([obs], np, self.phi)
             action_distrib, _ = self.model(statevar)
             if self.act_deterministically:
                 return action_distrib.most_probable.data[0]
@@ -507,7 +511,7 @@ class DiscreteACER(agent.AttributeSavingMixin, agent.AsyncAgent):
         if done:
             self.update_on_policy(None)
         else:
-            statevar = np.expand_dims(self.phi(state), 0)
+            statevar = self.batch_states([state], np, self.phi)
             self.update_on_policy(statevar)
         for _ in range(self.n_times_replay):
             self.update_from_replay()
