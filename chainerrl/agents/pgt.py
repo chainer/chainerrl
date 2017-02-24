@@ -55,6 +55,8 @@ class PGT(AttributeSavingMixin, Agent):
         beta (float): Coefficient for entropy regularization
         act_deterministically (bool): Act deterministically by selecting most
             probable actions in test time
+        batch_states (callable): method which makes a batch of observations.
+            default is `chainerrl.misc.batch_states.batch_states`
     """
 
     saved_attributes = ('model',

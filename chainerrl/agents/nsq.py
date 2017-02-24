@@ -39,6 +39,8 @@ class NSQ(AttributeSavingMixin, AsyncAgent):
         phi (callable): Feature extractor function
         average_q_decay (float): Decay rate of average Q, only used for
             recording statistics
+        batch_states (callable): method which makes a batch of observations.
+            default is `chainerrl.misc.batch_states.batch_states`
     """
 
     process_idx = None
