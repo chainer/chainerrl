@@ -25,8 +25,6 @@ from chainerrl.recurrent import RecurrentChainMixin
 from chainerrl.recurrent import state_kept
 from chainerrl.recurrent import state_reset
 
-logger = getLogger(__name__)
-
 
 def compute_importance(pi, mu, x, eps_division):
     return float(pi.prob(x).data) / (float(mu.prob(x).data) + eps_division)
@@ -236,7 +234,8 @@ class ACER(agent.AttributeSavingMixin, agent.AsyncAgent):
                  eps_division=1e-6,
                  average_entropy_decay=0.999,
                  average_value_decay=0.999,
-                 average_kl_decay=0.999):
+                 average_kl_decay=0.999,
+                 logger=None):
 
         # Globally shared model
         self.shared_model = model
@@ -270,6 +269,7 @@ class ACER(agent.AttributeSavingMixin, agent.AsyncAgent):
         self.average_value_decay = average_value_decay
         self.average_entropy_decay = average_entropy_decay
         self.average_kl_decay = average_kl_decay
+        self.logger = logger if logger else getLogger(__name__)
 
         self.t = 0
         self.last_state = None
@@ -417,8 +417,9 @@ class ACER(agent.AttributeSavingMixin, agent.AsyncAgent):
                 Q_loss += (v_target - v) ** 2 / 2
 
             if self.process_idx == 0:
-                logger.debug('t:%s v:%s Q:%s Q_ret:%s',
-                             i, float(v.data), float(Q.data), Q_ret)
+                self.logger.debug(
+                    't:%s v:%s Q:%s Q_ret Q_opc:%s',
+                    i, float(v.data), float(Q.data), Q_ret, Q_opc)
 
             if action_distrib_mu is not None:
                 # Off-policy
@@ -440,7 +441,8 @@ class ACER(agent.AttributeSavingMixin, agent.AsyncAgent):
             Q_loss /= t_stop - t_start
 
         if self.process_idx == 0:
-            logger.debug('pi_loss:%s Q_loss:%s', pi_loss.data, Q_loss.data)
+            self.logger.debug('pi_loss:%s Q_loss:%s',
+                              pi_loss.data, Q_loss.data)
 
         return pi_loss + F.reshape(Q_loss, pi_loss.data.shape)
 
@@ -473,7 +475,7 @@ class ACER(agent.AttributeSavingMixin, agent.AsyncAgent):
         # Update the globally shared model
         if self.process_idx == 0:
             norm = self.optimizer.compute_grads_norm()
-            logger.debug('grad norm:%s', norm)
+            self.logger.debug('grad norm:%s', norm)
         self.optimizer.update()
 
         self.sync_parameters()
@@ -585,8 +587,8 @@ class ACER(agent.AttributeSavingMixin, agent.AsyncAgent):
         self.t += 1
 
         if self.process_idx == 0:
-            logger.debug('t:%s r:%s a:%s action_distrib:%s',
-                         self.t, reward, action, action_distrib)
+            self.logger.debug('t:%s r:%s a:%s action_distrib:%s',
+                              self.t, reward, action, action_distrib)
         # Update stats
         self.average_value += (
             (1 - self.average_value_decay) *
