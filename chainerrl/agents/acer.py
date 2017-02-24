@@ -333,7 +333,7 @@ class ACER(agent.AttributeSavingMixin, agent.AsyncAgent):
             kl = avg_action_distrib.kl(action_distrib)
             self.average_kl += (
                 (1 - self.average_kl_decay) *
-                (-float(kl.data) - self.average_kl))
+                (float(kl.data) - self.average_kl))
             with backprop_truncated(*action_distrib.params):
                 (-kl).backward()
             k = [p.grad[0] for p in action_distrib.params]
