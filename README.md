@@ -15,6 +15,14 @@ It can also be installed from the source code:
 python setup.py install
 ```
 
+* Windows user
+
+ChainerRL contains `atari_py` as dependencies, and windows users may face error while installing it. 
+This problem is discussed in [OpenAI gym issues](https://github.com/openai/gym/issues/11), 
+and one possible counter measure is to enable "Bash on Ubuntu on Windows" for Windows 10 users.
+
+Refer [Official install guilde](https://msdn.microsoft.com/en-us/commandline/wsl/install_guide) to install "Bash on Ubuntu on Windows". 
+
 ## Getting started
 
 You can try [ChainerRL Quickstart Guide](examples/quickstart/quickstart.ipynb) first, or check the [examples](examples) ready for Atari 2600 and Open AI Gym.
