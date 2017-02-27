@@ -302,23 +302,35 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
             model.to_cpu()
 
     def act(self, state):
-        qout = self.model(self.batch_states([state], self.xp, self.phi),
-                          test=True)
-        action = cuda.to_cpu(qout.greedy_actions.data)[0]
-        action_var = chainer.Variable(self.xp.asarray([action]))
-        q = float(qout.evaluate_actions(action_var).data)
+        with chainer.no_backprop_mode():
+            action_value = self.model(
+                self.batch_states([state], self.xp, self.phi), test=True)
+            q = float(action_value.max.data)
+            action = cuda.to_cpu(action_value.greedy_actions.data)[0]
 
         # Update stats
         self.average_q *= self.average_q_decay
         self.average_q += (1 - self.average_q_decay) * q
 
-        self.logger.debug('t:%s q:%s action_value:%s', self.t, q, qout)
+        self.logger.debug('t:%s q:%s action_value:%s', self.t, q, action_value)
         return action
 
     def act_and_train(self, state, reward):
 
-        greedy_action = self.act(state)
-        action = self.explorer.select_action(self.t, lambda: greedy_action)
+        with chainer.no_backprop_mode():
+            action_value = self.model(
+                self.batch_states([state], self.xp, self.phi), test=True)
+            q = float(action_value.max.data)
+            greedy_action = cuda.to_cpu(action_value.greedy_actions.data)[0]
+
+        # Update stats
+        self.average_q *= self.average_q_decay
+        self.average_q += (1 - self.average_q_decay) * q
+
+        self.logger.debug('t:%s q:%s action_value:%s', self.t, q, action_value)
+
+        action = self.explorer.select_action(
+            self.t, lambda: greedy_action, action_value=action_value)
         self.t += 1
 
         # Update the target network
