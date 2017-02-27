@@ -14,10 +14,10 @@ import unittest
 from chainer import testing
 import numpy as np
 
+import chainerrl
 from chainerrl.agents import nsq
 from chainerrl.envs.abc import ABC
 from chainerrl.experiments.train_agent_async import train_agent_async
-from chainerrl.explorers.epsilon_greedy import ConstantEpsilonGreedy
 from chainerrl.optimizers import rmsprop_async
 from chainerrl.q_functions import FCLSTMStateQFunction
 from chainerrl.q_functions import FCStateQFunctionWithDiscreteAction
@@ -25,14 +25,22 @@ from chainerrl.q_functions import FCStateQFunctionWithDiscreteAction
 
 @testing.parameterize(*(
     testing.product({
+        't_max': [1],
+        'use_lstm': [False],
+        'episodic': [True],
+        'explorer': ['boltzmann'],
+    }) +
+    testing.product({
         't_max': [1, 2],
         'use_lstm': [False],
         'episodic': [True, False],
+        'explorer': ['epsilon_greedy'],
     }) +
     testing.product({
         't_max': [5],
         'use_lstm': [True, False],
         'episodic': [True, False],
+        'explorer': ['epsilon_greedy'],
     })
 ))
 class TestNSQ(unittest.TestCase):
@@ -77,8 +85,12 @@ class TestNSQ(unittest.TestCase):
                     n_hidden_layers=2)
             opt = rmsprop_async.RMSpropAsync(lr=1e-3, eps=1e-2, alpha=0.99)
             opt.setup(q_func)
-            explorer = ConstantEpsilonGreedy(
-                process_idx / 10, random_action_func)
+            if self.explorer == 'epsilon_greedy':
+                explorer = chainerrl.explorers.ConstantEpsilonGreedy(
+                    process_idx / 10, random_action_func)
+            else:
+                explorer = chainerrl.explorers.Boltzmann()
+
             return nsq.NSQ(q_func, opt, t_max=self.t_max,
                            gamma=0.9, i_target=100,
                            explorer=explorer)
