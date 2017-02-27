@@ -6,8 +6,8 @@ import numpy as np
 import chainerrl
 
 
-def opponent_of(player):
-    return {'O': 'X', 'X': 'O'}[player]
+def opponent_of(role):
+    return {'O': 'X', 'X': 'O'}[role]
 
 
 def is_win(role, board):
@@ -19,12 +19,12 @@ def is_win(role, board):
 class TicTacToeEnv(object):
 
     def __init__(self):
-        self.agents = ['X', 'O']
+        self.roles = ['X', 'O']
 
     def reset(self):
         self.board = [None] * 9
-        self.current_player = 'X'
-        return (self.current_player, self.board)
+        self.active_role = 'X'
+        return (self.active_role, self.board)
 
     def get_legal_actions(self):
         return [i for i in range(9) if self.board[i] is None]
@@ -34,62 +34,61 @@ class TicTacToeEnv(object):
             # Illegal actions are replaced by legal random actions
             action = random.choice(self.get_legal_actions())
 
-        self.board[action] = self.current_player
+        self.board[action] = self.active_role
 
-        if is_win('X', self.board) or is_win('O', self.board):
+        if is_win(self.active_role, self.board):
             # Win
-            rewards = {self.current_player: 1,
-                       opponent_of(self.current_player): -1}
+            rewards = {self.active_role: 1,
+                       opponent_of(self.active_role): -1}
             return None, rewards, True, {}
 
-        if all(x is not None for x in self.board):
+        if not self.get_legal_actions():
             # Draw
-            rewards = {self.current_player: 0,
-                       opponent_of(self.current_player): 0}
+            rewards = {player: 0 for player in self.roles}
             return None, rewards, True, {}
 
-        self.current_player = opponent_of(self.current_player)
+        self.active_role = opponent_of(self.active_role)
 
-        rewards = {self.current_player: 0,
-                   opponent_of(self.current_player): 0}
-        return (self.current_player, self.board), rewards, False, {}
+        rewards = {player: 0 for player in self.roles}
+        return (self.active_role, self.board), rewards, False, {}
 
 
 def feature_extractor(obs):
     if obs is None:
         return np.zeros(9 * 3, dtype=np.float32)
-    player, board = obs
+    role, board = obs
     assert len(board) == 9
-    my_marks = [x == player for x in board]
-    opponent = opponent_of(player)
+    my_marks = [x == role for x in board]
+    opponent = opponent_of(role)
     opponent_marks = [x == opponent for x in board]
     empty = [x is None for x in board]
     return np.asarray(my_marks + opponent_marks + empty, dtype=np.float32)
 
 
-def play_against_random_player(agent_name, agent):
+def play_against_random_player(role, agent):
     env = TicTacToeEnv()
     obs = env.reset()
     done = False
     while not done:
-        current_player = obs[0]
-        if current_player == agent_name:
+        active_role = obs[0]
+        if active_role == role:
             a = agent.act(obs)
         else:
             a = random.choice(env.get_legal_actions())
         obs, r, done, _ = env.step(a)
     agent.stop_episode()
-    return r[agent_name]
+    return r[role]
 
 
 def eval_against_random_player(agents):
-    for agent_name, agent in agents.items():
+    n_runs = 100
+    for role, agent in agents.items():
         Rs = []
-        for _ in range(100):
-            R = play_against_random_player(agent_name, agent)
+        for _ in range(n_runs):
+            R = play_against_random_player(role, agent)
             Rs.append(R)
-        average_R = sum(Rs) / 100
-        print(agent_name, average_R)
+        average_R = sum(Rs) / n_runs
+        print(role, average_R)
 
 
 def main():
@@ -103,7 +102,7 @@ def main():
     replay_buffer = chainerrl.replay_buffer.ReplayBuffer(10 ** 5)
     opt.setup(q_func)
     agents = {}
-    for agent_name in env.agents:
+    for role in env.roles:
         agents[agent_name] = chainerrl.agents.DQN(
             q_func, opt,
             replay_buffer=replay_buffer,
@@ -113,25 +112,42 @@ def main():
             replay_start_size=100,
             target_update_frequency=100,
             update_frequency=1)
+        agents[role] = agent
 
     # Training from self-play
-    for nth_episode in range(10000):
+    X_Rs = []
+    O_Rs = []
+    for nth_episode in range(1000000):
         obs = env.reset()
-        r = {agent_name: 0 for agent_name in env.agents}
+        r = {role: 0 for role in env.roles}
         done = False
         while not done:
-            current_player = obs[0]
-            a = agents[current_player].act_and_train(obs, r[current_player])
+            active_role = obs[0]
+            assert r[active_role] == 0
+            a = agents[active_role].act_and_train(obs, r[active_role])
             obs, r, done, _ = env.step(a)
 
         # Every agent must observe the final results
-        for agent_name, agent in agents.items():
-            agent.stop_episode_and_train(obs, r[agent_name], done)
+        for role, agent in agents.items():
+            # print(role, r[role])
+            agent.stop_episode_and_train(obs, r[role], done)
 
-        if nth_episode % 1000 == 0:
-            for agent_name, agent in agents.items():
-                print(agent_name, agent.get_statistics())
+        assert agents['X'] is not agents['O']
+        assert agents['X'].model is agents['O'].model
+        assert agents['X'].target_model is agents['O'].target_model
+        assert agents['X'].optimizer is agents['O'].optimizer
+
+        X_Rs.append(r['X'])
+        O_Rs.append(r['O'])
+
+        if nth_episode % 10000 == 0:
+            print(nth_episode)
+            X_Rs = []
+            O_Rs = []
+            for role, agent in agents.items():
+                print(role, agent.get_statistics())
             eval_against_random_player(agents)
+            agents['X'].save('tictactoe_{}'.format(nth_episode))
 
 
 if __name__ == '__main__':
