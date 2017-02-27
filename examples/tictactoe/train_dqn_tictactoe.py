@@ -10,13 +10,10 @@ def opponent_of(player):
     return {'O': 'X', 'X': 'O'}[player]
 
 
-def is_win(player, board):
-    return (any(all(board[col + row * 3] == player for col in range(3))
-                for row in range(3)) or
-            any(all(board[col + row * 3] == player for row in range(3))
-                for col in range(3)) or
-            all(board[i + i * 3] == player for i in range(3)) or
-            all(board[i + (2 - i) * 3] == player for i in range(3)))
+def is_win(role, board):
+    lines = [(0, 1, 2), (3, 4, 5), (6, 7, 8), (0, 3, 6),
+             (1, 4, 7), (2, 5, 8), (0, 4, 8), (2, 4, 6)]
+    return any(all(board[i] == role for i in line) for line in lines)
 
 
 class TicTacToeEnv(object):
