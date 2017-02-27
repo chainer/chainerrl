@@ -8,3 +8,4 @@ from chainerrl.agents.dqn import DQN  # NOQA
 from chainerrl.agents.nsq import NSQ  # NOQA
 from chainerrl.agents.pal import PAL  # NOQA
 from chainerrl.agents.pgt import PGT  # NOQA
+from chainerrl.agents.sarsa import SARSA  # NOQA
