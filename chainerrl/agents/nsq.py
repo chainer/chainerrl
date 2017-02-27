@@ -146,7 +146,8 @@ class NSQ(AttributeSavingMixin, AsyncAgent):
             self.target_q_function(statevar)
         qout = self.q_function(statevar)
         action = self.explorer.select_action(
-            self.t_global.value, lambda: qout.greedy_actions.data[0])
+            self.t_global.value, lambda: qout.greedy_actions.data[0],
+            action_value=qout)
         q = qout.evaluate_actions(np.asarray([action]))
         self.past_action_values[self.t] = q
         self.t += 1

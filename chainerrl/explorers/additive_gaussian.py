@@ -17,7 +17,7 @@ class AdditiveGaussian(explorer.Explorer):
     def __init__(self, scale):
         self.scale = scale
 
-    def select_action(self, t, greedy_action_func):
+    def select_action(self, t, greedy_action_func, action_value=None):
         a = greedy_action_func()
         noise = np.random.normal(
             scale=self.scale, size=a.shape).astype(np.float32)

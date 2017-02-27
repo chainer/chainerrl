@@ -37,7 +37,7 @@ class ConstantEpsilonGreedy(explorer.Explorer):
         self.random_action_func = random_action_func
         self.logger = logger
 
-    def select_action(self, t, greedy_action_func):
+    def select_action(self, t, greedy_action_func, action_value=None):
         a, greedy = select_action_epsilon_greedily(
             self.epsilon, self.random_action_func, greedy_action_func)
         greedy_str = 'greedy' if greedy else 'non-greedy'
@@ -78,7 +78,7 @@ class LinearDecayEpsilonGreedy(explorer.Explorer):
             epsilon_diff = self.end_epsilon - self.start_epsilon
             return self.start_epsilon + epsilon_diff * (t / self.decay_steps)
 
-    def select_action(self, t, greedy_action_func):
+    def select_action(self, t, greedy_action_func, action_value=None):
         self.epsilon = self.compute_epsilon(t)
         a, greedy = select_action_epsilon_greedily(
             self.epsilon, self.random_action_func, greedy_action_func)

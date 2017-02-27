@@ -41,7 +41,7 @@ class AdditiveOU(explorer.Explorer):
                                  scale=self.sigma)
         self.ou_state += self.theta * (self.mu - self.ou_state) + noise
 
-    def select_action(self, t, greedy_action_func):
+    def select_action(self, t, greedy_action_func, action_value=None):
         a = greedy_action_func()
         if self.ou_state is None:
             if self.start_with_mu:
