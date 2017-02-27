@@ -50,5 +50,5 @@ class TestBoltzmann(unittest.TestCase):
         self.assertGreater(action_count_t05[1], action_count_t05[2])
         self.assertGreater(action_count_t05[2], action_count_t05[0])
 
-        # T=0.1 must be more greedy than T=1
+        # T=0.5 must be more greedy than T=1
         self.assertGreater(action_count_t05[1], action_count[1])
