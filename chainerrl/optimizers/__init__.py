@@ -1,0 +1,2 @@
+from chainerrl.optimizers.rmsprop_async import RMSpropAsync
+from chainerrl.optimizers.nonbias_weight_decay import NonbiasWeightDecay

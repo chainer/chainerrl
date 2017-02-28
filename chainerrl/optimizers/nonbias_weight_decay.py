@@ -13,7 +13,9 @@ class NonbiasWeightDecay(object):
 
     """Optimizer hook function for weight decay regularization.
 
-    """
+    Unlike chainer.optimizer.WeightDecay, it is only applied to non-bias
+    parameters."""
+
     name = 'NonbiasWeightDecay'
 
     def __init__(self, rate):
