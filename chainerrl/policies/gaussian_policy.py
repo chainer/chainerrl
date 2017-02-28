@@ -16,6 +16,7 @@ from chainer import links as L
 
 from chainerrl import distribution
 from chainerrl.functions.bound_by_tanh import bound_by_tanh
+from chainerrl import links
 from chainerrl.policy import Policy
 
 
@@ -83,6 +84,37 @@ class FCGaussianPolicy(chainer.ChainList, GaussianPolicy):
     def __call__(self, x, test=False):
         mean, var = self.compute_mean_and_var(x, test=test)
         return distribution.GaussianDistribution(mean, var=var)
+
+
+class FCGaussianPolicyWithFixedCovariance(links.Sequence, GaussianPolicy):
+    """Gaussian policy that consists of FC layers and rectifiers"""
+
+    def __init__(self, n_input_channels, action_size, var,
+                 n_hidden_layers=0, n_hidden_channels=None,
+                 min_action=None, max_action=None, bound_mean=False,
+                 nonlinearity=F.relu):
+
+        self.n_input_channels = n_input_channels
+        self.action_size = action_size
+        self.n_hidden_layers = n_hidden_layers
+        self.n_hidden_channels = n_hidden_channels
+        self.min_action = min_action
+        self.max_action = max_action
+        self.bound_mean = bound_mean
+        self.nonlinearity = nonlinearity
+        self.var = var
+        layers = []
+        layers.append(L.Linear(n_input_channels, n_hidden_channels))
+        for _ in range(n_hidden_layers - 1):
+            layers.append(self.nonlinearity)
+            layers.append(L.Linear(n_hidden_channels, n_hidden_channels))
+        layers.append(L.Linear(n_hidden_channels, action_size))
+        if self.bound_mean:
+            layers.append(lambda x: bound_by_tanh(
+                x, self.min_action, self.max_action))
+        layers.append(lambda x: distribution.GaussianDistribution(
+            x, self.xp.broadcast_to(self.var, x.shape)))
+        super().__init__(*layers)
 
 
 class LinearGaussianPolicyWithDiagonalCovariance(
