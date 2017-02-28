@@ -15,6 +15,7 @@ from chainer import serializers
 from future.utils import with_metaclass
 
 from chainerrl.misc.makedirs import makedirs
+from chainerrl.misc import async
 
 
 class Agent(with_metaclass(ABCMeta, object)):
@@ -124,3 +125,17 @@ class AsyncAgent(with_metaclass(ABCMeta, Agent)):
     def shared_attributes(self):
         """Tuple of names of shared attributes."""
         pass
+
+    def share(self):
+        """Share attributes by moving them to shared memory."""
+        shared_objects = {attr: async.as_shared_objects(getattr(self, attr))
+                          for attr in self.shared_attributes}
+        self.set_shared_objects(shared_objects)
+        return shared_objects
+
+    def set_shared_objects(self, shared_objects):
+        """Set given objects in shared memory as attributes."""
+        for attr, shared in shared_objects.items():
+            new_value = async.synchronize_to_shared_objects(
+                getattr(self, attr), shared)
+            setattr(self, attr, new_value)

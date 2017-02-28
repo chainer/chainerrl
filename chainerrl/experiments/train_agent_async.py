@@ -103,18 +103,6 @@ def train_loop(process_idx, env, agent, steps, outdir, counter, training_done,
         print('Saved the successful agent to {}'.format(dirname))
 
 
-def extract_shared_objects_from_agent(agent):
-    return dict((attr, async.as_shared_objects(getattr(agent, attr)))
-                for attr in agent.shared_attributes)
-
-
-def set_shared_objects(agent, shared_objects):
-    for attr, shared in shared_objects.items():
-        new_value = async.synchronize_to_shared_objects(
-            getattr(agent, attr), shared)
-        setattr(agent, attr, new_value)
-
-
 def train_agent_async(outdir, processes, make_env,
                       profile=False, steps=8 * 10 ** 7, eval_frequency=10 ** 6,
                       eval_n_runs=10, gamma=0.99, max_episode_len=None,
@@ -145,8 +133,7 @@ def train_agent_async(outdir, processes, make_env,
         assert make_agent is not None
         agent = make_agent(0)
 
-    shared_objects = extract_shared_objects_from_agent(agent)
-    set_shared_objects(agent, shared_objects)
+    shared_objects = agent.share()
 
     evaluator = AsyncEvaluator(
         n_runs=eval_n_runs,
@@ -162,7 +149,7 @@ def train_agent_async(outdir, processes, make_env,
         eval_env = make_env(process_idx, test=True)
         if make_agent is not None:
             local_agent = make_agent(process_idx)
-            set_shared_objects(local_agent, shared_objects)
+            local_agent.set_shared_objects(shared_objects)
         else:
             local_agent = agent
         local_agent.process_idx = process_idx
