@@ -420,7 +420,7 @@ class ACER(agent.AttributeSavingMixin, agent.AsyncAgent):
 
             if self.process_idx == 0:
                 self.logger.debug(
-                    't:%s v:%s Q:%s Q_ret Q_opc:%s',
+                    't:%s v:%s Q:%s Q_ret:%s Q_opc:%s',
                     i, float(v.data), float(Q.data), Q_ret, Q_opc)
 
             if discrete:
