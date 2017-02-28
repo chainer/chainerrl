@@ -379,9 +379,11 @@ class ACER(agent.AttributeSavingMixin, agent.AsyncAgent):
             action_value = action_values[i]
             ba = np.expand_dims(actions[i], 0)
             if action_distrib_mu is not None:
+                # Off-policy
                 rho = float(compute_importance(
                     action_distrib, action_distrib_mu, ba, self.eps_division))
             else:
+                # On-policy
                 rho = 1
 
             Q_ret = r + self.gamma * Q_ret
