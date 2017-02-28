@@ -423,16 +423,11 @@ class ACER(agent.AttributeSavingMixin, agent.AsyncAgent):
                     't:%s v:%s Q:%s Q_ret Q_opc:%s',
                     i, float(v.data), float(Q.data), Q_ret, Q_opc)
 
-            if action_distrib_mu is not None:
-                # Off-policy
-                if discrete:
-                    c = min(1, rho)
-                else:
-                    c = min(1, rho ** (1 / ba.size))
-                Q_ret = c * (Q_ret - float(Q.data)) + float(v.data)
+            if discrete:
+                c = min(1, rho)
             else:
-                # On-policy
-                Q_ret = Q_ret - float(Q.data) + float(v.data)
+                c = min(1, rho ** (1 / ba.size))
+            Q_ret = c * (Q_ret - float(Q.data)) + float(v.data)
             Q_opc = Q_opc - float(Q.data) + float(v.data)
 
         pi_loss *= self.pi_loss_coef
