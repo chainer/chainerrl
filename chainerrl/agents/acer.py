@@ -151,7 +151,7 @@ class ACERSDNSeparateModel(chainer.Chain, RecurrentChainMixin):
         return action_distrib, action_value, v
 
 
-class ACERSDNSharedModel(links.Sequence):
+class ACERSDNSharedModel(links.Sequence, RecurrentChainMixin):
     """ACER model where the policy and V-function share parameters.
 
     Args:
@@ -164,7 +164,7 @@ class ACERSDNSharedModel(links.Sequence):
         super().__init__(shared, ACERSDNSeparateModel(pi, v, adv))
 
 
-class ACERSharedModel(links.Sequence):
+class ACERSharedModel(links.Sequence, RecurrentChainMixin):
     """ACER model where the policy and V-function share parameters.
 
     Args:
