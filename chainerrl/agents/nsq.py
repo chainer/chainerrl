@@ -39,6 +39,8 @@ class NSQ(AttributeSavingMixin, AsyncAgent):
         phi (callable): Feature extractor function
         average_q_decay (float): Decay rate of average Q, only used for
             recording statistics
+        batch_states (callable): method which makes a batch of observations.
+            default is `chainerrl.misc.batch_states.batch_states`
     """
 
     process_idx = None
@@ -144,7 +146,8 @@ class NSQ(AttributeSavingMixin, AsyncAgent):
             self.target_q_function(statevar)
         qout = self.q_function(statevar)
         action = self.explorer.select_action(
-            self.t_global.value, lambda: qout.greedy_actions.data[0])
+            self.t_global.value, lambda: qout.greedy_actions.data[0],
+            action_value=qout)
         q = qout.evaluate_actions(np.asarray([action]))
         self.past_action_values[self.t] = q
         self.t += 1
