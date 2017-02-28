@@ -103,7 +103,7 @@ def main():
                 n_hidden_layers=args.n_hidden_layers),
             adv=q_functions.FCSAQFunction(
                 obs_space.low.size, action_space.low.size,
-                n_hidden_channels=args.n_hidden_channels,
+                n_hidden_channels=args.n_hidden_channels // 4,
                 n_hidden_layers=args.n_hidden_layers),
         )
     else:
