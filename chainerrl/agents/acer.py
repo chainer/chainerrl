@@ -38,6 +38,7 @@ def compute_policy_gradient_full_correction(
         action_distrib, action_distrib_mu, action_value, v,
         truncation_threshold, eps_division):
     """Compute off-policy bias correction term wrt all actions."""
+    assert np.isscalar(v)
     with chainer.no_backprop_mode():
         rho_all = compute_full_importance(action_distrib, action_distrib_mu,
                                           eps_division)
@@ -45,7 +46,7 @@ def compute_policy_gradient_full_correction(
             np.maximum(1 - truncation_threshold / (rho_all + eps_division),
                        np.zeros_like(rho_all)) *
             action_distrib.all_prob.data[0])
-        correction_advantage = action_value.q_values.data[0] - float(v.data[0])
+        correction_advantage = action_value.q_values.data[0] - v
     return -F.sum(correction_weight *
                   action_distrib.all_log_prob *
                   correction_advantage, axis=1)
@@ -55,14 +56,17 @@ def compute_policy_gradient_sample_correction(
         action_distrib, action_distrib_mu, action_value, v,
         truncation_threshold, eps_division):
     """Compute off-policy bias correction term wrt a sampled action."""
+    assert np.isscalar(v)
     with chainer.no_backprop_mode():
         sample_action = action_distrib.sample().data
         rho_dash = compute_importance(
             action_distrib, action_distrib_mu, sample_action, eps_division)
-        correction_weight = np.maximum(
-            1 - truncation_threshold / (rho_dash + eps_division), 0)
+        if rho_dash < truncation_threshold:
+            return 0
+        correction_weight = max(0, 1 - truncation_threshold / rho_dash)
+        assert correction_weight <= 1
         q = float(action_value.evaluate_actions(sample_action).data[0])
-        correction_advantage = q - float(v.data[0])
+        correction_advantage = q - v
     return -(correction_weight *
              action_distrib.log_prob(sample_action) *
              correction_advantage)
@@ -73,6 +77,7 @@ def compute_policy_gradient_loss(action, advantage, action_distrib,
                                  truncation_threshold, eps_division):
     """Compute policy gradient loss with off-policy bias correction."""
     assert np.isscalar(advantage)
+    assert np.isscalar(v)
     log_prob = action_distrib.log_prob(action)
     if action_distrib_mu is not None:
         # Off-policy
@@ -353,6 +358,7 @@ class ACER(agent.AttributeSavingMixin, agent.AsyncAgent):
                                  action_distrib_mu, action_value, v,
                                  avg_action_distrib):
         assert np.isscalar(advantage)
+        assert np.isscalar(v)
 
         g_loss = compute_policy_gradient_loss(
             action=action,
@@ -424,7 +430,7 @@ class ACER(agent.AttributeSavingMixin, agent.AsyncAgent):
                 action_distrib=action_distrib,
                 action_distrib_mu=action_distrib_mu,
                 action_value=action_value,
-                v=v,
+                v=float(v.data),
                 avg_action_distrib=avg_action_distrib)
 
             # Accumulate gradients of value function

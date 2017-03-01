@@ -29,6 +29,157 @@ from chainerrl.replay_buffer import EpisodicReplayBuffer
 from chainerrl import v_function
 
 
+def extract_gradients_as_single_vector(link):
+    return np.concatenate([p.grad.ravel() for p in link.params()])
+
+
+@testing.parameterize(*(
+    testing.product({
+        'distrib_type': ['Gaussian'],
+        'action_size': [1, 2]
+    }) +
+    testing.product({
+        'distrib_type': ['Softmax'],
+        'n_actions': [2, 3]
+    })
+))
+class TestBiasCorrection(unittest.TestCase):
+
+    def setUp(self):
+        pass
+
+    @chainer.testing.condition.retry(3)
+    def test_bias_correction(self):
+
+        if self.distrib_type == 'Gaussian':
+            base_policy = chainerrl.policies.FCGaussianPolicy(
+                1, self.action_size, n_hidden_channels=0, n_hidden_layers=0)
+            another_policy = chainerrl.policies.FCGaussianPolicy(
+                1, self.action_size, n_hidden_channels=0, n_hidden_layers=0)
+        elif self.distrib_type == 'Softmax':
+            base_policy = chainerrl.policies.FCSoftmaxPolicy(
+                1, self.n_actions, n_hidden_channels=0, n_hidden_layers=0)
+            another_policy = chainerrl.policies.FCSoftmaxPolicy(
+                1, self.n_actions, n_hidden_channels=0, n_hidden_layers=0)
+        x = np.full(1, 1, dtype=np.float32)
+        pi = base_policy(x)
+        mu = another_policy(x)
+
+        def evaluate_action(action):
+            return float(action_value.evaluate_actions(action).data)
+
+        if self.distrib_type == 'Gaussian':
+            W = np.random.rand(self.action_size, 1).astype(np.float32)
+            action_value = chainerrl.action_value.SingleActionValue(
+                evaluator=lambda x: chainer.Variable(
+                    np.asarray(np.dot(x, W), dtype=np.float32)))
+        else:
+            q_values = np.zeros((1, self.n_actions), dtype=np.float32)
+            q_values[:, np.random.randint(self.n_actions)] = 1
+            action_value = chainerrl.action_value.DiscreteActionValue(
+                chainer.Variable(q_values))
+
+        n = 1000
+
+        pi_samples = [pi.sample().data for _ in range(n)]
+        mu_samples = [mu.sample().data for _ in range(n)]
+
+        onpolicy_gs = []
+        for sample in pi_samples:
+            base_policy.cleargrads()
+            loss = -evaluate_action(sample) * pi.log_prob(sample)
+            loss.backward()
+            onpolicy_gs.append(extract_gradients_as_single_vector(base_policy))
+        # on-policy
+        onpolicy_gs_mean = np.mean(onpolicy_gs, axis=0)
+        onpolicy_gs_var = np.var(onpolicy_gs, axis=0)
+        print('on-policy')
+        print('g mean', onpolicy_gs_mean)
+        print('g var', onpolicy_gs_var)
+
+        # off-policy without importance sampling
+        offpolicy_gs = []
+        for sample in mu_samples:
+            base_policy.cleargrads()
+            loss = -evaluate_action(sample) * pi.log_prob(sample)
+            loss.backward()
+            offpolicy_gs.append(
+                extract_gradients_as_single_vector(base_policy))
+        offpolicy_gs_mean = np.mean(offpolicy_gs, axis=0)
+        offpolicy_gs_var = np.var(offpolicy_gs, axis=0)
+        print('off-policy')
+        print('g mean', offpolicy_gs_mean)
+        print('g var', offpolicy_gs_var)
+
+        # off-policy with importance sampling
+        is_gs = []
+        for sample in mu_samples:
+            base_policy.cleargrads()
+            rho = float(pi.prob(sample).data / mu.prob(sample).data)
+            loss = -rho * evaluate_action(sample) * pi.log_prob(sample)
+            loss.backward()
+            is_gs.append(extract_gradients_as_single_vector(base_policy))
+        is_gs_mean = np.mean(is_gs, axis=0)
+        is_gs_var = np.var(is_gs, axis=0)
+        print('importance sampling')
+        print('g mean', is_gs_mean)
+        print('g var', is_gs_var)
+
+        # off-policy with truncated importance sampling + bias correction
+        def bias_correction_policy_gradients(truncation_threshold):
+            gs = []
+            for sample in mu_samples:
+                base_policy.cleargrads()
+                loss = acer.compute_policy_gradient_loss(
+                    action=sample,
+                    advantage=evaluate_action(sample),
+                    action_distrib=pi,
+                    action_distrib_mu=mu,
+                    action_value=action_value,
+                    v=0,
+                    truncation_threshold=truncation_threshold,
+                    eps_division=1e-8)
+                loss.backward()
+                gs.append(extract_gradients_as_single_vector(base_policy))
+            return gs
+
+        # c=0 means on-policy sampling
+        print('truncated importance sampling + bias correction c=0')
+        tis_c0_gs = bias_correction_policy_gradients(0)
+        tis_c0_gs_mean = np.mean(tis_c0_gs, axis=0)
+        tis_c0_gs_var = np.var(tis_c0_gs, axis=0)
+        print('g mean', tis_c0_gs_mean)
+        print('g var', tis_c0_gs_var)
+        # c=0 must be low-bias compared to naive off-policy sampling
+        self.assertLessEqual(
+            np.linalg.norm(onpolicy_gs_mean - tis_c0_gs_mean),
+            np.linalg.norm(onpolicy_gs_mean - offpolicy_gs_mean))
+
+        # c=1 means truncated importance sampling with bias correction
+        print('truncated importance sampling + bias correction c=1')
+        tis_c1_gs = bias_correction_policy_gradients(1)
+        tis_c1_gs_mean = np.mean(tis_c1_gs, axis=0)
+        tis_c1_gs_var = np.var(tis_c1_gs, axis=0)
+        print('g mean', tis_c1_gs_mean)
+        print('g var', tis_c1_gs_var)
+        # c=1 must be low-variance compared to naive importance sampling
+        self.assertLessEqual(tis_c1_gs_var.sum(), is_gs_var.sum())
+        # c=1 must be low-bias compared to naive off-policy sampling
+        self.assertLess(
+            np.linalg.norm(onpolicy_gs_mean - tis_c1_gs_mean),
+            np.linalg.norm(onpolicy_gs_mean - offpolicy_gs_mean))
+
+        # c=inf means importance sampling no truncation
+        print('truncated importance sampling + bias correction c=inf')
+        tis_cinf_gs = bias_correction_policy_gradients(np.inf)
+        tis_cinf_gs_mean = np.mean(tis_cinf_gs, axis=0)
+        tis_cinf_gs_var = np.var(tis_cinf_gs, axis=0)
+        print('g mean', tis_cinf_gs_mean)
+        print('g var', tis_cinf_gs_var)
+        np.testing.assert_allclose(tis_cinf_gs_mean, is_gs_mean, rtol=1e-3)
+        np.testing.assert_allclose(tis_cinf_gs_var, is_gs_var, rtol=1e-3)
+
+
 @testing.parameterize(
     *testing.product({
         'distrib_type': ['Gaussian', 'Softmax'],
