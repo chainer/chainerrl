@@ -44,7 +44,8 @@ class FCSAQFunction(chainer.ChainList, StateActionQFunction):
     """
 
     def __init__(self, n_dim_obs, n_dim_action, n_hidden_channels,
-                 n_hidden_layers, nonlinearity=F.relu):
+                 n_hidden_layers, nonlinearity=F.relu,
+                 last_wscale=1):
         self.n_input_channels = n_dim_obs + n_dim_action
         self.n_hidden_layers = n_hidden_layers
         self.n_hidden_channels = n_hidden_channels
@@ -57,7 +58,7 @@ class FCSAQFunction(chainer.ChainList, StateActionQFunction):
         for i in range(self.n_hidden_layers - 1):
             layers.append(
                 L.Linear(self.n_hidden_channels, self.n_hidden_channels))
-        layers.append(L.Linear(self.n_hidden_channels, 1))
+        layers.append(L.Linear(self.n_hidden_channels, 1, wscale=last_wscale))
         super().__init__(*layers)
         self.output = layers[-1]
 

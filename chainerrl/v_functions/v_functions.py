@@ -34,7 +34,8 @@ class SingleModelVFunction(
 class FCVFunction(SingleModelVFunction):
 
     def __init__(self, n_input_channels, n_hidden_layers=0,
-                 n_hidden_channels=None, nonlinearity=F.relu):
+                 n_hidden_channels=None, nonlinearity=F.relu,
+                 last_wscale=1):
         self.n_input_channels = n_input_channels
         self.n_hidden_layers = n_hidden_layers
         self.n_hidden_channels = n_hidden_channels
@@ -42,5 +43,6 @@ class FCVFunction(SingleModelVFunction):
         super().__init__(
             model=MLP(self.n_input_channels, 1,
                       [self.n_hidden_channels] * self.n_hidden_layers,
-                      nonlinearity=nonlinearity),
+                      nonlinearity=nonlinearity,
+                      last_wscale=last_wscale),
         )

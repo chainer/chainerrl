@@ -14,7 +14,8 @@ from chainer import links as L
 class MLP(chainer.Chain):
     """Multi-Layer Perceptron"""
 
-    def __init__(self, in_size, out_size, hidden_sizes, nonlinearity=F.relu):
+    def __init__(self, in_size, out_size, hidden_sizes, nonlinearity=F.relu,
+                 last_wscale=1):
         self.in_size = in_size
         self.out_size = out_size
         self.hidden_sizes = hidden_sizes
@@ -28,9 +29,10 @@ class MLP(chainer.Chain):
             for hin, hout in zip(hidden_sizes, hidden_sizes[1:]):
                 hidden_layers.append(L.Linear(hin, hout))
             layers['hidden_layers'] = chainer.ChainList(*hidden_layers)
-            layers['output'] = L.Linear(hidden_sizes[-1], out_size)
+            layers['output'] = L.Linear(hidden_sizes[-1], out_size,
+                                        wscale=last_wscale)
         else:
-            layers['output'] = L.Linear(in_size, out_size)
+            layers['output'] = L.Linear(in_size, out_size, wscale=last_wscale)
 
         super().__init__(**layers)
 
