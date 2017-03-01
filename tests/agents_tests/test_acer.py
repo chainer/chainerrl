@@ -6,15 +6,19 @@ from builtins import *  # NOQA
 from future import standard_library
 standard_library.install_aliases()
 
+import copy
 import logging
 import os
 import tempfile
 import unittest
 
+import chainer
 from chainer import functions as F
 from chainer import links as L
 from chainer import testing
+import numpy as np
 
+import chainerrl
 from chainerrl.agents import acer
 from chainerrl.envs.abc import ABC
 from chainerrl.experiments.train_agent_async import train_agent_async
@@ -23,6 +27,65 @@ from chainerrl import policies
 from chainerrl import q_function
 from chainerrl.replay_buffer import EpisodicReplayBuffer
 from chainerrl import v_function
+
+
+@testing.parameterize(
+    *testing.product({
+        'distrib_type': ['Gaussian', 'Softmax'],
+    }),
+)
+class TestEfficientTRPO(unittest.TestCase):
+
+    def setUp(self):
+        pass
+
+    def test_compute_loss_with_kl_constraint(self):
+
+        if self.distrib_type == 'Gaussian':
+            base_policy = chainerrl.policies.FCGaussianPolicy(
+                1, 3, n_hidden_channels=0, n_hidden_layers=0)
+            x = np.random.rand(1, 1).astype(np.float32, copy=False)
+        elif self.distrib_type == 'Softmax':
+            base_policy = chainerrl.policies.FCSoftmaxPolicy(
+                1, 3, n_hidden_channels=0, n_hidden_layers=0)
+            x = np.random.rand(1, 1).astype(np.float32, copy=False)
+        base_distrib = base_policy(x)
+        sample = base_distrib.sample().data
+        another_distrib = base_policy(
+            np.random.rand(1, 1).astype(np.float32, copy=False)).copy()
+
+        def base_loss_func(distrib):
+            return distrib.log_prob(sample)
+
+        kl_before = float(another_distrib.kl(base_distrib).data)
+        print('kl_before', kl_before)
+
+        def compute_kl_after_update(loss_func, n=100):
+            policy = copy.deepcopy(base_policy)
+            optimizer = chainer.optimizers.SGD(1e-4)
+            optimizer.setup(policy)
+            for _ in range(n):
+                distrib = policy(x)
+                policy.cleargrads()
+                loss_func(distrib).backward()
+                optimizer.update()
+            distrib_after = policy(x)
+            return float(another_distrib.kl(distrib_after).data)
+
+        # Without kl constraint
+        kl_after_without_constraint = compute_kl_after_update(base_loss_func)
+        print('kl_after_without_constraint', kl_after_without_constraint)
+
+        # With kl constraint
+        def loss_func_with_constraint(distrib):
+            return acer.compute_loss_with_kl_constraint(
+                distrib, another_distrib, base_loss_func(distrib),
+                delta=0)
+        kl_after_with_constraint = compute_kl_after_update(
+            loss_func_with_constraint)
+        print('kl_after_with_constraint', kl_after_with_constraint)
+
+        # TODO(fujita) check the results are correct
 
 
 @testing.parameterize(*(

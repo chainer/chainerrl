@@ -187,6 +187,49 @@ def backprop_truncated(*variables):
         v.creator = backup_creator
 
 
+def compute_loss_with_kl_constraint(distrib, another_distrib, original_loss,
+                                    delta):
+    """Compute loss considering a KL constraint.
+
+    Args:
+        distrib (Distribution): Distribution to optimize
+        another_distrib (Distribution): Distribution used to compute KL
+        original_loss (chainer.Variable): Loss to minimize
+        delta (float): Minimum KL difference
+    Returns:
+        loss (chainer.Variable)
+    """
+    # Compute g: a direction to minimize the original loss
+    with backprop_truncated(*distrib.params):
+        original_loss.backward()
+    g = [p.grad[0] for p in distrib.params]
+    for p in distrib.params:
+        p.cleargrad()
+
+    # Compute k: a direction to increase KL div.
+    kl = another_distrib.kl(distrib)
+    with backprop_truncated(*distrib.params):
+        (-kl).backward()
+    k = [p.grad[0] for p in distrib.params]
+    for p in distrib.params:
+        p.cleargrad()
+
+    # Compute z: combination of g and k to keep small KL div.
+    kg_dot = sum(np.dot(kp.ravel(), gp.ravel())
+                 for kp, gp in zip(k, g))
+    kk_dot = sum(np.dot(kp.ravel(), kp.ravel()) for kp in k)
+    if kk_dot > 0:
+        k_factor = max(0, ((kg_dot - delta) / kk_dot))
+    else:
+        assert kg_dot == 0
+        k_factor = 0
+    z = [gp - k_factor * kp for kp, gp in zip(k, g)]
+    loss = 0
+    for p, zp in zip(distrib.params, z):
+        loss += F.sum(p * zp, axis=1)
+    return loss
+
+
 class ACER(agent.AttributeSavingMixin, agent.AsyncAgent):
     """ACER (Actor-Critic with Experience Replay).
 
@@ -322,36 +365,12 @@ class ACER(agent.AttributeSavingMixin, agent.AsyncAgent):
             eps_division=self.eps_division)
 
         if self.use_trust_region:
-            # Compute g: a direction following policy gradients
-            with backprop_truncated(*action_distrib.params):
-                g_loss.backward()
-            g = [p.grad[0] for p in action_distrib.params]
-            for p in action_distrib.params:
-                p.cleargrad()
-
-            # Compute k: a direction to increase KL div.
-            kl = avg_action_distrib.kl(action_distrib)
-            self.average_kl += (
-                (1 - self.average_kl_decay) *
-                (float(kl.data) - self.average_kl))
-            with backprop_truncated(*action_distrib.params):
-                (-kl).backward()
-            k = [p.grad[0] for p in action_distrib.params]
-            for p in action_distrib.params:
-                p.cleargrad()
-
-            # Compute z: combination of g and k to keep small KL div.
-            kg_dot = sum(np.dot(kp.ravel(), gp.ravel())
-                         for kp, gp in zip(k, g))
-            kk_dot = sum(np.dot(kp.ravel(), kp.ravel()) for kp in k)
-            k_factor = max(0, ((kg_dot - self.trust_region_delta) /
-                               (kk_dot + self.eps_division)))
-            z = [gp - k_factor * kp for kp, gp in zip(k, g)]
-            pi_loss = 0
-            for p, zp in zip(action_distrib.params, z):
-                pi_loss += F.sum(p * zp, axis=1)
+            pi_loss = compute_loss_with_kl_constraint(
+                action_distrib, avg_action_distrib, g_loss,
+                delta=self.trust_region_delta)
         else:
             pi_loss = g_loss
+
         # Entropy is maximized
         pi_loss -= self.beta * action_distrib.entropy
         return pi_loss
