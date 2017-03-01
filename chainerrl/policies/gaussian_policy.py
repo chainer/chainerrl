@@ -43,7 +43,8 @@ class FCGaussianPolicy(chainer.ChainList, GaussianPolicy):
     def __init__(self, n_input_channels, action_size,
                  n_hidden_layers=0, n_hidden_channels=None,
                  min_action=None, max_action=None, bound_mean=False,
-                 var_type='spherical', nonlinearity=F.relu):
+                 var_type='spherical', nonlinearity=F.relu,
+                 mean_wscale=1, var_wscale=1):
 
         self.n_input_channels = n_input_channels
         self.action_size = action_size
@@ -62,11 +63,15 @@ class FCGaussianPolicy(chainer.ChainList, GaussianPolicy):
             for i in range(n_hidden_layers - 1):
                 self.hidden_layers.append(
                     L.Linear(n_hidden_channels, n_hidden_channels))
-            self.mean_layer = L.Linear(n_hidden_channels, action_size)
-            self.var_layer = L.Linear(n_hidden_channels, var_size)
+            self.mean_layer = L.Linear(n_hidden_channels, action_size,
+                                       wscale=mean_wscale)
+            self.var_layer = L.Linear(n_hidden_channels, var_size,
+                                      wscale=var_wscale)
         else:
-            self.mean_layer = L.Linear(n_input_channels, action_size)
-            self.var_layer = L.Linear(n_input_channels, var_size)
+            self.mean_layer = L.Linear(n_input_channels, action_size,
+                                       wscale=mean_wscale)
+            self.var_layer = L.Linear(n_input_channels, var_size,
+                                      wscale=var_wscale)
 
         super().__init__(
             self.mean_layer, self.var_layer, *self.hidden_layers)
