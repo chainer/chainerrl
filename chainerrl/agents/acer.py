@@ -227,7 +227,7 @@ def compute_loss_with_kl_constraint(distrib, another_distrib, original_loss,
     loss = 0
     for p, zp in zip(distrib.params, z):
         loss += F.sum(p * zp, axis=1)
-    return loss
+    return loss, float(kl.data)
 
 
 class ACER(agent.AttributeSavingMixin, agent.AsyncAgent):
@@ -365,9 +365,11 @@ class ACER(agent.AttributeSavingMixin, agent.AsyncAgent):
             eps_division=self.eps_division)
 
         if self.use_trust_region:
-            pi_loss = compute_loss_with_kl_constraint(
+            pi_loss, kl = compute_loss_with_kl_constraint(
                 action_distrib, avg_action_distrib, g_loss,
                 delta=self.trust_region_delta)
+            self.average_kl += (
+                (1 - self.average_kl_decay) * (kl - self.average_kl))
         else:
             pi_loss = g_loss
 

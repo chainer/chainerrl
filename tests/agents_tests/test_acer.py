@@ -78,9 +78,10 @@ class TestEfficientTRPO(unittest.TestCase):
 
         # With kl constraint
         def loss_func_with_constraint(distrib):
-            return acer.compute_loss_with_kl_constraint(
+            loss, kl = acer.compute_loss_with_kl_constraint(
                 distrib, another_distrib, base_loss_func(distrib),
                 delta=0)
+            return loss
         kl_after_with_constraint = compute_kl_after_update(
             loss_func_with_constraint)
         print('kl_after_with_constraint', kl_after_with_constraint)
