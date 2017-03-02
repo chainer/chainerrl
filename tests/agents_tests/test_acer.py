@@ -182,7 +182,7 @@ class TestBiasCorrection(unittest.TestCase):
 @testing.parameterize(
     *testing.product({
         'distrib_type': ['Gaussian', 'Softmax'],
-    }),
+    })
 )
 class TestEfficientTRPO(unittest.TestCase):
 
