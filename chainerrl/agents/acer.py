@@ -26,25 +26,25 @@ from chainerrl.recurrent import state_kept
 from chainerrl.recurrent import state_reset
 
 
-def compute_importance(pi, mu, x, eps_division):
-    return float(pi.prob(x).data) / (float(mu.prob(x).data) + eps_division)
+def compute_importance(pi, mu, x):
+    return float(pi.prob(x).data) / float(mu.prob(x).data)
 
 
-def compute_full_importance(pi, mu, eps_division):
-    return pi.all_prob.data / (mu.all_prob.data + eps_division)
+def compute_full_importance(pi, mu):
+    return pi.all_prob.data / mu.all_prob.data
 
 
 def compute_policy_gradient_full_correction(
         action_distrib, action_distrib_mu, action_value, v,
-        truncation_threshold, eps_division):
+        truncation_threshold):
     """Compute off-policy bias correction term wrt all actions."""
     assert np.isscalar(v)
     with chainer.no_backprop_mode():
-        rho_all = compute_full_importance(action_distrib, action_distrib_mu,
-                                          eps_division)
+        rho_all_inv = compute_full_importance(action_distrib_mu,
+                                              action_distrib)
         correction_weight = (
-            np.maximum(1 - truncation_threshold / (rho_all + eps_division),
-                       np.zeros_like(rho_all)) *
+            np.maximum(1 - truncation_threshold * rho_all_inv,
+                       np.zeros_like(rho_all_inv)) *
             action_distrib.all_prob.data[0])
         correction_advantage = action_value.q_values.data[0] - v
     return -F.sum(correction_weight *
@@ -54,16 +54,17 @@ def compute_policy_gradient_full_correction(
 
 def compute_policy_gradient_sample_correction(
         action_distrib, action_distrib_mu, action_value, v,
-        truncation_threshold, eps_division):
+        truncation_threshold):
     """Compute off-policy bias correction term wrt a sampled action."""
     assert np.isscalar(v)
     with chainer.no_backprop_mode():
         sample_action = action_distrib.sample().data
-        rho_dash = compute_importance(
-            action_distrib, action_distrib_mu, sample_action, eps_division)
-        if rho_dash < truncation_threshold:
+        rho_dash_inv = compute_importance(
+            action_distrib_mu, action_distrib, sample_action)
+        if (truncation_threshold > 0 and
+                rho_dash_inv >= 1 / truncation_threshold):
             return 0
-        correction_weight = max(0, 1 - truncation_threshold / rho_dash)
+        correction_weight = max(0, 1 - truncation_threshold * rho_dash_inv)
         assert correction_weight <= 1
         q = float(action_value.evaluate_actions(sample_action).data[0])
         correction_advantage = q - v
@@ -74,7 +75,7 @@ def compute_policy_gradient_sample_correction(
 
 def compute_policy_gradient_loss(action, advantage, action_distrib,
                                  action_distrib_mu, action_value, v,
-                                 truncation_threshold, eps_division):
+                                 truncation_threshold):
     """Compute policy gradient loss with off-policy bias correction."""
     assert np.isscalar(advantage)
     assert np.isscalar(v)
@@ -82,7 +83,7 @@ def compute_policy_gradient_loss(action, advantage, action_distrib,
     if action_distrib_mu is not None:
         # Off-policy
         rho = compute_importance(
-            action_distrib, action_distrib_mu, action, eps_division)
+            action_distrib, action_distrib_mu, action)
         g_loss = 0
         # Truncated off-policy policy gradient term
         g_loss -= min(truncation_threshold, rho) * log_prob * advantage
@@ -94,16 +95,14 @@ def compute_policy_gradient_loss(action, advantage, action_distrib,
                 action_distrib_mu=action_distrib_mu,
                 action_value=action_value,
                 v=v,
-                truncation_threshold=truncation_threshold,
-                eps_division=eps_division)
+                truncation_threshold=truncation_threshold)
         else:
             g_loss += compute_policy_gradient_sample_correction(
                 action_distrib=action_distrib,
                 action_distrib_mu=action_distrib_mu,
                 action_value=action_value,
                 v=v,
-                truncation_threshold=truncation_threshold,
-                eps_division=eps_division)
+                truncation_threshold=truncation_threshold)
     else:
         # On-policy
         g_loss = -log_prob * advantage
@@ -279,7 +278,6 @@ class ACER(agent.AttributeSavingMixin, agent.AsyncAgent):
                  replay_start_size=10 ** 4,
                  normalize_loss_by_steps=True,
                  act_deterministically=False,
-                 eps_division=1e-6,
                  average_entropy_decay=0.999,
                  average_value_decay=0.999,
                  average_kl_decay=0.999,
@@ -313,7 +311,6 @@ class ACER(agent.AttributeSavingMixin, agent.AsyncAgent):
         self.disable_online_update = disable_online_update
         self.n_times_replay = n_times_replay
         self.replay_start_size = replay_start_size
-        self.eps_division = eps_division
         self.average_value_decay = average_value_decay
         self.average_entropy_decay = average_entropy_decay
         self.average_kl_decay = average_kl_decay
@@ -367,8 +364,7 @@ class ACER(agent.AttributeSavingMixin, agent.AsyncAgent):
             action_distrib_mu=action_distrib_mu,
             action_value=action_value,
             v=v,
-            truncation_threshold=self.truncation_threshold,
-            eps_division=self.eps_division)
+            truncation_threshold=self.truncation_threshold)
 
         if self.use_trust_region:
             pi_loss, kl = compute_loss_with_kl_constraint(
@@ -407,8 +403,7 @@ class ACER(agent.AttributeSavingMixin, agent.AsyncAgent):
             ba = np.expand_dims(actions[i], 0)
             if action_distrib_mu is not None:
                 # Off-policy
-                rho = float(compute_importance(
-                    action_distrib, action_distrib_mu, ba, self.eps_division))
+                rho = compute_importance(action_distrib, action_distrib_mu, ba)
             else:
                 # On-policy
                 rho = 1

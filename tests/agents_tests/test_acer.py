@@ -137,8 +137,7 @@ class TestBiasCorrection(unittest.TestCase):
                     action_distrib_mu=mu,
                     action_value=action_value,
                     v=0,
-                    truncation_threshold=truncation_threshold,
-                    eps_division=1e-8)
+                    truncation_threshold=truncation_threshold)
                 loss.backward()
                 gs.append(extract_gradients_as_single_vector(base_policy))
             return gs
