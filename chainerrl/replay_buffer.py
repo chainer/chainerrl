@@ -85,14 +85,11 @@ class PrioritizedReplayBuffer(ReplayBuffer):
         weights = [(minp if p is None else p) ** -self.beta for p in probabilities]
         self.beta = min(1.0, self.beta + self.betastep)
         # return sampled, {'weights': weights}
-        # print((probabilities, weights))
         for e, w in zip(sampled, weights):
             e['weight'] = w
         return sampled
 
     def update_priorities(self, priorities):
-        # print('priorities: {}'.format(priorities))
-        # print('priorities\': {}'.format([p ** self.alpha + self.eps for p in priorities]))
         self.memory.set_last_priority(
                 [p ** self.alpha + self.eps for p in priorities])
 

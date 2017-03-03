@@ -75,7 +75,6 @@ def compute_weighted_value_loss(y, t, weights, clip_delta=True, batch_accumulato
         (Variable) scalar loss
         (ndarray) losses
     """
-    # print('weights: {}'.format(weights))
     assert batch_accumulator in ('mean', 'sum')
     y = F.reshape(y, (-1, 1))
     t = F.reshape(t, (-1, 1))
@@ -314,7 +313,6 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
             loss, losses = compute_weighted_value_loss(y, t, exp_batch['weights'],
                                       clip_delta=self.clip_delta,
                                       batch_accumulator=self.batch_accumulator)
-            # print('losses: {}'.format(losses))
             self.replay_buffer.update_priorities(losses)
             return loss
         else:
