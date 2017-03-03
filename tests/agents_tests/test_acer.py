@@ -61,7 +61,7 @@ class TestBiasCorrection(unittest.TestCase):
                 1, self.n_actions, n_hidden_channels=0, n_hidden_layers=0)
             another_policy = chainerrl.policies.FCSoftmaxPolicy(
                 1, self.n_actions, n_hidden_channels=0, n_hidden_layers=0)
-        x = np.full(1, 1, dtype=np.float32)
+        x = np.full((1, 1), 1, dtype=np.float32)
         pi = base_policy(x)
         mu = another_policy(x)
 
