@@ -217,14 +217,19 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
           None
         """
 
+        has_weight = 'weight' in experiences[0]
         exp_batch = batch_experiences(experiences, xp=self.xp, phi=self.phi,
                                       batch_states=self.batch_states)
-        if 'weight' in experiences[0]:
+        if has_weight:
             exp_batch['weights'] = self.xp.asarray(
                 [elem['weight'] for elem in experiences],
                 dtype=self.xp.float32)
+            if errors_out is None:
+                errors_out = []
         loss = self._compute_loss(
             exp_batch, self.gamma, errors_out=errors_out)
+        if has_weight:
+            self.replay_buffer.update_errors(errors_out)
 
         # Update stats
         self.average_loss *= self.average_loss_decay
@@ -313,13 +318,10 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
                 errors_out.append(e)
 
         if 'weights' in exp_batch:
-            loss = compute_weighted_value_loss(
+            return compute_weighted_value_loss(
                 y, t, exp_batch['weights'],
                 clip_delta=self.clip_delta,
                 batch_accumulator=self.batch_accumulator)
-            tderrors = self.xp.abs((y - t).data.reshape((-1,)))
-            self.replay_buffer.update_errors(tderrors)
-            return loss
         else:
             return compute_value_loss(y, t, clip_delta=self.clip_delta,
                                       batch_accumulator=self.batch_accumulator)
