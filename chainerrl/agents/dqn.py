@@ -81,7 +81,7 @@ def compute_weighted_value_loss(y, t, weights, clip_delta=True, batch_accumulato
     if clip_delta:
         losses = F.huber_loss(y, t, delta=1.0)
     else:
-        losses = F.square(y - t)
+        losses = F.square(y - t) / 2
     losses = F.reshape(losses, (-1,))
     loss_sum = F.sum(losses * weights)
     if batch_accumulator == 'mean':
