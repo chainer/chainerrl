@@ -80,9 +80,6 @@ class PCL(agent.AttributeSavingMixin, agent.AsyncAgent):
         # Globally shared model
         self.shared_model = model
 
-        # Globally shared average model used to compute trust regions
-        self.shared_average_model = copy.deepcopy(self.shared_model)
-
         # Thread specific model
         self.model = copy.deepcopy(self.shared_model)
         async.assert_params_not_shared(self.shared_model, self.model)
@@ -227,37 +224,36 @@ class PCL(agent.AttributeSavingMixin, agent.AsyncAgent):
         episode = self.replay_buffer.sample_episodes(1, max_len=self.t_max)[0]
 
         with state_reset(self.model):
-            with state_reset(self.shared_average_model):
-                rewards = {}
-                actions = {}
-                action_distribs = {}
-                values = {}
-                for t, transition in enumerate(episode):
-                    s = self.phi(transition['state'])
-                    a = transition['action']
-                    bs = np.expand_dims(s, 0)
-                    action_distrib, v = self.model(bs)
-                    actions[t] = a
-                    values[t] = v
-                    action_distribs[t] = action_distrib
-                    rewards[t] = transition['reward']
-                last_transition = episode[-1]
-                if last_transition['is_state_terminal']:
-                    R = 0
-                else:
-                    with chainer.no_backprop_mode():
-                        last_s = last_transition['next_state']
-                        action_distrib, last_v = self.model(
-                            np.expand_dims(self.phi(last_s), 0))
-                    R = float(last_v.data)
-                return self.update(
-                    R=R,
-                    t_start=0,
-                    t_stop=len(episode),
-                    rewards=rewards,
-                    actions=actions,
-                    values=values,
-                    action_distribs=action_distribs)
+            rewards = {}
+            actions = {}
+            action_distribs = {}
+            values = {}
+            for t, transition in enumerate(episode):
+                s = self.phi(transition['state'])
+                a = transition['action']
+                bs = np.expand_dims(s, 0)
+                action_distrib, v = self.model(bs)
+                actions[t] = a
+                values[t] = v
+                action_distribs[t] = action_distrib
+                rewards[t] = transition['reward']
+            last_transition = episode[-1]
+            if last_transition['is_state_terminal']:
+                R = 0
+            else:
+                with chainer.no_backprop_mode():
+                    last_s = last_transition['next_state']
+                    action_distrib, last_v = self.model(
+                        np.expand_dims(self.phi(last_s), 0))
+                R = float(last_v.data)
+            return self.update(
+                R=R,
+                t_start=0,
+                t_stop=len(episode),
+                rewards=rewards,
+                actions=actions,
+                values=values,
+                action_distribs=action_distribs)
 
     def update_on_policy(self, statevar):
         assert self.t_start < self.t
@@ -360,7 +356,6 @@ class PCL(agent.AttributeSavingMixin, agent.AsyncAgent):
 
         if isinstance(self.model, Recurrent):
             self.model.reset_state()
-            self.shared_average_model.reset_state()
 
         # Add a transition to the replay buffer
         self.replay_buffer.append(
@@ -380,7 +375,6 @@ class PCL(agent.AttributeSavingMixin, agent.AsyncAgent):
     def stop_episode(self):
         if isinstance(self.model, Recurrent):
             self.model.reset_state()
-            self.shared_average_model.reset_state()
 
     def load(self, dirname):
         super().load(dirname)
