@@ -135,7 +135,7 @@ class EpisodicReplayBuffer(object):
 
     def sample(self, n):
         """Sample n unique samples from this replay buffer"""
-        assert len(self.episodic_memory) >= n
+        assert len(self.memory) >= n
         return random.sample(self.memory, n)
 
     def sample_episodes(self, n_episodes, max_len=None):
@@ -148,7 +148,7 @@ class EpisodicReplayBuffer(object):
             return episodes
 
     def __len__(self):
-        return len(self.memory)
+        return len(self.episodic_memory)
 
     def save(self, filename):
         with open(filename, 'wb') as f:
@@ -172,7 +172,14 @@ class EpisodicReplayBuffer(object):
 
 class PrioritizedEpisodicReplayBuffer (EpisodicReplayBuffer):
 
-    def __init__(self, capacity):
+    def __init__(self, capacity,
+                 alpha=0.6, beta0=0.4, betastep=3e-6, eps=0.0):
+        # anneal beta in 200,000 steps [citation needed]
+        self.alpha = alpha
+        self.beta = beta0
+        self.betastep = betastep
+        self.eps = eps
+
         self.current_episode = []
         self.episodic_memory = PrioritizedBuffer(capacity=None)
         self.memory = deque(maxlen=capacity)
@@ -200,7 +207,7 @@ class PrioritizedEpisodicReplayBuffer (EpisodicReplayBuffer):
 
     def update_errors(self, errors):
         priority = [d ** self.alpha + self.eps for d in errors]
-        self.memory.set_last_priority(priority)
+        self.episodic_memory.set_last_priority(priority)
 
     def stop_current_episode(self):
         if self.current_episode:
