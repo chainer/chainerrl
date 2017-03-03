@@ -56,14 +56,16 @@ class ReplayBuffer(object):
     def stop_current_episode(self):
         pass
 
+
 class PrioritizedReplayBuffer(ReplayBuffer):
-    """
-    Stochastic Prioritization
+    """Stochastic Prioritization
+
     https://arxiv.org/pdf/1511.05952.pdf \S3.3
     propotional prioritization
     """
 
-    def __init__(self, capacity=None, alpha=0.6, beta0=0.4, betastep=3e-6, eps=0.0):
+    def __init__(self, capacity=None,
+                 alpha=0.6, beta0=0.4, betastep=3e-6, eps=0.0):
         # anneal beta in 200,000 steps [citation needed]
         self.alpha = alpha
         self.beta = beta0
@@ -82,7 +84,8 @@ class PrioritizedReplayBuffer(ReplayBuffer):
         sampled, probabilities = self.memory.sample(n)
         tmp = [p for p in probabilities if p is not None]
         minp = min(tmp) if len(tmp) > 0 else 1.0
-        weights = [(minp if p is None else p) ** -self.beta for p in probabilities]
+        weights = [(minp if p is None else p) ** -self.beta
+                   for p in probabilities]
         self.beta = min(1.0, self.beta + self.betastep)
         # return sampled, {'weights': weights}
         for e, w in zip(sampled, weights):
@@ -166,6 +169,7 @@ class EpisodicReplayBuffer(object):
                     self.memory.popleft()
         assert not self.current_episode
 
+
 class PrioritizedEpisodicReplayBuffer (EpisodicReplayBuffer):
 
     def __init__(self, capacity):
@@ -185,7 +189,8 @@ class PrioritizedEpisodicReplayBuffer (EpisodicReplayBuffer):
         episodes, probabilities = self.episodic_memory.sample(n_episodes)
         tmp = [p for p in probabilities if p is not None]
         minp = min(tmp) if len(tmp) > 0 else 1.0
-        weights = [(minp if p is None else p) ** -self.beta for p in probabilities]
+        weights = [(minp if p is None else p) ** -self.beta
+                   for p in probabilities]
         self.beta = min(1.0, self.beta + self.betastep)
         if max_len is not None:
             episodes = [random_subseq(ep, max_len) for ep in episodes]
@@ -207,6 +212,7 @@ class PrioritizedEpisodicReplayBuffer (EpisodicReplayBuffer):
                 discarded_episode = self.episodic_memory.pop()
                 self.capacity_left += len(discarded_episode)
         assert not self.current_episode
+
 
 def batch_experiences(experiences, xp, phi, batch_states=batch_states):
 

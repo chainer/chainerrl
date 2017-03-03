@@ -61,7 +61,9 @@ def compute_value_loss(y, t, clip_delta=True, batch_accumulator='mean'):
             loss = loss_mean * y.shape[0]
     return loss
 
-def compute_weighted_value_loss(y, t, weights, clip_delta=True, batch_accumulator='mean'):
+
+def compute_weighted_value_loss(y, t, weights,
+                                clip_delta=True, batch_accumulator='mean'):
     """Compute a loss for value prediction problem.
 
     Args:
@@ -69,7 +71,8 @@ def compute_weighted_value_loss(y, t, weights, clip_delta=True, batch_accumulato
         t (Variable or ndarray): Target values.
         weights (ndarray): Weights for y, t.
         clip_delta (bool): Use the Huber loss function if set True.
-        batch_accumulator (str): 'mean' or 'sum'. 'mean' will use the normalized weights.
+        batch_accumulator (str): 'mean' or 'sum'.
+            'mean' will use the normalized weights.
             'sum' will use the unnormalized weights.
     Returns:
         (Variable) scalar loss
@@ -88,6 +91,7 @@ def compute_weighted_value_loss(y, t, weights, clip_delta=True, batch_accumulato
     elif batch_accumulator == 'sum':
         loss = loss_sum
     return loss
+
 
 class DQN(agent.AttributeSavingMixin, agent.Agent):
     """Deep Q-Network algorithm.
@@ -217,8 +221,8 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
                                       batch_states=self.batch_states)
         if 'weight' in experiences[0]:
             exp_batch['weights'] = self.xp.asarray(
-                    [elem['weight'] for elem in experiences],
-                    dtype=self.xp.float32)
+                [elem['weight'] for elem in experiences],
+                dtype=self.xp.float32)
         loss = self._compute_loss(
             exp_batch, self.gamma, errors_out=errors_out)
 
@@ -309,9 +313,10 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
                 errors_out.append(e)
 
         if 'weights' in exp_batch:
-            loss = compute_weighted_value_loss(y, t, exp_batch['weights'],
-                                      clip_delta=self.clip_delta,
-                                      batch_accumulator=self.batch_accumulator)
+            loss = compute_weighted_value_loss(
+                y, t, exp_batch['weights'],
+                clip_delta=self.clip_delta,
+                batch_accumulator=self.batch_accumulator)
             tderrors = self.xp.abs((y - t).data.reshape((-1,)))
             self.replay_buffer.update_errors(tderrors)
             return loss

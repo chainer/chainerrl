@@ -1,7 +1,8 @@
 import collections
 import random
 
-class PrioritizedBuffer:
+
+class PrioritizedBuffer (object):
     def __init__(self, capacity=None):
         self.capacity = capacity
         self.data = []
@@ -17,7 +18,8 @@ class PrioritizedBuffer:
         self.data_inf.append(value)
 
     def pop(self):
-        """
+        """Remove an element uniformly.
+
         Not prioritized.
         """
         assert(len(self) > 0)
@@ -37,10 +39,11 @@ class PrioritizedBuffer:
     def sample(self, n):
         assert(n <= len(self.data) + len(self.data_inf))
         indices, probabilities = self.priority_tree.prioritized_sample(
-                n-len(self.data_inf), remove=True)
+            n-len(self.data_inf), remove=True)
         sampled = []
         # There are no duplicates in sampled.
-        # There may be duplicates in indices. (The last one among the duplicates is surviving)
+        # There may be duplicates in indices.
+        #   (The last one among the duplicates is surviving.)
         for i in indices:
             sampled.append(self.data[i])
             self.count_used[i] += 1
@@ -55,41 +58,48 @@ class PrioritizedBuffer:
                 # overwrite randomly
                 i = random.randrange(0, self.capacity)
                 self.priority_tree.write(i, 0.0)
-                self.count_used[i]=1
+                self.count_used[i] = 1
             indices.append(i)
             probabilities.append(None)
             sampled.append(self.data[i])
         self.sampled_indices = indices
         return sampled, probabilities
+
     def set_last_priority(self, priority):
         assert(all([p > 0.0 for p in priority]))
         for i, p in zip(self.sampled_indices, priority):
             self.priority_tree.write(i, p)
 
-"""
-list-like data structure
-append, update are O(log n)
-summation over an interval is O(log n) per query
-"""
 
-class SumTree:
+class SumTree (object):
+    """Fast weighted sampling.
+
+    list-like data structure
+    append, update are O(log n)
+    summation over an interval is O(log n) per query
+    """
+
     def __init__(self, bd=None, l=None, r=None, s=0.0):
         self.bd = bd
         self.l = l
         self.r = r
         self.s = s
+
     def initdescendant(self):
         if not self.isleaf():
             c = self.center()
             self.l = SumTree(bd=(self.bd[0], c)).initdescendant()
             self.r = SumTree(bd=(c, self.bd[1])).initdescendant()
         return self
+
     def isleaf(self):
         return (self.bd[1] - self.bd[0] == 1)
+
     def center(self):
         return (self.bd[0] + self.bd[1]) // 2
+
     def appendindex(self, ix):
-        if self.bd == None:
+        if self.bd is None:
             self.bd = (0, 1)
         elif ix == self.bd[1]:
             l = SumTree(self.bd, self.l, self.r, self.s)
@@ -99,6 +109,7 @@ class SumTree:
             self.r = r
             # self.s = self.l.s + self.r.s
             # ... because self.r.s == 0
+
     def write(self, ix, val):
         if self.isleaf():
             self.s = val
@@ -109,6 +120,7 @@ class SumTree:
             else:
                 self.r.write(ix, val)
             self.s = self.l.s + self.r.s
+
     def read(self, ix):
         if self.isleaf():
             return self.s
@@ -118,6 +130,7 @@ class SumTree:
                 self.l.read(ix)
             else:
                 self.r.read(ix)
+
     def prioritized_sample(self, n, remove=False):
         ixs = []
         vals = []
@@ -131,9 +144,11 @@ class SumTree:
             for ix, val in zip(ixs, vals):
                 self.write(ix, val)
         return ixs, [v / total_val for v in vals]
+
     def prioritized_choice(self):
         ix, s = self.pick(random.uniform(0.0, self.s))
         return ix, s / self.s
+
     def pick(self, cum):
         if self.isleaf():
             return self.bd[0], self.s
