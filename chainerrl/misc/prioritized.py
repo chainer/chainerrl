@@ -16,6 +16,24 @@ class PrioritizedBuffer:
         # new values are the most prioritized
         self.data_inf.append(value)
 
+    def pop(self):
+        """
+        Not prioritized.
+        """
+        assert(len(self) > 0)
+        n = len(self.data)
+        if n == 0:
+            return self.data_inf.pop()
+        i = random.randrange(0, n)
+        # remove i-th
+        val = self.priority_tree.read(n-1)
+        self.priority_tree.write(i, val)
+        self.priority_tree.write(n-1, 0.0)
+        self.count_used[i] = self.count_used.pop()
+        ret = self.data[i]
+        self.data[i] = self.data.pop()
+        return ret
+
     def sample(self, n):
         assert(n <= len(self.data) + len(self.data_inf))
         indices, probabilities = self.priority_tree.prioritized_sample(
@@ -91,6 +109,15 @@ class SumTree:
             else:
                 self.r.write(ix, val)
             self.s = self.l.s + self.r.s
+    def read(self, ix):
+        if self.isleaf():
+            return self.s
+        else:
+            c = self.center()
+            if ix < c:
+                self.l.read(ix)
+            else:
+                self.r.read(ix)
     def prioritized_sample(self, n, remove=False):
         ixs = []
         vals = []
