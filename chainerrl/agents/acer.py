@@ -247,19 +247,39 @@ class ACER(agent.AttributeSavingMixin, agent.AsyncAgent):
         optimizer (chainer.Optimizer): optimizer used to train the model
         t_max (int): The model is updated after every t_max local steps
         gamma (float): Discount factor [0,1]
+        replay_buffer (EpisodicReplayBuffer): Replay buffer to use. If set
+            None, this agent won't use experience replay.
         beta (float): Weight coefficient for the entropy regularizaiton term.
         phi (callable): Feature extractor function
         pi_loss_coef (float): Weight coefficient for the loss of the policy
         Q_loss_coef (float): Weight coefficient for the loss of the value
             function
+        use_trust_region (bool): If set true, use efficient TRPO.
+        trust_region_alpha (float): Decay rate of the average model used for
+            efficient TRPO.
+        trust_region_delta (float): Threshold used for efficient TRPO.
+        truncation_threshold (float): Threshold used to truncate larger
+            importance weights.
+        disable_online_update (bool): If set true, disable online on-policy
+            update and rely only on experience replay.
+        n_times_replay (int): Number of times experience replay is repeated per
+            one time of online update.
+        replay_start_size (int): Experience replay is disabled if the number of
+            transitions in the replay buffer is lower than this value.
         normalize_loss_by_steps (bool): If set true, losses are normalized by
             the number of steps taken to accumulate the losses
         act_deterministically (bool): If set true, choose most probable actions
             in act method.
+        use_Q_opc (bool): If set true, use Q_opc, a Q-value estimate without
+            importance sampling, is used to compute advantage values for policy
+            gradients. The original paper recommend to use in case of
+            continuous action.
         average_entropy_decay (float): Decay rate of average entropy. Used only
             to record statistics.
         average_value_decay (float): Decay rate of average value. Used only
             to record statistics.
+        average_kl_decay (float): Decay rate of kl value. Used only to record
+            statistics.
     """
 
     process_idx = None
@@ -267,17 +287,19 @@ class ACER(agent.AttributeSavingMixin, agent.AsyncAgent):
 
     def __init__(self, model, optimizer, t_max, gamma, replay_buffer,
                  beta=1e-2,
-                 process_idx=0, phi=lambda x: x,
-                 pi_loss_coef=1.0, Q_loss_coef=0.5,
+                 phi=lambda x: x,
+                 pi_loss_coef=1.0,
+                 Q_loss_coef=0.5,
                  use_trust_region=True,
                  trust_region_alpha=0.99,
-                 truncation_threshold=10,
                  trust_region_delta=1,
+                 truncation_threshold=10,
                  disable_online_update=False,
                  n_times_replay=8,
                  replay_start_size=10 ** 4,
                  normalize_loss_by_steps=True,
                  act_deterministically=False,
+                 use_Q_opc=False,
                  average_entropy_decay=0.999,
                  average_value_decay=0.999,
                  average_kl_decay=0.999,
@@ -310,6 +332,7 @@ class ACER(agent.AttributeSavingMixin, agent.AsyncAgent):
         self.trust_region_delta = trust_region_delta
         self.disable_online_update = disable_online_update
         self.n_times_replay = n_times_replay
+        self.use_Q_opc = use_Q_opc
         self.replay_start_size = replay_start_size
         self.average_value_decay = average_value_decay
         self.average_entropy_decay = average_entropy_decay
@@ -413,12 +436,10 @@ class ACER(agent.AttributeSavingMixin, agent.AsyncAgent):
 
             assert np.isscalar(Q_ret)
             assert np.isscalar(Q_opc)
-            if discrete:
-                # Discrete ACER uses Q_ret
-                advantage = Q_ret - float(v.data)
-            else:
-                # Continuous ACER uses Q_opc
+            if self.use_Q_opc:
                 advantage = Q_opc - float(v.data)
+            else:
+                advantage = Q_ret - float(v.data)
             pi_loss += self.compute_one_step_pi_loss(
                 action=ba,
                 advantage=advantage,
@@ -502,6 +523,9 @@ class ACER(agent.AttributeSavingMixin, agent.AsyncAgent):
             self.model.unchain_backward()
 
     def update_from_replay(self):
+
+        if self.replay_buffer is None:
+            return
 
         if len(self.replay_buffer) < self.replay_start_size:
             return
@@ -616,7 +640,7 @@ class ACER(agent.AttributeSavingMixin, agent.AsyncAgent):
             (1 - self.average_entropy_decay) *
             (float(action_distrib.entropy.data[0]) - self.average_entropy))
 
-        if self.last_state is not None:
+        if self.replay_buffer is not None and self.last_state is not None:
             assert self.last_action is not None
             assert self.last_action_distrib is not None
             # Add a transition to the replay buffer
@@ -664,15 +688,16 @@ class ACER(agent.AttributeSavingMixin, agent.AsyncAgent):
             self.shared_average_model.reset_state()
 
         # Add a transition to the replay buffer
-        self.replay_buffer.append(
-            state=self.last_state,
-            action=self.last_action,
-            reward=reward,
-            next_state=state,
-            next_action=self.last_action,
-            is_state_terminal=done,
-            mu=self.last_action_distrib)
-        self.replay_buffer.stop_current_episode()
+        if self.replay_buffer is not None:
+            self.replay_buffer.append(
+                state=self.last_state,
+                action=self.last_action,
+                reward=reward,
+                next_state=state,
+                next_action=self.last_action,
+                is_state_terminal=done,
+                mu=self.last_action_distrib)
+            self.replay_buffer.stop_current_episode()
 
         self.last_state = None
         self.last_action = None
