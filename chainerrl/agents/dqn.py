@@ -73,7 +73,6 @@ def compute_weighted_value_loss(y, t, weights, clip_delta=True, batch_accumulato
             'sum' will use the unnormalized weights.
     Returns:
         (Variable) scalar loss
-        (ndarray) losses
     """
     assert batch_accumulator in ('mean', 'sum')
     y = F.reshape(y, (-1, 1))
@@ -88,7 +87,7 @@ def compute_weighted_value_loss(y, t, weights, clip_delta=True, batch_accumulato
         loss = loss_sum / sum(weights)
     elif batch_accumulator == 'sum':
         loss = loss_sum
-    return loss, losses.data
+    return loss
 
 class DQN(agent.AttributeSavingMixin, agent.Agent):
     """Deep Q-Network algorithm.
@@ -310,10 +309,11 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
                 errors_out.append(e)
 
         if 'weights' in exp_batch:
-            loss, losses = compute_weighted_value_loss(y, t, exp_batch['weights'],
+            loss = compute_weighted_value_loss(y, t, exp_batch['weights'],
                                       clip_delta=self.clip_delta,
                                       batch_accumulator=self.batch_accumulator)
-            self.replay_buffer.update_priorities(losses)
+            tderrors = self.xp.abs((y - t).data.reshape((-1,)))
+            self.replay_buffer.update_errors(tderrors)
             return loss
         else:
             return compute_value_loss(y, t, clip_delta=self.clip_delta,

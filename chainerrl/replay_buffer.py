@@ -89,9 +89,9 @@ class PrioritizedReplayBuffer(ReplayBuffer):
             e['weight'] = w
         return sampled
 
-    def update_priorities(self, priorities):
-        self.memory.set_last_priority(
-                [p ** self.alpha + self.eps for p in priorities])
+    def update_errors(self, errors):
+        priority = [d ** self.alpha + self.eps for d in errors]
+        self.memory.set_last_priority(priority)
 
 
 def random_subseq(seq, subseq_len):

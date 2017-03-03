@@ -43,9 +43,9 @@ class PrioritizedBuffer:
             sampled.append(self.data[i])
         self.sampled_indices = indices
         return sampled, probabilities
-    def set_last_priority(self, priorities):
-        assert(all([p >= 0.0 for p in priorities]))
-        for i, p in zip(self.sampled_indices, priorities):
+    def set_last_priority(self, priority):
+        assert(all([p > 0.0 for p in priority]))
+        for i, p in zip(self.sampled_indices, priority):
             self.priority_tree.write(i, p)
 
 """
