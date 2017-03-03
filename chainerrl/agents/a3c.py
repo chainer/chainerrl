@@ -37,6 +37,9 @@ class A3CModel(chainer.Link):
         """
         raise NotImplementedError()
 
+    def __call__(self, obs):
+        return self.pi_and_v(obs)
+
 
 class A3CSeparateModel(chainer.Chain, A3CModel, RecurrentChainMixin):
     """A3C model that consists of a separate policy and V-function.
