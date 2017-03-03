@@ -61,6 +61,34 @@ def compute_value_loss(y, t, clip_delta=True, batch_accumulator='mean'):
             loss = loss_mean * y.shape[0]
     return loss
 
+def compute_weighted_value_loss(y, t, weights, clip_delta=True, batch_accumulator='mean'):
+    """Compute a loss for value prediction problem.
+
+    Args:
+        y (Variable or ndarray): Predicted values.
+        t (Variable or ndarray): Target values.
+        weights (ndarray): Weights for y, t.
+        clip_delta (bool): Use the Huber loss function if set True.
+        batch_accumulator (str): 'mean' or 'sum'. 'mean' will use the normalized weights.
+            'sum' will use the unnormalized weights.
+    Returns:
+        (Variable) scalar loss
+        (ndarray) losses
+    """
+    assert batch_accumulator in ('mean', 'sum')
+    y = F.reshape(y, (-1, 1))
+    t = F.reshape(t, (-1, 1))
+    if clip_delta:
+        losses = F.huber_loss(y, t, delta=1.0)
+    else:
+        losses = F.square(y - t)
+    losses = F.reshape(losses, (-1,))
+    loss_sum = F.sum(losses * weights)
+    if batch_accumulator == 'mean':
+        loss = loss_sum / sum(weights)
+    elif batch_accumulator == 'sum':
+        loss = loss_sum
+    return loss, losses.data
 
 class DQN(agent.AttributeSavingMixin, agent.Agent):
     """Deep Q-Network algorithm.
@@ -188,6 +216,10 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
 
         exp_batch = batch_experiences(experiences, xp=self.xp, phi=self.phi,
                                       batch_states=self.batch_states)
+        if 'weight' in experiences[0]:
+            exp_batch['weights'] = self.xp.asarray(
+                    [elem['weight'] for elem in experiences],
+                    dtype=np.float32)
         loss = self._compute_loss(
             exp_batch, self.gamma, errors_out=errors_out)
 
@@ -277,8 +309,15 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
             for e in delta:
                 errors_out.append(e)
 
-        return compute_value_loss(y, t, clip_delta=self.clip_delta,
-                                  batch_accumulator=self.batch_accumulator)
+        if 'weights' in exp_batch:
+            loss, losses = compute_weighted_value_loss(y, t, exp_batch['weights'],
+                                      clip_delta=self.clip_delta,
+                                      batch_accumulator=self.batch_accumulator)
+            self.replay_buffer.update_priorities(losses)
+            return loss
+        else:
+            return compute_value_loss(y, t, clip_delta=self.clip_delta,
+                                      batch_accumulator=self.batch_accumulator)
 
     def compute_q_values(self, states):
         """Compute Q-values

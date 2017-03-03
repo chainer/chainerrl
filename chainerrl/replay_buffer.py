@@ -12,6 +12,7 @@ import numpy as np
 import six.moves.cPickle as pickle
 
 from chainerrl.misc.batch_states import batch_states
+from chainerrl.misc.prioritized import PrioritizedBuffer
 
 
 class ReplayBuffer(object):
@@ -54,6 +55,43 @@ class ReplayBuffer(object):
 
     def stop_current_episode(self):
         pass
+
+class PrioritizedReplayBuffer(ReplayBuffer):
+    """
+    Stochastic Prioritization
+    https://arxiv.org/pdf/1511.05952.pdf \S3.3
+    propotional prioritization
+    """
+
+    def __init__(self, alpha=0.6, beta0=0.4, betastep=3e-6, eps=0.0, capacity=None):
+        # anneal beta in 200,000 steps [citation needed]
+        self.alpha = alpha
+        self.beta = beta0
+        self.betastep = betastep
+        self.eps = eps
+        self.memory = PrioritizedBuffer(maxlen=capacity)
+
+    """
+    def append(self, state, action, reward, next_state=None, next_action=None,
+               is_state_terminal=False):
+    """
+
+    def sample(self, n):
+        """Sample n unique samples from this replay buffer"""
+        assert len(self.memory) >= n
+        sampled, probabilities = self.memory.sample(n)
+        tmp = [p for p in probabilities if p is not None]
+        minp = min(tmp) if len(tmp) > 0 else 1.0
+        weights = [(minp if p is None else p) ** -self.beta for p in probabilities]
+        self.beta = min(1.0, self.beta + self.betastep)
+        # return sampled, {'weights': weights}
+        for e, w in zip(sampled, weights):
+            e['weight'] = w
+        return sampled
+
+    def update_priorities(self, priorities):
+        self.memory.set_last_priority(
+                [p ** self.alpha + self.eps for p in priorities])
 
 
 def random_subseq(seq, subseq_len):

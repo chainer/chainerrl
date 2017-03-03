@@ -1,0 +1,117 @@
+import collections
+import random
+
+class PrioritizedBuffer:
+    def __init__(self, capacity=None):
+        self.capacity = capacity
+        self.data = []
+        self.priority_tree = SumTree()
+        self.data_inf = collections.deque()
+        self.count_used = []
+
+    def __len__(self):
+        return len(self.data) + len(self.data_inf)
+
+    def append(self, value):
+        # new values are the most prioritized
+        self.data_inf.append(value)
+
+    def sample(self, n):
+        assert(n <= len(self.data) + len(self.data_inf))
+        indices, probabilities = self.priority_tree.prioritized_sample(
+                n-len(self.data_inf), remove=True)
+        sampled = []
+        # There are no duplicates in sampled.
+        # There may be duplicates in indices. (The last one among the duplicates is surviving)
+        for i in indices:
+            sampled.append(self.data[i])
+            self.count_used[i] += 1
+        while len(sampled) < n and len(self.data_inf) > 0:
+            i = len(self.data)
+            e = self.data_inf.popleft()
+            self.data.append(e)
+            if self.capacity is None or i < self.capacity:
+                self.priority_tree.appendindex(i)
+                self.count_used.append(1)
+            else:
+                # overwrite randomly
+                i = random.randrange(0, self.capacity)
+                self.priority_tree.write(i, 0.0)
+                self.count_used[i]=1
+            indices.append(i)
+            probabilities.append(None)
+            sampled.append(self.data[i])
+        self.sampled_indices = indices
+        return sampled, probabilities
+    def set_last_priority(self, priorities):
+        assert(all([p >= 0.0 for p in priorities]))
+        for i, p in zip(self.sampled_indices, priorities):
+            self.priority_tree.write(i, p)
+
+"""
+list-like data structure
+append, update are O(log n)
+summation over an interval is O(log n) per query
+"""
+
+class SumTree:
+    def __init__(self, bd=None, l=None, r=None, s=0.0):
+        self.bd = bd
+        self.l = l
+        self.r = r
+        self.s = s
+    def initdescendant(self):
+        if not self.isleaf():
+            c = self.center()
+            self.l = SumTree(bd=(self.bd[0], c)).initdescendant()
+            self.r = SumTree(bd=(c, self.bd[1])).initdescendant()
+        return self
+    def isleaf(self):
+        return (self.bd[1] - self.bd[0] == 1)
+    def center(self):
+        return (self.bd[0] + self.bd[1]) // 2
+    def appendindex(self, ix):
+        if self.bd == None:
+            self.bd = (0, 1)
+        elif ix == self.bd[1]:
+            l = SumTree(self.bd, self.l, self.r, self.s)
+            r = SumTree(bd=(ix, ix*2)).initdescendant()
+            self.bd = (0, ix*2)
+            self.l = l
+            self.r = r
+            # self.s = self.l.s + self.r.s
+            # ... because self.r.s == 0
+    def write(self, ix, val):
+        if self.isleaf():
+            self.s = val
+        else:
+            c = self.center()
+            if ix < c:
+                self.l.write(ix, val)
+            else:
+                self.r.write(ix, val)
+            self.s = self.l.s + self.r.s
+    def prioritized_sample(self, n, remove=False):
+        ixs = []
+        vals = []
+        total_val = self.s  # save this before it changes by removing
+        for _ in range(n):
+            ix, val = self.pick(random.uniform(0.0, self.s))
+            ixs.append(ix)
+            vals.append(val)
+            self.write(ix, 0.0)
+        if not remove:
+            for ix, val in zip(ixs, vals):
+                self.write(ix, val)
+        return ixs, [v / total_val for v in vals]
+    def prioritized_choice(self):
+        ix, s = self.pick(random.uniform(0.0, self.s))
+        return ix, s / self.s
+    def pick(self, cum):
+        if self.isleaf():
+            return self.bd[0], self.s
+        else:
+            if cum < self.l.s:
+                return self.l.pick(cum)
+            else:
+                return self.r.pick(cum - self.l.s)
