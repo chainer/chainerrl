@@ -40,6 +40,7 @@ def main():
     parser.add_argument('--demo', action='store_true', default=False)
     parser.add_argument('--load', type=str, default=None)
     parser.add_argument('--steps', type=int, default=10 ** 5)
+    parser.add_argument('--prioritized-replay', action='store_true')
     parser.add_argument('--replay-start-size', type=int, default=10 ** 3)
     parser.add_argument('--target-update-frequency', type=int, default=10 ** 2)
     parser.add_argument('--target-update-method', type=str, default='hard')
@@ -112,7 +113,11 @@ def main():
     opt = optimizers.Adam()
     opt.setup(q_func)
 
-    rbuf = replay_buffer.ReplayBuffer(5 * 10 ** 5)
+    rbuf_capacity = 5 * 10 ** 5
+    if args.prioritized_replay:
+        rbuf = replay_buffer.PrioritizedReplayBuffer(rbuf_capacity)
+    else:
+        rbuf = replay_buffer.ReplayBuffer(rbuf_capacity)
 
     def phi(obs):
         return obs.astype(np.float32)

@@ -63,13 +63,13 @@ class PrioritizedReplayBuffer(ReplayBuffer):
     propotional prioritization
     """
 
-    def __init__(self, alpha=0.6, beta0=0.4, betastep=3e-6, eps=0.0, capacity=None):
+    def __init__(self, capacity=None, alpha=0.6, beta0=0.4, betastep=3e-6, eps=0.0):
         # anneal beta in 200,000 steps [citation needed]
         self.alpha = alpha
         self.beta = beta0
         self.betastep = betastep
         self.eps = eps
-        self.memory = PrioritizedBuffer(maxlen=capacity)
+        self.memory = PrioritizedBuffer(capacity=capacity)
 
     """
     def append(self, state, action, reward, next_state=None, next_action=None,
@@ -85,11 +85,14 @@ class PrioritizedReplayBuffer(ReplayBuffer):
         weights = [(minp if p is None else p) ** -self.beta for p in probabilities]
         self.beta = min(1.0, self.beta + self.betastep)
         # return sampled, {'weights': weights}
+        # print((probabilities, weights))
         for e, w in zip(sampled, weights):
             e['weight'] = w
         return sampled
 
     def update_priorities(self, priorities):
+        # print('priorities: {}'.format(priorities))
+        # print('priorities\': {}'.format([p ** self.alpha + self.eps for p in priorities]))
         self.memory.set_last_priority(
                 [p ** self.alpha + self.eps for p in priorities])
 
