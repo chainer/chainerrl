@@ -201,9 +201,11 @@ class PrioritizedEpisodicReplayBuffer (EpisodicReplayBuffer):
         self.beta = min(1.0, self.beta + self.betastep)
         if max_len is not None:
             episodes = [random_subseq(ep, max_len) for ep in episodes]
-        for e, w in zip(episodes, weights):
-            e['weight'] = w
-        return episodes
+        return episodes, weights
+        # for ep, w in zip(episodes, weights):
+        #     for e in ep:
+        #         e['weight'] = w
+        # return episodes
 
     def update_errors(self, errors):
         priority = [d ** self.alpha + self.eps for d in errors]
