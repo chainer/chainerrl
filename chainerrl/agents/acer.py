@@ -266,8 +266,9 @@ class ACER(agent.AttributeSavingMixin, agent.AsyncAgent):
         trust_region_alpha (float): Decay rate of the average model used for
             efficient TRPO.
         trust_region_delta (float): Threshold used for efficient TRPO.
-        truncation_threshold (float): Threshold used to truncate larger
-            importance weights.
+        truncation_threshold (float or None): Threshold used to truncate larger
+            importance weights. If set None, importance weights are not
+            truncated.
         disable_online_update (bool): If set true, disable online on-policy
             update and rely only on experience replay.
         n_times_replay (int): Number of times experience replay is repeated per
