@@ -91,7 +91,7 @@ def main():
     parser.add_argument('--seed', type=int, default=None)
     parser.add_argument('--outdir', type=str, default=None)
     parser.add_argument('--t-max', type=int, default=5)
-    parser.add_argument('--beta', type=float, default=1e-2)
+    parser.add_argument('--tau', type=float, default=1e-2)
     parser.add_argument('--profile', action='store_true')
     parser.add_argument('--steps', type=int, default=8 * 10 ** 7)
     parser.add_argument('--eval-frequency', type=int, default=10 ** 5)
@@ -155,7 +155,7 @@ def main():
     agent = chainerrl.agents.PCL(
         model, opt, replay_buffer=replay_buffer,
         t_max=args.t_max, gamma=0.99,
-        tau=1e-2, phi=phi,
+        tau=args.tau, phi=phi,
         n_times_replay=1,
         explorer=explorer,
     )
