@@ -2,6 +2,7 @@ from __future__ import unicode_literals
 from __future__ import print_function
 from __future__ import division
 from __future__ import absolute_import
+from builtins import *  # NOQA
 from future import standard_library
 from future.utils import with_metaclass
 standard_library.install_aliases()
@@ -61,7 +62,8 @@ class DiscreteActionValue(ActionValue):
 
     @cached_property
     def max(self):
-        return F.select_item(self.q_values, self.greedy_actions)
+        with chainer.force_backprop_mode():
+            return F.select_item(self.q_values, self.greedy_actions)
 
     def sample_epsilon_greedy_actions(self, epsilon):
         assert self.q_values.data.shape[0] == 1, \
@@ -123,21 +125,23 @@ class QuadraticActionValue(ActionValue):
 
     @cached_property
     def greedy_actions(self):
-        a = self.mu
-        if self.min_action is not None:
-            a = F.maximum(
-                self.xp.broadcast_to(self.min_action, a.data.shape), a)
-        if self.max_action is not None:
-            a = F.minimum(
-                self.xp.broadcast_to(self.max_action, a.data.shape), a)
-        return a
+        with chainer.force_backprop_mode():
+            a = self.mu
+            if self.min_action is not None:
+                a = F.maximum(
+                    self.xp.broadcast_to(self.min_action, a.data.shape), a)
+            if self.max_action is not None:
+                a = F.minimum(
+                    self.xp.broadcast_to(self.max_action, a.data.shape), a)
+            return a
 
     @cached_property
     def max(self):
-        if self.min_action is None and self.max_action is None:
-            return F.reshape(self.v, (self.batch_size,))
-        else:
-            return self.evaluate_actions(self.greedy_actions)
+        with chainer.force_backprop_mode():
+            if self.min_action is None and self.max_action is None:
+                return F.reshape(self.v, (self.batch_size,))
+            else:
+                return self.evaluate_actions(self.greedy_actions)
 
     def evaluate_actions(self, actions):
         u_minus_mu = actions - self.mu
@@ -157,3 +161,34 @@ class QuadraticActionValue(ActionValue):
     def __repr__(self):
         return 'QuadraticActionValue greedy_actions:{} v:{}'.format(
             self.greedy_actions.data, self.v.data)
+
+
+class SingleActionValue(ActionValue):
+    """ActionValue that can evaluate only a single action."""
+
+    def __init__(self, evaluator, maximizer=None):
+        self.evaluator = evaluator
+        self.maximizer = maximizer
+
+    @cached_property
+    def greedy_actions(self):
+        with chainer.force_backprop_mode():
+            return self.maximizer()
+
+    @cached_property
+    def max(self):
+        with chainer.force_backprop_mode():
+            return self.evaluator(self.greedy_actions)
+
+    def evaluate_actions(self, actions):
+        return self.evaluator(actions)
+
+    def compute_advantage(self, actions):
+        return self.evaluator(actions) - self.max
+
+    def compute_double_advantage(self, actions, argmax_actions):
+        return (self.evaluate_actions(actions) -
+                self.evaluate_actions(argmax_actions))
+
+    def __repr__(self):
+        return 'SingleActionValue'
