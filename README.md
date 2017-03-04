@@ -36,12 +36,12 @@ You can try [ChainerRL Quickstart Guide](examples/quickstart/quickstart.ipynb) f
 | DQN (including DoubleDQN etc.) | o | o (NAF) | o | x |
 | DDPG | x | o | o | x |
 | A3C | o | o | o | o |
-| ACER | o | x | o | o |
+| ACER | o | o | o | o |
 | NSQ (N-step Q-learning) | o | o (NAF) | o | o |
 
 Following algorithms have been implemented in ChainerRL:
 - A3C (Asynchronous Advantage Actor-Critic)
-- ACER (Actor-Critic with Experience Replay) (only the discrete-action version for now)
+- ACER (Actor-Critic with Experience Replay)
 - Asynchronous N-step Q-learning
 - DQN (including Double DQN, Persistent Advantage Learning (PAL), Double PAL, Dynamic Policy Programming (DPP))
 - DDPG (Deep Deterministic Poilcy Gradients) (including SVG(0))

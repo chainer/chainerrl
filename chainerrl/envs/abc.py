@@ -25,11 +25,13 @@ class ABC(env.Env):
     def __init__(self, size=2, discrete=True, partially_observable=False,
                  episodic=True, deterministic=False):
         self.size = size
+        self.terminal_state = size
         self.episodic = episodic
         self.partially_observable = partially_observable
         self.deterministic = deterministic
         self.n_max_offset = 1
-        self.n_dim_obs = self.size + 2 + self.n_max_offset
+        # (s_0, ..., s_N) + terminal state + offset
+        self.n_dim_obs = self.size + 1 + self.n_max_offset
         self.observation_space = spaces.Box(
             low=np.asarray([-np.inf] * self.n_dim_obs, dtype=np.float32),
             high=np.asarray([np.inf] * self.n_dim_obs, dtype=np.float32))
@@ -44,11 +46,6 @@ class ABC(env.Env):
         state_vec = np.zeros((self.n_dim_obs,), dtype=np.float32)
         state_vec[self._state + self._offset] = 1.0
         return state_vec
-
-    def is_terminal(self):
-        if not self.episodic:
-            return False
-        return self._state == self.size or self._state == self.size + 1
 
     def reset(self):
         self._state = 0
@@ -74,15 +71,29 @@ class ABC(env.Env):
             else:
                 prob = np.exp(action) / np.exp(action).sum()
                 action = np.random.choice(range(self.size), p=prob)
+        reward = 0
+        done = False
         if action == self._state:
             # Correct
-            self._state += 1
-            reward = 1.0 if self._state == self.size else 0.0
+            if self._state == self.size - 1:
+                # Goal
+                reward = 1.0
+                if self.episodic:
+                    # Terminal
+                    done = True
+                    self._state = self.terminal_state
+                else:
+                    # Restart
+                    self._state = 0
+            else:
+                self._state += 1
         else:
             # Incorrect
-            self._state = self.size + 1
-            reward = 0.0
-        return self.observe(), reward, self.is_terminal(), None
+            if self.episodic:
+                # Terminal
+                done = True
+                self._state = self.terminal_state
+        return self.observe(), reward, done, None
 
     def close(self):
         pass
