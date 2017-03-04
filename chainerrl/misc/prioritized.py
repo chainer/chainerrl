@@ -87,22 +87,23 @@ class SumTree (object):
     """
 
     def __init__(self, bd=None, l=None, r=None, s=0.0):
+        # bounds, left child, right child, sum
         self.bd = bd
         self.l = l
         self.r = r
         self.s = s
 
-    def initdescendant(self):
-        if not self.isleaf():
-            c = self.center()
-            self.l = SumTree(bd=(self.bd[0], c)).initdescendant()
-            self.r = SumTree(bd=(c, self.bd[1])).initdescendant()
+    def _initdescendant(self):
+        if not self._isleaf():
+            c = self._center()
+            self.l = SumTree(bd=(self.bd[0], c))._initdescendant()
+            self.r = SumTree(bd=(c, self.bd[1]))._initdescendant()
         return self
 
-    def isleaf(self):
+    def _isleaf(self):
         return (self.bd[1] - self.bd[0] == 1)
 
-    def center(self):
+    def _center(self):
         return (self.bd[0] + self.bd[1]) // 2
 
     def appendindex(self, ix):
@@ -110,7 +111,7 @@ class SumTree (object):
             self.bd = (0, 1)
         elif ix == self.bd[1]:
             l = SumTree(self.bd, self.l, self.r, self.s)
-            r = SumTree(bd=(ix, ix*2)).initdescendant()
+            r = SumTree(bd=(ix, ix*2))._initdescendant()
             self.bd = (0, ix*2)
             self.l = l
             self.r = r
@@ -118,10 +119,10 @@ class SumTree (object):
             # ... because self.r.s == 0
 
     def write(self, ix, val):
-        if self.isleaf():
+        if self._isleaf():
             self.s = val
         else:
-            c = self.center()
+            c = self._center()
             if ix < c:
                 self.l.write(ix, val)
             else:
@@ -129,10 +130,10 @@ class SumTree (object):
             self.s = self.l.s + self.r.s
 
     def read(self, ix):
-        if self.isleaf():
+        if self._isleaf():
             return self.s
         else:
-            c = self.center()
+            c = self._center()
             if ix < c:
                 self.l.read(ix)
             else:
@@ -157,7 +158,7 @@ class SumTree (object):
         return ix, s / self.s
 
     def pick(self, cum):
-        if self.isleaf():
+        if self._isleaf():
             return self.bd[0], self.s
         else:
             if cum < self.l.s:

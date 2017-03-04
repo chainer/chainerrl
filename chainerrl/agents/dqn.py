@@ -260,7 +260,8 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
             with state_reset(self.target_model):
                 loss = 0
                 # sorted_episodes = list(reversed(sorted(episodes, key=len)))
-                tmp = list(reversed(sorted(enumerate(episodes), key=lambda x:len(x[1]))))
+                tmp = list(reversed(sorted(
+                    enumerate(episodes), key=lambda x: len(x[1]))))
                 sorted_episodes = [elem[1] for elem in tmp]
                 indices = [elem[0] for elem in tmp]  # argsort
                 max_epi_len = len(sorted_episodes[0])
@@ -282,7 +283,8 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
                     if has_weights:
                         batch['weights'] = self.xp.asarray(
                             weights_step, dtype=self.xp.float32)
-                    loss += self._compute_loss(batch, self.gamma, errors_out=errors_out_step)
+                    loss += self._compute_loss(batch, self.gamma,
+                                               errors_out=errors_out_step)
                     if errors_out is not None:
                         # print(errors_out_step)
                         for err, index in zip(errors_out_step, indices):
