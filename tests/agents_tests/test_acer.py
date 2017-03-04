@@ -35,6 +35,7 @@ def extract_gradients_as_single_vector(link):
 
 @testing.parameterize(
     *testing.product({
+        'distrib_type': ['Gaussian', 'Softmax'],
         'pi_deg': [True, False],
         'mu_deg': [True, False],
         'truncation_threshold': [0, 1, 10, None],
@@ -43,22 +44,37 @@ def extract_gradients_as_single_vector(link):
 class TestDegenerateDistribution(unittest.TestCase):
 
     def setUp(self):
-        q_values = chainer.Variable(
-            np.asarray([[1, 3]], dtype=np.float32))
-        self.action_value = chainerrl.action_value.DiscreteActionValue(
-            q_values)
-        nondeg_logits = chainer.Variable(
-            np.asarray([[0, 0]], dtype=np.float32))
-        nondeg_distrib = chainerrl.distribution.SoftmaxDistribution(
-            nondeg_logits)
-        deg_logits = chainer.Variable(
-            np.asarray([[1e10, 1e-10]], dtype=np.float32))
-        deg_distrib = chainerrl.distribution.SoftmaxDistribution(
-            deg_logits)
+        if self.distrib_type == 'Gaussian':
+            action_size = 2
+            W = np.random.rand(action_size, 1).astype(np.float32)
+            self.action_value = chainerrl.action_value.SingleActionValue(
+                evaluator=lambda x: chainer.Variable(
+                    np.asarray(np.dot(x, W), dtype=np.float32)))
+            nondeg_distrib = chainerrl.distribution.GaussianDistribution(
+                mean=np.random.rand(1, action_size).astype(np.float32),
+                var=np.full((1, action_size), 1, dtype=np.float32))
+            deg_distrib = chainerrl.distribution.GaussianDistribution(
+                mean=np.random.rand(1, action_size).astype(np.float32),
+                var=np.full((1, action_size), 1e-10, dtype=np.float32))
+        elif self.distrib_type == 'Softmax':
+            q_values = chainer.Variable(
+                np.asarray([[1, 3]], dtype=np.float32))
+            self.action_value = chainerrl.action_value.DiscreteActionValue(
+                q_values)
+            nondeg_logits = chainer.Variable(
+                np.asarray([[0, 0]], dtype=np.float32))
+            nondeg_distrib = chainerrl.distribution.SoftmaxDistribution(
+                nondeg_logits)
+            deg_logits = chainer.Variable(
+                np.asarray([[1e10, 1e-10]], dtype=np.float32))
+            deg_distrib = chainerrl.distribution.SoftmaxDistribution(
+                deg_logits)
         self.pi = deg_distrib if self.pi_deg else nondeg_distrib
         self.mu = deg_distrib if self.mu_deg else nondeg_distrib
 
     def test_full_importance(self):
+        if self.distrib_type == 'Gaussian':
+            return
         pimu = acer.compute_full_importance(self.pi, self.mu)
         mupi = acer.compute_full_importance(self.mu, self.pi)
         print('pi/mu', pimu)
@@ -67,6 +83,8 @@ class TestDegenerateDistribution(unittest.TestCase):
         self.assertFalse(np.isnan(np.sum(mupi)))
 
     def test_full_correction_term(self):
+        if self.distrib_type == 'Gaussian':
+            return
         if self.truncation_threshold is None:
             return
         correction_term = acer.compute_policy_gradient_full_correction(
