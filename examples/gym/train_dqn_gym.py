@@ -41,7 +41,8 @@ def main():
     parser.add_argument('--load', type=str, default=None)
     parser.add_argument('--steps', type=int, default=10 ** 5)
     parser.add_argument('--prioritized-replay', action='store_true')
-    parser.add_argument('--replay-start-size', type=int, default=10 ** 3)
+    parser.add_argument('--episodic-replay', action='store_true')
+    parser.add_argument('--replay-start-size', type=int, default=None)
     parser.add_argument('--target-update-frequency', type=int, default=10 ** 2)
     parser.add_argument('--target-update-method', type=str, default='hard')
     parser.add_argument('--soft-update-tau', type=float, default=1e-2)
@@ -51,7 +52,7 @@ def main():
     parser.add_argument('--n-hidden-channels', type=int, default=100)
     parser.add_argument('--n-hidden-layers', type=int, default=2)
     parser.add_argument('--gamma', type=float, default=0.99)
-    parser.add_argument('--minibatch-size', type=int, default=32)
+    parser.add_argument('--minibatch-size', type=int, default=None)
     parser.add_argument('--render-train', action='store_true')
     parser.add_argument('--render-eval', action='store_true')
     parser.add_argument('--monitor', action='store_true')
@@ -114,10 +115,24 @@ def main():
     opt.setup(q_func)
 
     rbuf_capacity = 5 * 10 ** 5
-    if args.prioritized_replay:
-        rbuf = replay_buffer.PrioritizedReplayBuffer(rbuf_capacity)
+    if args.episodic_replay:
+        if args.minibatch_size is None:
+            args.minibatch_size = 4
+        if args.replay_start_size is None:
+            args.replay_start_size = 10
+        if args.prioritized_replay:
+            rbuf = replay_buffer.PrioritizedEpisodicReplayBuffer(rbuf_capacity)
+        else:
+            rbuf = replay_buffer.EpisodicReplayBuffer(rbuf_capacity)
     else:
-        rbuf = replay_buffer.ReplayBuffer(rbuf_capacity)
+        if args.minibatch_size is None:
+            args.minibatch_size = 32
+        if args.replay_start_size is None:
+            args.replay_start_size = 1000
+        if args.prioritized_replay:
+            rbuf = replay_buffer.PrioritizedReplayBuffer(rbuf_capacity)
+        else:
+            rbuf = replay_buffer.ReplayBuffer(rbuf_capacity)
 
     def phi(obs):
         return obs.astype(np.float32)
@@ -128,7 +143,8 @@ def main():
                 update_frequency=args.update_frequency,
                 phi=phi, minibatch_size=args.minibatch_size,
                 target_update_method=args.target_update_method,
-                soft_update_tau=args.soft_update_tau)
+                soft_update_tau=args.soft_update_tau,
+                episodic_update=args.episodic_replay, episodic_update_len=16)
     agent.logger.setLevel(logging.DEBUG)
 
     if args.load:
