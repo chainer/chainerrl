@@ -40,10 +40,11 @@ def main():
     parser.add_argument('--env', type=str, default='CartPole-v0')
     parser.add_argument('--seed', type=int, default=None)
     parser.add_argument('--outdir', type=str, default=None)
-    parser.add_argument('--t-max', type=int, default=5)
-    parser.add_argument('--n-times-replay', type=int, default=8)
-    parser.add_argument('--n-hidden-channels', type=int, default=200)
+    parser.add_argument('--t-max', type=int, default=50)
+    parser.add_argument('--n-times-replay', type=int, default=4)
+    parser.add_argument('--n-hidden-channels', type=int, default=100)
     parser.add_argument('--n-hidden-layers', type=int, default=2)
+    parser.add_argument('--replay-capacity', type=int, default=5000)
     parser.add_argument('--replay-start-size', type=int, default=10 ** 3)
     parser.add_argument('--disable-online-update', action='store_true')
     parser.add_argument('--beta', type=float, default=1e-2)
@@ -59,7 +60,8 @@ def main():
     parser.add_argument('--load', type=str, default='')
     parser.add_argument('--logger-level', type=int, default=logging.DEBUG)
     parser.add_argument('--monitor', action='store_true')
-    parser.add_argument('--truncation-threshold', type=float, default=10)
+    parser.add_argument('--truncation-threshold', type=float, default=5)
+    parser.add_argument('--trust-region-delta', type=float, default=0.1)
     args = parser.parse_args()
 
     logging.basicConfig(level=args.logger_level)
@@ -89,9 +91,8 @@ def main():
 
     if isinstance(action_space, spaces.Box):
         model = acer.ACERSDNSeparateModel(
-            pi=policies.FCGaussianPolicyWithFixedCovariance(
+            pi=policies.FCGaussianPolicy(
                 obs_space.low.size, action_space.low.size,
-                var=np.full_like(action_space.low, 0.1, dtype=np.float32),
                 n_hidden_channels=args.n_hidden_channels,
                 n_hidden_layers=args.n_hidden_layers,
                 bound_mean=True,
@@ -125,13 +126,14 @@ def main():
     opt.setup(model)
     opt.add_hook(chainer.optimizer.GradientClipping(40))
 
-    replay_buffer = EpisodicReplayBuffer(10 ** 5 // args.processes)
+    replay_buffer = EpisodicReplayBuffer(args.replay_capacity)
     agent = acer.ACER(model, opt, t_max=args.t_max, gamma=0.99,
                       replay_buffer=replay_buffer,
                       n_times_replay=args.n_times_replay,
                       replay_start_size=args.replay_start_size,
                       disable_online_update=args.disable_online_update,
                       use_trust_region=True,
+                      trust_region_delta=args.trust_region_delta,
                       truncation_threshold=args.truncation_threshold,
                       beta=args.beta, phi=phi)
     if args.load:
