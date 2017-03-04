@@ -72,15 +72,18 @@ class TestDegenerateDistribution(unittest.TestCase):
         self.pi = deg_distrib if self.pi_deg else nondeg_distrib
         self.mu = deg_distrib if self.mu_deg else nondeg_distrib
 
+    def test_importance(self):
+        action = self.mu.sample().data
+        pimu = acer.compute_importance(self.pi, self.mu, action)
+        print('pi/mu', pimu)
+        self.assertFalse(np.isnan(np.sum(pimu)))
+
     def test_full_importance(self):
         if self.distrib_type == 'Gaussian':
             return
         pimu = acer.compute_full_importance(self.pi, self.mu)
-        mupi = acer.compute_full_importance(self.mu, self.pi)
         print('pi/mu', pimu)
-        print('mu/pi', mupi)
         self.assertFalse(np.isnan(np.sum(pimu)))
-        self.assertFalse(np.isnan(np.sum(mupi)))
 
     def test_full_correction_term(self):
         if self.distrib_type == 'Gaussian':
