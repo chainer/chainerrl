@@ -9,6 +9,7 @@ class PrioritizedBuffer (object):
         self.priority_tree = SumTree()
         self.data_inf = collections.deque()
         self.count_used = []
+        self.flag_wait_priority = False
 
     def __len__(self):
         return len(self.data) + len(self.data_inf)
@@ -23,6 +24,7 @@ class PrioritizedBuffer (object):
         Not prioritized.
         """
         assert(len(self) > 0)
+        assert(not self.flag_wait_priority)
         n = len(self.data)
         if n == 0:
             return self.data_inf.pop()
@@ -38,6 +40,7 @@ class PrioritizedBuffer (object):
 
     def sample(self, n):
         assert(n <= len(self.data) + len(self.data_inf))
+        assert(not self.flag_wait_priority)
         indices, probabilities = self.priority_tree.prioritized_sample(
             n-len(self.data_inf), remove=True)
         sampled = []
@@ -63,12 +66,16 @@ class PrioritizedBuffer (object):
             probabilities.append(None)
             sampled.append(self.data[i])
         self.sampled_indices = indices
+        self.flag_wait_priority = True
         return sampled, probabilities
 
     def set_last_priority(self, priority):
+        assert(self.flag_wait_priority)
         assert(all([p > 0.0 for p in priority]))
+        assert(len(self.sampled_indices) == len(priority))
         for i, p in zip(self.sampled_indices, priority):
             self.priority_tree.write(i, p)
+        self.flag_wait_priority = False
 
 
 class SumTree (object):

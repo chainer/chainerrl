@@ -65,7 +65,7 @@ class PrioritizedReplayBuffer(ReplayBuffer):
     """
 
     def __init__(self, capacity=None,
-                 alpha=0.6, beta0=0.4, betastep=3e-6, eps=0.0):
+                 alpha=0.6, beta0=0.4, betastep=3e-6, eps=1e-8):
         # anneal beta in 200,000 steps [citation needed]
         self.alpha = alpha
         self.beta = beta0
@@ -173,7 +173,7 @@ class EpisodicReplayBuffer(object):
 class PrioritizedEpisodicReplayBuffer (EpisodicReplayBuffer):
 
     def __init__(self, capacity,
-                 alpha=0.6, beta0=0.4, betastep=3e-6, eps=0.0):
+                 alpha=0.6, beta0=0.4, betastep=3e-6, eps=1e-8):
         # anneal beta in 200,000 steps [citation needed]
         self.alpha = alpha
         self.beta = beta0
