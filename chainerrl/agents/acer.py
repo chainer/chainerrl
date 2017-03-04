@@ -27,17 +27,22 @@ from chainerrl.recurrent import state_reset
 
 
 def compute_importance(pi, mu, x):
-    return float(pi.prob(x).data) / float(mu.prob(x).data)
+    return np.nan_to_num(float(pi.prob(x).data) / float(mu.prob(x).data))
 
 
 def compute_full_importance(pi, mu):
-    return pi.all_prob.data / mu.all_prob.data
+    pimu = pi.all_prob.data / mu.all_prob.data
+    # NaN occurs when inf/inf or 0/0
+    pimu[np.isnan(pimu)] = 1
+    pimu = np.nan_to_num(pimu)
+    return pimu
 
 
 def compute_policy_gradient_full_correction(
         action_distrib, action_distrib_mu, action_value, v,
         truncation_threshold):
     """Compute off-policy bias correction term wrt all actions."""
+    assert truncation_threshold is not None
     assert np.isscalar(v)
     with chainer.no_backprop_mode():
         rho_all_inv = compute_full_importance(action_distrib_mu,
@@ -57,13 +62,14 @@ def compute_policy_gradient_sample_correction(
         truncation_threshold):
     """Compute off-policy bias correction term wrt a sampled action."""
     assert np.isscalar(v)
+    assert truncation_threshold is not None
     with chainer.no_backprop_mode():
         sample_action = action_distrib.sample().data
         rho_dash_inv = compute_importance(
             action_distrib_mu, action_distrib, sample_action)
         if (truncation_threshold > 0 and
                 rho_dash_inv >= 1 / truncation_threshold):
-            return 0
+            return chainer.Variable(np.asarray([0], dtype=np.float32))
         correction_weight = max(0, 1 - truncation_threshold * rho_dash_inv)
         assert correction_weight <= 1
         q = float(action_value.evaluate_actions(sample_action).data[0])
@@ -85,24 +91,27 @@ def compute_policy_gradient_loss(action, advantage, action_distrib,
         rho = compute_importance(
             action_distrib, action_distrib_mu, action)
         g_loss = 0
-        # Truncated off-policy policy gradient term
-        g_loss -= min(truncation_threshold, rho) * log_prob * advantage
-        # Bias correction term
-        if isinstance(action_distrib,
-                      distribution.CategoricalDistribution):
-            g_loss += compute_policy_gradient_full_correction(
-                action_distrib=action_distrib,
-                action_distrib_mu=action_distrib_mu,
-                action_value=action_value,
-                v=v,
-                truncation_threshold=truncation_threshold)
+        if truncation_threshold is None:
+            g_loss -= rho * log_prob * advantage
         else:
-            g_loss += compute_policy_gradient_sample_correction(
-                action_distrib=action_distrib,
-                action_distrib_mu=action_distrib_mu,
-                action_value=action_value,
-                v=v,
-                truncation_threshold=truncation_threshold)
+            # Truncated off-policy policy gradient term
+            g_loss -= min(truncation_threshold, rho) * log_prob * advantage
+            # Bias correction term
+            if isinstance(action_distrib,
+                          distribution.CategoricalDistribution):
+                g_loss += compute_policy_gradient_full_correction(
+                    action_distrib=action_distrib,
+                    action_distrib_mu=action_distrib_mu,
+                    action_value=action_value,
+                    v=v,
+                    truncation_threshold=truncation_threshold)
+            else:
+                g_loss += compute_policy_gradient_sample_correction(
+                    action_distrib=action_distrib,
+                    action_distrib_mu=action_distrib_mu,
+                    action_value=action_value,
+                    v=v,
+                    truncation_threshold=truncation_threshold)
     else:
         # On-policy
         g_loss = -log_prob * advantage
@@ -225,7 +234,6 @@ def compute_loss_with_kl_constraint(distrib, another_distrib, original_loss,
     if kk_dot > 0:
         k_factor = max(0, ((kg_dot - delta) / kk_dot))
     else:
-        assert kg_dot == 0
         k_factor = 0
     z = [gp - k_factor * kp for kp, gp in zip(k, g)]
     loss = 0

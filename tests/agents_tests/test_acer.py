@@ -33,6 +33,64 @@ def extract_gradients_as_single_vector(link):
     return np.concatenate([p.grad.ravel() for p in link.params()])
 
 
+@testing.parameterize(
+    *testing.product({
+        'pi_deg': [True, False],
+        'mu_deg': [True, False],
+        'truncation_threshold': [0, 1, 10, None],
+    })
+)
+class TestDegenerateDistribution(unittest.TestCase):
+
+    def setUp(self):
+        q_values = chainer.Variable(
+            np.asarray([[1, 3]], dtype=np.float32))
+        self.action_value = chainerrl.action_value.DiscreteActionValue(
+            q_values)
+        nondeg_logits = chainer.Variable(
+            np.asarray([[0, 0]], dtype=np.float32))
+        nondeg_distrib = chainerrl.distribution.SoftmaxDistribution(
+            nondeg_logits)
+        deg_logits = chainer.Variable(
+            np.asarray([[1e10, 1e-10]], dtype=np.float32))
+        deg_distrib = chainerrl.distribution.SoftmaxDistribution(
+            deg_logits)
+        self.pi = deg_distrib if self.pi_deg else nondeg_distrib
+        self.mu = deg_distrib if self.mu_deg else nondeg_distrib
+
+    def test_full_importance(self):
+        pimu = acer.compute_full_importance(self.pi, self.mu)
+        mupi = acer.compute_full_importance(self.mu, self.pi)
+        print('pi/mu', pimu)
+        print('mu/pi', mupi)
+        self.assertFalse(np.isnan(np.sum(pimu)))
+        self.assertFalse(np.isnan(np.sum(mupi)))
+
+    def test_full_correction_term(self):
+        if self.truncation_threshold is None:
+            return
+        correction_term = acer.compute_policy_gradient_full_correction(
+            self.pi, self.mu, self.action_value, 0, self.truncation_threshold)
+        print('correction_term', correction_term.data)
+        self.assertFalse(np.isnan(np.sum(correction_term.data)))
+
+    def test_sample_correction_term(self):
+        if self.truncation_threshold is None:
+            return
+        correction_term = acer.compute_policy_gradient_sample_correction(
+            self.pi, self.mu, self.action_value, 0, self.truncation_threshold)
+        print('correction_term', correction_term.data)
+        self.assertFalse(np.isnan(np.sum(correction_term.data)))
+
+    def test_policy_gradient(self):
+        action = self.mu.sample().data
+        pg = acer.compute_policy_gradient_loss(
+            action, 1, self.pi, self.mu, self.action_value, 0,
+            self.truncation_threshold)
+        print('pg', pg.data)
+        self.assertFalse(np.isnan(np.sum(pg.data)))
+
+
 @testing.parameterize(*(
     testing.product({
         'distrib_type': ['Gaussian'],
