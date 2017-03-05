@@ -141,7 +141,6 @@ class PCL(agent.AttributeSavingMixin, agent.AsyncAgent):
         assert len(values) == seq_len
         assert len(action_distribs) == seq_len
 
-        assert np.isscalar(R)
         pi_loss = 0
         v_loss = 0
         for t in range(t_start, t_stop):
@@ -187,8 +186,6 @@ class PCL(agent.AttributeSavingMixin, agent.AsyncAgent):
 
     def update(self, t_start, t_stop, R, actions, rewards, values,
                action_distribs):
-
-        assert np.isscalar(R)
 
         total_loss = self.compute_loss(
             t_start=t_start,
@@ -248,11 +245,10 @@ class PCL(agent.AttributeSavingMixin, agent.AsyncAgent):
             if last_transition['is_state_terminal']:
                 R = 0
             else:
-                with chainer.no_backprop_mode():
-                    last_s = last_transition['next_state']
-                    action_distrib, last_v = self.model(
-                        np.expand_dims(self.phi(last_s), 0))
-                R = float(last_v.data)
+                last_s = last_transition['next_state']
+                _, v = self.model(
+                    np.expand_dims(self.phi(last_s), 0))
+                R = v
             return self.update(
                 R=R,
                 t_start=0,
@@ -269,10 +265,9 @@ class PCL(agent.AttributeSavingMixin, agent.AsyncAgent):
             if statevar is None:
                 R = 0
             else:
-                with chainer.no_backprop_mode():
-                    with state_kept(self.model):
-                        action_distrib, v = self.model(statevar)
-                R = float(v.data)
+                with state_kept(self.model):
+                    _, v = self.model(statevar)
+                R = v
             self.update(
                 t_start=self.t_start, t_stop=self.t, R=R,
                 actions=self.past_actions,
