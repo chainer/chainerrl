@@ -72,6 +72,7 @@ class PCL(agent.AttributeSavingMixin, agent.AsyncAgent):
                  replay_start_size=10 ** 2,
                  normalize_loss_by_steps=True,
                  act_deterministically=False,
+                 average_loss_decay=0.999,
                  average_entropy_decay=0.999,
                  average_value_decay=0.999,
                  explorer=None,
@@ -99,6 +100,7 @@ class PCL(agent.AttributeSavingMixin, agent.AsyncAgent):
         self.disable_online_update = disable_online_update
         self.n_times_replay = n_times_replay
         self.replay_start_size = replay_start_size
+        self.average_loss_decay = average_loss_decay
         self.average_value_decay = average_value_decay
         self.average_entropy_decay = average_entropy_decay
         self.logger = logger if logger else getLogger(__name__)
@@ -109,6 +111,7 @@ class PCL(agent.AttributeSavingMixin, agent.AsyncAgent):
         self.explorer = explorer
 
         # Stats
+        self.average_loss = 0
         self.average_value = 0
         self.average_entropy = 0
 
@@ -195,6 +198,10 @@ class PCL(agent.AttributeSavingMixin, agent.AsyncAgent):
             rewards=rewards,
             values=values,
             action_distribs=action_distribs)
+
+        self.average_loss += (
+            (1 - self.average_loss_decay) *
+            (float(total_loss.data[0]) - self.average_loss))
 
         # Compute gradients using thread-specific model
         self.model.zerograds()
@@ -383,6 +390,7 @@ class PCL(agent.AttributeSavingMixin, agent.AsyncAgent):
 
     def get_statistics(self):
         return [
+            ('average_loss', self.average_loss),
             ('average_value', self.average_value),
             ('average_entropy', self.average_entropy),
         ]
