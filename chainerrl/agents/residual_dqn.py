@@ -6,17 +6,42 @@ from builtins import *  # NOQA
 from future import standard_library
 standard_library.install_aliases()
 import chainer.functions as F
+# from chainer.optimizer import WeightDecay
+
+import copy
+import numpy as np
 
 from chainerrl.agents.dqn import DQN
 from chainerrl.functions import scale_grad
+
+class ResidualCorrection:
+    def __init__(self, agent):
+        self.agent = agent
+        self.name = 'ResidualCorrection'
+
+    def __call__(self, opt):
+        gdirected = [param.grad for param in self.agent.q_function.params()]
+        gresidual = [g + param.grad for g, param in zip(gdirected, self.agent.q_function_copy.params())]
+        inner_rd = sum([np.dot(gr.flatten(), gd.flatten()) for gr, gd in zip(gresidual, gdirected)])
+        if inner_rd >= 0.0:
+            print((inner_rd, None, None))
+            return
+        inner_rr = sum([np.dot(gr.flatten(), gr.flatten()) for gr in gresidual])
+        phi = - inner_rd / (inner_rr - inner_rd)
+        print((inner_rd, inner_rr, phi))
+        gfix = [phi * (gr - gd) for gr, gd in zip(gresidual, gdirected)]
+        for p, g in zip(self.agent.q_function.params(), gfix):
+            p.grad += g
 
 
 class ResidualDQN(DQN):
     """DQN that allows maxQ also backpropagate gradients."""
 
     def __init__(self, *args, **kwargs):
-        self.grad_scale = kwargs.pop('grad_scale', 1.0)
+        # self.grad_scale = kwargs.pop('grad_scale', 1.0)
         super().__init__(*args, **kwargs)
+        self.optimizer.add_hook(ResidualCorrection(self))
+        # self.optimizer.add_hook(WeightDecay(1e-4))
 
     def sync_target_network(self):
         pass
@@ -25,7 +50,9 @@ class ResidualDQN(DQN):
 
         batch_next_state = exp_batch['next_state']
 
-        target_next_qout = self.q_function(batch_next_state, test=False)
+        self.q_function_copy = copy.deepcopy(self.q_function)
+        self.q_function_copy.cleargrads()
+        target_next_qout = self.q_function_copy(batch_next_state, test=False)
         next_q_max = target_next_qout.max
 
         batch_rewards = exp_batch['reward']
@@ -49,7 +76,8 @@ class ResidualDQN(DQN):
         batch_q_target = F.reshape(
             self._compute_target_values(exp_batch, gamma), (batch_size, 1))
 
-        return batch_q, scale_grad.scale_grad(batch_q_target, self.grad_scale)
+        # return batch_q, scale_grad.scale_grad(batch_q_target, self.grad_scale)
+        return batch_q, batch_q_target
 
     @property
     def saved_attributes(self):
