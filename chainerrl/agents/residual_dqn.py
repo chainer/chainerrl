@@ -24,11 +24,11 @@ class ResidualCorrection:
         gresidual = [g + param.grad for g, param in zip(gdirected, self.agent.q_function_copy.params())]
         inner_rd = sum([np.dot(gr.flatten(), gd.flatten()) for gr, gd in zip(gresidual, gdirected)])
         if inner_rd >= 0.0:
-            print((inner_rd, None, None))
+            # print((inner_rd, None, None))
             return
         inner_rr = sum([np.dot(gr.flatten(), gr.flatten()) for gr in gresidual])
         phi = - inner_rd / (inner_rr - inner_rd)
-        print((inner_rd, inner_rr, phi))
+        # print((inner_rd, inner_rr, phi))
         gfix = [phi * (gr - gd) for gr, gd in zip(gresidual, gdirected)]
         for p, g in zip(self.agent.q_function.params(), gfix):
             p.grad += g
