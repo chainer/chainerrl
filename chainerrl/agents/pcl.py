@@ -11,14 +11,16 @@ from logging import getLogger
 
 import chainer
 from chainer import functions as F
-import numpy as np
 
+import chainerrl
 from chainerrl import agent
 from chainerrl.misc import async
+from chainerrl.misc.batch_states import batch_states
 from chainerrl.misc import copy_param
 from chainerrl.recurrent import Recurrent
 from chainerrl.recurrent import state_kept
 from chainerrl.recurrent import state_reset
+from chainerrl.replay_buffer import batch_experiences
 
 
 def asfloat(x):
@@ -67,6 +69,7 @@ class PCL(agent.AttributeSavingMixin, agent.AsyncAgent):
                  process_idx=0, phi=lambda x: x,
                  pi_loss_coef=1.0, v_loss_coef=0.5,
                  rollout_len=10,
+                 batchsize=1,
                  disable_online_update=False,
                  n_times_replay=1,
                  replay_start_size=10 ** 2,
@@ -77,6 +80,7 @@ class PCL(agent.AttributeSavingMixin, agent.AsyncAgent):
                  average_value_decay=0.999,
                  explorer=None,
                  logger=None,
+                 batch_states=batch_states,
                  train_async=False):
 
         if train_async:
@@ -88,6 +92,7 @@ class PCL(agent.AttributeSavingMixin, agent.AsyncAgent):
             async.assert_params_not_shared(self.shared_model, self.model)
         else:
             self.model = model
+        self.xp = self.model.xp
 
         self.optimizer = optimizer
 
@@ -99,6 +104,7 @@ class PCL(agent.AttributeSavingMixin, agent.AsyncAgent):
         self.pi_loss_coef = pi_loss_coef
         self.v_loss_coef = v_loss_coef
         self.rollout_len = rollout_len
+        self.batchsize = batchsize
         self.normalize_loss_by_steps = normalize_loss_by_steps
         self.act_deterministically = act_deterministically
         self.disable_online_update = disable_online_update
@@ -108,12 +114,15 @@ class PCL(agent.AttributeSavingMixin, agent.AsyncAgent):
         self.average_value_decay = average_value_decay
         self.average_entropy_decay = average_entropy_decay
         self.logger = logger if logger else getLogger(__name__)
+        self.batch_states = batch_states
         self.train_async = train_async
 
         self.t = 0
         self.last_state = None
         self.last_action = None
         self.explorer = explorer
+        self.idx_in_online_batch = 0
+        self.online_batch_loss = 0
 
         # Stats
         self.average_loss = 0
@@ -137,41 +146,38 @@ class PCL(agent.AttributeSavingMixin, agent.AsyncAgent):
     def shared_attributes(self):
         return ('shared_model', 'optimizer')
 
-    def compute_loss(self, t_start, t_stop, R, actions, rewards, values,
-                     action_distribs):
+    def compute_loss(self, t_start, t_stop, rewards, values,
+                     next_values, log_probs):
 
         seq_len = t_stop - t_start
-        assert len(actions) == seq_len
         assert len(rewards) == seq_len
         assert len(values) == seq_len
-        assert len(action_distribs) == seq_len
+        assert len(next_values) == seq_len
+        assert len(log_probs) == seq_len
 
         pi_loss = 0
         v_loss = 0
         for t in range(t_start, t_stop):
             d = min(t_stop - t, self.rollout_len)
             R_seq = sum(self.gamma ** i * rewards[t + i] for i in range(d))
-            G = sum(self.gamma ** i * action_distribs[t + i].log_prob(
-                np.expand_dims(actions[t + i], 0))
-                for i in range(d))
-            # log_probs = [self.gamma ** i * action_distribs[t + i].log_prob(
-            #     np.expand_dims(actions[t + i], 0))
-            #     for i in range(d)]
-            # for i in range(1, d):
-            #     log_probs[i] = log_probs[i].data
-            # G = sum(log_probs)
-            last_v = values[t + d] if t + d < t_stop else R
+            # Discounted sum of log likelihoods
+            G = chainerrl.functions.weighted_sum_arrays(
+                xs=[log_probs[t + i] for i in range(d)],
+                weights=[self.gamma ** i for i in range(d)])
+            G = F.expand_dims(G, -1)
+            last_v = next_values[t + d - 1]
+
             # C_pi only backprop through pi
-            C_pi = (- asfloat(values[t]) +
-                    self.gamma ** d * asfloat(last_v) +
+            C_pi = (- values[t].data +
+                    self.gamma ** d * last_v.data +
                     R_seq -
                     self.tau * G)
+
             # C_v only backprop through v
             C_v = (- values[t] +
                    self.gamma ** d * last_v +
-                   # self.gamma ** d * asfloat(last_v) +
                    R_seq -
-                   self.tau * asfloat(G))
+                   self.tau * G.data)
 
             pi_loss += C_pi ** 2 / 2
             v_loss += C_v ** 2 / 2
@@ -180,8 +186,8 @@ class PCL(agent.AttributeSavingMixin, agent.AsyncAgent):
         v_loss *= self.v_loss_coef
 
         if self.normalize_loss_by_steps:
-            pi_loss /= t_stop - t_start
-            v_loss /= t_stop - t_start
+            pi_loss /= seq_len
+            v_loss /= seq_len
 
         if self.process_idx == 0:
             self.logger.debug('pi_loss:%s v_loss:%s',
@@ -189,25 +195,15 @@ class PCL(agent.AttributeSavingMixin, agent.AsyncAgent):
 
         return pi_loss + F.reshape(v_loss, pi_loss.data.shape)
 
-    def update(self, t_start, t_stop, R, actions, rewards, values,
-               action_distribs):
-
-        total_loss = self.compute_loss(
-            t_start=t_start,
-            t_stop=t_stop,
-            R=R,
-            actions=actions,
-            rewards=rewards,
-            values=values,
-            action_distribs=action_distribs)
+    def update(self, loss):
 
         self.average_loss += (
             (1 - self.average_loss_decay) *
-            (float(total_loss.data[0]) - self.average_loss))
+            (asfloat(loss) - self.average_loss))
 
         # Compute gradients using thread-specific model
         self.model.zerograds()
-        total_loss.backward()
+        loss.backward()
         if self.train_async:
             # Copy the gradients to the globally shared model
             self.shared_model.zerograds()
@@ -231,72 +227,116 @@ class PCL(agent.AttributeSavingMixin, agent.AsyncAgent):
         if len(self.replay_buffer) < self.replay_start_size:
             return
 
-        episode = self.replay_buffer.sample_episodes(1, max_len=self.t_max)[0]
+        if self.process_idx == 0:
+            self.logger.debug('update_from_replay')
+
+        episodes = self.replay_buffer.sample_episodes(
+            self.batchsize, max_len=self.t_max)
+        sorted_episodes = list(reversed(sorted(episodes, key=len)))
+        max_epi_len = len(sorted_episodes[0])
 
         with state_reset(self.model):
+            # Batch computation of multiple episodes
             rewards = {}
-            actions = {}
-            action_distribs = {}
             values = {}
-            for t, transition in enumerate(episode):
-                s = self.phi(transition['state'])
-                a = transition['action']
-                bs = np.expand_dims(s, 0)
-                action_distrib, v = self.model(bs)
-                actions[t] = a
+            next_values = {}
+            log_probs = {}
+            next_action_distrib = None
+            next_v = None
+            for t in range(max_epi_len):
+                transitions = []
+                for ep in sorted_episodes:
+                    if len(ep) <= t:
+                        break
+                    transitions.append(ep[t])
+                batch = batch_experiences(transitions,
+                                          xp=self.xp,
+                                          phi=self.phi,
+                                          batch_states=self.batch_states)
+                batchsize = batch['action'].shape[0]
+                if next_action_distrib is not None:
+                    action_distrib = next_action_distrib[0:batchsize]
+                    v = next_v[0:batchsize]
+                else:
+                    action_distrib, v = self.model(batch['state'])
+                next_action_distrib, next_v = self.model(batch['next_state'])
                 values[t] = v
-                action_distribs[t] = action_distrib
-                rewards[t] = transition['reward']
-            last_transition = episode[-1]
-            if last_transition['is_state_terminal']:
-                R = 0
-            else:
-                last_s = last_transition['next_state']
-                _, v = self.model(
-                    np.expand_dims(self.phi(last_s), 0))
-                R = v
-            return self.update(
-                R=R,
-                t_start=0,
-                t_stop=len(episode),
-                rewards=rewards,
-                actions=actions,
-                values=values,
-                action_distribs=action_distribs)
+                next_values[t] = next_v * \
+                    (1 - batch['is_state_terminal'].reshape(next_v.shape))
+                rewards[t] = chainer.cuda.to_cpu(batch['reward'])
+                log_probs[t] = action_distrib.log_prob(batch['action'])
+            # Loss is computed one by one episode
+            loss = 0
+            for i, ep in enumerate(sorted_episodes):
+                e_values = {}
+                e_next_values = {}
+                e_rewards = {}
+                e_log_probs = {}
+                for t in range(len(ep)):
+                    assert values[t].shape[0] > i
+                    assert next_values[t].shape[0] > i
+                    assert rewards[t].shape[0] > i
+                    assert log_probs[t].shape[0] > i
+                    e_values[t] = values[t][i:i + 1]
+                    e_next_values[t] = next_values[t][i:i + 1]
+                    e_rewards[t] = float(rewards[t][i:i + 1])
+                    e_log_probs[t] = log_probs[t][i:i + 1]
+                loss += self.compute_loss(
+                    t_start=0,
+                    t_stop=len(ep),
+                    rewards=e_rewards,
+                    values=e_values,
+                    next_values=e_next_values,
+                    log_probs=e_log_probs)
+            self.update(loss)
 
     def update_on_policy(self, statevar):
         assert self.t_start < self.t
 
         if not self.disable_online_update:
+            next_values = {}
+            for t in range(self.t_start + 1, self.t):
+                next_values[t - 1] = self.past_values[t]
             if statevar is None:
-                R = 0
+                next_values[self.t - 1] = chainer.Variable(
+                    self.xp.zeros_like(self.past_values[self.t - 1].data))
             else:
                 with state_kept(self.model):
                     _, v = self.model(statevar)
-                R = v
-            self.update(
-                t_start=self.t_start, t_stop=self.t, R=R,
-                actions=self.past_actions,
+                next_values[self.t - 1] = v
+            log_probs = {t: self.past_action_distrib[t].log_prob(
+                self.xp.asarray(self.xp.expand_dims(a, 0)))
+                for t, a in self.past_actions.items()}
+            self.online_batch_loss += self.compute_loss(
+                t_start=self.t_start, t_stop=self.t,
                 rewards=self.past_rewards,
                 values=self.past_values,
-                action_distribs=self.past_action_distrib)
+                next_values=next_values,
+                log_probs=log_probs)
+            if self.idx_in_online_batch == self.batchsize - 1:
+                self.update(self.online_batch_loss)
+                self.online_batch_loss = 0
+                self.idx_in_online_batch = 0
+            else:
+                self.idx_in_online_batch += 1
 
         self.init_history_data_for_online_update()
 
     def act_and_train(self, state, reward):
 
-        statevar = np.expand_dims(self.phi(state), 0)
+        statevar = self.batch_states([state], self.xp, self.phi)
 
         if self.last_state is not None:
             self.past_rewards[self.t - 1] = reward
 
         if self.t - self.t_start == self.t_max:
             self.update_on_policy(statevar)
-            for _ in range(self.n_times_replay):
-                self.update_from_replay()
+            if self.idx_in_online_batch == 0:
+                for _ in range(self.n_times_replay):
+                    self.update_from_replay()
 
         action_distrib, v = self.model(statevar)
-        action = action_distrib.sample().data[0]
+        action = chainer.cuda.to_cpu(action_distrib.sample().data)[0]
         if self.explorer is not None:
             action = self.explorer.select_action(self.t, lambda: action)
 
@@ -342,12 +382,13 @@ class PCL(agent.AttributeSavingMixin, agent.AsyncAgent):
     def act(self, obs):
         # Use the process-local model for acting
         with chainer.no_backprop_mode():
-            statevar = np.expand_dims(self.phi(obs), 0)
+            statevar = self.batch_states([obs], self.xp, self.phi)
             action_distrib, _ = self.model(statevar)
             if self.act_deterministically:
-                return action_distrib.most_probable.data[0]
+                action = action_distrib.most_probable.data[0]
             else:
-                return action_distrib.sample().data[0]
+                action = action_distrib.sample().data[0]
+        return chainer.cuda.to_cpu(action)
 
     def stop_episode_and_train(self, state, reward, done=False):
         assert self.last_state is not None
@@ -357,10 +398,11 @@ class PCL(agent.AttributeSavingMixin, agent.AsyncAgent):
         if done:
             self.update_on_policy(None)
         else:
-            statevar = np.expand_dims(self.phi(state), 0)
+            statevar = self.batch_states([state], self.xp, self.phi)
             self.update_on_policy(statevar)
-        for _ in range(self.n_times_replay):
-            self.update_from_replay()
+        if self.idx_in_online_batch == 0:
+            for _ in range(self.n_times_replay):
+                self.update_from_replay()
 
         if isinstance(self.model, Recurrent):
             self.model.reset_state()

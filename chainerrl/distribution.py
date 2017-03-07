@@ -200,6 +200,9 @@ class SoftmaxDistribution(CategoricalDistribution):
         return 'SoftmaxDistribution(beta={}) logits:{} probs:{} entropy:{}'.format(  # NOQA
             self.beta, self.logits.data, self.all_prob.data, self.entropy.data)
 
+    def __getitem__(self, i):
+        return SoftmaxDistribution(self.logits[i], beta=self.beta)
+
 
 class MellowmaxDistribution(CategoricalDistribution):
     """Maximum entropy mellowmax distribution.
@@ -236,6 +239,9 @@ class MellowmaxDistribution(CategoricalDistribution):
         return 'MellowmaxDistribution(omega={}) values:{} probs:{} entropy:{}'.format(  # NOQA
             self.omega, self.values.data, self.all_prob.data,
             self.entropy.data)
+
+    def __getitem__(self, i):
+        return MellowmaxDistribution(self.values[i], omega=self.omega)
 
 
 def clip_actions(actions, min_action, max_action):
@@ -296,6 +302,9 @@ class GaussianDistribution(Distribution):
     def __repr__(self):
         return 'GaussianDistribution mean:{} ln_var:{} entropy:{}'.format(
             self.mean.data, self.ln_var.data, self.entropy.data)
+
+    def __getitem__(self, i):
+        return GaussianDistribution(self.mean[i], self.var[i])
 
 
 class ContinuousDeterministicDistribution(Distribution):

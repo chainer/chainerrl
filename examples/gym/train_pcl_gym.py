@@ -90,6 +90,9 @@ def main():
                         choices=('FFSoftmax', 'FFMellowmax', 'LSTMGaussian'))
     parser.add_argument('--seed', type=int, default=None)
     parser.add_argument('--outdir', type=str, default=None)
+    parser.add_argument('--batchsize', type=int, default=10)
+    parser.add_argument('--n-times-replay', type=int, default=1)
+    parser.add_argument('--replay-start-size', type=int, default=2000)
     parser.add_argument('--t-max', type=int, default=5)
     parser.add_argument('--tau', type=float, default=1e-2)
     parser.add_argument('--profile', action='store_true')
@@ -105,7 +108,9 @@ def main():
     parser.add_argument('--load', type=str, default='')
     parser.add_argument('--logger-level', type=int, default=logging.DEBUG)
     parser.add_argument('--monitor', action='store_true')
-    parser.add_argument('--train-async', action='store_true')
+    parser.add_argument('--train-async', action='store_true', default=False)
+    parser.add_argument('--disable-online-update', action='store_true',
+                        default=False)
     args = parser.parse_args()
 
     logging.getLogger().setLevel(args.logger_level)
@@ -157,9 +162,12 @@ def main():
         model, opt, replay_buffer=replay_buffer,
         t_max=args.t_max, gamma=0.99,
         tau=args.tau, phi=phi,
-        n_times_replay=1,
+        n_times_replay=args.n_times_replay,
+        replay_start_size=args.replay_start_size,
+        batchsize=args.batchsize,
         explorer=explorer,
         train_async=args.train_async,
+        disable_online_update=args.disable_online_update,
     )
     if args.load:
         agent.load(args.load)
