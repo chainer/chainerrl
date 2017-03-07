@@ -60,6 +60,7 @@ class PCL(agent.AttributeSavingMixin, agent.AsyncAgent):
 
     process_idx = None
     saved_attributes = ['model', 'optimizer']
+    shared_attributes = ['shared_model', 'optimizer']
 
     def __init__(self, model, optimizer,
                  replay_buffer=None,
@@ -143,10 +144,6 @@ class PCL(agent.AttributeSavingMixin, agent.AsyncAgent):
     def sync_parameters(self):
         copy_param.copy_param(target_link=self.model,
                               source_link=self.shared_model)
-
-    @property
-    def shared_attributes(self):
-        return ('shared_model', 'optimizer')
 
     def compute_loss(self, t_start, t_stop, rewards, values,
                      next_values, log_probs):
