@@ -14,3 +14,11 @@ If you could kindly send a PR to ChainerRL, please make sure all the tests succe
 To test chainerrl modules, install `nose` and run `nosetests`. Pass `-a '!gpu'` to skip tests that require gpu.
 
 To test examples, run `test_examples.sh [gpu device id]`. `-1` would run examples with only cpu.
+
+## Coding style
+
+We use PEP8. To check your code, use `flake8` command installed by `hacking` package.
+```
+$ pip install hacking
+$ flake8 path/to/your/code.py
+```
