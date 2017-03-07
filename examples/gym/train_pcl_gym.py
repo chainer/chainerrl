@@ -111,6 +111,8 @@ def main():
     parser.add_argument('--train-async', action='store_true', default=False)
     parser.add_argument('--disable-online-update', action='store_true',
                         default=False)
+    parser.add_argument('--backprop-future-values', action='store_true',
+                        default=False)
     args = parser.parse_args()
 
     logging.getLogger().setLevel(args.logger_level)
@@ -168,6 +170,7 @@ def main():
         explorer=explorer,
         train_async=args.train_async,
         disable_online_update=args.disable_online_update,
+        backprop_future_values=args.backprop_future_values,
     )
     if args.load:
         agent.load(args.load)

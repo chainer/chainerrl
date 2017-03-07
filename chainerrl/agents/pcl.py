@@ -81,6 +81,7 @@ class PCL(agent.AttributeSavingMixin, agent.AsyncAgent):
                  explorer=None,
                  logger=None,
                  batch_states=batch_states,
+                 backprop_future_values=False,
                  train_async=False):
 
         if train_async:
@@ -115,6 +116,7 @@ class PCL(agent.AttributeSavingMixin, agent.AsyncAgent):
         self.average_entropy_decay = average_entropy_decay
         self.logger = logger if logger else getLogger(__name__)
         self.batch_states = batch_states
+        self.backprop_future_values = backprop_future_values
         self.train_async = train_async
 
         self.t = 0
@@ -166,6 +168,8 @@ class PCL(agent.AttributeSavingMixin, agent.AsyncAgent):
                 weights=[self.gamma ** i for i in range(d)])
             G = F.expand_dims(G, -1)
             last_v = next_values[t + d - 1]
+            if not self.backprop_future_values:
+                last_v = chainer.Variable(last_v.data)
 
             # C_pi only backprop through pi
             C_pi = (- values[t].data +
