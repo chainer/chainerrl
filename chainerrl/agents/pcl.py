@@ -154,8 +154,8 @@ class PCL(agent.AttributeSavingMixin, agent.AsyncAgent):
         assert len(next_values) == seq_len
         assert len(log_probs) == seq_len
 
-        pi_loss = 0
-        v_loss = 0
+        pi_losses = []
+        v_losses = []
         for t in range(t_start, t_stop):
             d = min(t_stop - t, self.rollout_len)
             R_seq = sum(self.gamma ** i * rewards[t + i] for i in range(d))
@@ -180,8 +180,11 @@ class PCL(agent.AttributeSavingMixin, agent.AsyncAgent):
                    R_seq -
                    self.tau * G.data)
 
-            pi_loss += C_pi ** 2 / 2
-            v_loss += C_v ** 2 / 2
+            pi_losses.append(C_pi ** 2)
+            v_losses.append(C_v ** 2)
+
+        pi_loss = chainerrl.functions.sum_arrays(pi_losses) / 2
+        v_loss = chainerrl.functions.sum_arrays(v_losses) / 2
 
         pi_loss *= self.pi_loss_coef
         v_loss *= self.v_loss_coef
