@@ -84,13 +84,16 @@ def main():
     import logging
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('processes', type=int)
+    parser.add_argument('--processes', type=int, default=8)
+    parser.add_argument('--gpu', type=int, default=0)
     parser.add_argument('--env', type=str, default='CartPole-v0')
     parser.add_argument('--arch', type=str, default='FFSoftmax',
                         choices=('FFSoftmax', 'FFMellowmax', 'LSTMGaussian'))
     parser.add_argument('--seed', type=int, default=None)
     parser.add_argument('--outdir', type=str, default=None)
     parser.add_argument('--batchsize', type=int, default=10)
+    parser.add_argument('--n-hidden-channels', type=int, default=100)
+    parser.add_argument('--n-hidden-layers', type=int, default=2)
     parser.add_argument('--n-times-replay', type=int, default=1)
     parser.add_argument('--replay-start-size', type=int, default=2000)
     parser.add_argument('--t-max', type=int, default=5)
@@ -141,12 +144,33 @@ def main():
     action_space = sample_env.action_space
 
     # Switch policy types accordingly to action space types
-    if args.arch == 'LSTMGaussian':
-        model = A3CLSTMGaussian(obs_space.low.size, action_space.low.size)
-    elif args.arch == 'FFSoftmax':
+    if isinstance(action_space, gym.spaces.Box):
+        # model = A3CLSTMGaussian(obs_space.low.size, action_space.low.size)
+        model = a3c.A3CSeparateModel(
+            pi=chainerrl.policies.FCGaussianPolicy(
+                obs_space.low.size, action_space.low.size,
+                n_hidden_channels=args.n_hidden_channels,
+                n_hidden_layers=args.n_hidden_layers,
+                bound_mean=True,
+                min_action=action_space.low,
+                max_action=action_space.high,
+                var_wscale=1e-3,
+                var_bias=1,
+                var_type='diagonal',
+                # nonlinearity=F.elu,
+                # min_var=1e-2,
+            ),
+            v=chainerrl.v_functions.FCVFunction(
+                obs_space.low.size,
+                n_hidden_channels=args.n_hidden_channels,
+                n_hidden_layers=args.n_hidden_layers,
+                # nonlinearity=F.elu,
+            )
+        )
+    else:
         model = A3CFFSoftmax(obs_space.low.size, action_space.n)
-    elif args.arch == 'FFMellowmax':
-        model = A3CFFMellowmax(obs_space.low.size, action_space.n)
+    if not args.train_async and args.gpu >= 0:
+        model.to_gpu(args.gpu)
 
     opt = rmsprop_async.RMSpropAsync(
         lr=args.lr, eps=args.rmsprop_epsilon, alpha=0.99)
