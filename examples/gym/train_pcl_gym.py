@@ -105,6 +105,7 @@ def main():
     parser.add_argument('--load', type=str, default='')
     parser.add_argument('--logger-level', type=int, default=logging.DEBUG)
     parser.add_argument('--monitor', action='store_true')
+    parser.add_argument('--train-async', action='store_true')
     args = parser.parse_args()
 
     logging.getLogger().setLevel(args.logger_level)
@@ -158,6 +159,7 @@ def main():
         tau=args.tau, phi=phi,
         n_times_replay=1,
         explorer=explorer,
+        train_async=args.train_async,
     )
     if args.load:
         agent.load(args.load)
@@ -172,16 +174,27 @@ def main():
         print('n_runs: {} mean: {} median: {} stdev'.format(
             args.eval_n_runs, mean, median, stdev))
     else:
-        experiments.train_agent_async(
-            agent=agent,
-            outdir=args.outdir,
-            processes=args.processes,
-            make_env=make_env,
-            profile=args.profile,
-            steps=args.steps,
-            eval_n_runs=args.eval_n_runs,
-            eval_frequency=args.eval_frequency,
-            max_episode_len=timestep_limit)
+        if args.train_async:
+            experiments.train_agent_async(
+                agent=agent,
+                outdir=args.outdir,
+                processes=args.processes,
+                make_env=make_env,
+                profile=args.profile,
+                steps=args.steps,
+                eval_n_runs=args.eval_n_runs,
+                eval_frequency=args.eval_frequency,
+                max_episode_len=timestep_limit)
+        else:
+            experiments.train_agent_with_evaluation(
+                agent=agent,
+                env=make_env(0, test=False),
+                eval_env=make_env(0, test=True),
+                outdir=args.outdir,
+                steps=args.steps,
+                eval_n_runs=args.eval_n_runs,
+                eval_frequency=args.eval_frequency,
+                max_episode_len=timestep_limit)
 
 
 if __name__ == '__main__':

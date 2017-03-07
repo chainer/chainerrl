@@ -76,14 +76,18 @@ class PCL(agent.AttributeSavingMixin, agent.AsyncAgent):
                  average_entropy_decay=0.999,
                  average_value_decay=0.999,
                  explorer=None,
-                 logger=None):
+                 logger=None,
+                 train_async=False):
 
-        # Globally shared model
-        self.shared_model = model
+        if train_async:
+            # Globally shared model
+            self.shared_model = model
 
-        # Thread specific model
-        self.model = copy.deepcopy(self.shared_model)
-        async.assert_params_not_shared(self.shared_model, self.model)
+            # Thread specific model
+            self.model = copy.deepcopy(self.shared_model)
+            async.assert_params_not_shared(self.shared_model, self.model)
+        else:
+            self.model = model
 
         self.optimizer = optimizer
 
@@ -104,6 +108,7 @@ class PCL(agent.AttributeSavingMixin, agent.AsyncAgent):
         self.average_value_decay = average_value_decay
         self.average_entropy_decay = average_entropy_decay
         self.logger = logger if logger else getLogger(__name__)
+        self.train_async = train_async
 
         self.t = 0
         self.last_state = None
@@ -203,17 +208,18 @@ class PCL(agent.AttributeSavingMixin, agent.AsyncAgent):
         # Compute gradients using thread-specific model
         self.model.zerograds()
         total_loss.backward()
-        # Copy the gradients to the globally shared model
-        self.shared_model.zerograds()
-        copy_param.copy_grad(
-            target_link=self.shared_model, source_link=self.model)
-        # Update the globally shared model
-        if self.process_idx == 0:
-            norm = self.optimizer.compute_grads_norm()
-            self.logger.debug('grad norm:%s', norm)
+        if self.train_async:
+            # Copy the gradients to the globally shared model
+            self.shared_model.zerograds()
+            copy_param.copy_grad(
+                target_link=self.shared_model, source_link=self.model)
+            if self.process_idx == 0:
+                norm = self.optimizer.compute_grads_norm()
+                self.logger.debug('grad norm:%s', norm)
         self.optimizer.update()
 
-        self.sync_parameters()
+        if self.train_async:
+            self.sync_parameters()
         if isinstance(self.model, Recurrent):
             self.model.unchain_backward()
 
