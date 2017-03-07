@@ -389,10 +389,10 @@ class PCL(agent.AttributeSavingMixin, agent.AsyncAgent):
             statevar = self.batch_states([obs], self.xp, self.phi)
             action_distrib, _ = self.model(statevar)
             if self.act_deterministically:
-                action = action_distrib.most_probable.data[0]
+                return chainer.cuda.to_cpu(
+                    action_distrib.most_probable.data)[0]
             else:
-                action = action_distrib.sample().data[0]
-        return chainer.cuda.to_cpu(action)
+                return chainer.cuda.to_cpu(action_distrib.sample().data)[0]
 
     def stop_episode_and_train(self, state, reward, done=False):
         assert self.last_state is not None
