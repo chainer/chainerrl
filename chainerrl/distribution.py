@@ -43,6 +43,9 @@ def _sample_discrete_actions(batch_probs):
     """
     action_indices = []
 
+    xp = chainer.cuda.get_array_module(batch_probs)
+    batch_probs = chainer.cuda.to_cpu(batch_probs)
+
     # Subtract a tiny value from probabilities in order to avoid
     # "ValueError: sum(pvals[:-1]) > 1.0" in numpy.multinomial
     batch_probs = batch_probs - np.finfo(np.float32).epsneg
@@ -50,7 +53,7 @@ def _sample_discrete_actions(batch_probs):
     for i in range(batch_probs.shape[0]):
         histogram = np.random.multinomial(1, batch_probs[i])
         action_indices.append(int(np.nonzero(histogram)[0]))
-    return np.asarray(action_indices, dtype=np.int32)
+    return xp.asarray(action_indices, dtype=np.int32)
 
 
 class Distribution(with_metaclass(ABCMeta, object)):
