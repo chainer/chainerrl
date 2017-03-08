@@ -22,3 +22,14 @@ We use PEP8. To check your code, use `flake8` command installed by `hacking` pac
 $ pip install hacking
 $ flake8 path/to/your/code.py
 ```
+
+To use Python 3 features as much as possible while keeping Python 2 support, add the following lines to the head of each file.
+```
+from __future__ import print_function
+from __future__ import unicode_literals
+from __future__ import division
+from __future__ import absolute_import
+from builtins import *  # NOQA
+from future import standard_library
+standard_library.install_aliases()
+```
