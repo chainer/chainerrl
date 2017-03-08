@@ -158,6 +158,7 @@ class PCL(agent.AttributeSavingMixin, agent.AsyncAgent):
         v_losses = []
         for t in range(t_start, t_stop):
             d = min(t_stop - t, self.rollout_len)
+            # Discounted sum of immediate rewards
             R_seq = sum(self.gamma ** i * rewards[t + i] for i in range(d))
             # Discounted sum of log likelihoods
             G = chainerrl.functions.weighted_sum_arrays(
