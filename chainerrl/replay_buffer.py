@@ -12,6 +12,7 @@ import numpy as np
 import six.moves.cPickle as pickle
 
 from chainerrl.misc.batch_states import batch_states
+from chainerrl.misc.prioritized import PrioritizedBuffer
 
 
 class ReplayBuffer(object):
@@ -56,6 +57,46 @@ class ReplayBuffer(object):
         pass
 
 
+class PrioritizedReplayBuffer(ReplayBuffer):
+    """Stochastic Prioritization
+
+    https://arxiv.org/pdf/1511.05952.pdf \S3.3
+    propotional prioritization
+    """
+
+    def __init__(self, capacity=None,
+                 alpha=0.6, beta0=0.4, betastep=3e-6, eps=1e-8):
+        # anneal beta in 200,000 steps [citation needed]
+        self.alpha = alpha
+        self.beta = beta0
+        self.betastep = betastep
+        self.eps = eps
+        self.memory = PrioritizedBuffer(capacity=capacity)
+
+    """
+    def append(self, state, action, reward, next_state=None, next_action=None,
+               is_state_terminal=False):
+    """
+
+    def sample(self, n):
+        """Sample n unique samples from this replay buffer"""
+        assert len(self.memory) >= n
+        sampled, probabilities = self.memory.sample(n)
+        tmp = [p for p in probabilities if p is not None]
+        minp = min(tmp) if len(tmp) > 0 else 1.0
+        weights = [(minp if p is None else p) ** -self.beta
+                   for p in probabilities]
+        self.beta = min(1.0, self.beta + self.betastep)
+        # return sampled, {'weights': weights}
+        for e, w in zip(sampled, weights):
+            e['weight'] = w
+        return sampled
+
+    def update_errors(self, errors):
+        priority = [d ** self.alpha + self.eps for d in errors]
+        self.memory.set_last_priority(priority)
+
+
 def random_subseq(seq, subseq_len):
     if len(seq) <= subseq_len:
         return seq
@@ -94,7 +135,7 @@ class EpisodicReplayBuffer(object):
 
     def sample(self, n):
         """Sample n unique samples from this replay buffer"""
-        assert len(self.episodic_memory) >= n
+        assert len(self.memory) >= n
         return random.sample(self.memory, n)
 
     def sample_episodes(self, n_episodes, max_len=None):
@@ -107,7 +148,7 @@ class EpisodicReplayBuffer(object):
             return episodes
 
     def __len__(self):
-        return len(self.memory)
+        return len(self.episodic_memory)
 
     def save(self, filename):
         with open(filename, 'wb') as f:
@@ -126,6 +167,59 @@ class EpisodicReplayBuffer(object):
                 discarded_episode = self.episodic_memory.popleft()
                 for _ in range(len(discarded_episode)):
                     self.memory.popleft()
+        assert not self.current_episode
+
+
+class PrioritizedEpisodicReplayBuffer (EpisodicReplayBuffer):
+
+    def __init__(self, capacity,
+                 alpha=0.6, beta0=0.4, betastep=3e-6, eps=1e-8):
+        # anneal beta in 200,000 steps [citation needed]
+        self.alpha = alpha
+        self.beta = beta0
+        self.betastep = betastep
+        self.eps = eps
+
+        self.current_episode = []
+        self.episodic_memory = PrioritizedBuffer(capacity=None)
+        self.memory = deque(maxlen=capacity)
+        self.capacity_left = capacity
+
+    """
+    def append(self, state, action, reward, next_state=None, next_action=None,
+               is_state_terminal=False, **kwargs):
+    """
+
+    def sample_episodes(self, n_episodes, max_len=None):
+        """Sample n unique samples from this replay buffer"""
+        assert len(self.episodic_memory) >= n_episodes
+        episodes, probabilities = self.episodic_memory.sample(n_episodes)
+        tmp = [p for p in probabilities if p is not None]
+        minp = min(tmp) if len(tmp) > 0 else 1.0
+        weights = [(minp if p is None else p) ** -self.beta
+                   for p in probabilities]
+        self.beta = min(1.0, self.beta + self.betastep)
+        if max_len is not None:
+            episodes = [random_subseq(ep, max_len) for ep in episodes]
+        return episodes, weights
+        # for ep, w in zip(episodes, weights):
+        #     for e in ep:
+        #         e['weight'] = w
+        # return episodes
+
+    def update_errors(self, errors):
+        priority = [d ** self.alpha + self.eps for d in errors]
+        self.episodic_memory.set_last_priority(priority)
+
+    def stop_current_episode(self):
+        if self.current_episode:
+            self.memory.extend(self.current_episode)
+            self.episodic_memory.append(self.current_episode)
+            self.capacity_left -= len(self.current_episode)
+            self.current_episode = []
+            while self.capacity_left < 0:
+                discarded_episode = self.episodic_memory.pop()
+                self.capacity_left += len(discarded_episode)
         assert not self.current_episode
 
 
