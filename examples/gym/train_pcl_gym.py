@@ -92,6 +92,7 @@ def main():
     parser.add_argument('--seed', type=int, default=None)
     parser.add_argument('--outdir', type=str, default=None)
     parser.add_argument('--batchsize', type=int, default=10)
+    parser.add_argument('--rollout-len', type=int, default=10)
     parser.add_argument('--n-hidden-channels', type=int, default=100)
     parser.add_argument('--n-hidden-layers', type=int, default=2)
     parser.add_argument('--n-times-replay', type=int, default=1)
@@ -187,7 +188,9 @@ def main():
     agent = chainerrl.agents.PCL(
         model, opt, replay_buffer=replay_buffer,
         t_max=args.t_max, gamma=0.99,
-        tau=args.tau, phi=phi,
+        tau=args.tau,
+        phi=phi,
+        rollout_len=args.rollout_len,
         n_times_replay=args.n_times_replay,
         replay_start_size=args.replay_start_size,
         batchsize=args.batchsize,
