@@ -44,7 +44,8 @@ class FCGaussianPolicy(chainer.ChainList, GaussianPolicy):
                  n_hidden_layers=0, n_hidden_channels=None,
                  min_action=None, max_action=None, bound_mean=False,
                  var_type='spherical', nonlinearity=F.relu,
-                 mean_wscale=1, var_wscale=1):
+                 mean_wscale=1, var_wscale=1, var_bias=0,
+                 min_var=0):
 
         self.n_input_channels = n_input_channels
         self.action_size = action_size
@@ -54,6 +55,7 @@ class FCGaussianPolicy(chainer.ChainList, GaussianPolicy):
         self.max_action = max_action
         self.bound_mean = bound_mean
         self.nonlinearity = nonlinearity
+        self.min_var = min_var
         var_size = {'spherical': 1, 'diagonal': action_size}[var_type]
 
         self.hidden_layers = []
@@ -66,12 +68,14 @@ class FCGaussianPolicy(chainer.ChainList, GaussianPolicy):
             self.mean_layer = L.Linear(n_hidden_channels, action_size,
                                        wscale=mean_wscale)
             self.var_layer = L.Linear(n_hidden_channels, var_size,
-                                      wscale=var_wscale)
+                                      wscale=var_wscale,
+                                      bias=var_bias)
         else:
             self.mean_layer = L.Linear(n_input_channels, action_size,
                                        wscale=mean_wscale)
             self.var_layer = L.Linear(n_input_channels, var_size,
-                                      wscale=var_wscale)
+                                      wscale=var_wscale,
+                                      bias=var_bias)
 
         super().__init__(
             self.mean_layer, self.var_layer, *self.hidden_layers)
@@ -83,7 +87,8 @@ class FCGaussianPolicy(chainer.ChainList, GaussianPolicy):
         mean = self.mean_layer(h)
         if self.bound_mean:
             mean = bound_by_tanh(mean, self.min_action, self.max_action)
-        var = F.broadcast_to(F.softplus(self.var_layer(h)), mean.shape)
+        var = F.broadcast_to(F.softplus(self.var_layer(h)), mean.shape) + \
+            self.min_var
         return mean, var
 
     def __call__(self, x, test=False):

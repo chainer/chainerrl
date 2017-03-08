@@ -84,12 +84,19 @@ def main():
     import logging
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('processes', type=int)
+    parser.add_argument('--processes', type=int, default=8)
+    parser.add_argument('--gpu', type=int, default=0)
     parser.add_argument('--env', type=str, default='CartPole-v0')
     parser.add_argument('--arch', type=str, default='FFSoftmax',
                         choices=('FFSoftmax', 'FFMellowmax', 'LSTMGaussian'))
     parser.add_argument('--seed', type=int, default=None)
     parser.add_argument('--outdir', type=str, default=None)
+    parser.add_argument('--batchsize', type=int, default=10)
+    parser.add_argument('--rollout-len', type=int, default=10)
+    parser.add_argument('--n-hidden-channels', type=int, default=100)
+    parser.add_argument('--n-hidden-layers', type=int, default=2)
+    parser.add_argument('--n-times-replay', type=int, default=1)
+    parser.add_argument('--replay-start-size', type=int, default=2000)
     parser.add_argument('--t-max', type=int, default=5)
     parser.add_argument('--tau', type=float, default=1e-2)
     parser.add_argument('--profile', action='store_true')
@@ -105,7 +112,11 @@ def main():
     parser.add_argument('--load', type=str, default='')
     parser.add_argument('--logger-level', type=int, default=logging.DEBUG)
     parser.add_argument('--monitor', action='store_true')
-    parser.add_argument('--train-async', action='store_true')
+    parser.add_argument('--train-async', action='store_true', default=False)
+    parser.add_argument('--disable-online-update', action='store_true',
+                        default=False)
+    parser.add_argument('--backprop-future-values', action='store_true',
+                        default=False)
     args = parser.parse_args()
 
     logging.getLogger().setLevel(args.logger_level)
@@ -134,12 +145,33 @@ def main():
     action_space = sample_env.action_space
 
     # Switch policy types accordingly to action space types
-    if args.arch == 'LSTMGaussian':
-        model = A3CLSTMGaussian(obs_space.low.size, action_space.low.size)
-    elif args.arch == 'FFSoftmax':
+    if isinstance(action_space, gym.spaces.Box):
+        # model = A3CLSTMGaussian(obs_space.low.size, action_space.low.size)
+        model = a3c.A3CSeparateModel(
+            pi=chainerrl.policies.FCGaussianPolicy(
+                obs_space.low.size, action_space.low.size,
+                n_hidden_channels=args.n_hidden_channels,
+                n_hidden_layers=args.n_hidden_layers,
+                bound_mean=True,
+                min_action=action_space.low,
+                max_action=action_space.high,
+                var_wscale=1e-3,
+                var_bias=1,
+                var_type='diagonal',
+                # nonlinearity=F.elu,
+                # min_var=1e-2,
+            ),
+            v=chainerrl.v_functions.FCVFunction(
+                obs_space.low.size,
+                n_hidden_channels=args.n_hidden_channels,
+                n_hidden_layers=args.n_hidden_layers,
+                # nonlinearity=F.elu,
+            )
+        )
+    else:
         model = A3CFFSoftmax(obs_space.low.size, action_space.n)
-    elif args.arch == 'FFMellowmax':
-        model = A3CFFMellowmax(obs_space.low.size, action_space.n)
+    if not args.train_async and args.gpu >= 0:
+        model.to_gpu(args.gpu)
 
     opt = rmsprop_async.RMSpropAsync(
         lr=args.lr, eps=args.rmsprop_epsilon, alpha=0.99)
@@ -156,10 +188,16 @@ def main():
     agent = chainerrl.agents.PCL(
         model, opt, replay_buffer=replay_buffer,
         t_max=args.t_max, gamma=0.99,
-        tau=args.tau, phi=phi,
-        n_times_replay=1,
+        tau=args.tau,
+        phi=phi,
+        rollout_len=args.rollout_len,
+        n_times_replay=args.n_times_replay,
+        replay_start_size=args.replay_start_size,
+        batchsize=args.batchsize,
         explorer=explorer,
         train_async=args.train_async,
+        disable_online_update=args.disable_online_update,
+        backprop_future_values=args.backprop_future_values,
     )
     if args.load:
         agent.load(args.load)
