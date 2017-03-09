@@ -157,9 +157,9 @@ class SumTree (object):
         else:
             c = self._center()
             if ix < c:
-                self.l.read(ix)
+                return self.l._read(ix)
             else:
-                self.r.read(ix)
+                return self.r._read(ix)
 
     def prioritized_sample(self, n, remove=False):
         ixs = []
