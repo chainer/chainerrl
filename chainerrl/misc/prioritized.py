@@ -7,7 +7,7 @@ class PrioritizedBuffer (object):
         self.capacity = capacity
         self.data = []
         self.priority_tree = SumTree()
-        self.data_inf = collections.deque()
+        self.data_inf = []
         self.flag_wait_priority = False
 
     def __len__(self):
@@ -16,6 +16,15 @@ class PrioritizedBuffer (object):
     def append(self, value):
         # new values are the most prioritized
         self.data_inf.append(value)
+
+    def _pop_random_data_inf(self):
+        assert self.data_inf
+        n = len(self.data_inf)
+        i = random.randrange(n)
+        ret = self.data_inf[i]
+        self.data_inf[i] = self.data_inf[n-1]
+        self.data_inf.pop()
+        return ret
 
     def pop(self):
         """Remove an element uniformly.
@@ -26,7 +35,7 @@ class PrioritizedBuffer (object):
         assert(not self.flag_wait_priority)
         n = len(self.data)
         if n == 0:
-            return self.data_inf.pop()
+            return self._pop_random_data_inf()
         i = random.randrange(0, n)
         # remove i-th
         val = self.priority_tree.read(n-1)
@@ -49,7 +58,7 @@ class PrioritizedBuffer (object):
             sampled.append(self.data[i])
         while len(sampled) < n and len(self.data_inf) > 0:
             i = len(self.data)
-            e = self.data_inf.popleft()
+            e = self._pop_random_data_inf()
             self.data.append(e)
             if self.capacity is not None and i >= self.capacity:
                 # overwrite randomly
