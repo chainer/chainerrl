@@ -71,9 +71,7 @@ def compute_weighted_value_loss(y, t, weights,
         t (Variable or ndarray): Target values.
         weights (ndarray): Weights for y, t.
         clip_delta (bool): Use the Huber loss function if set True.
-        batch_accumulator (str): 'mean' or 'sum'.
-            'mean' will use the normalized weights.
-            'sum' will use the unnormalized weights.
+        batch_accumulator (str): 'mean' will devide loss by batchsize
     Returns:
         (Variable) scalar loss
     """
@@ -87,7 +85,7 @@ def compute_weighted_value_loss(y, t, weights,
     losses = F.reshape(losses, (-1,))
     loss_sum = F.sum(losses * weights)
     if batch_accumulator == 'mean':
-        loss = loss_sum / sum(weights)
+        loss = loss_sum / y.shape[0]
     elif batch_accumulator == 'sum':
         loss = loss_sum
     return loss

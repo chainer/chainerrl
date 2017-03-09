@@ -62,32 +62,42 @@ class PrioritizedReplayBuffer(ReplayBuffer):
 
     https://arxiv.org/pdf/1511.05952.pdf \S3.3
     propotional prioritization
+
+    Args:
+        alpha (float): A hyperparameter that determines how much
+            prioritization is used
+        beta0, betastep (float): Schedule of beta.  beta determines how much
+            importance sampling weights are used.
+        eps (float): To revisit a step after its error becomes near zero
+        normalize_by_max (bool): normalize weights by maximum priority
+            of a batch.
     """
 
     def __init__(self, capacity=None,
-                 alpha=0.6, beta0=0.4, betastep=3e-6, eps=1e-8):
+                 alpha=0.6, beta0=0.4, betastep=3e-6, eps=1e-8,
+                 normalize_by_max=True):
         # anneal beta in 200,000 steps [citation needed]
+        assert normalize_by_max or capacity is not None
         self.alpha = alpha
         self.beta = beta0
         self.betastep = betastep
         self.eps = eps
+        self.normalize_by_max = normalize_by_max
         self.memory = PrioritizedBuffer(capacity=capacity)
-
-    """
-    def append(self, state, action, reward, next_state=None, next_action=None,
-               is_state_terminal=False):
-    """
 
     def sample(self, n):
         """Sample n unique samples from this replay buffer"""
         assert len(self.memory) >= n
         sampled, probabilities = self.memory.sample(n)
         tmp = [p for p in probabilities if p is not None]
-        minp = min(tmp) if len(tmp) > 0 else 1.0
-        weights = [(minp if p is None else p) ** -self.beta
-                   for p in probabilities]
+        minp = min(tmp) if tmp else 1.0
+        probabilities = [minp if p is None else p for p in probabilities]
+        if self.normalize_by_max:
+            weights = [(p / minp) ** -self.beta for p in probabilities]
+        else:
+            weights = [(len(self.memory) * p) ** -self.beta
+                       for p in probabilities]
         self.beta = min(1.0, self.beta + self.betastep)
-        # return sampled, {'weights': weights}
         for e, w in zip(sampled, weights):
             e['weight'] = w
         return sampled
