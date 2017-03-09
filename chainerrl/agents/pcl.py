@@ -124,8 +124,7 @@ class PCL(agent.AttributeSavingMixin, agent.AsyncAgent):
         self.last_state = None
         self.last_action = None
         self.explorer = explorer
-        self.idx_in_online_batch = 0
-        self.online_batch_loss = 0
+        self.online_batch_losses = []
 
         # Stats
         self.average_loss = 0
@@ -271,7 +270,7 @@ class PCL(agent.AttributeSavingMixin, agent.AsyncAgent):
                 rewards[t] = chainer.cuda.to_cpu(batch['reward'])
                 log_probs[t] = action_distrib.log_prob(batch['action'])
             # Loss is computed one by one episode
-            loss = 0
+            losses = []
             for i, ep in enumerate(sorted_episodes):
                 e_values = {}
                 e_next_values = {}
@@ -286,13 +285,14 @@ class PCL(agent.AttributeSavingMixin, agent.AsyncAgent):
                     e_next_values[t] = next_values[t][i:i + 1]
                     e_rewards[t] = float(rewards[t][i:i + 1])
                     e_log_probs[t] = log_probs[t][i:i + 1]
-                loss += self.compute_loss(
+                losses.append(self.compute_loss(
                     t_start=0,
                     t_stop=len(ep),
                     rewards=e_rewards,
                     values=e_values,
                     next_values=e_next_values,
-                    log_probs=e_log_probs)
+                    log_probs=e_log_probs))
+            loss = chainerrl.functions.sum_arrays(losses) / self.batchsize
             self.update(loss)
 
     def update_on_policy(self, statevar):
@@ -312,18 +312,17 @@ class PCL(agent.AttributeSavingMixin, agent.AsyncAgent):
             log_probs = {t: self.past_action_distrib[t].log_prob(
                 self.xp.asarray(self.xp.expand_dims(a, 0)))
                 for t, a in self.past_actions.items()}
-            self.online_batch_loss += self.compute_loss(
+            self.online_batch_losses.append(self.compute_loss(
                 t_start=self.t_start, t_stop=self.t,
                 rewards=self.past_rewards,
                 values=self.past_values,
                 next_values=next_values,
-                log_probs=log_probs)
-            if self.idx_in_online_batch == self.batchsize - 1:
-                self.update(self.online_batch_loss)
-                self.online_batch_loss = 0
-                self.idx_in_online_batch = 0
-            else:
-                self.idx_in_online_batch += 1
+                log_probs=log_probs))
+            if len(self.online_batch_losses) == self.batchsize:
+                loss = chainerrl.functions.sum_arrays(
+                    self.online_batch_losses) / self.batchsize
+                self.update(loss)
+                self.online_batch_losses = []
 
         self.init_history_data_for_online_update()
 
@@ -336,7 +335,7 @@ class PCL(agent.AttributeSavingMixin, agent.AsyncAgent):
 
         if self.t - self.t_start == self.t_max:
             self.update_on_policy(statevar)
-            if self.idx_in_online_batch == 0:
+            if len(self.online_batch_losses) == 0:
                 for _ in range(self.n_times_replay):
                     self.update_from_replay()
 
@@ -405,7 +404,7 @@ class PCL(agent.AttributeSavingMixin, agent.AsyncAgent):
         else:
             statevar = self.batch_states([state], self.xp, self.phi)
             self.update_on_policy(statevar)
-        if self.idx_in_online_batch == 0:
+        if len(self.online_batch_losses) == 0:
             for _ in range(self.n_times_replay):
                 self.update_from_replay()
 
