@@ -66,7 +66,7 @@ class PrioritizedReplayBuffer(ReplayBuffer):
     Args:
         alpha (float): A hyperparameter that determines how much
             prioritization is used
-        beta0, betastep (float): Schedule of beta.  beta determines how much
+        beta0, betasteps (float): Schedule of beta.  beta determines how much
             importance sampling weights are used.
         eps (float): To revisit a step after its error becomes near zero
         normalize_by_max (bool): normalize weights by maximum priority
@@ -74,13 +74,14 @@ class PrioritizedReplayBuffer(ReplayBuffer):
     """
 
     def __init__(self, capacity=None,
-                 alpha=0.6, beta0=0.4, betastep=3e-6, eps=1e-8,
+                 alpha=0.6, beta0=0.4, betasteps=2e5, eps=1e-8,
                  normalize_by_max=True):
-        # anneal beta in 200,000 steps [citation needed]
+        assert 0.0 <= alpha
+        assert 0.0 <= beta0 <= 1.0
         assert normalize_by_max or capacity is not None
         self.alpha = alpha
         self.beta = beta0
-        self.betastep = betastep
+        self.beta_add = (1.0 - beta0) / betasteps
         self.eps = eps
         self.normalize_by_max = normalize_by_max
         self.memory = PrioritizedBuffer(capacity=capacity)
@@ -97,7 +98,7 @@ class PrioritizedReplayBuffer(ReplayBuffer):
         else:
             weights = [(len(self.memory) * p) ** -self.beta
                        for p in probabilities]
-        self.beta = min(1.0, self.beta + self.betastep)
+        self.beta = min(1.0, self.beta + self.beta_add)
         for e, w in zip(sampled, weights):
             e['weight'] = w
         return sampled
