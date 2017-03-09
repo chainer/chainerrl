@@ -8,7 +8,6 @@ class PrioritizedBuffer (object):
         self.data = []
         self.priority_tree = SumTree()
         self.data_inf = collections.deque()
-        self.count_used = []
         self.flag_wait_priority = False
 
     def __len__(self):
@@ -33,7 +32,6 @@ class PrioritizedBuffer (object):
         val = self.priority_tree.read(n-1)
         self.priority_tree.write(i, val)
         self.priority_tree.write(n-1, 0.0)
-        self.count_used[i] = self.count_used.pop()
         ret = self.data[i]
         self.data[i] = self.data.pop()
         return ret
@@ -49,19 +47,14 @@ class PrioritizedBuffer (object):
         #   (The last one among the duplicates is surviving.)
         for i in indices:
             sampled.append(self.data[i])
-            self.count_used[i] += 1
         while len(sampled) < n and len(self.data_inf) > 0:
             i = len(self.data)
             e = self.data_inf.popleft()
             self.data.append(e)
-            if self.capacity is None or i < self.capacity:
-                self.priority_tree.appendindex(i)
-                self.count_used.append(1)
-            else:
+            if self.capacity is not None and i >= self.capacity:
                 # overwrite randomly
                 i = random.randrange(0, self.capacity)
-                self.priority_tree.write(i, 0.0)
-                self.count_used[i] = 1
+            self.priority_tree.write(i, 0.0)
             indices.append(i)
             probabilities.append(None)
             sampled.append(self.data[i])
@@ -93,6 +86,19 @@ class SumTree (object):
         self.r = r
         self.s = s
 
+    def __str__(self):
+        return 'SumTree({})'.format(self._dict())
+
+    def _dict(self):
+        ret = dict()
+        if self.bd is not None and self._isleaf():
+            ret[self.bd[0]] = self.s
+        if self.l:
+            ret.update(self.l._dict())
+        if self.r:
+            ret.update(self.r._dict())
+        return ret
+
     def _initdescendant(self):
         if not self._isleaf():
             c = self._center()
@@ -106,30 +112,46 @@ class SumTree (object):
     def _center(self):
         return (self.bd[0] + self.bd[1]) // 2
 
-    def appendindex(self, ix):
+    def _allocindex(self, ix):
         if self.bd is None:
-            self.bd = (0, 1)
-        elif ix == self.bd[1]:
+            self.bd = (ix, ix+1)
+        while ix >= self.bd[1]:
+            r_bd = (self.bd[1], self.bd[1]*2 - self.bd[0])
             l = SumTree(self.bd, self.l, self.r, self.s)
-            r = SumTree(bd=(ix, ix*2))._initdescendant()
-            self.bd = (0, ix*2)
+            r = SumTree(bd=r_bd)._initdescendant()
+            self.bd = (l.bd[0], r.bd[1])
             self.l = l
             self.r = r
-            # self.s = self.l.s + self.r.s
-            # ... because self.r.s == 0
+            # no need to update self.s because self.r.s == 0
+        while ix < self.bd[0]:
+            l_bd = (self.bd[0]*2 - self.bd[1], self.bd[0])
+            l = SumTree(bd=l_bd)._initdescendant()
+            r = SumTree(self.bd, self.l, self.r, self.s)
+            self.bd = (l.bd[0], r.bd[1])
+            self.l = l
+            self.r = r
+            # no need to update self.s because self.l.s == 0
 
     def write(self, ix, val):
+        self._allocindex(ix)
+        self._write(ix, val)
+
+    def _write(self, ix, val):
         if self._isleaf():
             self.s = val
         else:
             c = self._center()
             if ix < c:
-                self.l.write(ix, val)
+                self.l._write(ix, val)
             else:
-                self.r.write(ix, val)
+                self.r._write(ix, val)
             self.s = self.l.s + self.r.s
 
     def read(self, ix):
+        assert self.bd[0] <= ix < self.bd[1]
+        return self._read(ix)
+
+    def _read(self, ix):
         if self._isleaf():
             return self.s
         else:
@@ -144,24 +166,24 @@ class SumTree (object):
         vals = []
         total_val = self.s  # save this before it changes by removing
         for _ in range(n):
-            ix, val = self.pick(random.uniform(0.0, self.s))
+            ix, val = self._pick(random.uniform(0.0, self.s))
             ixs.append(ix)
             vals.append(val)
-            self.write(ix, 0.0)
+            self._write(ix, 0.0)
         if not remove:
             for ix, val in zip(ixs, vals):
-                self.write(ix, val)
+                self._write(ix, val)
         return ixs, [v / total_val for v in vals]
 
     def prioritized_choice(self):
-        ix, s = self.pick(random.uniform(0.0, self.s))
+        ix, s = self._pick(random.uniform(0.0, self.s))
         return ix, s / self.s
 
-    def pick(self, cum):
+    def _pick(self, cum):
         if self._isleaf():
             return self.bd[0], self.s
         else:
             if cum < self.l.s:
-                return self.l.pick(cum)
+                return self.l._pick(cum)
             else:
-                return self.r.pick(cum - self.l.s)
+                return self.r._pick(cum - self.l.s)
