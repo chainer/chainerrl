@@ -78,7 +78,6 @@ class PrioritizedReplayBuffer(ReplayBuffer):
                  normalize_by_max=True):
         assert 0.0 <= alpha
         assert 0.0 <= beta0 <= 1.0
-        assert normalize_by_max or capacity is not None
         self.alpha = alpha
         self.beta = beta0
         self.beta_add = (1.0 - beta0) / betasteps
