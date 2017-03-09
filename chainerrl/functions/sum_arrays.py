@@ -21,11 +21,17 @@ class SumArrays(function.Function):
 
     def forward_gpu(self, inputs):
         n = len(inputs)
+        ptrs = cuda.cupy.asarray([x.data.ptr for x in inputs],
+                                 dtype=cuda.cupy.int64)
         y = cuda.elementwise(
-            ', '.join('T x{}'.format(i) for i in range(n)),
+            'T x0, int64 xs, int32 n_xs',
             'T y',
-            'y = ' + '+'.join('x{}'.format(i) for i in range(n)),
-            'sum_variable_{}'.format(n))(*inputs)
+            'float** xs_ = (float**) xs;'
+            'y = 0;'
+            'for (size_t j = 0; j < n_xs; ++j) {'
+            '  y += xs_[j][i];'
+            '}',
+            'sum_arrays'.format(n))(inputs[0], ptrs.data.ptr, len(ptrs))
         return y,
 
 
