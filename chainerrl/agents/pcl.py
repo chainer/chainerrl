@@ -13,8 +13,8 @@ import chainer
 from chainer import functions as F
 
 import chainerrl
-from chainerrl import agents
 from chainerrl import agent
+from chainerrl import agents
 from chainerrl.misc import async
 from chainerrl.misc.batch_states import batch_states
 from chainerrl.misc import copy_param
