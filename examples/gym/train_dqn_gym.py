@@ -121,7 +121,11 @@ def main():
         if args.replay_start_size is None:
             args.replay_start_size = 10
         if args.prioritized_replay:
-            rbuf = replay_buffer.PrioritizedEpisodicReplayBuffer(rbuf_capacity)
+            betasteps = \
+                (args.steps - timestep_limit * args.replay_start_size) \
+                // args.update_frequency
+            rbuf = replay_buffer.PrioritizedEpisodicReplayBuffer(
+                rbuf_capacity, betasteps=betasteps)
         else:
             rbuf = replay_buffer.EpisodicReplayBuffer(rbuf_capacity)
     else:
@@ -130,8 +134,10 @@ def main():
         if args.replay_start_size is None:
             args.replay_start_size = 1000
         if args.prioritized_replay:
+            betasteps = (args.steps - args.replay_start_size) \
+                // args.update_frequency
             rbuf = replay_buffer.PrioritizedReplayBuffer(
-                rbuf_capacity, betasteps=args.steps-args.replay_start_size)
+                rbuf_capacity, betasteps=betasteps)
         else:
             rbuf = replay_buffer.ReplayBuffer(rbuf_capacity)
 
