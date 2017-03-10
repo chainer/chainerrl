@@ -19,7 +19,7 @@ from chainerrl.agent import AttributeSavingMixin
 from chainerrl.misc.batch_states import batch_states
 from chainerrl.misc.copy_param import synchronize_parameters
 from chainerrl.recurrent import Recurrent
-from chainerrl.replay_buffer import ReplayUpdator
+from chainerrl.replay_buffer import ReplayUpdater
 
 
 class PGT(AttributeSavingMixin, Agent):
@@ -99,7 +99,7 @@ class PGT(AttributeSavingMixin, Agent):
         self.critic_optimizer = critic_optimizer
         self.beta = beta
         self.act_deterministically = act_deterministically
-        self.replay_updator = ReplayUpdator(
+        self.replay_updater = ReplayUpdater(
             replay_buffer=replay_buffer,
             update_func=self.update,
             batchsize=minibatch_size,
@@ -228,7 +228,7 @@ class PGT(AttributeSavingMixin, Agent):
         self.last_state = state
         self.last_action = action
 
-        self.replay_updator.update_if_necessary(self.t)
+        self.replay_updater.update_if_necessary(self.t)
 
         return self.last_action
 
