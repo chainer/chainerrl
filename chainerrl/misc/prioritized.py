@@ -30,8 +30,8 @@ class PrioritizedBuffer (object):
 
         Not prioritized.
         """
-        assert(len(self) > 0)
-        assert(not self.flag_wait_priority)
+        assert len(self) > 0
+        assert not self.flag_wait_priority
         n = len(self.data)
         if n == 0:
             return self._pop_random_data_inf()
@@ -45,8 +45,8 @@ class PrioritizedBuffer (object):
         return ret
 
     def sample(self, n):
-        assert(n <= len(self.data) + len(self.data_inf))
-        assert(not self.flag_wait_priority)
+        assert n <= len(self.data) + len(self.data_inf)
+        assert not self.flag_wait_priority
         indices, probabilities = self.priority_tree.prioritized_sample(
             n-len(self.data_inf), remove=True)
         sampled = []
@@ -71,9 +71,9 @@ class PrioritizedBuffer (object):
         return sampled, probabilities
 
     def set_last_priority(self, priority):
-        assert(self.flag_wait_priority)
-        assert(all([p > 0.0 for p in priority]))
-        assert(len(self.sampled_indices) == len(priority))
+        assert self.flag_wait_priority
+        assert all([p > 0.0 for p in priority])
+        assert len(self.sampled_indices) == len(priority)
         for i, p in zip(self.sampled_indices, priority):
             self.priority_tree.write(i, p)
         self.flag_wait_priority = False
