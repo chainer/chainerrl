@@ -38,7 +38,7 @@ class PrioritizedBuffer (object):
         i = random.randrange(0, n)
         # remove i-th
         self.priority_tree[i] = self.priority_tree[n-1]
-        self.priority_tree[n-1] = 0.0
+        del self.priority_tree[n-1]
         ret = self.data[i]
         self.data[i] = self.data.pop()
         return ret
@@ -61,7 +61,7 @@ class PrioritizedBuffer (object):
             if self.capacity is not None and i >= self.capacity:
                 # overwrite randomly
                 i = random.randrange(0, self.capacity)
-            self.priority_tree[i] = 0.0
+            del self.priority_tree[i]
             indices.append(i)
             probabilities.append(None)
             sampled.append(self.data[i])
@@ -153,6 +153,9 @@ class SumTree (object):
             else:
                 self.r._write(ix, val)
             self.s = self.l.s + self.r.s
+
+    def __delitem__(self, ix):
+        self.__setitem__(ix, 0.0)
 
     def __getitem__(self, ix):
         assert self.bd[0] <= ix < self.bd[1]
