@@ -37,9 +37,8 @@ class PrioritizedBuffer (object):
             return self._pop_random_data_inf()
         i = random.randrange(0, n)
         # remove i-th
-        val = self.priority_tree.read(n-1)
-        self.priority_tree.write(i, val)
-        self.priority_tree.write(n-1, 0.0)
+        self.priority_tree[i] = self.priority_tree[n-1]
+        self.priority_tree[n-1] = 0.0
         ret = self.data[i]
         self.data[i] = self.data.pop()
         return ret
@@ -62,7 +61,7 @@ class PrioritizedBuffer (object):
             if self.capacity is not None and i >= self.capacity:
                 # overwrite randomly
                 i = random.randrange(0, self.capacity)
-            self.priority_tree.write(i, 0.0)
+            self.priority_tree[i] = 0.0
             indices.append(i)
             probabilities.append(None)
             sampled.append(self.data[i])
@@ -75,7 +74,7 @@ class PrioritizedBuffer (object):
         assert all([p > 0.0 for p in priority])
         assert len(self.sampled_indices) == len(priority)
         for i, p in zip(self.sampled_indices, priority):
-            self.priority_tree.write(i, p)
+            self.priority_tree[i] = p
         self.flag_wait_priority = False
 
 
@@ -140,7 +139,7 @@ class SumTree (object):
             self.r = r
             # no need to update self.s because self.l.s == 0
 
-    def write(self, ix, val):
+    def __setitem__(self, ix, val):
         self._allocindex(ix)
         self._write(ix, val)
 
@@ -155,7 +154,7 @@ class SumTree (object):
                 self.r._write(ix, val)
             self.s = self.l.s + self.r.s
 
-    def read(self, ix):
+    def __getitem__(self, ix):
         assert self.bd[0] <= ix < self.bd[1]
         return self._read(ix)
 

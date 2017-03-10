@@ -60,9 +60,8 @@ class TestSumTree(unittest.TestCase):
         for _ in range(200):
             k = random.randint(-10, 10)
             v = random.uniform(1e-6, 1e6)
-            t.write(k, v)
-            # print((k,v,str(t)))
+            t[k] = v
             d[k] = v
 
             k = random.choice(list(d.keys()))
-            self.assertEqual(t.read(k), d[k])
+            self.assertEqual(t[k], d[k])
