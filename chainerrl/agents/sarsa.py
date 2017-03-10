@@ -7,7 +7,6 @@ from future import standard_library
 standard_library.install_aliases()
 
 from chainerrl.agents import dqn
-from chainerrl.recurrent import state_kept
 
 
 class SARSA(dqn.DQN):
