@@ -182,23 +182,21 @@ class EpisodicReplayBuffer(object):
 
 class PrioritizedEpisodicReplayBuffer (EpisodicReplayBuffer):
 
-    def __init__(self, capacity,
-                 alpha=0.6, beta0=0.4, betastep=3e-6, eps=1e-8):
-        # anneal beta in 200,000 steps [citation needed]
+    def __init__(self, capacity=None,
+                 alpha=0.6, beta0=0.4, betasteps=2e5, eps=1e-8,
+                 normalize_by_max=True):
+        assert 0.0 <= alpha
+        assert 0.0 <= beta0 <= 1.0
         self.alpha = alpha
         self.beta = beta0
-        self.betastep = betastep
+        self.beta_add = (1.0 - beta0) / betasteps
         self.eps = eps
+        self.normalize_by_max = normalize_by_max
 
         self.current_episode = []
         self.episodic_memory = PrioritizedBuffer(capacity=None)
         self.memory = deque(maxlen=capacity)
         self.capacity_left = capacity
-
-    """
-    def append(self, state, action, reward, next_state=None, next_action=None,
-               is_state_terminal=False, **kwargs):
-    """
 
     def sample_episodes(self, n_episodes, max_len=None):
         """Sample n unique samples from this replay buffer"""
@@ -206,16 +204,16 @@ class PrioritizedEpisodicReplayBuffer (EpisodicReplayBuffer):
         episodes, probabilities = self.episodic_memory.sample(n_episodes)
         tmp = [p for p in probabilities if p is not None]
         minp = min(tmp) if len(tmp) > 0 else 1.0
-        weights = [(minp if p is None else p) ** -self.beta
-                   for p in probabilities]
-        self.beta = min(1.0, self.beta + self.betastep)
+        probabilities = [minp if p is None else p for p in probabilities]
+        if self.normalize_by_max:
+            weights = [(p / minp) ** -self.beta for p in probabilities]
+        else:
+            weights = [(len(self.memory) * p) ** -self.beta
+                       for p in probabilities]
+        self.beta = min(1.0, self.beta + self.beta_add)
         if max_len is not None:
             episodes = [random_subseq(ep, max_len) for ep in episodes]
         return episodes, weights
-        # for ep, w in zip(episodes, weights):
-        #     for e in ep:
-        #         e['weight'] = w
-        # return episodes
 
     def update_errors(self, errors):
         priority = [d ** self.alpha + self.eps for d in errors]
