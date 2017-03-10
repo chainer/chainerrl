@@ -13,6 +13,7 @@ import chainer
 from chainer import functions as F
 
 import chainerrl
+from chainerrl import agents
 from chainerrl import agent
 from chainerrl.misc import async
 from chainerrl.misc.batch_states import batch_states
@@ -28,6 +29,10 @@ def asfloat(x):
         return float(x.data)
     else:
         return float(x)
+
+
+PCLSeparateModel = agents.a3c.A3CSeparateModel
+PCLSharedModel = agents.a3c.A3CSharedModel
 
 
 class PCL(agent.AttributeSavingMixin, agent.AsyncAgent):
