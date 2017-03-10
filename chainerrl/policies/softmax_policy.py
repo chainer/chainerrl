@@ -41,7 +41,8 @@ class FCSoftmaxPolicy(SoftmaxPolicy):
 
     def __init__(self, n_input_channels, n_actions,
                  n_hidden_layers=0, n_hidden_channels=None,
-                 beta=1.0, nonlinearity=F.relu):
+                 beta=1.0, nonlinearity=F.relu,
+                 last_wscale=1.0):
         self.n_input_channels = n_input_channels
         self.n_actions = n_actions
         self.n_hidden_layers = n_hidden_layers
@@ -52,5 +53,6 @@ class FCSoftmaxPolicy(SoftmaxPolicy):
             model=MLP(n_input_channels,
                       n_actions,
                       (n_hidden_channels,) * n_hidden_layers,
-                      nonlinearity=nonlinearity),
+                      nonlinearity=nonlinearity,
+                      last_wscale=last_wscale),
             beta=self.beta)
