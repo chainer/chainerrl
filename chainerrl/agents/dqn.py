@@ -19,7 +19,7 @@ from chainerrl.misc.copy_param import synchronize_parameters
 from chainerrl.recurrent import Recurrent
 from chainerrl.recurrent import state_reset
 from chainerrl.replay_buffer import batch_experiences
-from chainerrl.replay_buffer import ReplayUpdator
+from chainerrl.replay_buffer import ReplayUpdater
 
 
 def _to_device(obj, gpu):
@@ -136,7 +136,7 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
             update_func = self.update_from_episodes
         else:
             update_func = self.update
-        self.replay_updator = ReplayUpdator(
+        self.replay_updater = ReplayUpdater(
             replay_buffer=replay_buffer,
             update_func=update_func,
             batchsize=minibatch_size,
@@ -351,7 +351,7 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
         self.last_state = state
         self.last_action = action
 
-        self.replay_updator.update_if_necessary(self.t)
+        self.replay_updater.update_if_necessary(self.t)
 
         self.logger.debug('t:%s r:%s a:%s', self.t, reward, action)
 
