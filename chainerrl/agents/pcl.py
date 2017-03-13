@@ -466,8 +466,9 @@ class PCL(agent.AttributeSavingMixin, agent.AsyncAgent):
 
     def load(self, dirname):
         super().load(dirname)
-        copy_param.copy_param(target_link=self.shared_model,
-                              source_link=self.model)
+        if self.train_async:
+            copy_param.copy_param(target_link=self.shared_model,
+                                  source_link=self.model)
 
     def get_statistics(self):
         return [
