@@ -217,6 +217,9 @@ class PCL(agent.AttributeSavingMixin, agent.AsyncAgent):
         pi_loss = chainerrl.functions.sum_arrays(pi_losses) / 2
         v_loss = chainerrl.functions.sum_arrays(v_losses) / 2
 
+        # Re-scale pi loss so that it is independent from tau
+        pi_loss /= self.tau
+
         pi_loss *= self.pi_loss_coef
         v_loss *= self.v_loss_coef
 
