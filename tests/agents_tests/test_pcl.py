@@ -182,7 +182,7 @@ class TestPCL(unittest.TestCase):
                 outdir=self.outdir, processes=nproc, make_env=make_env,
                 agent=agent, steps=steps,
                 max_episode_len=2,
-                eval_frequency=500,
+                eval_frequency=200,
                 eval_n_runs=5,
                 successful_score=1)
             # The agent returned by train_agent_async is not guaranteed to be
