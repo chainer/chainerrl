@@ -14,7 +14,7 @@ from chainer import functions as F
 
 import chainerrl
 from chainerrl import agent
-from chainerrl import agents
+from chainerrl.agents import a3c
 from chainerrl.misc import async
 from chainerrl.misc.batch_states import batch_states
 from chainerrl.misc import copy_param
@@ -31,8 +31,8 @@ def asfloat(x):
         return float(x)
 
 
-PCLSeparateModel = agents.a3c.A3CSeparateModel
-PCLSharedModel = agents.a3c.A3CSharedModel
+PCLSeparateModel = a3c.A3CSeparateModel
+PCLSharedModel = a3c.A3CSharedModel
 
 
 class PCL(agent.AttributeSavingMixin, agent.AsyncAgent):
