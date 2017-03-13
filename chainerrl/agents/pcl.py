@@ -113,7 +113,7 @@ class PCL(agent.AttributeSavingMixin, agent.AsyncAgent):
                  explorer=None,
                  logger=None,
                  batch_states=batch_states,
-                 backprop_future_values=False,
+                 backprop_future_values=True,
                  train_async=False):
 
         if train_async:
