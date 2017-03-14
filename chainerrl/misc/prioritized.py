@@ -46,10 +46,11 @@ class PrioritizedBuffer (object):
         return ret
 
     def sample(self, n):
-        assert n <= len(self.data) + len(self.data_inf)
+        """Sample n distinct elements"""
+        assert 0 <= n <= len(self)
         assert not self.flag_wait_priority
         indices, probabilities = self.priority_tree.prioritized_sample(
-            n-len(self.data_inf), remove=True)
+            max(0, n - len(self.data_inf)), remove=True)
         sampled = []
         for i in indices:
             sampled.append(self.data[i])
@@ -168,6 +169,7 @@ class SumTree (object):
                 return self.r._read(ix)
 
     def prioritized_sample(self, n, remove=False):
+        assert n >= 0
         ixs = []
         vals = []
         total_val = self.s  # save this before it changes by removing
