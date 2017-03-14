@@ -13,8 +13,6 @@ class WeightedSumArrays(function.Function):
     def check_type_forward(self, in_types):
         type_check.expect(
             in_types[0].dtype.kind == 'f',
-            in_types[0].dtype == in_types[1].dtype,
-            in_types[0].shape == in_types[1].shape
         )
 
     def forward_cpu(self, inputs):
@@ -26,12 +24,21 @@ class WeightedSumArrays(function.Function):
 
     def forward_gpu(self, inputs):
         n = len(inputs)
+        ptrs = cuda.cupy.asarray([x.data.ptr for x in inputs],
+                                 dtype=cuda.cupy.int64)
+        ws = cuda.cupy.asarray(self.weights, dtype=cuda.cupy.float32)
         y = cuda.elementwise(
-            ', '.join('T x{}'.format(i) for i in range(n)),
+            'T x0, int64 xs, raw W ws, int32 n_xs',
             'T y',
-            'y = ' + '+'.join('x{} * {}'.format(i, self.weights[i])
-                              for i in range(n)),
-            'weighted_sum_variable_{}'.format(n))(*inputs)
+            'float** xs_ = (float**) xs;'
+            'y = 0;'
+            'for (size_t j = 0; j < n_xs; ++j) {'
+            '  y += xs_[j][i] * ws[j];'
+            '}',
+            'weighted_sum_arrays'.format(n))(inputs[0],
+                                             ptrs.data.ptr,
+                                             ws,
+                                             len(ptrs))
         return y,
 
 

@@ -14,6 +14,7 @@ from chainer import functions as F
 
 import chainerrl
 from chainerrl import agent
+from chainerrl.agents import a3c
 from chainerrl.misc import async
 from chainerrl.misc.batch_states import batch_states
 from chainerrl.misc import copy_param
@@ -30,32 +31,61 @@ def asfloat(x):
         return float(x)
 
 
+PCLSeparateModel = a3c.A3CSeparateModel
+PCLSharedModel = a3c.A3CSharedModel
+
+
 class PCL(agent.AttributeSavingMixin, agent.AsyncAgent):
     """PCL (Path Consistency Learning).
+
+    Not only the batch PCL algorithm proposed in the paper but also its
+    asynchronous variant is implemented.
 
     See https://arxiv.org/abs/1702.08892
 
     Args:
-        model (ACERModel): Model to train. It must be a callable that accepts
-            observations as input and return three values: action distributions
-            (Distribution), Q values (ActionValue) and state values
-            (chainer.Variable).
+        model (chainer.Link): Model to train. It must be a callable that
+            accepts a batch of observations as input and return two values:
+                - action distributions (Distribution)
+                - state values (chainer.Variable)
         optimizer (chainer.Optimizer): optimizer used to train the model
-        t_max (int): The model is updated after every t_max local steps
+        t_max (int or None): The model is updated after every t_max local
+            steps. If set None, the model is updated after every episode.
         gamma (float): Discount factor [0,1]
-        beta (float): Weight coefficient for the entropy regularizaiton term.
+        tau (float): Weight coefficient for the entropy regularizaiton term.
         phi (callable): Feature extractor function
         pi_loss_coef (float): Weight coefficient for the loss of the policy
         v_loss_coef (float): Weight coefficient for the loss of the value
             function
+        rollout_len (int): Number of rollout steps
+        batchsize (int): Number of episodes or sub-trajectories used for an
+            update. The total number of transitions used will be
+            (batchsize x t_max).
+        disable_online_update (bool): If set true, disable online on-policy
+            update and rely only on experience replay.
+        n_times_replay (int): Number of times experience replay is repeated per
+            one time of online update.
+        replay_start_size (int): Experience replay is disabled if the number of
+            transitions in the replay buffer is lower than this value.
         normalize_loss_by_steps (bool): If set true, losses are normalized by
             the number of steps taken to accumulate the losses
         act_deterministically (bool): If set true, choose most probable actions
             in act method.
+        average_loss_decay (float): Decay rate of average loss. Used only
+            to record statistics.
         average_entropy_decay (float): Decay rate of average entropy. Used only
             to record statistics.
         average_value_decay (float): Decay rate of average value. Used only
             to record statistics.
+        explorer (Explorer or None): If not None, this explorer is used for
+            selecting actions.
+        logger (None or Logger): Logger to be used
+        batch_states (callable): Method which makes a batch of observations.
+            default is `chainerrl.misc.batch_states.batch_states`
+        backprop_future_values (bool): If set True, value gradients are
+            computed not only wrt V(s_t) but also V(s_{t+d}).
+        train_async (bool): If set True, use a process-local model to compute
+            gradients and update the globally shared model.
     """
 
     process_idx = None
@@ -67,8 +97,9 @@ class PCL(agent.AttributeSavingMixin, agent.AsyncAgent):
                  t_max=None,
                  gamma=0.99,
                  tau=1e-2,
-                 process_idx=0, phi=lambda x: x,
-                 pi_loss_coef=1.0, v_loss_coef=0.5,
+                 phi=lambda x: x,
+                 pi_loss_coef=1.0,
+                 v_loss_coef=0.5,
                  rollout_len=10,
                  batchsize=1,
                  disable_online_update=False,
@@ -82,7 +113,7 @@ class PCL(agent.AttributeSavingMixin, agent.AsyncAgent):
                  explorer=None,
                  logger=None,
                  batch_states=batch_states,
-                 backprop_future_values=False,
+                 backprop_future_values=True,
                  train_async=False):
 
         if train_async:
@@ -185,6 +216,9 @@ class PCL(agent.AttributeSavingMixin, agent.AsyncAgent):
 
         pi_loss = chainerrl.functions.sum_arrays(pi_losses) / 2
         v_loss = chainerrl.functions.sum_arrays(v_losses) / 2
+
+        # Re-scale pi loss so that it is independent from tau
+        pi_loss /= self.tau
 
         pi_loss *= self.pi_loss_coef
         v_loss *= self.v_loss_coef
@@ -432,8 +466,9 @@ class PCL(agent.AttributeSavingMixin, agent.AsyncAgent):
 
     def load(self, dirname):
         super().load(dirname)
-        copy_param.copy_param(target_link=self.shared_model,
-                              source_link=self.model)
+        if self.train_async:
+            copy_param.copy_param(target_link=self.shared_model,
+                                  source_link=self.model)
 
     def get_statistics(self):
         return [

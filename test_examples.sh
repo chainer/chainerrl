@@ -42,6 +42,11 @@ python examples/gym/train_acer_gym.py 4 --steps 100 --outdir $outdir/gym/acer
 model=$(find $outdir/gym/acer -name "*_finish")
 python examples/gym/train_acer_gym.py 4 --demo --load $model --eval-n-runs 1
 
+# gym/pcl
+python examples/gym/train_pcl_gym.py --steps 100 --outdir $outdir/gym/pcl --gpu $gpu
+model=$(find $outdir/gym/pcl -name "*_finish")
+python examples/gym/train_pcl_gym.py --demo --load $model --eval-n-runs 1 --gpu $gpu
+
 # gym/ddpg (specify non-mujoco env to test without mujoco)
 python examples/gym/train_ddpg_gym.py --steps 100 --replay-start-size 50 --minibatch-size 32 --outdir $outdir/gym/ddpg --env Pendulum-v0 --gpu $gpu
 model=$(find $outdir/gym/ddpg -name "*_finish")

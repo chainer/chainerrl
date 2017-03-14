@@ -241,7 +241,7 @@ def batch_experiences(experiences, xp, phi, batch_states=batch_states):
             dtype=np.float32)}
 
 
-class ReplayUpdator(object):
+class ReplayUpdater(object):
     """Object that handles update schedule and configurations.
 
     Args:
