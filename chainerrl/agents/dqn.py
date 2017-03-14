@@ -71,9 +71,7 @@ def compute_weighted_value_loss(y, t, weights,
         t (Variable or ndarray): Target values.
         weights (ndarray): Weights for y, t.
         clip_delta (bool): Use the Huber loss function if set True.
-        batch_accumulator (str): 'mean' or 'sum'.
-            'mean' will use the normalized weights.
-            'sum' will use the unnormalized weights.
+        batch_accumulator (str): 'mean' will devide loss by batchsize
     Returns:
         (Variable) scalar loss
     """
@@ -87,7 +85,7 @@ def compute_weighted_value_loss(y, t, weights,
     losses = F.reshape(losses, (-1,))
     loss_sum = F.sum(losses * weights)
     if batch_accumulator == 'mean':
-        loss = loss_sum / sum(weights)
+        loss = loss_sum / y.shape[0]
     elif batch_accumulator == 'sum':
         loss = loss_sum
     return loss
@@ -255,11 +253,9 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
             for _ in episodes:
                 errors_out.append(0.0)
             errors_out_step = []
-            # print('----------------------------------------------------')
         with state_reset(self.model):
             with state_reset(self.target_model):
                 loss = 0
-                # sorted_episodes = list(reversed(sorted(episodes, key=len)))
                 tmp = list(reversed(sorted(
                     enumerate(episodes), key=lambda x: len(x[1]))))
                 sorted_episodes = [elem[1] for elem in tmp]
@@ -286,7 +282,6 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
                     loss += self._compute_loss(batch, self.gamma,
                                                errors_out=errors_out_step)
                     if errors_out is not None:
-                        # print(errors_out_step)
                         for err, index in zip(errors_out_step, indices):
                             errors_out[index] += err
                 loss /= max_epi_len
@@ -294,8 +289,6 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
                 loss.backward()
                 self.optimizer.update()
         if has_weights:
-            # print(errors_out)
-            # print('----------------------------------------------------')
             self.replay_buffer.update_errors(errors_out)
 
     def _compute_target_values(self, exp_batch, gamma):

@@ -57,44 +57,74 @@ class ReplayBuffer(object):
         pass
 
 
-class PrioritizedReplayBuffer(ReplayBuffer):
+class PriorityWeightError(object):
+    """For propotional prioritization
+
+    Args:
+        alpha (float): A hyperparameter that determines how much
+            prioritization is used
+        beta0, betasteps (float): Schedule of beta.  beta determines how much
+            importance sampling weights are used.
+        eps (float): To revisit a step after its error becomes near zero
+        normalize_by_max (bool): normalize weights by maximum priority
+            of a batch.
+    """
+
+    def __init__(self, alpha, beta0, betasteps, eps, normalize_by_max):
+        assert 0.0 <= alpha
+        assert 0.0 <= beta0 <= 1.0
+        self.alpha = alpha
+        self.beta = beta0
+        self.beta_add = (1.0 - beta0) / betasteps
+        self.eps = eps
+        self.normalize_by_max = normalize_by_max
+
+    def priority_from_errors(self, errors):
+        return [d ** self.alpha + self.eps for d in errors]
+
+    def weights_from_probabilities(self, probabilities):
+        tmp = [p for p in probabilities if p is not None]
+        minp = min(tmp) if tmp else 1.0
+        probabilities = [minp if p is None else p for p in probabilities]
+        if self.normalize_by_max:
+            weights = [(p / minp) ** -self.beta for p in probabilities]
+        else:
+            weights = [(len(self.memory) * p) ** -self.beta
+                       for p in probabilities]
+        self.beta = min(1.0, self.beta + self.beta_add)
+        return weights
+
+
+class PrioritizedReplayBuffer(ReplayBuffer, PriorityWeightError):
     """Stochastic Prioritization
 
     https://arxiv.org/pdf/1511.05952.pdf \S3.3
     propotional prioritization
+
+    Args:
+        capacity (int)
+        alpha, beta0, betasteps, eps (float)
+        normalize_by_max (bool)
     """
 
     def __init__(self, capacity=None,
-                 alpha=0.6, beta0=0.4, betastep=3e-6, eps=1e-8):
-        # anneal beta in 200,000 steps [citation needed]
-        self.alpha = alpha
-        self.beta = beta0
-        self.betastep = betastep
-        self.eps = eps
+                 alpha=0.6, beta0=0.4, betasteps=2e5, eps=1e-8,
+                 normalize_by_max=True):
         self.memory = PrioritizedBuffer(capacity=capacity)
-
-    """
-    def append(self, state, action, reward, next_state=None, next_action=None,
-               is_state_terminal=False):
-    """
+        PriorityWeightError.__init__(
+            self, alpha, beta0, betasteps, eps, normalize_by_max)
 
     def sample(self, n):
         """Sample n unique samples from this replay buffer"""
         assert len(self.memory) >= n
         sampled, probabilities = self.memory.sample(n)
-        tmp = [p for p in probabilities if p is not None]
-        minp = min(tmp) if len(tmp) > 0 else 1.0
-        weights = [(minp if p is None else p) ** -self.beta
-                   for p in probabilities]
-        self.beta = min(1.0, self.beta + self.betastep)
-        # return sampled, {'weights': weights}
+        weights = self.weights_from_probabilities(probabilities)
         for e, w in zip(sampled, weights):
             e['weight'] = w
         return sampled
 
     def update_errors(self, errors):
-        priority = [d ** self.alpha + self.eps for d in errors]
-        self.memory.set_last_priority(priority)
+        self.memory.set_last_priority(self.priority_from_errors(errors))
 
 
 def random_subseq(seq, subseq_len):
@@ -170,46 +200,31 @@ class EpisodicReplayBuffer(object):
         assert not self.current_episode
 
 
-class PrioritizedEpisodicReplayBuffer (EpisodicReplayBuffer):
+class PrioritizedEpisodicReplayBuffer (
+        EpisodicReplayBuffer, PriorityWeightError):
 
-    def __init__(self, capacity,
-                 alpha=0.6, beta0=0.4, betastep=3e-6, eps=1e-8):
-        # anneal beta in 200,000 steps [citation needed]
-        self.alpha = alpha
-        self.beta = beta0
-        self.betastep = betastep
-        self.eps = eps
-
+    def __init__(self, capacity=None,
+                 alpha=0.6, beta0=0.4, betasteps=2e5, eps=1e-8,
+                 normalize_by_max=True):
         self.current_episode = []
         self.episodic_memory = PrioritizedBuffer(capacity=None)
         self.memory = deque(maxlen=capacity)
         self.capacity_left = capacity
-
-    """
-    def append(self, state, action, reward, next_state=None, next_action=None,
-               is_state_terminal=False, **kwargs):
-    """
+        PriorityWeightError.__init__(
+            self, alpha, beta0, betasteps, eps, normalize_by_max)
 
     def sample_episodes(self, n_episodes, max_len=None):
         """Sample n unique samples from this replay buffer"""
         assert len(self.episodic_memory) >= n_episodes
         episodes, probabilities = self.episodic_memory.sample(n_episodes)
-        tmp = [p for p in probabilities if p is not None]
-        minp = min(tmp) if len(tmp) > 0 else 1.0
-        weights = [(minp if p is None else p) ** -self.beta
-                   for p in probabilities]
-        self.beta = min(1.0, self.beta + self.betastep)
+        weights = self.weights_from_probabilities(probabilities)
         if max_len is not None:
             episodes = [random_subseq(ep, max_len) for ep in episodes]
         return episodes, weights
-        # for ep, w in zip(episodes, weights):
-        #     for e in ep:
-        #         e['weight'] = w
-        # return episodes
 
     def update_errors(self, errors):
-        priority = [d ** self.alpha + self.eps for d in errors]
-        self.episodic_memory.set_last_priority(priority)
+        self.episodic_memory.set_last_priority(
+            self.priority_from_errors(errors))
 
     def stop_current_episode(self):
         if self.current_episode:
