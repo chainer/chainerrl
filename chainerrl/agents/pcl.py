@@ -270,6 +270,11 @@ class PCL(agent.AttributeSavingMixin, agent.AsyncAgent):
 
         episodes = self.replay_buffer.sample_episodes(
             self.batchsize, max_len=self.t_max)
+        if isinstance(episodes, tuple):
+            # Prioritized replay
+            episodes, weights = episodes
+        else:
+            weights = [1] * len(episodes)
         sorted_episodes = list(reversed(sorted(episodes, key=len)))
         max_epi_len = len(sorted_episodes[0])
 
@@ -326,7 +331,8 @@ class PCL(agent.AttributeSavingMixin, agent.AsyncAgent):
                     values=e_values,
                     next_values=e_next_values,
                     log_probs=e_log_probs))
-            loss = chainerrl.functions.sum_arrays(losses) / self.batchsize
+            loss = chainerrl.functions.weighted_sum_arrays(
+                losses, weights) / self.batchsize
             self.update(loss)
 
     def update_on_policy(self, statevar):
