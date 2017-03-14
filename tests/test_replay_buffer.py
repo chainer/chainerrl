@@ -85,7 +85,7 @@ class TestReplayBuffer(unittest.TestCase):
             self.assertEqual(s2[1], trans1)
 
 
-class PrioritizedReplayBuffer(unittest.TestCase):
+class TestPrioritizedReplayBuffer(unittest.TestCase):
 
     def test_append_and_sample(self):
         rbuf = replay_buffer.PrioritizedReplayBuffer(100)
