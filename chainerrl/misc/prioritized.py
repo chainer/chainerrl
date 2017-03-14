@@ -15,6 +15,8 @@ class PrioritizedBuffer (object):
     def append(self, value):
         # new values are the most prioritized
         self.data_inf.append(value)
+        if len(self) > self.capacity:
+            self.pop()
 
     def _pop_random_data_inf(self):
         assert self.data_inf
@@ -49,18 +51,12 @@ class PrioritizedBuffer (object):
         indices, probabilities = self.priority_tree.prioritized_sample(
             n-len(self.data_inf), remove=True)
         sampled = []
-        # There are no duplicates in sampled.
-        # There may be duplicates in indices.
-        #   (The last one among the duplicates is surviving.)
         for i in indices:
             sampled.append(self.data[i])
         while len(sampled) < n and len(self.data_inf) > 0:
             i = len(self.data)
             e = self._pop_random_data_inf()
             self.data.append(e)
-            if self.capacity is not None and i >= self.capacity:
-                # overwrite randomly
-                i = random.randrange(0, self.capacity)
             del self.priority_tree[i]
             indices.append(i)
             probabilities.append(None)
