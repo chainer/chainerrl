@@ -85,7 +85,7 @@ class TestReplayBuffer(unittest.TestCase):
             self.assertEqual(s2[1], trans1)
 
 
-class PrioritizedReplayBuffer(unittest.TestCase):
+class TestPrioritizedReplayBuffer(unittest.TestCase):
 
     def test_append_and_sample(self):
         rbuf = replay_buffer.PrioritizedReplayBuffer(100)
@@ -129,6 +129,23 @@ class PrioritizedReplayBuffer(unittest.TestCase):
         # Weights should be equal for the same TD-errors
         s4 = rbuf.sample(2)
         self.assertAlmostEqual(s4[0]['weight'], s4[1]['weight'])
+
+    def test_capacity(self):
+        capacity = 10
+        rbuf = replay_buffer.PrioritizedReplayBuffer(capacity)
+        # Fill the buffer
+        for _ in range(capacity):
+            trans1 = dict(state=0, action=1, reward=2, next_state=3,
+                          next_action=4, is_state_terminal=True)
+            rbuf.append(**trans1)
+        self.assertEqual(len(rbuf), capacity)
+
+        # Add a new transition
+        trans2 = dict(state=1, action=1, reward=2, next_state=3,
+                      next_action=4, is_state_terminal=True)
+        rbuf.append(**trans2)
+        # The size should not change
+        self.assertEqual(len(rbuf), capacity)
 
     @unittest.expectedFailure
     def test_fail_noupdate(self):
