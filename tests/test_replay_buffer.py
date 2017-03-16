@@ -15,7 +15,12 @@ from chainerrl import replay_buffer
 class TestReplayBuffer(unittest.TestCase):
 
     def test_append_and_sample(self):
-        rbuf = replay_buffer.ReplayBuffer(100)
+        for capacity in [100, None]:
+            with self.subTest(capacity=capacity):
+                self.subtest_append_and_sample(capacity)
+
+    def subtest_append_and_sample(self, capacity):
+        rbuf = replay_buffer.ReplayBuffer(capacity)
 
         self.assertEqual(len(rbuf), 0)
 
@@ -43,10 +48,15 @@ class TestReplayBuffer(unittest.TestCase):
             self.assertEqual(s2[1], trans1)
 
     def test_save_and_load(self):
+        for capacity in [100, None]:
+            with self.subTest(capacity=capacity):
+                self.subtest_append_and_sample(capacity)
+
+    def subtest_save_and_load(self, capacity):
 
         tempdir = tempfile.mkdtemp()
 
-        rbuf = replay_buffer.ReplayBuffer(100)
+        rbuf = replay_buffer.ReplayBuffer(capacity)
 
         # Add two transitions
         trans1 = dict(state=0, action=1, reward=2, next_state=3,
@@ -64,7 +74,7 @@ class TestReplayBuffer(unittest.TestCase):
         rbuf.save(filename)
 
         # Initialize rbuf
-        rbuf = replay_buffer.ReplayBuffer(100)
+        rbuf = replay_buffer.ReplayBuffer(capacity)
 
         # Of course it has no transition yet
         self.assertEqual(len(rbuf), 0)
@@ -88,7 +98,12 @@ class TestReplayBuffer(unittest.TestCase):
 class TestPrioritizedReplayBuffer(unittest.TestCase):
 
     def test_append_and_sample(self):
-        rbuf = replay_buffer.PrioritizedReplayBuffer(100)
+        for capacity in [100, None]:
+            with self.subTest(capacity=capacity):
+                self.subtest_append_and_sample(capacity)
+
+    def subtest_append_and_sample(self, capacity):
+        rbuf = replay_buffer.PrioritizedReplayBuffer(capacity)
 
         self.assertEqual(len(rbuf), 0)
 
@@ -165,10 +180,15 @@ class TestPrioritizedReplayBuffer(unittest.TestCase):
         # This must not fail.
 
     def test_save_and_load(self):
+        for capacity in [100, None]:
+            with self.subTest(capacity=capacity):
+                self.subtest_append_and_sample(capacity)
+
+    def subtest_save_and_load(self, capacity):
 
         tempdir = tempfile.mkdtemp()
 
-        rbuf = replay_buffer.PrioritizedReplayBuffer(100)
+        rbuf = replay_buffer.PrioritizedReplayBuffer(capacity)
 
         # Add two transitions
         trans1 = dict(state=0, action=1, reward=2, next_state=3,
@@ -186,7 +206,7 @@ class TestPrioritizedReplayBuffer(unittest.TestCase):
         rbuf.save(filename)
 
         # Initialize rbuf
-        rbuf = replay_buffer.PrioritizedReplayBuffer(100)
+        rbuf = replay_buffer.PrioritizedReplayBuffer(capacity)
 
         # Of course it has no transition yet
         self.assertEqual(len(rbuf), 0)
