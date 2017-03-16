@@ -15,7 +15,7 @@ class PrioritizedBuffer (object):
     def append(self, value):
         # new values are the most prioritized
         self.data_inf.append(value)
-        if len(self) > self.capacity:
+        if self.capacity is not None and len(self) > self.capacity:
             self.pop()
 
     def _pop_random_data_inf(self):
@@ -42,7 +42,8 @@ class PrioritizedBuffer (object):
         self.priority_tree[i] = self.priority_tree[n-1]
         del self.priority_tree[n-1]
         ret = self.data[i]
-        self.data[i] = self.data.pop()
+        self.data[i] = self.data[n-1]
+        del self.data[n-1]
         return ret
 
     def sample(self, n):

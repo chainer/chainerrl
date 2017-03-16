@@ -51,6 +51,16 @@ class TestPrioritizedBuffer(unittest.TestCase):
         corr = np.corrcoef(np.array([priority_init, count_sampled]))[0, 1]
         self.assertGreater(corr, 0.8)
 
+    def test_flood(self):
+        buf = prioritized.PrioritizedBuffer(capacity=10)
+        for _ in range(100):
+            for x in range(30):
+                buf.append(x)
+            for _ in range(5):
+                n = random.randrange(1, 11)
+                buf.sample(n)
+                buf.set_last_priority([1.0]*n)
+
 
 class TestSumTree(unittest.TestCase):
 
