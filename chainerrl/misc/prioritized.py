@@ -42,7 +42,8 @@ class PrioritizedBuffer (object):
         self.priority_tree[i] = self.priority_tree[n-1]
         del self.priority_tree[n-1]
         ret = self.data[i]
-        self.data[i] = self.data.pop()
+        self.data[i] = self.data[n-1]
+        del self.data[n-1]
         return ret
 
     def sample(self, n):
