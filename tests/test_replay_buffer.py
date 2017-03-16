@@ -16,8 +16,7 @@ class TestReplayBuffer(unittest.TestCase):
 
     def test_append_and_sample(self):
         for capacity in [100, None]:
-            with self.subTest(capacity=capacity):
-                self.subtest_append_and_sample(capacity)
+            self.subtest_append_and_sample(capacity)
 
     def subtest_append_and_sample(self, capacity):
         rbuf = replay_buffer.ReplayBuffer(capacity)
@@ -49,8 +48,7 @@ class TestReplayBuffer(unittest.TestCase):
 
     def test_save_and_load(self):
         for capacity in [100, None]:
-            with self.subTest(capacity=capacity):
-                self.subtest_append_and_sample(capacity)
+            self.subtest_append_and_sample(capacity)
 
     def subtest_save_and_load(self, capacity):
 
@@ -99,8 +97,7 @@ class TestEpisodicReplayBuffer(unittest.TestCase):
 
     def test_append_and_sample(self):
         for capacity in [100, None]:
-            with self.subTest(capacity=capacity):
-                self.subtest_append_and_sample(capacity)
+            self.subtest_append_and_sample(capacity)
 
     def subtest_append_and_sample(self, capacity):
         rbuf = replay_buffer.EpisodicReplayBuffer(capacity)
@@ -133,8 +130,7 @@ class TestPrioritizedReplayBuffer(unittest.TestCase):
 
     def test_append_and_sample(self):
         for capacity in [100, None]:
-            with self.subTest(capacity=capacity):
-                self.subtest_append_and_sample(capacity)
+            self.subtest_append_and_sample(capacity)
 
     def subtest_append_and_sample(self, capacity):
         rbuf = replay_buffer.PrioritizedReplayBuffer(capacity)
@@ -215,8 +211,7 @@ class TestPrioritizedReplayBuffer(unittest.TestCase):
 
     def test_save_and_load(self):
         for capacity in [100, None]:
-            with self.subTest(capacity=capacity):
-                self.subtest_append_and_sample(capacity)
+            self.subtest_append_and_sample(capacity)
 
     def subtest_save_and_load(self, capacity):
 
@@ -267,8 +262,7 @@ class TestPrioritizedEpisodicReplayBuffer(unittest.TestCase):
 
     def test_append_and_sample(self):
         for capacity in [100, None]:
-            with self.subTest(capacity=capacity):
-                self.subtest_append_and_sample(capacity)
+            self.subtest_append_and_sample(capacity)
 
     def subtest_append_and_sample(self, capacity):
         rbuf = replay_buffer.PrioritizedEpisodicReplayBuffer(capacity)
