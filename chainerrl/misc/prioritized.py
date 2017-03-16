@@ -15,7 +15,7 @@ class PrioritizedBuffer (object):
     def append(self, value):
         # new values are the most prioritized
         self.data_inf.append(value)
-        if len(self) > self.capacity:
+        if self.capacity is not None and len(self) > self.capacity:
             self.pop()
 
     def _pop_random_data_inf(self):
