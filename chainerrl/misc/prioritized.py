@@ -1,4 +1,5 @@
 import random
+import numpy as np
 
 
 class PrioritizedBuffer (object):
@@ -55,24 +56,32 @@ class PrioritizedBuffer (object):
         del self.data[n - 1]
         return ret
 
-    def sample(self, n):
+    def _sample_indices_and_probabilities(self, n):
         assert 0 <= n <= len(self)
-        assert (not self.wait_priority_after_sampling or
-                not self.flag_wait_priority)
         indices, probabilities = self.priority_tree.prioritized_sample(
             max(0, n - len(self.data_inf)),
             remove=self.wait_priority_after_sampling)
-        sampled = []
-        for i in indices:
-            sampled.append(self.data[i])
-        while len(sampled) < n and len(self.data_inf) > 0:
+        while len(indices) < n:
             i = len(self.data)
             e = self._pop_random_data_inf()
             self.data.append(e)
             del self.priority_tree[i]
             indices.append(i)
             probabilities.append(None)
-            sampled.append(self.data[i])
+        return indices, probabilities
+
+    def sample(self, n, uniform_ratio=0):
+        assert (not self.wait_priority_after_sampling or
+                not self.flag_wait_priority)
+        n_uniform = np.random.binomial(n, uniform_ratio)
+        n_prioritized = n - n_uniform
+        pr_indices, pr_probs = self._sample_indices_and_probabilities(
+            n_prioritized)
+        un_indices, un_probs = self._uniform_sample_indices_and_probabilities(
+            n_uniform)
+        indices = pr_indices + un_indices
+        probabilities = pr_probs + un_probs
+        sampled = [self.data[i] for i in indices]
         self.sampled_indices = indices
         self.flag_wait_priority = True
         return sampled, probabilities
@@ -85,6 +94,20 @@ class PrioritizedBuffer (object):
         for i, p in zip(self.sampled_indices, priority):
             self.priority_tree[i] = p
         self.flag_wait_priority = False
+        self.sampled_indices = []
+
+    def _uniform_sample_indices_and_probabilities(self, n):
+        indices = random.sample(range(len(self.data)),
+                                max(0, n - len(self.data_inf)))
+        probabilities = [1 / len(self)] * len(indices)
+        while len(indices) < n:
+            i = len(self.data)
+            e = self._pop_random_data_inf()
+            self.data.append(e)
+            del self.priority_tree[i]
+            indices.append(i)
+            probabilities.append(None)
+        return indices, probabilities
 
 
 class SumTree (object):

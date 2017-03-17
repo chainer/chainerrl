@@ -59,6 +59,7 @@ class TestPrioritizedBuffer(unittest.TestCase):
         'capacity': [1, 10],
         'wait_priority_after_sampling': [True, False],
         'initial_priority': [0.1, 1],
+        'uniform_ratio': [0, 0.1, 1],
     })
 )
 class TestPrioritizedBufferFlooding(unittest.TestCase):
@@ -75,7 +76,7 @@ class TestPrioritizedBufferFlooding(unittest.TestCase):
                     buf.append(x, priority=self.initial_priority)
             for _ in range(5):
                 n = random.randrange(1, self.capacity + 1)
-                buf.sample(n)
+                buf.sample(n, uniform_ratio=self.uniform_ratio)
                 if self.wait_priority_after_sampling:
                     buf.set_last_priority([1.0] * n)
 
