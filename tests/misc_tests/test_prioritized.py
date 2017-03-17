@@ -9,6 +9,8 @@ import unittest
 import numpy as np
 import random
 
+from chainer import testing
+
 from chainerrl.misc import prioritized
 
 
@@ -23,10 +25,10 @@ class TestPrioritizedBuffer(unittest.TestCase):
 
         priority_init = list(range(size))
         random.shuffle(priority_init)
-        count_sampled = [0]*size
+        count_sampled = [0] * size
 
         def priority(x, n):
-            return priority_init[x]+1 / count_sampled[x]
+            return priority_init[x] + 1 / count_sampled[x]
 
         count_none = 0
         for t in range(200):
@@ -34,7 +36,7 @@ class TestPrioritizedBuffer(unittest.TestCase):
             if all([p is not None for p in probabilities]):
                 priority_old = [priority(x, count_sampled[x]) for x in sampled]
                 # assert: probabilities \propto priority_old
-                qs = [x/y for x, y in zip(probabilities, priority_old)]
+                qs = [x / y for x, y in zip(probabilities, priority_old)]
                 for q in qs:
                     self.assertAlmostEqual(q, qs[0])
             else:
@@ -46,20 +48,36 @@ class TestPrioritizedBuffer(unittest.TestCase):
 
         for cnt in count_sampled:
             self.assertGreaterEqual(cnt, 1)
-        self.assertLessEqual(count_none, size//16 + 1)
+        self.assertLessEqual(count_none, size // 16 + 1)
 
         corr = np.corrcoef(np.array([priority_init, count_sampled]))[0, 1]
         self.assertGreater(corr, 0.8)
 
+
+@testing.parameterize(
+    *testing.product({
+        'capacity': [1, 10],
+        'wait_priority_after_sampling': [True, False],
+        'initial_priority': [0.1, 1],
+    })
+)
+class TestPrioritizedBufferFlooding(unittest.TestCase):
+
     def test_flood(self):
-        buf = prioritized.PrioritizedBuffer(capacity=10)
+        buf = prioritized.PrioritizedBuffer(
+            capacity=self.capacity,
+            wait_priority_after_sampling=self.wait_priority_after_sampling)
         for _ in range(100):
-            for x in range(30):
-                buf.append(x)
+            for x in range(self.capacity + 1):
+                if self.wait_priority_after_sampling:
+                    buf.append(x)
+                else:
+                    buf.append(x, priority=self.initial_priority)
             for _ in range(5):
-                n = random.randrange(1, 11)
+                n = random.randrange(1, self.capacity + 1)
                 buf.sample(n)
-                buf.set_last_priority([1.0]*n)
+                if self.wait_priority_after_sampling:
+                    buf.set_last_priority([1.0] * n)
 
 
 class TestSumTree(unittest.TestCase):
