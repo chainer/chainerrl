@@ -15,7 +15,11 @@ from chainerrl import replay_buffer
 class TestReplayBuffer(unittest.TestCase):
 
     def test_append_and_sample(self):
-        rbuf = replay_buffer.ReplayBuffer(100)
+        for capacity in [100, None]:
+            self.subtest_append_and_sample(capacity)
+
+    def subtest_append_and_sample(self, capacity):
+        rbuf = replay_buffer.ReplayBuffer(capacity)
 
         self.assertEqual(len(rbuf), 0)
 
@@ -43,10 +47,14 @@ class TestReplayBuffer(unittest.TestCase):
             self.assertEqual(s2[1], trans1)
 
     def test_save_and_load(self):
+        for capacity in [100, None]:
+            self.subtest_append_and_sample(capacity)
+
+    def subtest_save_and_load(self, capacity):
 
         tempdir = tempfile.mkdtemp()
 
-        rbuf = replay_buffer.ReplayBuffer(100)
+        rbuf = replay_buffer.ReplayBuffer(capacity)
 
         # Add two transitions
         trans1 = dict(state=0, action=1, reward=2, next_state=3,
@@ -64,7 +72,7 @@ class TestReplayBuffer(unittest.TestCase):
         rbuf.save(filename)
 
         # Initialize rbuf
-        rbuf = replay_buffer.ReplayBuffer(100)
+        rbuf = replay_buffer.ReplayBuffer(capacity)
 
         # Of course it has no transition yet
         self.assertEqual(len(rbuf), 0)
@@ -85,10 +93,47 @@ class TestReplayBuffer(unittest.TestCase):
             self.assertEqual(s2[1], trans1)
 
 
+class TestEpisodicReplayBuffer(unittest.TestCase):
+
+    def test_append_and_sample(self):
+        for capacity in [100, None]:
+            self.subtest_append_and_sample(capacity)
+
+    def subtest_append_and_sample(self, capacity):
+        rbuf = replay_buffer.EpisodicReplayBuffer(capacity)
+
+        for n in [10, 15, 5]*3:
+            transs = [dict(state=i, action=100+i, reward=200+i,
+                           next_state=i+1, next_action=101+i,
+                           is_state_terminal=(i == n-1))
+                      for i in range(n)]
+            for trans in transs:
+                rbuf.append(**trans)
+
+        for k in [10, 30, 90]:
+            s = rbuf.sample(k)
+            self.assertEqual(len(s), k)
+
+        for k in [1, 3, 9]:
+            s = rbuf.sample_episodes(k)
+            self.assertEqual(len(s), k)
+
+            s = rbuf.sample_episodes(k, max_len=10)
+            for ep in s:
+                self.assertLessEqual(len(ep), 10)
+                for t0, t1 in zip(ep, ep[1:]):
+                    self.assertEqual(t0['next_state'], t1['state'])
+                    self.assertEqual(t0['next_action'], t1['action'])
+
+
 class TestPrioritizedReplayBuffer(unittest.TestCase):
 
     def test_append_and_sample(self):
-        rbuf = replay_buffer.PrioritizedReplayBuffer(100)
+        for capacity in [100, None]:
+            self.subtest_append_and_sample(capacity)
+
+    def subtest_append_and_sample(self, capacity):
+        rbuf = replay_buffer.PrioritizedReplayBuffer(capacity)
 
         self.assertEqual(len(rbuf), 0)
 
@@ -165,10 +210,14 @@ class TestPrioritizedReplayBuffer(unittest.TestCase):
         # This must not fail.
 
     def test_save_and_load(self):
+        for capacity in [100, None]:
+            self.subtest_append_and_sample(capacity)
+
+    def subtest_save_and_load(self, capacity):
 
         tempdir = tempfile.mkdtemp()
 
-        rbuf = replay_buffer.PrioritizedReplayBuffer(100)
+        rbuf = replay_buffer.PrioritizedReplayBuffer(capacity)
 
         # Add two transitions
         trans1 = dict(state=0, action=1, reward=2, next_state=3,
@@ -186,7 +235,7 @@ class TestPrioritizedReplayBuffer(unittest.TestCase):
         rbuf.save(filename)
 
         # Initialize rbuf
-        rbuf = replay_buffer.PrioritizedReplayBuffer(100)
+        rbuf = replay_buffer.PrioritizedReplayBuffer(capacity)
 
         # Of course it has no transition yet
         self.assertEqual(len(rbuf), 0)
@@ -207,3 +256,41 @@ class TestPrioritizedReplayBuffer(unittest.TestCase):
         else:
             self.assertEqual(s2[0], trans2)
             self.assertEqual(s2[1], trans1)
+
+
+class TestPrioritizedEpisodicReplayBuffer(unittest.TestCase):
+
+    def test_append_and_sample(self):
+        for capacity in [100, None]:
+            self.subtest_append_and_sample(capacity)
+
+    def subtest_append_and_sample(self, capacity):
+        rbuf = replay_buffer.PrioritizedEpisodicReplayBuffer(capacity)
+
+        for n in [10, 15, 5]*3:
+            transs = [dict(state=i, action=100+i, reward=200+i,
+                           next_state=i+1, next_action=101+i,
+                           is_state_terminal=(i == n-1))
+                      for i in range(n)]
+            for trans in transs:
+                rbuf.append(**trans)
+
+        for k in [10, 30, 90]:
+            s = rbuf.sample(k)
+            self.assertEqual(len(s), k)
+
+        for k in [1, 3, 9]:
+            s, wt = rbuf.sample_episodes(k)
+            self.assertEqual(len(s), k)
+            self.assertEqual(len(wt), k)
+            rbuf.update_errors([1.0]*k)
+
+            s, wt = rbuf.sample_episodes(k, max_len=10)
+            self.assertEqual(len(s), k)
+            self.assertEqual(len(wt), k)
+            rbuf.update_errors([1.0]*k)
+            for ep in s:
+                self.assertLessEqual(len(ep), 10)
+                for t0, t1 in zip(ep, ep[1:]):
+                    self.assertEqual(t0['next_state'], t1['state'])
+                    self.assertEqual(t0['next_action'], t1['action'])

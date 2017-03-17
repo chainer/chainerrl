@@ -17,7 +17,7 @@ from chainerrl.misc.prioritized import PrioritizedBuffer
 
 class ReplayBuffer(object):
 
-    def __init__(self, capacity):
+    def __init__(self, capacity=None):
         self.memory = deque(maxlen=capacity)
 
     def append(self, state, action, reward, next_state=None, next_action=None,
@@ -137,7 +137,7 @@ def random_subseq(seq, subseq_len):
 
 class EpisodicReplayBuffer(object):
 
-    def __init__(self, capacity):
+    def __init__(self, capacity=None):
         self.current_episode = []
         self.episodic_memory = deque()
         self.memory = deque()
@@ -193,7 +193,8 @@ class EpisodicReplayBuffer(object):
             self.episodic_memory.append(self.current_episode)
             self.memory.extend(self.current_episode)
             self.current_episode = []
-            while len(self.memory) > self.capacity:
+            while self.capacity is not None and \
+                    len(self.memory) > self.capacity:
                 discarded_episode = self.episodic_memory.popleft()
                 for _ in range(len(discarded_episode)):
                     self.memory.popleft()
@@ -230,9 +231,10 @@ class PrioritizedEpisodicReplayBuffer (
         if self.current_episode:
             self.memory.extend(self.current_episode)
             self.episodic_memory.append(self.current_episode)
-            self.capacity_left -= len(self.current_episode)
+            if self.capacity_left is not None:
+                self.capacity_left -= len(self.current_episode)
             self.current_episode = []
-            while self.capacity_left < 0:
+            while self.capacity_left is not None and self.capacity_left < 0:
                 discarded_episode = self.episodic_memory.pop()
                 self.capacity_left += len(discarded_episode)
         assert not self.current_episode
