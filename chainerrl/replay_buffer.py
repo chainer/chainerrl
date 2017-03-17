@@ -75,7 +75,10 @@ class PriorityWeightError(object):
         assert 0.0 <= beta0 <= 1.0
         self.alpha = alpha
         self.beta = beta0
-        self.beta_add = (1.0 - beta0) / betasteps
+        if betasteps is None:
+            self.beta_add = 0
+        else:
+            self.beta_add = (1.0 - beta0) / betasteps
         self.eps = eps
         self.normalize_by_max = normalize_by_max
 
