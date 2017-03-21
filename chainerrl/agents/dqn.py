@@ -62,6 +62,35 @@ def compute_value_loss(y, t, clip_delta=True, batch_accumulator='mean'):
     return loss
 
 
+def compute_weighted_value_loss(y, t, weights,
+                                clip_delta=True, batch_accumulator='mean'):
+    """Compute a loss for value prediction problem.
+
+    Args:
+        y (Variable or ndarray): Predicted values.
+        t (Variable or ndarray): Target values.
+        weights (ndarray): Weights for y, t.
+        clip_delta (bool): Use the Huber loss function if set True.
+        batch_accumulator (str): 'mean' will devide loss by batchsize
+    Returns:
+        (Variable) scalar loss
+    """
+    assert batch_accumulator in ('mean', 'sum')
+    y = F.reshape(y, (-1, 1))
+    t = F.reshape(t, (-1, 1))
+    if clip_delta:
+        losses = F.huber_loss(y, t, delta=1.0)
+    else:
+        losses = F.square(y - t) / 2
+    losses = F.reshape(losses, (-1,))
+    loss_sum = F.sum(losses * weights)
+    if batch_accumulator == 'mean':
+        loss = loss_sum / y.shape[0]
+    elif batch_accumulator == 'sum':
+        loss = loss_sum
+    return loss
+
+
 class DQN(agent.AttributeSavingMixin, agent.Agent):
     """Deep Q-Network algorithm.
 
@@ -186,10 +215,19 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
           None
         """
 
+        has_weight = 'weight' in experiences[0]
         exp_batch = batch_experiences(experiences, xp=self.xp, phi=self.phi,
                                       batch_states=self.batch_states)
+        if has_weight:
+            exp_batch['weights'] = self.xp.asarray(
+                [elem['weight'] for elem in experiences],
+                dtype=self.xp.float32)
+            if errors_out is None:
+                errors_out = []
         loss = self._compute_loss(
             exp_batch, self.gamma, errors_out=errors_out)
+        if has_weight:
+            self.replay_buffer.update_errors(errors_out)
 
         # Update stats
         self.average_loss *= self.average_loss_decay
@@ -203,28 +241,55 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
         self.target_model(batch['state'])
 
     def update_from_episodes(self, episodes, errors_out=None):
+        has_weights = isinstance(episodes, tuple)
+        if has_weights:
+            episodes, weights = episodes
+            if errors_out is None:
+                errors_out = []
+        if errors_out is None:
+            errors_out_step = None
+        else:
+            del errors_out[:]
+            for _ in episodes:
+                errors_out.append(0.0)
+            errors_out_step = []
         with state_reset(self.model):
             with state_reset(self.target_model):
                 loss = 0
-                sorted_episodes = list(reversed(sorted(episodes, key=len)))
+                tmp = list(reversed(sorted(
+                    enumerate(episodes), key=lambda x: len(x[1]))))
+                sorted_episodes = [elem[1] for elem in tmp]
+                indices = [elem[0] for elem in tmp]  # argsort
                 max_epi_len = len(sorted_episodes[0])
                 for i in range(max_epi_len):
                     transitions = []
-                    for ep in sorted_episodes:
+                    weights_step = []
+                    for ep, index in zip(sorted_episodes, indices):
                         if len(ep) <= i:
                             break
                         transitions.append(ep[i])
+                        if has_weights:
+                            weights_step.append(weights[index])
                     batch = batch_experiences(transitions,
                                               xp=self.xp,
                                               phi=self.phi,
                                               batch_states=self.batch_states)
                     if i == 0:
                         self.input_initial_batch_to_target_model(batch)
-                    loss += self._compute_loss(batch, self.gamma)
+                    if has_weights:
+                        batch['weights'] = self.xp.asarray(
+                            weights_step, dtype=self.xp.float32)
+                    loss += self._compute_loss(batch, self.gamma,
+                                               errors_out=errors_out_step)
+                    if errors_out is not None:
+                        for err, index in zip(errors_out_step, indices):
+                            errors_out[index] += err
                 loss /= max_epi_len
                 self.optimizer.zero_grads()
                 loss.backward()
                 self.optimizer.update()
+        if has_weights:
+            self.replay_buffer.update_errors(errors_out)
 
     def _compute_target_values(self, exp_batch, gamma):
 
@@ -277,8 +342,14 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
             for e in delta:
                 errors_out.append(e)
 
-        return compute_value_loss(y, t, clip_delta=self.clip_delta,
-                                  batch_accumulator=self.batch_accumulator)
+        if 'weights' in exp_batch:
+            return compute_weighted_value_loss(
+                y, t, exp_batch['weights'],
+                clip_delta=self.clip_delta,
+                batch_accumulator=self.batch_accumulator)
+        else:
+            return compute_value_loss(y, t, clip_delta=self.clip_delta,
+                                      batch_accumulator=self.batch_accumulator)
 
     def compute_q_values(self, states):
         """Compute Q-values
