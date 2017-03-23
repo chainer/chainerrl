@@ -1,4 +1,12 @@
+from __future__ import unicode_literals
+from __future__ import print_function
+from __future__ import division
+from __future__ import absolute_import
+from builtins import *  # NOQA
+from future import standard_library
+standard_library.install_aliases()
 import random
+
 import numpy as np
 
 
@@ -75,10 +83,12 @@ class PrioritizedBuffer (object):
             # Mix uniform samples and prioritized samples
             n_uniform = np.random.binomial(n, uniform_ratio)
             n_prioritized = n - n_uniform
-            pr_indices, pr_probs = self._prioritized_sample_indices_and_probabilities(
-                n_prioritized)
-            un_indices, un_probs = self._uniform_sample_indices_and_probabilities(
-                n_uniform)
+            pr_indices, pr_probs = \
+                self._prioritized_sample_indices_and_probabilities(
+                    n_prioritized)
+            un_indices, un_probs = \
+                self._uniform_sample_indices_and_probabilities(
+                    n_uniform)
             indices = pr_indices + un_indices
             # Note: when uniform samples and prioritized samples are mixed,
             # resulting probabilities are not the true probabilities for each
