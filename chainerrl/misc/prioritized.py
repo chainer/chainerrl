@@ -56,7 +56,7 @@ class PrioritizedBuffer (object):
         del self.data[n - 1]
         return ret
 
-    def _sample_indices_and_probabilities(self, n):
+    def _prioritized_sample_indices_and_probabilities(self, n):
         assert 0 <= n <= len(self)
         indices, probabilities = self.priority_tree.prioritized_sample(
             max(0, n - len(self.data_inf)),
@@ -70,17 +70,39 @@ class PrioritizedBuffer (object):
             probabilities.append(None)
         return indices, probabilities
 
+    def _sample_indices_and_probabilities(self, n, uniform_ratio):
+        if uniform_ratio > 0:
+            # Mix uniform samples and prioritized samples
+            n_uniform = np.random.binomial(n, uniform_ratio)
+            n_prioritized = n - n_uniform
+            pr_indices, pr_probs = self._prioritized_sample_indices_and_probabilities(
+                n_prioritized)
+            un_indices, un_probs = self._uniform_sample_indices_and_probabilities(
+                n_uniform)
+            indices = pr_indices + un_indices
+            # Note: when uniform samples and prioritized samples are mixed,
+            # resulting probabilities are not the true probabilities for each
+            # entry to be sampled.
+            probabilities = pr_probs + un_probs
+            return indices, probabilities
+        else:
+            # Only prioritized samples
+            return self._prioritized_sample_indices_and_probabilities(n)
+
     def sample(self, n, uniform_ratio=0):
+        """Sample data along with their corresponding probabilities.
+
+        Args:
+            n (int): Number of data to sample.
+            uniform_ratio (float): Ratio of uniformly sampled data.
+        Returns:
+            sampled data (list)
+            probabitilies (list)
+        """
         assert (not self.wait_priority_after_sampling or
                 not self.flag_wait_priority)
-        n_uniform = np.random.binomial(n, uniform_ratio)
-        n_prioritized = n - n_uniform
-        pr_indices, pr_probs = self._sample_indices_and_probabilities(
-            n_prioritized)
-        un_indices, un_probs = self._uniform_sample_indices_and_probabilities(
-            n_uniform)
-        indices = pr_indices + un_indices
-        probabilities = pr_probs + un_probs
+        indices, probabilities = self._sample_indices_and_probabilities(
+            n, uniform_ratio=uniform_ratio)
         sampled = [self.data[i] for i in indices]
         self.sampled_indices = indices
         self.flag_wait_priority = True
