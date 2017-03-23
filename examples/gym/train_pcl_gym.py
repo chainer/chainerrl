@@ -29,6 +29,10 @@ from chainerrl import misc
 from chainerrl.optimizers import rmsprop_async
 
 
+def exp_return_of_episode(episode):
+    return np.exp(sum(x['reward'] for x in episode))
+
+
 def main():
     import logging
 
@@ -58,6 +62,8 @@ def main():
     parser.add_argument('--logger-level', type=int, default=logging.DEBUG)
     parser.add_argument('--monitor', action='store_true')
     parser.add_argument('--train-async', action='store_true', default=False)
+    parser.add_argument('--prioritized-replay', action='store_true',
+                        default=False)
     parser.add_argument('--disable-online-update', action='store_true',
                         default=False)
     parser.add_argument('--backprop-future-values', action='store_true',
@@ -126,6 +132,7 @@ def main():
         )
 
     if not args.train_async and args.gpu >= 0:
+        chainer.cuda.get_device(args.gpu).use()
         model.to_gpu(args.gpu)
 
     if args.train_async:
@@ -134,7 +141,18 @@ def main():
         opt = chainer.optimizers.Adam(alpha=args.lr)
     opt.setup(model)
 
-    replay_buffer = chainerrl.replay_buffer.EpisodicReplayBuffer(10 ** 5)
+    if args.prioritized_replay:
+        replay_buffer = \
+            chainerrl.replay_buffer.PrioritizedEpisodicReplayBuffer(
+                capacity=5 * 10 ** 3,
+                uniform_ratio=0.1,
+                default_priority_func=exp_return_of_episode,
+                wait_priority_after_sampling=False,
+                return_sample_weights=False)
+    else:
+        replay_buffer = chainerrl.replay_buffer.EpisodicReplayBuffer(
+            capacity=5 * 10 ** 3)
+
     agent = chainerrl.agents.PCL(
         model, opt, replay_buffer=replay_buffer,
         t_max=args.t_max, gamma=0.99,

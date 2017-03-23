@@ -9,6 +9,9 @@ import os
 import tempfile
 import unittest
 
+from chainer import testing
+import numpy as np
+
 from chainerrl import replay_buffer
 
 
@@ -102,10 +105,10 @@ class TestEpisodicReplayBuffer(unittest.TestCase):
     def subtest_append_and_sample(self, capacity):
         rbuf = replay_buffer.EpisodicReplayBuffer(capacity)
 
-        for n in [10, 15, 5]*3:
-            transs = [dict(state=i, action=100+i, reward=200+i,
-                           next_state=i+1, next_action=101+i,
-                           is_state_terminal=(i == n-1))
+        for n in [10, 15, 5] * 3:
+            transs = [dict(state=i, action=100 + i, reward=200 + i,
+                           next_state=i + 1, next_action=101 + i,
+                           is_state_terminal=(i == n - 1))
                       for i in range(n)]
             for trans in transs:
                 rbuf.append(**trans)
@@ -258,37 +261,71 @@ class TestPrioritizedReplayBuffer(unittest.TestCase):
             self.assertEqual(s2[1], trans1)
 
 
+def exp_return_of_episode(episode):
+    return sum(np.exp(x['reward']) for x in episode)
+
+
+@testing.parameterize(*(
+    testing.product({
+        'capacity': [100],
+        'wait_priority_after_sampling': [False],
+        'default_priority_func': [exp_return_of_episode],
+        'uniform_ratio': [0, 0.1, 1.0],
+        'return_sample_weights': [True, False],
+    }) +
+    testing.product({
+        'capacity': [100],
+        'wait_priority_after_sampling': [True],
+        'default_priority_func': [None, exp_return_of_episode],
+        'uniform_ratio': [0, 0.1, 1.0],
+        'return_sample_weights': [True, False],
+    })
+))
 class TestPrioritizedEpisodicReplayBuffer(unittest.TestCase):
 
     def test_append_and_sample(self):
-        for capacity in [100, None]:
-            self.subtest_append_and_sample(capacity)
+        rbuf = replay_buffer.PrioritizedEpisodicReplayBuffer(
+            capacity=self.capacity,
+            default_priority_func=self.default_priority_func,
+            uniform_ratio=self.uniform_ratio,
+            wait_priority_after_sampling=self.wait_priority_after_sampling,
+            return_sample_weights=self.return_sample_weights)
 
-    def subtest_append_and_sample(self, capacity):
-        rbuf = replay_buffer.PrioritizedEpisodicReplayBuffer(capacity)
-
-        for n in [10, 15, 5]*3:
-            transs = [dict(state=i, action=100+i, reward=200+i,
-                           next_state=i+1, next_action=101+i,
-                           is_state_terminal=(i == n-1))
+        for n in [10, 15, 5] * 3:
+            transs = [dict(state=i, action=100 + i, reward=200 + i,
+                           next_state=i + 1, next_action=101 + i,
+                           is_state_terminal=(i == n - 1))
                       for i in range(n)]
             for trans in transs:
                 rbuf.append(**trans)
+        self.assertEqual(len(rbuf), 9)
 
         for k in [10, 30, 90]:
             s = rbuf.sample(k)
             self.assertEqual(len(s), k)
 
         for k in [1, 3, 9]:
-            s, wt = rbuf.sample_episodes(k)
-            self.assertEqual(len(s), k)
-            self.assertEqual(len(wt), k)
-            rbuf.update_errors([1.0]*k)
+            ret = rbuf.sample_episodes(k)
+            if self.return_sample_weights:
+                s, wt = ret
+                self.assertEqual(len(s), k)
+                self.assertEqual(len(wt), k)
+            else:
+                s = ret
+                self.assertEqual(len(s), k)
+            if self.wait_priority_after_sampling:
+                rbuf.update_errors([1.0] * k)
 
-            s, wt = rbuf.sample_episodes(k, max_len=10)
-            self.assertEqual(len(s), k)
-            self.assertEqual(len(wt), k)
-            rbuf.update_errors([1.0]*k)
+            ret = rbuf.sample_episodes(k, max_len=10)
+            if self.return_sample_weights:
+                s, wt = ret
+                self.assertEqual(len(s), k)
+                self.assertEqual(len(wt), k)
+            else:
+                s = ret
+            if self.wait_priority_after_sampling:
+                rbuf.update_errors([1.0] * k)
+
             for ep in s:
                 self.assertLessEqual(len(ep), 10)
                 for t0, t1 in zip(ep, ep[1:]):
