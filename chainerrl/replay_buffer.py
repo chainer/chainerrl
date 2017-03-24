@@ -12,11 +12,12 @@ import numpy as np
 import six.moves.cPickle as pickle
 
 from chainerrl.misc.batch_states import batch_states
+from chainerrl.misc.prioritized import PrioritizedBuffer
 
 
 class ReplayBuffer(object):
 
-    def __init__(self, capacity):
+    def __init__(self, capacity=None):
         self.memory = deque(maxlen=capacity)
 
     def append(self, state, action, reward, next_state=None, next_action=None,
@@ -56,6 +57,79 @@ class ReplayBuffer(object):
         pass
 
 
+class PriorityWeightError(object):
+    """For propotional prioritization
+
+    Args:
+        alpha (float): A hyperparameter that determines how much
+            prioritization is used
+        beta0, betasteps (float): Schedule of beta.  beta determines how much
+            importance sampling weights are used.
+        eps (float): To revisit a step after its error becomes near zero
+        normalize_by_max (bool): normalize weights by maximum priority
+            of a batch.
+    """
+
+    def __init__(self, alpha, beta0, betasteps, eps, normalize_by_max):
+        assert 0.0 <= alpha
+        assert 0.0 <= beta0 <= 1.0
+        self.alpha = alpha
+        self.beta = beta0
+        if betasteps is None:
+            self.beta_add = 0
+        else:
+            self.beta_add = (1.0 - beta0) / betasteps
+        self.eps = eps
+        self.normalize_by_max = normalize_by_max
+
+    def priority_from_errors(self, errors):
+        return [d ** self.alpha + self.eps for d in errors]
+
+    def weights_from_probabilities(self, probabilities):
+        tmp = [p for p in probabilities if p is not None]
+        minp = min(tmp) if tmp else 1.0
+        probabilities = [minp if p is None else p for p in probabilities]
+        if self.normalize_by_max:
+            weights = [(p / minp) ** -self.beta for p in probabilities]
+        else:
+            weights = [(len(self.memory) * p) ** -self.beta
+                       for p in probabilities]
+        self.beta = min(1.0, self.beta + self.beta_add)
+        return weights
+
+
+class PrioritizedReplayBuffer(ReplayBuffer, PriorityWeightError):
+    """Stochastic Prioritization
+
+    https://arxiv.org/pdf/1511.05952.pdf \S3.3
+    propotional prioritization
+
+    Args:
+        capacity (int)
+        alpha, beta0, betasteps, eps (float)
+        normalize_by_max (bool)
+    """
+
+    def __init__(self, capacity=None,
+                 alpha=0.6, beta0=0.4, betasteps=2e5, eps=1e-8,
+                 normalize_by_max=True):
+        self.memory = PrioritizedBuffer(capacity=capacity)
+        PriorityWeightError.__init__(
+            self, alpha, beta0, betasteps, eps, normalize_by_max)
+
+    def sample(self, n):
+        """Sample n unique samples from this replay buffer"""
+        assert len(self.memory) >= n
+        sampled, probabilities = self.memory.sample(n)
+        weights = self.weights_from_probabilities(probabilities)
+        for e, w in zip(sampled, weights):
+            e['weight'] = w
+        return sampled
+
+    def update_errors(self, errors):
+        self.memory.set_last_priority(self.priority_from_errors(errors))
+
+
 def random_subseq(seq, subseq_len):
     if len(seq) <= subseq_len:
         return seq
@@ -66,7 +140,7 @@ def random_subseq(seq, subseq_len):
 
 class EpisodicReplayBuffer(object):
 
-    def __init__(self, capacity):
+    def __init__(self, capacity=None):
         self.current_episode = []
         self.episodic_memory = deque()
         self.memory = deque()
@@ -94,7 +168,7 @@ class EpisodicReplayBuffer(object):
 
     def sample(self, n):
         """Sample n unique samples from this replay buffer"""
-        assert len(self.episodic_memory) >= n
+        assert len(self.memory) >= n
         return random.sample(self.memory, n)
 
     def sample_episodes(self, n_episodes, max_len=None):
@@ -107,7 +181,7 @@ class EpisodicReplayBuffer(object):
             return episodes
 
     def __len__(self):
-        return len(self.memory)
+        return len(self.episodic_memory)
 
     def save(self, filename):
         with open(filename, 'wb') as f:
@@ -122,10 +196,68 @@ class EpisodicReplayBuffer(object):
             self.episodic_memory.append(self.current_episode)
             self.memory.extend(self.current_episode)
             self.current_episode = []
-            while len(self.memory) > self.capacity:
+            while self.capacity is not None and \
+                    len(self.memory) > self.capacity:
                 discarded_episode = self.episodic_memory.popleft()
                 for _ in range(len(discarded_episode)):
                     self.memory.popleft()
+        assert not self.current_episode
+
+
+class PrioritizedEpisodicReplayBuffer (
+        EpisodicReplayBuffer, PriorityWeightError):
+
+    def __init__(self, capacity=None,
+                 alpha=0.6, beta0=0.4, betasteps=2e5, eps=1e-8,
+                 normalize_by_max=True,
+                 default_priority_func=None,
+                 uniform_ratio=0,
+                 wait_priority_after_sampling=True,
+                 return_sample_weights=True):
+        self.current_episode = []
+        self.episodic_memory = PrioritizedBuffer(
+            capacity=None,
+            wait_priority_after_sampling=wait_priority_after_sampling)
+        self.memory = deque(maxlen=capacity)
+        self.capacity_left = capacity
+        self.default_priority_func = default_priority_func
+        self.uniform_ratio = uniform_ratio
+        self.return_sample_weights = return_sample_weights
+        PriorityWeightError.__init__(
+            self, alpha, beta0, betasteps, eps, normalize_by_max)
+
+    def sample_episodes(self, n_episodes, max_len=None):
+        """Sample n unique samples from this replay buffer"""
+        assert len(self.episodic_memory) >= n_episodes
+        episodes, probabilities = self.episodic_memory.sample(
+            n_episodes, uniform_ratio=self.uniform_ratio)
+        if max_len is not None:
+            episodes = [random_subseq(ep, max_len) for ep in episodes]
+        if self.return_sample_weights:
+            weights = self.weights_from_probabilities(probabilities)
+            return episodes, weights
+        else:
+            return episodes
+
+    def update_errors(self, errors):
+        self.episodic_memory.set_last_priority(
+            self.priority_from_errors(errors))
+
+    def stop_current_episode(self):
+        if self.current_episode:
+            if self.default_priority_func is not None:
+                priority = self.default_priority_func(self.current_episode)
+            else:
+                priority = None
+            self.memory.extend(self.current_episode)
+            self.episodic_memory.append(self.current_episode,
+                                        priority=priority)
+            if self.capacity_left is not None:
+                self.capacity_left -= len(self.current_episode)
+            self.current_episode = []
+            while self.capacity_left is not None and self.capacity_left < 0:
+                discarded_episode = self.episodic_memory.pop()
+                self.capacity_left += len(discarded_episode)
         assert not self.current_episode
 
 

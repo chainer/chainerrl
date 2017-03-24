@@ -10,6 +10,7 @@ install:
   - pip install jupyter
   - pip install atari_py
   - pip install hacking
+  - pip install coveralls
   - git clone https://github.com/mgbellemare/Arcade-Learning-Environment.git
   - cd Arcade-Learning-Environment
   - cmake -DUSE_SDL=OFF -DUSE_RLGLUE=OFF -DBUILD_EXAMPLES=OFF
@@ -26,6 +27,8 @@ script:
   - flake8 chainerrl
   - flake8 tests
   - flake8 examples
-  - nosetests -a '!gpu,!slow' -x tests
+  - nosetests -a '!gpu,!slow' -x tests --with-coverage --cover-package chainerrl
   - ./test_examples.sh -1
   - if [[ $TRAVIS_PYTHON_VERSION == 3.5.1 ]]; then jupyter nbconvert --to notebook --execute examples/quickstart/quickstart.ipynb --ExecutePreprocessor.timeout=600; fi
+after_success:
+  - coveralls
