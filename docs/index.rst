@@ -7,12 +7,13 @@
 ChainerRL, a deep reinforcement learning library
 ================================================
 
-This is ChainerRL's documentation.
+ChainerRL is a deep reinforcement learning library that implements various state-of-the-art deep reinforcement algorithms in Python using `Chainer <https://github.com/pfnet/chainer>`_, a flexible deep learning framework.
 
 .. toctree::
    :maxdepth: 2
 
    install
+   Quickstart Guide <https://github.com/pfnet/chainerrl/blob/master/examples/quickstart/quickstart.ipynb>
    reference
 
 
