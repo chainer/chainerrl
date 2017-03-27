@@ -11,7 +11,6 @@ import sys
 import warnings
 
 from ale_python_interface import ALEInterface
-import atari_py
 import numpy as np
 
 from chainerrl import env
@@ -34,6 +33,14 @@ except Exception:
     def imresize(img, size):
         return np.asarray(Image.fromarray(img).resize(size, Image.BILINEAR))
 
+try:
+    import atari_py
+    atari_py_available = True
+except Exception:
+    atari_py_available = False
+    warnings.warn(
+        'atari_py is not available. You need to install atari_py to use ALE.')
+
 
 class ALE(env.Env):
     """Arcade Learning Environment."""
@@ -49,6 +56,8 @@ class ALE(env.Env):
 
         # atari_py is used only to provide rom files. atari_py has its own
         # ale_python_interface, but it is obsolete.
+        if not atari_py_available:
+            raise RuntimeError('You need to install atari_py to use ALE.')
         game_path = atari_py.get_game_path(game)
 
         ale = ALEInterface()

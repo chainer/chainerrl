@@ -1,4 +1,3 @@
-atari_py
 cached-property
 chainer
 fastcache; python_version<'3.2'

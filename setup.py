@@ -3,7 +3,6 @@ from setuptools import setup
 import sys
 
 install_requires = [
-    'atari_py',
     'cached-property',
     'chainer>=1.20.0.1',
     'future',
