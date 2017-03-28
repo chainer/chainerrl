@@ -20,6 +20,7 @@ import argparse
 
 import chainer
 import gym
+gym.undo_logger_setup()
 import gym.wrappers
 import numpy as np
 
@@ -72,7 +73,7 @@ def main():
                         dest='backprop_future_values')
     args = parser.parse_args()
 
-    logging.getLogger().setLevel(args.logger_level)
+    logging.basicConfig(level=args.logger_level)
 
     if args.seed is not None:
         misc.set_random_seed(args.seed)
