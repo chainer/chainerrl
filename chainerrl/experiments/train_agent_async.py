@@ -6,9 +6,9 @@ from builtins import *  # NOQA
 from future import standard_library
 standard_library.install_aliases()
 
+import logging
 import multiprocessing as mp
 import os
-import sys
 
 from chainerrl.experiments.evaluator import AsyncEvaluator
 from chainerrl.misc import async
@@ -17,7 +17,9 @@ from chainerrl.misc import random_seed
 
 def train_loop(process_idx, env, agent, steps, outdir, counter, training_done,
                max_episode_len=None, evaluator=None, eval_env=None,
-               successful_score=None):
+               successful_score=None, logger=None):
+
+    logger = logger or logging.getLogger(__name__)
 
     if eval_env is None:
         eval_env = env
@@ -43,10 +45,11 @@ def train_loop(process_idx, env, agent, steps, outdir, counter, training_done,
             if done or episode_len == max_episode_len:
                 agent.stop_episode_and_train(obs, r, done)
                 if process_idx == 0:
-                    print('outdir:{} global_step:{} local_step:{} lr:{} R:{}'.format(  # NOQA
+                    logger.info(
+                        'outdir:%s global_step:%s local_step:%s lr:%s R:%s',
                         outdir, global_t, local_t, agent.optimizer.lr,
-                        episode_r))
-                    print('statistics:{}'.format(agent.get_statistics()))
+                        episode_r)
+                    logger.info('statistics:%s', agent.get_statistics())
                 if evaluator is not None:
                     eval_score = evaluator.evaluate_if_necessary(
                         global_t, env=eval_env, agent=agent)
@@ -86,21 +89,20 @@ def train_loop(process_idx, env, agent, steps, outdir, counter, training_done,
             # Save the current model before being killed
             dirname = os.path.join(outdir, '{}_except'.format(global_t))
             agent.save(dirname)
-            print('Saved the current model to {}'.format(dirname),
-                  file=sys.stderr)
+            logger.warning('Saved the current model to %s', dirname)
         raise
 
     if global_t == steps + 1:
         # Save the final model
         dirname = os.path.join(outdir, '{}_finish'.format(steps))
         agent.save(dirname)
-        print('Saved the final agent to {}'.format(dirname))
+        logger.info('Saved the final agent to %s', dirname)
 
     if successful:
         # Save the successful model
         dirname = os.path.join(outdir, 'successful')
         agent.save(dirname)
-        print('Saved the successful agent to {}'.format(dirname))
+        logger.info('Saved the successful agent to %s', dirname)
 
 
 def extract_shared_objects_from_agent(agent):
@@ -120,7 +122,8 @@ def train_agent_async(outdir, processes, make_env,
                       eval_n_runs=10, gamma=0.99, max_episode_len=None,
                       step_offset=0, successful_score=None,
                       eval_explorer=None,
-                      agent=None, make_agent=None):
+                      agent=None, make_agent=None,
+                      logger=None):
     """Train agent asynchronously.
 
     One of agent and make_agent must be specified.
@@ -134,6 +137,8 @@ def train_agent_async(outdir, processes, make_env,
       profile (bool): Profile if set True
       steps (int): Number of global time steps for training
     """
+
+    logger = logger or logging.getLogger(__name__)
 
     # Prevent numpy from using multiple threads
     os.environ['OMP_NUM_THREADS'] = '1'
@@ -153,7 +158,8 @@ def train_agent_async(outdir, processes, make_env,
         eval_frequency=eval_frequency, outdir=outdir,
         max_episode_len=max_episode_len,
         step_offset=step_offset,
-        explorer=eval_explorer)
+        explorer=eval_explorer,
+        logger=logger)
 
     def run_func(process_idx):
         random_seed.set_random_seed(process_idx)
@@ -179,7 +185,8 @@ def train_agent_async(outdir, processes, make_env,
                 evaluator=evaluator,
                 successful_score=successful_score,
                 training_done=training_done,
-                eval_env=eval_env)
+                eval_env=eval_env,
+                logger=logger)
 
         if profile:
             import cProfile

@@ -5,6 +5,7 @@ from __future__ import absolute_import
 from future import standard_library
 standard_library.install_aliases()
 
+import logging
 import os
 
 from chainerrl.experiments.evaluator import Evaluator
@@ -13,10 +14,11 @@ from chainerrl.misc.ask_yes_no import ask_yes_no
 from chainerrl.misc.makedirs import makedirs
 
 
-def save_agent_replay_buffer(agent, t, outdir, suffix=''):
+def save_agent_replay_buffer(agent, t, outdir, suffix='', logger=None):
+    logger = logger or logging.getLogger(__name__)
     filename = os.path.join(outdir, '{}{}.replay.pkl'.format(t, suffix))
     agent.replay_buffer.save(filename)
-    print('Saved the current replay buffer to {}'.format(filename))
+    logger.info('Saved the current replay buffer to %s', filename)
 
 
 def ask_and_save_agent_replay_buffer(agent, t, outdir, suffix=''):
@@ -26,7 +28,10 @@ def ask_and_save_agent_replay_buffer(agent, t, outdir, suffix=''):
 
 
 def train_agent(agent, env, steps, outdir, max_episode_len=None,
-                step_offset=0, evaluator=None, successful_score=None):
+                step_offset=0, evaluator=None, successful_score=None,
+                logger=None):
+
+    logger = logger or logging.getLogger(__name__)
 
     episode_r = 0
     episode_idx = 0
@@ -53,9 +58,9 @@ def train_agent(agent, env, steps, outdir, max_episode_len=None,
 
             if done or episode_len == max_episode_len or t == steps:
                 agent.stop_episode_and_train(obs, r, done=done)
-                print('outdir:{} step:{} episode:{} R:{}'.format(
-                    outdir, t, episode_idx, episode_r))
-                print('statistics:{}'.format(agent.get_statistics()))
+                logger.info('outdir:%s step:%s episode:%s R:%s',
+                            outdir, t, episode_idx, episode_r)
+                logger.info('statistics:%s', agent.get_statistics())
                 if evaluator is not None:
                     evaluator.evaluate_if_necessary(t)
                     if (successful_score is not None and
@@ -73,18 +78,18 @@ def train_agent(agent, env, steps, outdir, max_episode_len=None,
 
     except Exception:
         # Save the current model before being killed
-        save_agent(agent, t, outdir, suffix='_except')
+        save_agent(agent, t, outdir, logger, suffix='_except')
         raise
 
     # Save the final model
-    save_agent(agent, t, outdir, suffix='_finish')
+    save_agent(agent, t, outdir, logger, suffix='_finish')
 
 
 def train_agent_with_evaluation(
         agent, env, steps, eval_n_runs, eval_frequency,
         outdir, max_episode_len=None, step_offset=0, eval_explorer=None,
         eval_max_episode_len=None, eval_env=None, successful_score=None,
-        render=False):
+        render=False, logger=None):
     """Run a DQN-like agent.
 
     Args:
@@ -102,6 +107,8 @@ def train_agent_with_evaluation(
           or equal to this value if not None
     """
 
+    logger = logger or logging.getLogger(__name__)
+
     makedirs(outdir, exist_ok=True)
 
     if eval_env is None:
@@ -116,9 +123,10 @@ def train_agent_with_evaluation(
                           max_episode_len=eval_max_episode_len,
                           explorer=eval_explorer,
                           env=eval_env,
-                          step_offset=step_offset)
+                          step_offset=step_offset,
+                          logger=logger)
 
     train_agent(
         agent, env, steps, outdir, max_episode_len=max_episode_len,
         step_offset=step_offset, evaluator=evaluator,
-        successful_score=successful_score)
+        successful_score=successful_score, logger=logger)

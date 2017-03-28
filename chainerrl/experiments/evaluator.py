@@ -6,6 +6,7 @@ from builtins import *  # NOQA
 from future import standard_library
 standard_library.install_aliases()
 
+import logging
 import multiprocessing as mp
 import os
 import statistics
@@ -15,7 +16,8 @@ import numpy as np
 
 
 def eval_performance(env, agent, n_runs, max_episode_len=None,
-                     explorer=None):
+                     explorer=None, logger=None):
+    logger = logger or logging.getLogger(__name__)
     scores = []
     for i in range(n_runs):
         obs = env.reset()
@@ -36,7 +38,7 @@ def eval_performance(env, agent, n_runs, max_episode_len=None,
         # As mixing float and numpy float causes errors in statistics
         # functions, here every score is cast to float.
         scores.append(float(test_r))
-        print('test episode:', i, 'R:', test_r)
+        logger.info('test episode: %s R: %s', i, test_r)
     mean = statistics.mean(scores)
     median = statistics.median(scores)
     if n_runs >= 2:
@@ -51,24 +53,24 @@ def record_stats(outdir, values):
         print('\t'.join(str(x) for x in values), file=f)
 
 
-def save_agent(agent, t, outdir, suffix=''):
+def save_agent(agent, t, outdir, logger, suffix=''):
     dirname = os.path.join(outdir, '{}{}'.format(t, suffix))
     agent.save(dirname)
-    print('Saved the agent to {}'.format(dirname))
+    logger.info('Saved the agent to %s', dirname)
 
 
-def update_best_model(agent, outdir, t, old_max_score, new_max_score):
+def update_best_model(agent, outdir, t, old_max_score, new_max_score, logger):
     # Save the best model so far
-    print('The best score is updated {} -> {}'.format(
-        old_max_score, new_max_score))
-    save_agent(agent, t, outdir)
+    logger.info('The best score is updated %s -> %s',
+                old_max_score, new_max_score)
+    save_agent(agent, t, outdir, logger)
 
 
 class Evaluator(object):
 
     def __init__(self, agent, env, n_runs, eval_frequency,
                  outdir, max_episode_len=None, explorer=None,
-                 step_offset=0):
+                 step_offset=0, logger=None):
         self.agent = agent
         self.env = env
         self.max_score = np.finfo(np.float32).min
@@ -81,6 +83,7 @@ class Evaluator(object):
         self.step_offset = step_offset
         self.prev_eval_t = (self.step_offset -
                             self.step_offset % self.eval_frequency)
+        self.logger = logger or logging.getLogger(__name__)
 
         # Write a header line first
         with open(os.path.join(self.outdir, 'scores.txt'), 'w') as f:
@@ -92,13 +95,15 @@ class Evaluator(object):
     def evaluate_and_update_max_score(self, t):
         mean, median, stdev = eval_performance(
             self.env, self.agent, self.n_runs,
-            max_episode_len=self.max_episode_len, explorer=self.explorer)
+            max_episode_len=self.max_episode_len, explorer=self.explorer,
+            logger=self.logger)
         elapsed = time.time() - self.start_time
         custom_values = tuple(tup[1] for tup in self.agent.get_statistics())
         values = (t, elapsed, mean, median, stdev) + custom_values
         record_stats(self.outdir, values)
         if mean > self.max_score:
-            update_best_model(self.agent, self.outdir, t, self.max_score, mean)
+            update_best_model(self.agent, self.outdir, t, self.max_score, mean,
+                              logger=self.logger)
             self.max_score = mean
         return mean
 
@@ -114,7 +119,7 @@ class AsyncEvaluator(object):
 
     def __init__(self, n_runs, eval_frequency,
                  outdir, max_episode_len=None, explorer=None,
-                 step_offset=0):
+                 step_offset=0, logger=None):
 
         self.start_time = time.time()
         self.n_runs = n_runs
@@ -123,6 +128,7 @@ class AsyncEvaluator(object):
         self.max_episode_len = max_episode_len
         self.explorer = explorer
         self.step_offset = step_offset
+        self.logger = logger or logging.getLogger(__name__)
 
         # Values below are shared among processes
         self.prev_eval_t = mp.Value(
@@ -143,7 +149,8 @@ class AsyncEvaluator(object):
     def evaluate_and_update_max_score(self, t, env, agent):
         mean, median, stdev = eval_performance(
             env, agent, self.n_runs,
-            max_episode_len=self.max_episode_len, explorer=self.explorer)
+            max_episode_len=self.max_episode_len, explorer=self.explorer,
+            logger=self.logger)
         elapsed = time.time() - self.start_time
         custom_values = tuple(tup[1] for tup in agent.get_statistics())
         values = (t, elapsed, mean, median, stdev) + custom_values
@@ -151,7 +158,8 @@ class AsyncEvaluator(object):
         with self._max_score.get_lock():
             if mean > self._max_score.value:
                 update_best_model(
-                    agent, self.outdir, t, self._max_score.value, mean)
+                    agent, self.outdir, t, self._max_score.value, mean,
+                    logger=self.logger)
                 self._max_score.value = mean
         return mean
 
