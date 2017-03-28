@@ -10,6 +10,7 @@ import sys
 import chainer
 from chainer import optimizers
 import gym
+gym.undo_logger_setup()
 from gym import spaces
 import gym.wrappers
 import numpy as np
@@ -148,7 +149,6 @@ def main():
                  soft_update_tau=args.soft_update_tau,
                  n_times_update=args.n_update_times,
                  phi=phi, gpu=args.gpu, minibatch_size=args.minibatch_size)
-    agent.logger.setLevel(logging.DEBUG)
 
     if len(args.load) > 0:
         agent.load(args.load)

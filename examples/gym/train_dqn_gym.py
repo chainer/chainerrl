@@ -152,7 +152,6 @@ def main():
                 target_update_method=args.target_update_method,
                 soft_update_tau=args.soft_update_tau,
                 episodic_update=args.episodic_replay, episodic_update_len=16)
-    agent.logger.setLevel(logging.DEBUG)
 
     if args.load:
         agent.load(args.load)
