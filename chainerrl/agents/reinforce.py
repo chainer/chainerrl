@@ -29,6 +29,9 @@ class REINFORCE(agent.AttributeSavingMixin, agent.Agent):
             the number of steps taken to accumulate the losses
         act_deterministically (bool): If set true, choose most probable actions
             in act method.
+        batchsize (int): Number of episodes used for each update
+        backward_separately (bool): If set true, call backward separately for
+            each episode and accumulate only gradients.
         average_entropy_decay (float): Decay rate of average entropy. Used only
             to record statistics.
         logger (logging.Logger): Logger to be used.
@@ -42,6 +45,7 @@ class REINFORCE(agent.AttributeSavingMixin, agent.Agent):
                  batchsize=1,
                  act_deterministically=False,
                  average_entropy_decay=0.999,
+                 backward_separately=False,
                  logger=None):
 
         self.model = model
@@ -50,6 +54,7 @@ class REINFORCE(agent.AttributeSavingMixin, agent.Agent):
         self.beta = beta
         self.phi = phi
         self.batchsize = batchsize
+        self.backward_separately = backward_separately
         self.act_deterministically = act_deterministically
         self.average_entropy_decay = average_entropy_decay
         self.logger = logger or getLogger(__name__)
@@ -60,6 +65,7 @@ class REINFORCE(agent.AttributeSavingMixin, agent.Agent):
         self.reward_sequences = [[]]
         self.log_prob_sequences = [[]]
         self.entropy_sequences = [[]]
+        self.n_backward = 0
 
     def act_and_train(self, obs, reward):
 
@@ -101,22 +107,25 @@ class REINFORCE(agent.AttributeSavingMixin, agent.Agent):
         assert done, 'REINFORCE supports episodic environments only'
 
         self.reward_sequences[-1].append(reward)
-        if len(self.reward_sequences) == self.batchsize:
-            self.update()
+        if self.backward_separately:
+            self.accumulate_grad()
+            if self.n_backward == self.batchsize:
+                self.update_with_accumulated_grad()
         else:
-            self.reward_sequences.append([])
-            self.log_prob_sequences.append([])
-            self.entropy_sequences.append([])
+            if len(self.reward_sequences) == self.batchsize:
+                self.batch_update()
+            else:
+                # Prepare for the next episode
+                self.reward_sequences.append([])
+                self.log_prob_sequences.append([])
+                self.entropy_sequences.append([])
 
         if isinstance(self.model, Recurrent):
             self.model.reset_state()
 
-    def update(self):
-
-        assert len(self.reward_sequences) == self.batchsize
-        assert len(self.log_prob_sequences) == self.batchsize
-        assert len(self.entropy_sequences) == self.batchsize
-
+    def accumulate_grad(self):
+        if self.n_backward == 0:
+            self.model.zerograds()
         # Compute losses
         losses = []
         for r_seq, log_prob_seq, ent_seq in zip(self.reward_sequences,
@@ -130,15 +139,26 @@ class REINFORCE(agent.AttributeSavingMixin, agent.Agent):
                 losses.append(loss)
         total_loss = chainerrl.functions.sum_arrays(losses)
         total_loss /= self.batchsize
-
-        # Update the model
-        self.model.zerograds()
         total_loss.backward()
-        self.optimizer.update()
-
         self.reward_sequences = [[]]
         self.log_prob_sequences = [[]]
         self.entropy_sequences = [[]]
+        self.n_backward += 1
+
+    def batch_update(self):
+        assert len(self.reward_sequences) == self.batchsize
+        assert len(self.log_prob_sequences) == self.batchsize
+        assert len(self.entropy_sequences) == self.batchsize
+        # Update the model
+        self.model.zerograds()
+        self.accumulate_grad()
+        self.optimizer.update()
+        self.n_backward = 0
+
+    def update_with_accumulated_grad(self):
+        assert self.n_backward == self.batchsize
+        self.optimizer.update()
+        self.n_backward = 0
 
     def stop_episode(self):
         if isinstance(self.model, Recurrent):

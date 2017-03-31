@@ -25,6 +25,7 @@ from chainerrl import policies
         'discrete': [True, False],
         'use_lstm': [True, False],
         'batchsize': [1, 10],
+        'backward_separately': [True, False],
     })
 ))
 class TestREINFORCE(unittest.TestCase):
@@ -106,6 +107,7 @@ class TestREINFORCE(unittest.TestCase):
             beta=beta,
             phi=phi,
             batchsize=self.batchsize,
+            backward_separately=self.backward_separately,
             act_deterministically=True,
         )
 
