@@ -33,7 +33,7 @@ class TestDPPOnDiscreteABC(_TestDQNOnDiscreteABC):
         agent_class = parse_dpp_agent(self.dpp_type)
         return agent_class(
             q_func, opt, rbuf, gpu=gpu, gamma=0.9, explorer=explorer,
-            replay_start_size=100, target_update_frequency=100)
+            replay_start_size=100, target_update_interval=100)
 
 
 # DPP and DPPL don't support continuous action spaces
@@ -48,7 +48,7 @@ class TestDPPOnContinuousABC(_TestDQNOnContinuousABC):
         agent_class = parse_dpp_agent(self.dpp_type)
         return agent_class(
             q_func, opt, rbuf, gpu=gpu, gamma=0.9, explorer=explorer,
-            replay_start_size=100, target_update_frequency=100)
+            replay_start_size=100, target_update_interval=100)
 
 
 # Currently DPP doesn't work with recurrent models
@@ -65,5 +65,5 @@ class TestDPPOnContinuousABC(_TestDQNOnContinuousABC):
 #         agent_class = parse_dpp_agent(self.dpp_type)
 #         return agent_class(
 #             q_func, opt, rbuf, gpu=gpu, gamma=0.9, explorer=explorer,
-#             replay_start_size=100, target_update_frequency=100,
+#             replay_start_size=100, target_update_interval=100,
 #             episodic_update=True)

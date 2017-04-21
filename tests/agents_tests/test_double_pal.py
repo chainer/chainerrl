@@ -17,7 +17,7 @@ class TestDoublePALOnDiscreteABC(_TestDQNOnDiscreteABC):
     def make_dqn_agent(self, env, q_func, opt, explorer, rbuf, gpu):
         return DoublePAL(
             q_func, opt, rbuf, gpu=gpu, gamma=0.9, explorer=explorer,
-            replay_start_size=100, target_update_frequency=100)
+            replay_start_size=100, target_update_interval=100)
 
 
 class TestDoublePALOnContinuousABC(_TestDQNOnContinuousABC):
@@ -25,7 +25,7 @@ class TestDoublePALOnContinuousABC(_TestDQNOnContinuousABC):
     def make_dqn_agent(self, env, q_func, opt, explorer, rbuf, gpu):
         return DoublePAL(
             q_func, opt, rbuf, gpu=gpu, gamma=0.9, explorer=explorer,
-            replay_start_size=100, target_update_frequency=100)
+            replay_start_size=100, target_update_interval=100)
 
 
 class TestDoublePALOnDiscretePOABC(_TestDQNOnDiscretePOABC):
@@ -33,5 +33,5 @@ class TestDoublePALOnDiscretePOABC(_TestDQNOnDiscretePOABC):
     def make_dqn_agent(self, env, q_func, opt, explorer, rbuf, gpu):
         return DoublePAL(
             q_func, opt, rbuf, gpu=gpu, gamma=0.9, explorer=explorer,
-            replay_start_size=100, target_update_frequency=100,
+            replay_start_size=100, target_update_interval=100,
             episodic_update=True)

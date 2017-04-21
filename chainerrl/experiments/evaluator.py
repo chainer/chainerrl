@@ -68,7 +68,7 @@ def update_best_model(agent, outdir, t, old_max_score, new_max_score, logger):
 
 class Evaluator(object):
 
-    def __init__(self, agent, env, n_runs, eval_frequency,
+    def __init__(self, agent, env, n_runs, eval_interval,
                  outdir, max_episode_len=None, explorer=None,
                  step_offset=0, logger=None):
         self.agent = agent
@@ -76,13 +76,13 @@ class Evaluator(object):
         self.max_score = np.finfo(np.float32).min
         self.start_time = time.time()
         self.n_runs = n_runs
-        self.eval_frequency = eval_frequency
+        self.eval_interval = eval_interval
         self.outdir = outdir
         self.max_episode_len = max_episode_len
         self.explorer = explorer
         self.step_offset = step_offset
         self.prev_eval_t = (self.step_offset -
-                            self.step_offset % self.eval_frequency)
+                            self.step_offset % self.eval_interval)
         self.logger = logger or logging.getLogger(__name__)
 
         # Write a header line first
@@ -108,22 +108,22 @@ class Evaluator(object):
         return mean
 
     def evaluate_if_necessary(self, t):
-        if t >= self.prev_eval_t + self.eval_frequency:
+        if t >= self.prev_eval_t + self.eval_interval:
             score = self.evaluate_and_update_max_score(t)
-            self.prev_eval_t = t - t % self.eval_frequency
+            self.prev_eval_t = t - t % self.eval_interval
             return score
         return None
 
 
 class AsyncEvaluator(object):
 
-    def __init__(self, n_runs, eval_frequency,
+    def __init__(self, n_runs, eval_interval,
                  outdir, max_episode_len=None, explorer=None,
                  step_offset=0, logger=None):
 
         self.start_time = time.time()
         self.n_runs = n_runs
-        self.eval_frequency = eval_frequency
+        self.eval_interval = eval_interval
         self.outdir = outdir
         self.max_episode_len = max_episode_len
         self.explorer = explorer
@@ -132,7 +132,7 @@ class AsyncEvaluator(object):
 
         # Values below are shared among processes
         self.prev_eval_t = mp.Value(
-            'l', self.step_offset - self.step_offset % self.eval_frequency)
+            'l', self.step_offset - self.step_offset % self.eval_interval)
         self._max_score = mp.Value('f', np.finfo(np.float32).min)
         self.wrote_header = mp.Value('b', False)
 
@@ -173,9 +173,9 @@ class AsyncEvaluator(object):
     def evaluate_if_necessary(self, t, env, agent):
         necessary = False
         with self.prev_eval_t.get_lock():
-            if t >= self.prev_eval_t.value + self.eval_frequency:
+            if t >= self.prev_eval_t.value + self.eval_interval:
                 necessary = True
-                self.prev_eval_t.value += self.eval_frequency
+                self.prev_eval_t.value += self.eval_interval
         if necessary:
             with self.wrote_header.get_lock():
                 if not self.wrote_header.value:
