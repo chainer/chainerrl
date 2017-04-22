@@ -44,14 +44,14 @@ def main():
     parser.add_argument('--n-hidden-layers', type=int, default=3)
     parser.add_argument('--replay-start-size', type=int, default=5000)
     parser.add_argument('--n-update-times', type=int, default=1)
-    parser.add_argument('--target-update-frequency',
+    parser.add_argument('--target-update-interval',
                         type=int, default=1)
     parser.add_argument('--target-update-method',
                         type=str, default='soft', choices=['hard', 'soft'])
     parser.add_argument('--soft-update-tau', type=float, default=1e-2)
-    parser.add_argument('--update-frequency', type=int, default=4)
+    parser.add_argument('--update-interval', type=int, default=4)
     parser.add_argument('--eval-n-runs', type=int, default=100)
-    parser.add_argument('--eval-frequency', type=int, default=10 ** 5)
+    parser.add_argument('--eval-interval', type=int, default=10 ** 5)
     parser.add_argument('--gamma', type=float, default=0.995)
     parser.add_argument('--minibatch-size', type=int, default=200)
     parser.add_argument('--render', action='store_true')
@@ -144,8 +144,8 @@ def main():
     agent = DDPG(model, opt_a, opt_c, rbuf, gamma=args.gamma,
                  explorer=explorer, replay_start_size=args.replay_start_size,
                  target_update_method=args.target_update_method,
-                 target_update_frequency=args.target_update_frequency,
-                 update_frequency=args.update_frequency,
+                 target_update_interval=args.target_update_interval,
+                 update_interval=args.update_interval,
                  soft_update_tau=args.soft_update_tau,
                  n_times_update=args.n_update_times,
                  phi=phi, gpu=args.gpu, minibatch_size=args.minibatch_size)
@@ -164,7 +164,7 @@ def main():
     else:
         experiments.train_agent_with_evaluation(
             agent=agent, env=env, steps=args.steps,
-            eval_n_runs=args.eval_n_runs, eval_frequency=args.eval_frequency,
+            eval_n_runs=args.eval_n_runs, eval_interval=args.eval_interval,
             outdir=args.outdir,
             max_episode_len=timestep_limit)
 

@@ -32,12 +32,12 @@ For more information, you can refer to [ChainerRL's documentation](http://chaine
 
 | Algorithm | Discrete Action | Continous Action | Recurrent Model | CPU Async Training |
 |:----------|:---------------:|:----------------:|:---------------:|:------------------:|
-| DQN (including DoubleDQN etc.) | o | o (NAF) | o | x |
-| DDPG | x | o | o | x |
-| A3C | o | o | o | o |
-| ACER | o | o | o | o |
-| NSQ (N-step Q-learning) | o | o (NAF) | o | o |
-| PCL (Path Consistency Learning) | o | o | o | o |
+| DQN (including DoubleDQN etc.) | ✓ | ✓ (NAF) | ✓ | x |
+| DDPG | x | ✓ | ✓ | x |
+| A3C | ✓ | ✓ | ✓ | ✓ |
+| ACER | ✓ | ✓ | ✓ | ✓ |
+| NSQ (N-step Q-learning) | ✓ | ✓ (NAF) | ✓ | ✓ |
+| PCL (Path Consistency Learning) | ✓ | ✓ | ✓ | ✓ |
 
 Following algorithms have been implemented in ChainerRL:
 - A3C (Asynchronous Advantage Actor-Critic)

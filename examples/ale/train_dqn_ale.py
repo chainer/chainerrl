@@ -79,10 +79,10 @@ def main():
                         choices=['nature', 'nips', 'dueling'])
     parser.add_argument('--steps', type=int, default=10 ** 7)
     parser.add_argument('--replay-start-size', type=int, default=5 * 10 ** 4)
-    parser.add_argument('--target-update-frequency',
+    parser.add_argument('--target-update-interval',
                         type=int, default=10 ** 4)
-    parser.add_argument('--eval-frequency', type=int, default=10 ** 5)
-    parser.add_argument('--update-frequency', type=int, default=4)
+    parser.add_argument('--eval-interval', type=int, default=10 ** 5)
+    parser.add_argument('--update-interval', type=int, default=4)
     parser.add_argument('--activation', type=str, default='relu')
     parser.add_argument('--eval-n-runs', type=int, default=10)
     parser.add_argument('--no-clip-delta',
@@ -124,9 +124,9 @@ def main():
     Agent = parse_agent(args.agent)
     agent = Agent(q_func, opt, rbuf, gpu=args.gpu, gamma=0.99,
                   explorer=explorer, replay_start_size=args.replay_start_size,
-                  target_update_frequency=args.target_update_frequency,
+                  target_update_interval=args.target_update_interval,
                   clip_delta=args.clip_delta,
-                  update_frequency=args.update_frequency,
+                  update_interval=args.update_interval,
                   batch_accumulator='sum', phi=dqn_phi)
 
     if args.load:
@@ -145,7 +145,7 @@ def main():
             5e-2, lambda: np.random.randint(n_actions))
         experiments.train_agent_with_evaluation(
             agent=agent, env=env, steps=args.steps,
-            eval_n_runs=args.eval_n_runs, eval_frequency=args.eval_frequency,
+            eval_n_runs=args.eval_n_runs, eval_interval=args.eval_interval,
             outdir=args.outdir, eval_explorer=eval_explorer,
             eval_env=eval_env)
 

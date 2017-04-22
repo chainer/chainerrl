@@ -118,7 +118,7 @@ def set_shared_objects(agent, shared_objects):
 
 
 def train_agent_async(outdir, processes, make_env,
-                      profile=False, steps=8 * 10 ** 7, eval_frequency=10 ** 6,
+                      profile=False, steps=8 * 10 ** 7, eval_interval=10 ** 6,
                       eval_n_runs=10, gamma=0.99, max_episode_len=None,
                       step_offset=0, successful_score=None,
                       eval_explorer=None,
@@ -155,7 +155,7 @@ def train_agent_async(outdir, processes, make_env,
 
     evaluator = AsyncEvaluator(
         n_runs=eval_n_runs,
-        eval_frequency=eval_frequency, outdir=outdir,
+        eval_interval=eval_interval, outdir=outdir,
         max_episode_len=max_episode_len,
         step_offset=step_offset,
         explorer=eval_explorer,

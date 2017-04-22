@@ -16,7 +16,7 @@ class TestResidualDQNOnDiscreteABC(_TestDQNOnDiscreteABC):
     def make_dqn_agent(self, env, q_func, opt, explorer, rbuf, gpu):
         return ResidualDQN(
             q_func, opt, rbuf, gpu=gpu, gamma=0.9, explorer=explorer,
-            replay_start_size=100, target_update_frequency=100,
+            replay_start_size=100, target_update_interval=100,
             grad_scale=1e-1)
 
 
@@ -25,7 +25,7 @@ class TestResidualDQNOnContinuousABC(_TestDQNOnContinuousABC):
     def make_dqn_agent(self, env, q_func, opt, explorer, rbuf, gpu):
         return ResidualDQN(
             q_func, opt, rbuf, gpu=gpu, gamma=0.9, explorer=explorer,
-            replay_start_size=100, target_update_frequency=100,
+            replay_start_size=100, target_update_interval=100,
             grad_scale=1e-1)
 
 
@@ -34,6 +34,6 @@ class TestResidualDQNOnDiscretePOABC(_TestDQNOnDiscretePOABC):
     def make_dqn_agent(self, env, q_func, opt, explorer, rbuf, gpu):
         return ResidualDQN(
             q_func, opt, rbuf, gpu=gpu, gamma=0.9, explorer=explorer,
-            replay_start_size=100, target_update_frequency=100,
+            replay_start_size=100, target_update_interval=100,
             episodic_update=True,
             grad_scale=1e-1)

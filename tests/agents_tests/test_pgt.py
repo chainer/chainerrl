@@ -128,8 +128,8 @@ class _TestPGTOnContinuousABC(_TestPGTOnABC):
 #                        rbuf, gpu):
 #         return PGT(model, actor_opt, critic_opt, rbuf, gpu=gpu, gamma=0.9,
 #                    explorer=explorer, replay_start_size=100,
-#                    target_update_method='soft', target_update_frequency=1,
-#                    episodic_update=True, update_frequency=1,
+#                    target_update_method='soft', target_update_interval=1,
+#                    episodic_update=True, update_interval=1,
 #                    act_deterministically=True)
 
 
@@ -139,5 +139,5 @@ class TestPGTOnContinuousABC(_TestPGTOnContinuousABC):
                        rbuf, gpu):
         return PGT(model, actor_opt, critic_opt, rbuf, gpu=gpu, gamma=0.9,
                    explorer=explorer, replay_start_size=100,
-                   target_update_method='soft', target_update_frequency=1,
+                   target_update_method='soft', target_update_interval=1,
                    act_deterministically=True)

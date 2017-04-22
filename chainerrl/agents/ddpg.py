@@ -48,8 +48,8 @@ class DDPG(AttributeSavingMixin, Agent):
         replay_start_size (int): if the replay buffer's size is less than
             replay_start_size, skip update
         minibatch_size (int): Minibatch size
-        update_frequency (int): Model update frequency in step
-        target_update_frequency (int): Target model update frequency in step
+        update_interval (int): Model update interval in step
+        target_update_interval (int): Target model update interval in step
         phi (callable): Feature extractor applied to observations
         target_update_method (str): 'hard' or 'soft'.
         soft_update_tau (float): Tau of soft target update.
@@ -75,8 +75,8 @@ class DDPG(AttributeSavingMixin, Agent):
     def __init__(self, model, actor_optimizer, critic_optimizer, replay_buffer,
                  gamma, explorer,
                  gpu=None, replay_start_size=50000,
-                 minibatch_size=32, update_frequency=1,
-                 target_update_frequency=10000,
+                 minibatch_size=32, update_interval=1,
+                 target_update_interval=10000,
                  phi=lambda x: x,
                  target_update_method='hard',
                  soft_update_tau=1e-2,
@@ -98,7 +98,7 @@ class DDPG(AttributeSavingMixin, Agent):
         self.gamma = gamma
         self.explorer = explorer
         self.gpu = gpu
-        self.target_update_frequency = target_update_frequency
+        self.target_update_interval = target_update_interval
         self.phi = phi
         self.target_update_method = target_update_method
         self.soft_update_tau = soft_update_tau
@@ -119,7 +119,7 @@ class DDPG(AttributeSavingMixin, Agent):
             episodic_update_len=episodic_update_len,
             n_times_update=n_times_update,
             replay_start_size=replay_start_size,
-            update_frequency=update_frequency,
+            update_interval=update_interval,
         )
         self.batch_states = batch_states
 
@@ -294,7 +294,7 @@ class DDPG(AttributeSavingMixin, Agent):
         self.t += 1
 
         # Update the target network
-        if self.t % self.target_update_frequency == 0:
+        if self.t % self.target_update_interval == 0:
             self.sync_target_network()
 
         if self.last_state is not None:
