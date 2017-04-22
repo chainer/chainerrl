@@ -37,7 +37,7 @@ class TestIsUnderGitControl(unittest.TestCase):
 
         # Run: git init
         with work_dir(tmp):
-            subprocess.run(['git', 'init'])
+            subprocess.call(['git', 'init'])
 
         # Under git control
         with work_dir(tmp):
@@ -61,7 +61,7 @@ class TestPrepareOutputDir(unittest.TestCase):
         with work_dir(tmp):
 
             if self.git:
-                subprocess.run(['git', 'init'])
+                subprocess.call(['git', 'init'])
 
             dirname = chainerrl.experiments.prepare_output_dir(
                 args,
