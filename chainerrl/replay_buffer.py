@@ -290,7 +290,7 @@ class ReplayUpdater(object):
         replay_start_size (int): if the replay buffer's size is less than
             replay_start_size, skip update
         batchsize (int): Minibatch size
-        update_frequency (int): Model update frequency in step
+        update_interval (int): Model update interval in step
         n_times_update (int): Number of repetition of update
         episodic_update (bool): Use full episodes for update if set True
         episodic_update_len (int or None): Subsequences of this length are used
@@ -298,7 +298,7 @@ class ReplayUpdater(object):
     """
 
     def __init__(self, replay_buffer, update_func, batchsize, episodic_update,
-                 n_times_update, replay_start_size, update_frequency,
+                 n_times_update, replay_start_size, update_interval,
                  episodic_update_len=None):
 
         assert batchsize <= replay_start_size
@@ -309,12 +309,12 @@ class ReplayUpdater(object):
         self.episodic_update_len = episodic_update_len
         self.n_times_update = n_times_update
         self.replay_start_size = replay_start_size
-        self.update_frequency = update_frequency
+        self.update_interval = update_interval
 
     def update_if_necessary(self, iteration):
         if len(self.replay_buffer) < self.replay_start_size:
             return
-        if iteration % self.update_frequency != 0:
+        if iteration % self.update_interval != 0:
             return
 
         for _ in range(self.n_times_update):

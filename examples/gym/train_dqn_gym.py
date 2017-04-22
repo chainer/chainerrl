@@ -43,12 +43,12 @@ def main():
     parser.add_argument('--prioritized-replay', action='store_true')
     parser.add_argument('--episodic-replay', action='store_true')
     parser.add_argument('--replay-start-size', type=int, default=None)
-    parser.add_argument('--target-update-frequency', type=int, default=10 ** 2)
+    parser.add_argument('--target-update-interval', type=int, default=10 ** 2)
     parser.add_argument('--target-update-method', type=str, default='hard')
     parser.add_argument('--soft-update-tau', type=float, default=1e-2)
-    parser.add_argument('--update-frequency', type=int, default=1)
+    parser.add_argument('--update-interval', type=int, default=1)
     parser.add_argument('--eval-n-runs', type=int, default=100)
-    parser.add_argument('--eval-frequency', type=int, default=10 ** 4)
+    parser.add_argument('--eval-interval', type=int, default=10 ** 4)
     parser.add_argument('--n-hidden-channels', type=int, default=100)
     parser.add_argument('--n-hidden-layers', type=int, default=2)
     parser.add_argument('--gamma', type=float, default=0.99)
@@ -123,7 +123,7 @@ def main():
         if args.prioritized_replay:
             betasteps = \
                 (args.steps - timestep_limit * args.replay_start_size) \
-                // args.update_frequency
+                // args.update_interval
             rbuf = replay_buffer.PrioritizedEpisodicReplayBuffer(
                 rbuf_capacity, betasteps=betasteps)
         else:
@@ -135,7 +135,7 @@ def main():
             args.replay_start_size = 1000
         if args.prioritized_replay:
             betasteps = (args.steps - args.replay_start_size) \
-                // args.update_frequency
+                // args.update_interval
             rbuf = replay_buffer.PrioritizedReplayBuffer(
                 rbuf_capacity, betasteps=betasteps)
         else:
@@ -146,8 +146,8 @@ def main():
 
     agent = DQN(q_func, opt, rbuf, gpu=args.gpu, gamma=args.gamma,
                 explorer=explorer, replay_start_size=args.replay_start_size,
-                target_update_frequency=args.target_update_frequency,
-                update_frequency=args.update_frequency,
+                target_update_interval=args.target_update_interval,
+                update_interval=args.update_interval,
                 phi=phi, minibatch_size=args.minibatch_size,
                 target_update_method=args.target_update_method,
                 soft_update_tau=args.soft_update_tau,
@@ -169,7 +169,7 @@ def main():
     else:
         experiments.train_agent_with_evaluation(
             agent=agent, env=env, steps=args.steps,
-            eval_n_runs=args.eval_n_runs, eval_frequency=args.eval_frequency,
+            eval_n_runs=args.eval_n_runs, eval_interval=args.eval_interval,
             outdir=args.outdir, eval_env=eval_env,
             max_episode_len=timestep_limit)
 
