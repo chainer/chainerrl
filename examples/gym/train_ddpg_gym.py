@@ -159,7 +159,7 @@ def main():
             agent=agent,
             n_runs=args.eval_n_runs,
             max_episode_len=timestep_limit)
-        print('n_runs: {} mean: {} median: {} stdev'.format(
+        print('n_runs: {} mean: {} median: {} stdev {}'.format(
             args.eval_n_runs, eval_stats['mean'], eval_stats['median'],
             eval_stats['stdev']))
     else:
