@@ -48,7 +48,7 @@ class TestIsUnderGitControl(unittest.TestCase):
     'git': [True, False],
     'user_specified_dir': [tempfile.mkdtemp(), None],
     'argv': [['command', '--option'], None],
-    'time_format': ['%Y%m%d%H%M%S%f', None],
+    'time_format': ['%Y%m%dT%H%M%S.%f', '%Y%m%d'],
 }))
 class TestPrepareOutputDir(unittest.TestCase):
 
