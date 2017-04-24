@@ -62,7 +62,8 @@ def train_agent(agent, env, steps, outdir, max_episode_len=None,
                             outdir, t, episode_idx, episode_r)
                 logger.info('statistics:%s', agent.get_statistics())
                 if evaluator is not None:
-                    evaluator.evaluate_if_necessary(t)
+                    evaluator.evaluate_if_necessary(
+                        t=t, episodes=episode_idx + 1)
                     if (successful_score is not None and
                             evaluator.max_score >= successful_score):
                         break

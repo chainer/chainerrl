@@ -15,7 +15,8 @@ from chainerrl.misc import async
 from chainerrl.misc import random_seed
 
 
-def train_loop(process_idx, env, agent, steps, outdir, counter, training_done,
+def train_loop(process_idx, env, agent, steps, outdir, counter,
+               episodes_counter, training_done,
                max_episode_len=None, evaluator=None, eval_env=None,
                successful_score=None, logger=None):
 
@@ -30,6 +31,7 @@ def train_loop(process_idx, env, agent, steps, outdir, counter, training_done,
         episode_r = 0
         global_t = 0
         local_t = 0
+        global_episodes = 0
         obs = env.reset()
         r = 0
         done = False
@@ -43,6 +45,9 @@ def train_loop(process_idx, env, agent, steps, outdir, counter, training_done,
             episode_r += r
 
             if done or episode_len == max_episode_len:
+                with episodes_counter.get_lock():
+                    episodes_counter.value += 1
+                    global_episodes = episodes_counter.value
                 agent.stop_episode_and_train(obs, r, done)
                 if process_idx == 0:
                     logger.info(
@@ -52,7 +57,8 @@ def train_loop(process_idx, env, agent, steps, outdir, counter, training_done,
                     logger.info('statistics:%s', agent.get_statistics())
                 if evaluator is not None:
                     eval_score = evaluator.evaluate_if_necessary(
-                        global_t, env=eval_env, agent=agent)
+                        t=global_t, episodes=global_episodes,
+                        env=eval_env, agent=agent)
                     if (eval_score is not None and
                             successful_score is not None and
                             eval_score >= successful_score):
@@ -144,6 +150,7 @@ def train_agent_async(outdir, processes, make_env,
     os.environ['OMP_NUM_THREADS'] = '1'
 
     counter = mp.Value('l', 0)
+    episodes_counter = mp.Value('l', 0)
     training_done = mp.Value('b', False)  # bool
 
     if agent is None:
@@ -177,6 +184,7 @@ def train_agent_async(outdir, processes, make_env,
             train_loop(
                 process_idx=process_idx,
                 counter=counter,
+                episodes_counter=episodes_counter,
                 agent=local_agent,
                 env=env,
                 steps=steps,

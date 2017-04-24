@@ -15,8 +15,39 @@ import time
 import numpy as np
 
 
-def eval_performance(env, agent, n_runs, max_episode_len=None,
-                     explorer=None, logger=None):
+"""Columns that describe information about an experiment.
+
+steps: number of time steps taken (= number of actions taken)
+episodes: number of episodes finished
+elapsed: time elapsed so far (seconds)
+mean: mean of returns of evaluation runs
+median: median of returns of evaluation runs
+stdev: stdev of returns of evaluation runs
+max: maximum value of returns of evaluation runs
+min: minimum value of returns of evaluation runs
+"""
+_basic_columns = ('steps', 'episodes', 'elapsed', 'mean',
+                  'median', 'stdev', 'max', 'min')
+
+
+def run_evaluation_episodes(env, agent, n_runs, max_episode_len=None,
+                            explorer=None, logger=None):
+    """Run multiple evaluation episodes and return returns.
+
+    Args:
+        env (Environment): Environment used for evaluation
+        agent (Agent): Agent to evaluate.
+        n_runs (int): Number of evaluation runs.
+        max_episode_len (int or None): If specified, episodes longer than this
+            value will be truncated.
+        explorer (Explorer): If specified, the given Explorer will be used for
+            selecting actions.
+        logger (Logger or None): If specified, the given Logger object will be
+            used for logging results. If not specified, the default logger of
+            this module will be used.
+    Returns:
+        List of returns of evaluation runs.
+    """
     logger = logger or logging.getLogger(__name__)
     scores = []
     for i in range(n_runs):
@@ -39,13 +70,39 @@ def eval_performance(env, agent, n_runs, max_episode_len=None,
         # functions, here every score is cast to float.
         scores.append(float(test_r))
         logger.info('test episode: %s R: %s', i, test_r)
-    mean = statistics.mean(scores)
-    median = statistics.median(scores)
-    if n_runs >= 2:
-        stdev = statistics.stdev(scores)
-    else:
-        stdev = 0.
-    return mean, median, stdev
+    return scores
+
+
+def eval_performance(env, agent, n_runs, max_episode_len=None,
+                     explorer=None, logger=None):
+    """Run multiple evaluation episodes and return statistics.
+
+    Args:
+        env (Environment): Environment used for evaluation
+        agent (Agent): Agent to evaluate.
+        n_runs (int): Number of evaluation runs.
+        max_episode_len (int or None): If specified, episodes longer than this
+            value will be truncated.
+        explorer (Explorer): If specified, the given Explorer will be used for
+            selecting actions.
+        logger (Logger or None): If specified, the given Logger object will be
+            used for logging results. If not specified, the default logger of
+            this module will be used.
+    Returns:
+        Dict of statistics.
+    """
+    scores = run_evaluation_episodes(
+        env, agent, n_runs,
+        max_episode_len=max_episode_len,
+        explorer=explorer,
+        logger=logger)
+    stats = dict(
+        mean=statistics.mean(scores),
+        median=statistics.median(scores),
+        stdev=statistics.stdev(scores) if n_runs >= 2 else 0.0,
+        max=np.max(scores),
+        min=np.min(scores))
+    return stats
 
 
 def record_stats(outdir, values):
@@ -88,18 +145,25 @@ class Evaluator(object):
         # Write a header line first
         with open(os.path.join(self.outdir, 'scores.txt'), 'w') as f:
             custom_columns = tuple(t[0] for t in self.agent.get_statistics())
-            column_names = (('steps', 'elapsed', 'mean', 'median', 'stdev') +
-                            custom_columns)
+            column_names = _basic_columns + custom_columns
             print('\t'.join(column_names), file=f)
 
-    def evaluate_and_update_max_score(self, t):
-        mean, median, stdev = eval_performance(
+    def evaluate_and_update_max_score(self, t, episodes):
+        eval_stats = eval_performance(
             self.env, self.agent, self.n_runs,
             max_episode_len=self.max_episode_len, explorer=self.explorer,
             logger=self.logger)
         elapsed = time.time() - self.start_time
         custom_values = tuple(tup[1] for tup in self.agent.get_statistics())
-        values = (t, elapsed, mean, median, stdev) + custom_values
+        mean = eval_stats['mean']
+        values = (t,
+                  episodes,
+                  elapsed,
+                  mean,
+                  eval_stats['median'],
+                  eval_stats['stdev'],
+                  eval_stats['max'],
+                  eval_stats['min']) + custom_values
         record_stats(self.outdir, values)
         if mean > self.max_score:
             update_best_model(self.agent, self.outdir, t, self.max_score, mean,
@@ -107,9 +171,9 @@ class Evaluator(object):
             self.max_score = mean
         return mean
 
-    def evaluate_if_necessary(self, t):
+    def evaluate_if_necessary(self, t, episodes):
         if t >= self.prev_eval_t + self.eval_interval:
-            score = self.evaluate_and_update_max_score(t)
+            score = self.evaluate_and_update_max_score(t, episodes)
             self.prev_eval_t = t - t % self.eval_interval
             return score
         return None
@@ -146,14 +210,22 @@ class AsyncEvaluator(object):
             v = self._max_score.value
         return v
 
-    def evaluate_and_update_max_score(self, t, env, agent):
-        mean, median, stdev = eval_performance(
+    def evaluate_and_update_max_score(self, t, episodes, env, agent):
+        eval_stats = eval_performance(
             env, agent, self.n_runs,
             max_episode_len=self.max_episode_len, explorer=self.explorer,
             logger=self.logger)
         elapsed = time.time() - self.start_time
         custom_values = tuple(tup[1] for tup in agent.get_statistics())
-        values = (t, elapsed, mean, median, stdev) + custom_values
+        mean = eval_stats['mean']
+        values = (t,
+                  episodes,
+                  elapsed,
+                  mean,
+                  eval_stats['median'],
+                  eval_stats['stdev'],
+                  eval_stats['max'],
+                  eval_stats['min']) + custom_values
         record_stats(self.outdir, values)
         with self._max_score.get_lock():
             if mean > self._max_score.value:
@@ -166,11 +238,10 @@ class AsyncEvaluator(object):
     def write_header(self, agent):
         with open(os.path.join(self.outdir, 'scores.txt'), 'w') as f:
             custom_columns = tuple(t[0] for t in agent.get_statistics())
-            column_names = (('steps', 'elapsed', 'mean', 'median', 'stdev') +
-                            custom_columns)
+            column_names = _basic_columns + custom_columns
             print('\t'.join(column_names), file=f)
 
-    def evaluate_if_necessary(self, t, env, agent):
+    def evaluate_if_necessary(self, t, episodes, env, agent):
         necessary = False
         with self.prev_eval_t.get_lock():
             if t >= self.prev_eval_t.value + self.eval_interval:
@@ -181,5 +252,5 @@ class AsyncEvaluator(object):
                 if not self.wrote_header.value:
                     self.write_header(agent)
                     self.wrote_header.value = True
-            return self.evaluate_and_update_max_score(t, env, agent)
+            return self.evaluate_and_update_max_score(t, episodes, env, agent)
         return None
