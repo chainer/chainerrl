@@ -33,7 +33,7 @@ def is_under_git_control():
 
 
 def prepare_output_dir(args, user_specified_dir=None, argv=None,
-                       time_format=None):
+                       time_format='%Y%m%dT%H%M%S.%f'):
     """Prepare a directory for outputting training results.
 
     An output directory, which ends with the current datetime string,
@@ -58,15 +58,12 @@ def prepare_output_dir(args, user_specified_dir=None, argv=None,
             created as a new temporary directory instead.
         argv (list or None): The list of command line arguments passed to a
             script. If not specified, sys.argv is used instead.
-        time_format (str or None): Format used to represent the current
-            datetime. If not specified, ISO 8601 is used instead.
+        time_format (str): Format used to represent the current datetime. The
+        default format is the basic format of ISO 8601.
     Returns:
         Path of the output directory created by this function (str).
     """
-    if time_format:
-        time_str = datetime.datetime.now().strftime(time_format)
-    else:
-        time_str = datetime.datetime.now().isoformat()
+    time_str = datetime.datetime.now().strftime(time_format)
     if user_specified_dir is not None:
         if os.path.exists(user_specified_dir):
             if not os.path.isdir(user_specified_dir):
