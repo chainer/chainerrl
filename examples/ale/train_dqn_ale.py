@@ -133,12 +133,13 @@ def main():
         agent.load(args.load)
 
     if args.demo:
-        mean, median, stdev = experiments.eval_performance(
+        eval_stats = experiments.eval_performance(
             env=eval_env,
             agent=agent,
             n_runs=args.eval_n_runs)
         print('n_runs: {} mean: {} median: {} stdev'.format(
-            args.eval_n_runs, mean, median, stdev))
+            args.eval_n_runs, eval_stats['mean'], eval_stats['median'],
+            eval_stats['stdev']))
     else:
         # In testing DQN, randomly select 5% of actions
         eval_explorer = explorers.ConstantEpsilonGreedy(

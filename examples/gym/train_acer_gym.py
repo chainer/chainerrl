@@ -141,13 +141,14 @@ def main():
 
     if args.demo:
         env = make_env(0, True)
-        mean, median, stdev = experiments.eval_performance(
+        eval_stats = experiments.eval_performance(
             env=env,
             agent=agent,
             n_runs=args.eval_n_runs,
             max_episode_len=timestep_limit)
         print('n_runs: {} mean: {} median: {} stdev'.format(
-            args.eval_n_runs, mean, median, stdev))
+            args.eval_n_runs, eval_stats['mean'], eval_stats['median'],
+            eval_stats['stdev']))
     else:
         experiments.train_agent_async(
             agent=agent,

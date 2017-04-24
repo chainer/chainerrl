@@ -97,12 +97,13 @@ def main():
     if args.demo:
         env = make_env(0, True)
         agent = make_agent(0)
-        mean, median, stdev = experiments.eval_performance(
+        eval_stats = experiments.eval_performance(
             env=env,
             agent=agent,
             n_runs=args.eval_n_runs)
         print('n_runs: {} mean: {} median: {} stdev'.format(
-            args.eval_n_runs, mean, median, stdev))
+            args.eval_n_runs, eval_stats['mean'], eval_stats['median'],
+            eval_stats['stdev']))
     else:
         explorer = explorers.ConstantEpsilonGreedy(0.05, action_space.sample)
         experiments.train_agent_async(
