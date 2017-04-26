@@ -62,7 +62,8 @@ def train_agent(agent, env, steps, outdir, max_episode_len=None,
                             outdir, t, episode_idx, episode_r)
                 logger.info('statistics:%s', agent.get_statistics())
                 if evaluator is not None:
-                    evaluator.evaluate_if_necessary(t)
+                    evaluator.evaluate_if_necessary(
+                        t=t, episodes=episode_idx + 1)
                     if (successful_score is not None and
                             evaluator.max_score >= successful_score):
                         break
@@ -86,7 +87,7 @@ def train_agent(agent, env, steps, outdir, max_episode_len=None,
 
 
 def train_agent_with_evaluation(
-        agent, env, steps, eval_n_runs, eval_frequency,
+        agent, env, steps, eval_n_runs, eval_interval,
         outdir, max_episode_len=None, step_offset=0, eval_explorer=None,
         eval_max_episode_len=None, eval_env=None, successful_score=None,
         render=False, logger=None):
@@ -97,7 +98,7 @@ def train_agent_with_evaluation(
       env: Environment.
       steps (int): Number of total time steps for training.
       eval_n_runs (int): Number of runs for each time of evaluation.
-      eval_frequency (int): Interval of evaluation.
+      eval_interval (int): Interval of evaluation.
       outdir (str): Path to the directory to output things.
       max_episode_len (int): Maximum episode length.
       step_offset (int): Time step from which training starts.
@@ -119,7 +120,7 @@ def train_agent_with_evaluation(
 
     evaluator = Evaluator(agent=agent,
                           n_runs=eval_n_runs,
-                          eval_frequency=eval_frequency, outdir=outdir,
+                          eval_interval=eval_interval, outdir=outdir,
                           max_episode_len=eval_max_episode_len,
                           explorer=eval_explorer,
                           env=eval_env,

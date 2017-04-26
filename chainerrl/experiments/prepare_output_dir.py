@@ -10,24 +10,60 @@ import datetime
 import json
 import os
 import subprocess
+import sys
 import tempfile
 
 
-def prepare_output_dir(args, user_specified_dir=None, argv=None):
-    """Prepare output directory.
+def is_return_code_zero(args):
+    """Return true iff the given command's return code is zero.
 
-    An output directory is created if it does not exist. Then the following
-    infomation is saved into the directory:
-      args.txt: command-line arguments
-      git-status.txt: result of `git status`
-      git-log.txt: result of `git log`
-      git-diff.txt: result of `git diff`
+    All the messages to stdout or stderr are suppressed.
+    """
+    FNULL = open(os.devnull, 'w')
+    try:
+        subprocess.check_call(args, stdout=FNULL, stderr=FNULL)
+    except subprocess.CalledProcessError:
+        return False
+    return True
+
+
+def is_under_git_control():
+    """Return true iff the current directory is under git control."""
+    return is_return_code_zero(['git', 'rev-parse'])
+
+
+def prepare_output_dir(args, user_specified_dir=None, argv=None,
+                       time_format='%Y%m%dT%H%M%S.%f'):
+    """Prepare a directory for outputting training results.
+
+    An output directory, which ends with the current datetime string,
+    is created. Then the following infomation is saved into the directory:
+
+        args.txt: command line arguments
+        command.txt: command itself
+        environ.txt: environmental variables
+
+    Additionally, if the current directory is under git control, the following
+    information is saved:
+
+        git-head.txt: result of `git rev-parse HEAD`
+        git-status.txt: result of `git status`
+        git-log.txt: result of `git log`
+        git-diff.txt: result of `git diff`
 
     Args:
-      args: dict that describes command-line arguments
-      user_specified_dir: directory path
+        args (dict or argparse.Namespace): Arguments to save
+        user_specified_dir (str or None): If str is specified, the output
+            directory is created under that path. If not specified, it is
+            created as a new temporary directory instead.
+        argv (list or None): The list of command line arguments passed to a
+            script. If not specified, sys.argv is used instead.
+        time_format (str): Format used to represent the current datetime. The
+        default format is the basic format of ISO 8601.
+    Returns:
+        Path of the output directory created by this function (str).
     """
-    time_str = datetime.datetime.now().strftime('%Y%m%d%H%M%S%f')
+    time_str = datetime.datetime.now().strftime(time_format)
     if user_specified_dir is not None:
         if os.path.exists(user_specified_dir):
             if not os.path.isdir(user_specified_dir):
@@ -51,24 +87,25 @@ def prepare_output_dir(args, user_specified_dir=None, argv=None):
     with open(os.path.join(outdir, 'environ.txt'), 'w') as f:
         f.write(json.dumps(dict(os.environ)))
 
-    # Save `git rev-parse HEAD` (SHA of the current commit)
-    with open(os.path.join(outdir, 'git-head.txt'), 'w') as f:
-        f.write(subprocess.getoutput('git rev-parse HEAD'))
+    # Save the command
+    with open(os.path.join(outdir, 'command.txt'), 'w') as f:
+        f.write(' '.join(sys.argv))
 
-    # Save `git status`
-    with open(os.path.join(outdir, 'git-status.txt'), 'w') as f:
-        f.write(subprocess.getoutput('git status'))
+    if is_under_git_control():
+        # Save `git rev-parse HEAD` (SHA of the current commit)
+        with open(os.path.join(outdir, 'git-head.txt'), 'w') as f:
+            f.write(subprocess.getoutput('git rev-parse HEAD'))
 
-    # Save `git log`
-    with open(os.path.join(outdir, 'git-log.txt'), 'w') as f:
-        f.write(subprocess.getoutput('git log'))
+        # Save `git status`
+        with open(os.path.join(outdir, 'git-status.txt'), 'w') as f:
+            f.write(subprocess.getoutput('git status'))
 
-    # Save `git diff`
-    with open(os.path.join(outdir, 'git-diff.txt'), 'w') as f:
-        f.write(subprocess.getoutput('git diff'))
+        # Save `git log`
+        with open(os.path.join(outdir, 'git-log.txt'), 'w') as f:
+            f.write(subprocess.getoutput('git log'))
 
-    if argv is not None:
-        with open(os.path.join(outdir, 'command.txt'), 'w') as f:
-            f.write(' '.join(argv))
+        # Save `git diff`
+        with open(os.path.join(outdir, 'git-diff.txt'), 'w') as f:
+            f.write(subprocess.getoutput('git diff'))
 
     return outdir

@@ -50,7 +50,7 @@ def main():
     parser.add_argument('--beta', type=float, default=1e-2)
     parser.add_argument('--profile', action='store_true')
     parser.add_argument('--steps', type=int, default=8 * 10 ** 7)
-    parser.add_argument('--eval-frequency', type=int, default=10 ** 5)
+    parser.add_argument('--eval-interval', type=int, default=10 ** 5)
     parser.add_argument('--eval-n-runs', type=int, default=10)
     parser.add_argument('--reward-scale-factor', type=float, default=1e-2)
     parser.add_argument('--rmsprop-epsilon', type=float, default=1e-2)
@@ -141,13 +141,14 @@ def main():
 
     if args.demo:
         env = make_env(0, True)
-        mean, median, stdev = experiments.eval_performance(
+        eval_stats = experiments.eval_performance(
             env=env,
             agent=agent,
             n_runs=args.eval_n_runs,
             max_episode_len=timestep_limit)
-        print('n_runs: {} mean: {} median: {} stdev'.format(
-            args.eval_n_runs, mean, median, stdev))
+        print('n_runs: {} mean: {} median: {} stdev {}'.format(
+            args.eval_n_runs, eval_stats['mean'], eval_stats['median'],
+            eval_stats['stdev']))
     else:
         experiments.train_agent_async(
             agent=agent,
@@ -157,7 +158,7 @@ def main():
             profile=args.profile,
             steps=args.steps,
             eval_n_runs=args.eval_n_runs,
-            eval_frequency=args.eval_frequency,
+            eval_interval=args.eval_interval,
             max_episode_len=timestep_limit)
 
 

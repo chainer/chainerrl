@@ -138,7 +138,7 @@ class TestA3C(unittest.TestCase):
             outdir=self.outdir, processes=nproc, make_env=make_env,
             agent=agent, steps=steps,
             max_episode_len=max_episode_len,
-            eval_frequency=500,
+            eval_interval=500,
             eval_n_runs=5,
             successful_score=1)
 

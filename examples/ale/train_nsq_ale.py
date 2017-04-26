@@ -43,7 +43,7 @@ def main():
                         type=int, default=4 * 10 ** 6)
     parser.add_argument('--outdir', type=str, default='nsq_output')
     parser.add_argument('--profile', action='store_true')
-    parser.add_argument('--eval-frequency', type=int, default=10 ** 6)
+    parser.add_argument('--eval-interval', type=int, default=10 ** 6)
     parser.add_argument('--eval-n-runs', type=int, default=10)
     parser.add_argument('--demo', action='store_true', default=False)
     parser.add_argument('--load', type=str, default=None)
@@ -97,12 +97,13 @@ def main():
     if args.demo:
         env = make_env(0, True)
         agent = make_agent(0)
-        mean, median, stdev = experiments.eval_performance(
+        eval_stats = experiments.eval_performance(
             env=env,
             agent=agent,
             n_runs=args.eval_n_runs)
-        print('n_runs: {} mean: {} median: {} stdev'.format(
-            args.eval_n_runs, mean, median, stdev))
+        print('n_runs: {} mean: {} median: {} stdev {}'.format(
+            args.eval_n_runs, eval_stats['mean'], eval_stats['median'],
+            eval_stats['stdev']))
     else:
         explorer = explorers.ConstantEpsilonGreedy(0.05, action_space.sample)
         experiments.train_agent_async(
@@ -113,7 +114,7 @@ def main():
             profile=args.profile,
             steps=args.steps,
             eval_n_runs=args.eval_n_runs,
-            eval_frequency=args.eval_frequency,
+            eval_interval=args.eval_interval,
             eval_explorer=explorer)
 
 if __name__ == '__main__':
