@@ -47,10 +47,10 @@ def compute_importance(pi, mu, x):
     return np.nan_to_num(float(pi.prob(x).data) / float(mu.prob(x).data))
 
 
-def compute_all_importance(t_start, t_stop, pi, mu, x):
+def compute_all_importance(t_iter, pi, mu, x):
     return np.array(
         [compute_importance(pi[t], mu[t], np.expand_dims(x[t], 0))
-         for t in range(t_start, t_stop)],
+         for t in t_iter],
         dtype=np.float32)
 
 
@@ -439,13 +439,15 @@ class ACER(agent.AttributeSavingMixin, agent.AsyncAgent):
             self, t_start, t_stop, R, states, actions, rewards, values,
             action_values, action_distribs, action_distribs_mu,
             avg_action_distribs):
+        t_iter = range(t_start, t_stop)
 
         assert np.isscalar(R)
         discrete = isinstance(action_distribs[t_start],
                               distribution.CategoricalDistribution)
 
         if action_distribs_mu is not None:
-            rho = compute_all_importance(t_start, t_stop, action_distribs, action_distribs_mu, actions)
+            rho = compute_all_importance(
+                t_iter, action_distribs, action_distribs_mu, actions)
         else:
             rho = np.ones(t_stop - t_start)
 
@@ -453,17 +455,17 @@ class ACER(agent.AttributeSavingMixin, agent.AsyncAgent):
         if not discrete:
             correction_coefs **= 1 / actions[t_start].size
 
-        Q = [action_values[t].evaluate_actions(np.expand_dims(actions[t], axis=0))
-             for t in range(t_start, t_stop)]
+        Q = [action_values[t].evaluate_actions(
+            np.expand_dims(actions[t], axis=0))
+            for t in t_iter]
         assert isinstance(Q[0], chainer.Variable), "Q must be backprop-able"
         Q = F.flatten(F.stack(Q, axis=0))
 
-        rewards_data = np.array([rewards[t] for t in range(t_start, t_stop)])
-        values = F.flatten(F.stack([values[t] for t in range(t_start, t_stop)]))
-        # values_data = np.array([float(values[t].data) for t in range(t_start, t_stop)])
+        rewards_data = np.array([rewards[t] for t in t_iter])
+        values = F.flatten(F.stack([values[t] for t in t_iter]))
 
-        t_len = t_stop - t_start
-        Q_ret = retrace(Q.data, rewards_data, R, values.data, self.gamma, correction_coefs)
+        Q_ret = retrace(Q.data, rewards_data, R, values.data, self.gamma,
+                        correction_coefs)
         Q_opc = retrace(Q.data, rewards_data, R, values.data, self.gamma, None)
         del R
 
@@ -473,9 +475,9 @@ class ACER(agent.AttributeSavingMixin, agent.AsyncAgent):
             advantage = Q_ret - values.data
 
         pi_losses = []
-        for i in range(t_len):
-            t = t_start + i
-            action_distrib_mu = None if action_distribs_mu is None else action_distribs_mu[t]
+        for i, t in enumerate(t_iter):
+            action_distrib_mu = None if action_distribs_mu is None else \
+                action_distribs_mu[t]
 
             pi_losses.append(self.compute_one_step_pi_loss(
                 action=np.expand_dims(actions[t], axis=0),
@@ -486,12 +488,13 @@ class ACER(agent.AttributeSavingMixin, agent.AsyncAgent):
                 v=values.data[i],
                 avg_action_distrib=avg_action_distribs[t]))
         pi_losses = F.concat(pi_losses, axis=0)
-        
+
         Q_losses = (Q_ret - Q) ** 2 / 2
         if not discrete:
             assert isinstance(values, chainer.Variable), \
                 "values must be backprop-able"
-            values_target = np.clip(rho, None, 1) * (Q_ret - Q.data) + values.data
+            values_target = (np.clip(rho, None, 1) * (Q_ret - Q.data)
+                             + values.data)
             Q_losses += (values_target - values) ** 2 / 2
 
         pi_loss = self.pi_loss_coef * F.sum(pi_losses)
