@@ -26,8 +26,32 @@ from chainerrl.recurrent import state_kept
 from chainerrl.recurrent import state_reset
 
 
+def retrace(Q, rewards, R, values, gamma, correction_coefs):
+    n = Q.size
+    assert rewards.shape == (n,)
+    assert values.shape == (n,)
+    assert correction_coefs is None or correction_coefs.shape == (n,)
+    Q_ret = np.zeros(n+1, dtype=np.float32)
+    Q_ret[n] = R
+    for i in reversed(range(n)):
+        tmp = rewards[i] + gamma * Q_ret[i+1]
+        assert np.isscalar(tmp)
+        if correction_coefs is not None:
+            Q_ret[i] = correction_coefs[i] * (tmp - Q[i]) + values[i]
+        else:
+            Q_ret[i] = tmp - Q[i] + values[i]
+    return Q_ret[0:n]
+
+
 def compute_importance(pi, mu, x):
     return np.nan_to_num(float(pi.prob(x).data) / float(mu.prob(x).data))
+
+
+def compute_all_importance(t_start, t_stop, pi, mu, x):
+    return np.array(
+        [compute_importance(pi[t], mu[t], np.expand_dims(x[t], 0))
+         for t in range(t_start, t_stop)],
+        dtype=np.float32)
 
 
 def compute_full_importance(pi, mu):
@@ -417,73 +441,61 @@ class ACER(agent.AttributeSavingMixin, agent.AsyncAgent):
             avg_action_distribs):
 
         assert np.isscalar(R)
-        pi_loss = 0
-        Q_loss = 0
-        Q_ret = R
-        Q_opc = R
         discrete = isinstance(action_distribs[t_start],
                               distribution.CategoricalDistribution)
+
+        if action_distribs_mu is not None:
+            rho = compute_all_importance(t_start, t_stop, action_distribs, action_distribs_mu, actions)
+        else:
+            rho = np.ones(t_stop - t_start)
+
+        correction_coefs = np.clip(rho, None, 1)
+        if not discrete:
+            correction_coefs **= 1 / actions[t_start].size
+
+        Q = [action_values[t].evaluate_actions(np.expand_dims(actions[t], axis=0))
+             for t in range(t_start, t_stop)]
+        assert isinstance(Q[0], chainer.Variable), "Q must be backprop-able"
+        Q = F.flatten(F.stack(Q, axis=0))
+
+        rewards_data = np.array([rewards[t] for t in range(t_start, t_stop)])
+        values = F.flatten(F.stack([values[t] for t in range(t_start, t_stop)]))
+        # values_data = np.array([float(values[t].data) for t in range(t_start, t_stop)])
+
+        t_len = t_stop - t_start
+        Q_ret = retrace(Q.data, rewards_data, R, values.data, self.gamma, correction_coefs)
+        Q_opc = retrace(Q.data, rewards_data, R, values.data, self.gamma, None)
         del R
-        for i in reversed(range(t_start, t_stop)):
-            r = rewards[i]
-            v = values[i]
-            action_distrib = action_distribs[i]
-            action_distrib_mu = (action_distribs_mu[i]
-                                 if action_distribs_mu else None)
-            avg_action_distrib = avg_action_distribs[i]
-            action_value = action_values[i]
-            ba = np.expand_dims(actions[i], 0)
-            if action_distrib_mu is not None:
-                # Off-policy
-                rho = compute_importance(action_distrib, action_distrib_mu, ba)
-            else:
-                # On-policy
-                rho = 1
 
-            Q_ret = r + self.gamma * Q_ret
-            Q_opc = r + self.gamma * Q_opc
+        if self.use_Q_opc:
+            advantage = Q_opc - values.data
+        else:
+            advantage = Q_ret - values.data
 
-            assert np.isscalar(Q_ret)
-            assert np.isscalar(Q_opc)
-            if self.use_Q_opc:
-                advantage = Q_opc - float(v.data)
-            else:
-                advantage = Q_ret - float(v.data)
-            pi_loss += self.compute_one_step_pi_loss(
-                action=ba,
-                advantage=advantage,
-                action_distrib=action_distrib,
+        pi_losses = []
+        for i in range(t_len):
+            t = t_start + i
+            action_distrib_mu = None if action_distribs_mu is None else action_distribs_mu[t]
+
+            pi_losses.append(self.compute_one_step_pi_loss(
+                action=np.expand_dims(actions[t], axis=0),
+                advantage=advantage[i],
+                action_distrib=action_distribs[t],
                 action_distrib_mu=action_distrib_mu,
-                action_value=action_value,
-                v=float(v.data),
-                avg_action_distrib=avg_action_distrib)
+                action_value=action_values[t],
+                v=values.data[i],
+                avg_action_distrib=avg_action_distribs[t]))
+        pi_losses = F.concat(pi_losses, axis=0)
+        
+        Q_losses = (Q_ret - Q) ** 2 / 2
+        if not discrete:
+            assert isinstance(values, chainer.Variable), \
+                "values must be backprop-able"
+            values_target = np.clip(rho, None, 1) * (Q_ret - Q.data) + values.data
+            Q_losses += (values_target - values) ** 2 / 2
 
-            # Accumulate gradients of value function
-            Q = action_value.evaluate_actions(ba)
-            assert isinstance(Q, chainer.Variable), "Q must be backprop-able"
-            Q_loss += (Q_ret - Q) ** 2 / 2
-
-            if not discrete:
-                assert isinstance(v, chainer.Variable), \
-                    "v must be backprop-able"
-                v_target = (min(1, rho) * (Q_ret - float(Q.data)) +
-                            float(v.data))
-                Q_loss += (v_target - v) ** 2 / 2
-
-            if self.process_idx == 0:
-                self.logger.debug(
-                    't:%s v:%s Q:%s Q_ret:%s Q_opc:%s',
-                    i, float(v.data), float(Q.data), Q_ret, Q_opc)
-
-            if discrete:
-                c = min(1, rho)
-            else:
-                c = min(1, rho ** (1 / ba.size))
-            Q_ret = c * (Q_ret - float(Q.data)) + float(v.data)
-            Q_opc = Q_opc - float(Q.data) + float(v.data)
-
-        pi_loss *= self.pi_loss_coef
-        Q_loss *= self.Q_loss_coef
+        pi_loss = self.pi_loss_coef * F.sum(pi_losses)
+        Q_loss = self.Q_loss_coef * F.sum(Q_losses)
 
         if self.normalize_loss_by_steps:
             pi_loss /= t_stop - t_start
