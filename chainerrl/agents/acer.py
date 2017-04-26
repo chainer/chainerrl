@@ -18,29 +18,13 @@ from chainerrl.action_value import SingleActionValue
 from chainerrl import agent
 from chainerrl import distribution
 from chainerrl import links
+from chainerrl.eligibility_trace import retrace
 from chainerrl.misc import async
 from chainerrl.misc import copy_param
 from chainerrl.recurrent import Recurrent
 from chainerrl.recurrent import RecurrentChainMixin
 from chainerrl.recurrent import state_kept
 from chainerrl.recurrent import state_reset
-
-
-def retrace(Q, rewards, R, values, gamma, correction_coefs):
-    n = Q.size
-    assert rewards.shape == (n,)
-    assert values.shape == (n,)
-    assert correction_coefs is None or correction_coefs.shape == (n,)
-    Q_ret = np.zeros(n+1, dtype=np.float32)
-    Q_ret[n] = R
-    for i in reversed(range(n)):
-        tmp = rewards[i] + gamma * Q_ret[i+1]
-        assert np.isscalar(tmp)
-        if correction_coefs is not None:
-            Q_ret[i] = correction_coefs[i] * (tmp - Q[i]) + values[i]
-        else:
-            Q_ret[i] = tmp - Q[i] + values[i]
-    return Q_ret[0:n]
 
 
 def compute_importance(pi, mu, x):
@@ -464,9 +448,10 @@ class ACER(agent.AttributeSavingMixin, agent.AsyncAgent):
         rewards_data = np.array([rewards[t] for t in t_iter])
         values = F.flatten(F.stack([values[t] for t in t_iter]))
 
-        Q_ret = retrace(Q.data, rewards_data, R, values.data, self.gamma,
-                        correction_coefs)
-        Q_opc = retrace(Q.data, rewards_data, R, values.data, self.gamma, None)
+        Q_ret = retrace(Q.data, rewards_data, values.data, self.gamma,
+                        correction_coefs, R=R)
+        Q_opc = retrace(Q.data, rewards_data, values.data, self.gamma,
+                        np.ones_like(correction_coefs), R=R)
         del R
 
         if self.use_Q_opc:
