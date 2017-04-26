@@ -118,7 +118,7 @@ class TestREINFORCE(unittest.TestCase):
             outdir=self.outdir,
             steps=steps,
             max_episode_len=2,
-            eval_frequency=500,
+            eval_interval=500,
             eval_n_runs=5,
             successful_score=1)
 
