@@ -18,7 +18,8 @@ from chainerrl.misc import random_seed
 def train_loop(process_idx, env, agent, steps, outdir, counter,
                episodes_counter, training_done,
                max_episode_len=None, evaluator=None, eval_env=None,
-               successful_score=None, logger=None):
+               successful_score=None, logger=None,
+               global_step_hooks=[]):
 
     logger = logger or logging.getLogger(__name__)
 
@@ -35,7 +36,6 @@ def train_loop(process_idx, env, agent, steps, outdir, counter,
         obs = env.reset()
         r = 0
         done = False
-        base_lr = agent.optimizer.lr
         episode_len = 0
         successful = False
 
@@ -51,9 +51,8 @@ def train_loop(process_idx, env, agent, steps, outdir, counter,
                 agent.stop_episode_and_train(obs, r, done)
                 if process_idx == 0:
                     logger.info(
-                        'outdir:%s global_step:%s local_step:%s lr:%s R:%s',
-                        outdir, global_t, local_t, agent.optimizer.lr,
-                        episode_r)
+                        'outdir:%s global_step:%s local_step:%s R:%s',
+                        outdir, global_t, local_t, episode_r)
                     logger.info('statistics:%s', agent.get_statistics())
                 if evaluator is not None:
                     eval_score = evaluator.evaluate_if_necessary(
@@ -85,10 +84,11 @@ def train_loop(process_idx, env, agent, steps, outdir, counter,
                 local_t += 1
                 episode_len += 1
 
+                for hook in global_step_hooks:
+                    hook(env, agent, global_t)
+
                 if global_t > steps or training_done.value:
                     break
-
-                agent.optimizer.lr = (steps - global_t - 1) / steps * base_lr
 
     except KeyboardInterrupt:
         if process_idx == 0:
@@ -129,6 +129,7 @@ def train_agent_async(outdir, processes, make_env,
                       step_offset=0, successful_score=None,
                       eval_explorer=None,
                       agent=None, make_agent=None,
+                      global_step_hooks=[],
                       logger=None):
     """Train agent asynchronously.
 
@@ -141,6 +142,8 @@ def train_agent_async(outdir, processes, make_env,
       make_env (callable): (process_idx, test) -> env
       model_opt (callable): () -> (models, optimizers)
       profile (bool): Profile if set True
+      global_step_hooks (list): List of StepHook objects called every global
+          step.
       steps (int): Number of global time steps for training
     """
 
@@ -194,6 +197,7 @@ def train_agent_async(outdir, processes, make_env,
                 successful_score=successful_score,
                 training_done=training_done,
                 eval_env=eval_env,
+                global_step_hooks=global_step_hooks,
                 logger=logger)
 
         if profile:

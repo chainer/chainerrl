@@ -106,6 +106,14 @@ def main():
             eval_stats['stdev']))
     else:
         explorer = explorers.ConstantEpsilonGreedy(0.05, action_space.sample)
+
+        # Linearly decay the learning rate to zero
+        def lr_setter(env, agent, value):
+            agent.optimizer.lr = value
+
+        lr_decay_hook = experiments.LinearInterpolationHook(
+            args.steps, args.lr, 0, lr_setter)
+
         experiments.train_agent_async(
             outdir=args.outdir,
             processes=args.processes,
@@ -115,7 +123,8 @@ def main():
             steps=args.steps,
             eval_n_runs=args.eval_n_runs,
             eval_interval=args.eval_interval,
-            eval_explorer=explorer)
+            eval_explorer=explorer,
+            global_step_hooks=[lr_decay_hook])
 
 if __name__ == '__main__':
     main()
