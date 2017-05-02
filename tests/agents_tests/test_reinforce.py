@@ -10,6 +10,7 @@ import logging
 import tempfile
 import unittest
 
+import chainer
 from chainer import functions as F
 from chainer import links as L
 from chainer import optimizers
@@ -35,10 +36,25 @@ class TestREINFORCE(unittest.TestCase):
         logging.basicConfig(level=logging.DEBUG)
 
     @testing.attr.slow
-    def test_abc(self):
+    def test_abc_cpu(self):
         self._test_abc(self.use_lstm, discrete=self.discrete)
 
-    def _test_abc(self, use_lstm, discrete=True, steps=1000000):
+    @testing.attr.slow
+    @testing.attr.gpu
+    def test_abc_gpu(self):
+        self._test_abc(self.use_lstm, discrete=self.discrete, gpu=0)
+
+    def test_abc_fast_cpu(self):
+        self._test_abc(self.use_lstm, discrete=self.discrete,
+                       steps=10, require_success=False)
+
+    @testing.attr.gpu
+    def test_abc_fast_gpu(self):
+        self._test_abc(self.use_lstm, discrete=self.discrete,
+                       steps=10, require_success=False, gpu=0)
+
+    def _test_abc(self, use_lstm, discrete=True, steps=1000000,
+                  require_success=True, gpu=-1):
 
         def make_env(process_idx, test):
             size = 2
@@ -99,6 +115,10 @@ class TestREINFORCE(unittest.TestCase):
                     nonlinearity=nonlinearity,
                 )
 
+        if gpu >= 0:
+            chainer.cuda.get_device(gpu).use()
+            model.to_gpu()
+
         opt = optimizers.Adam()
         opt.setup(model)
         beta = 1e-2
@@ -137,5 +157,6 @@ class TestREINFORCE(unittest.TestCase):
                 print('state:', obs, 'action:', action)
                 obs, reward, done, _ = env.step(action)
                 total_r += reward
-            self.assertAlmostEqual(total_r, 1)
+            if require_success:
+                self.assertAlmostEqual(total_r, 1)
             agent.stop_episode()
