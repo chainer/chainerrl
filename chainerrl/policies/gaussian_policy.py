@@ -13,6 +13,7 @@ logger = getLogger(__name__)
 import chainer
 from chainer import functions as F
 from chainer import links as L
+import numpy as np
 
 from chainerrl import distribution
 from chainerrl.functions.bound_by_tanh import bound_by_tanh
@@ -112,7 +113,10 @@ class FCGaussianPolicyWithFixedCovariance(links.Sequence, GaussianPolicy):
         self.max_action = max_action
         self.bound_mean = bound_mean
         self.nonlinearity = nonlinearity
-        self.var = var
+        if np.isscalar(var):
+            self.var = np.full(action_size, var, dtype=np.float32)
+        else:
+            self.var = var
         layers = []
         layers.append(L.Linear(n_input_channels, n_hidden_channels))
         for _ in range(n_hidden_layers - 1):
@@ -122,8 +126,13 @@ class FCGaussianPolicyWithFixedCovariance(links.Sequence, GaussianPolicy):
         if self.bound_mean:
             layers.append(lambda x: bound_by_tanh(
                 x, self.min_action, self.max_action))
+
+        def get_var_array(shape):
+            self.var = self.xp.asarray(self.var)
+            return self.xp.broadcast_to(self.var, shape)
+
         layers.append(lambda x: distribution.GaussianDistribution(
-            x, self.xp.broadcast_to(self.var, x.shape)))
+            x, get_var_array(x.shape)))
         super().__init__(*layers)
 
 
