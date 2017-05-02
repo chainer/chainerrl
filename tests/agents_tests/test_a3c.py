@@ -85,7 +85,8 @@ class TestA3C(unittest.TestCase):
                     pi=policies.FCSoftmaxPolicy(
                         n_hidden_channels, action_space.n,
                         n_hidden_channels=n_hidden_channels,
-                        n_hidden_layers=2),
+                        n_hidden_layers=2,
+                        min_prob=1e-1),
                     v=v_function.FCVFunction(
                         n_hidden_channels,
                         n_hidden_channels=n_hidden_channels,
@@ -100,7 +101,8 @@ class TestA3C(unittest.TestCase):
                         n_hidden_layers=2,
                         bound_mean=True,
                         min_action=action_space.low,
-                        max_action=action_space.high),
+                        max_action=action_space.high,
+                        min_var=0.1),
                     v=v_function.FCVFunction(
                         n_hidden_channels,
                         n_hidden_channels=n_hidden_channels,
@@ -112,7 +114,8 @@ class TestA3C(unittest.TestCase):
                     pi=policies.FCSoftmaxPolicy(
                         obs_space.low.size, action_space.n,
                         n_hidden_channels=n_hidden_channels,
-                        n_hidden_layers=2),
+                        n_hidden_layers=2,
+                        min_prob=1e-1),
                     v=v_function.FCVFunction(
                         obs_space.low.size,
                         n_hidden_channels=n_hidden_channels,
@@ -126,7 +129,8 @@ class TestA3C(unittest.TestCase):
                         n_hidden_layers=2,
                         bound_mean=True,
                         min_action=action_space.low,
-                        max_action=action_space.high),
+                        max_action=action_space.high,
+                        min_var=0.1),
                     v=v_function.FCVFunction(
                         obs_space.low.size,
                         n_hidden_channels=n_hidden_channels,
