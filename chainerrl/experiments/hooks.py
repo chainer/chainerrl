@@ -14,7 +14,12 @@ import numpy as np
 
 
 class StepHook(with_metaclass(ABCMeta, object)):
-    """Hook function that will be called in training."""
+    """Hook function that will be called in training.
+
+    This class is for clarifying the interface required for Hook functions.
+    You don't need to inherit this class to define your own hooks. Any callable
+    that accepts (env, agent, step) as arguments can be used as a hook.
+    """
 
     @abstractmethod
     def __call__(self, env, agent, step):
@@ -23,6 +28,15 @@ class StepHook(with_metaclass(ABCMeta, object)):
 
 class LinearInterpolationHook(StepHook):
     """Hook that will set a linearly interpolated value.
+
+    You can use this hook to decay the learning rate by using a setter function
+    like:
+
+    .. code-block:: python
+
+        def lr_setter(env, agent, value):
+            agent.optimizer.lr = value
+
 
     Args:
         total_steps (int): Number of total steps.
