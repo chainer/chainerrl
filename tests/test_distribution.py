@@ -16,10 +16,44 @@ import scipy.stats
 from chainerrl import distribution
 
 
+class TestSampleDiscreteActions(unittest.TestCase):
+
+    def _test(self, gpu):
+        if gpu >= 0:
+            chainer.cuda.get_device(gpu).use()
+            xp = chainer.cuda.cupy
+        else:
+            xp = np
+        batch_probs = xp.asarray([[0.3, 0.7],
+                                  [0.8, 0.2],
+                                  [0.5, 0.5],
+                                  [0.0, 1.0],
+                                  [1.0, 0.0]], dtype=np.float32)
+        counter = np.zeros_like(batch_probs)
+        for _ in range(1000):
+            batch_indices = chainer.cuda.to_cpu(
+                distribution.sample_discrete_actions(batch_probs))
+            for i in range(batch_probs.shape[0]):
+                counter[i][batch_indices[i]] += 1
+        np.testing.assert_allclose(
+            counter / 1000, chainer.cuda.to_cpu(batch_probs), atol=0.1)
+
+    @testing.condition.retry(3)
+    def test_cpu(self):
+        self._test(-1)
+
+    @testing.condition.retry(3)
+    @testing.attr.gpu
+    def test_gpu(self):
+        self._test(0)
+
+
 @testing.parameterize(*testing.product({
     'batch_size': [1, 3],
     'n': [1, 2, 10],
     'wrap_by_variable': [True, False],
+    'beta': [1.0, 10.0],
+    'min_prob': [0.0, 0.01, 0.1],
 }))
 class TestSoftmaxDistribution(unittest.TestCase):
 
@@ -27,9 +61,14 @@ class TestSoftmaxDistribution(unittest.TestCase):
         self.logits = np.random.rand(self.batch_size, self.n)
         if self.wrap_by_variable:
             self.distrib = distribution.SoftmaxDistribution(
-                chainer.Variable(self.logits))
+                chainer.Variable(self.logits),
+                beta=self.beta,
+                min_prob=self.min_prob)
         else:
-            self.distrib = distribution.SoftmaxDistribution(self.logits)
+            self.distrib = distribution.SoftmaxDistribution(
+                self.logits,
+                beta=self.beta,
+                min_prob=self.min_prob)
 
     def test_sample(self):
         sample = self.distrib.sample()
@@ -47,7 +86,7 @@ class TestSoftmaxDistribution(unittest.TestCase):
             self.assertTrue(isinstance(batch_p, chainer.Variable))
             for b in range(self.batch_size):
                 p = batch_p.data[b]
-                self.assertGreaterEqual(p, 0)
+                self.assertGreaterEqual(p, self.min_prob)
                 self.assertLessEqual(p, 1)
             batch_ps.append(batch_p.data)
         np.testing.assert_almost_equal(sum(batch_ps), np.ones(self.batch_size))

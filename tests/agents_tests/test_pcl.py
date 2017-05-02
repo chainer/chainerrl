@@ -54,14 +54,23 @@ class TestPCL(unittest.TestCase):
     def test_abc_discrete(self):
         self._test_abc(self.t_max, self.use_lstm, episodic=self.episodic)
 
+    def test_abc_discrete_fast(self):
+        self._test_abc(self.t_max, self.use_lstm, episodic=self.episodic,
+                       steps=10, require_success=False)
+
     @testing.attr.slow
     def test_abc_gaussian(self):
         self._test_abc(self.t_max, self.use_lstm,
                        discrete=False, episodic=self.episodic,
                        steps=1000000)
 
+    def test_abc_gaussian_fast(self):
+        self._test_abc(self.t_max, self.use_lstm,
+                       discrete=False, episodic=self.episodic,
+                       steps=10, require_success=False)
+
     def _test_abc(self, t_max, use_lstm, discrete=True, episodic=True,
-                  steps=1000000):
+                  steps=1000000, require_success=True):
 
         nproc = 8
 
@@ -91,6 +100,7 @@ class TestPCL(unittest.TestCase):
                         n_hidden_layers=n_hidden_layers,
                         nonlinearity=nonlinearity,
                         last_wscale=1e-2,
+                        min_prob=1e-1,
                     ),
                     v=v_function.FCVFunction(
                         n_hidden_channels,
@@ -112,7 +122,9 @@ class TestPCL(unittest.TestCase):
                         var_bias=1,
                         bound_mean=True,
                         min_action=action_space.low,
-                        max_action=action_space.high),
+                        max_action=action_space.high,
+                        min_var=1e-1,
+                    ),
                     v=v_function.FCVFunction(
                         n_hidden_channels,
                         n_hidden_channels=n_hidden_channels,
@@ -130,6 +142,7 @@ class TestPCL(unittest.TestCase):
                         n_hidden_layers=n_hidden_layers,
                         nonlinearity=nonlinearity,
                         last_wscale=1e-2,
+                        min_prob=1e-1,
                     ),
                     v=v_function.FCVFunction(
                         obs_space.low.size,
@@ -150,7 +163,9 @@ class TestPCL(unittest.TestCase):
                         var_bias=1,
                         bound_mean=True,
                         min_action=action_space.low,
-                        max_action=action_space.high),
+                        max_action=action_space.high,
+                        min_var=1e-1,
+                    ),
                     v=v_function.FCVFunction(
                         obs_space.low.size,
                         n_hidden_channels=n_hidden_channels,
@@ -189,7 +204,8 @@ class TestPCL(unittest.TestCase):
             # successful because parameters could be modified by other
             # processes after success. Thus here the successful model is loaded
             # explicitly.
-            agent.load(os.path.join(self.outdir, 'successful'))
+            if require_success:
+                agent.load(os.path.join(self.outdir, 'successful'))
         else:
             agent.process_idx = 0
             chainerrl.experiments.train_agent_with_evaluation(
@@ -220,5 +236,6 @@ class TestPCL(unittest.TestCase):
                 print('state:', obs, 'action:', action)
                 obs, reward, done, _ = env.step(action)
                 total_r += reward
-            self.assertAlmostEqual(total_r, 1)
+            if require_success:
+                self.assertAlmostEqual(total_r, 1)
             agent.stop_episode()

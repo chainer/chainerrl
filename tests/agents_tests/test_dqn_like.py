@@ -7,7 +7,6 @@ from future import standard_library
 standard_library.install_aliases()
 
 from chainer import optimizers
-from chainer import testing
 import numpy as np
 
 from chainerrl.envs.abc import ABC
@@ -43,17 +42,6 @@ class _TestDQNLike(_TestTraining):
 
     def make_replay_buffer(self, env):
         raise NotImplementedError()
-
-    @testing.attr.slow
-    @testing.attr.gpu
-    def test_training_gpu(self):
-        self._test_training(0, steps=1000)
-        self._test_training(0, steps=0, load_model=True)
-
-    @testing.attr.slow
-    def test_training_cpu(self):
-        self._test_training(-1, steps=1000)
-        self._test_training(-1, steps=0, load_model=True)
 
 
 class _TestDQNOnABC(_TestDQNLike):

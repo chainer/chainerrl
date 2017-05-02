@@ -44,14 +44,23 @@ class TestA3C(unittest.TestCase):
     def test_abc_discrete(self):
         self._test_abc(self.t_max, self.use_lstm, episodic=self.episodic)
 
+    def test_abc_discrete_fast(self):
+        self._test_abc(self.t_max, self.use_lstm, episodic=self.episodic,
+                       steps=10, require_success=False)
+
     @testing.attr.slow
     def test_abc_gaussian(self):
         self._test_abc(self.t_max, self.use_lstm,
                        discrete=False, episodic=self.episodic,
                        steps=1000000)
 
+    def test_abc_gaussian_fast(self):
+        self._test_abc(self.t_max, self.use_lstm,
+                       discrete=False, episodic=self.episodic,
+                       steps=10, require_success=False)
+
     def _test_abc(self, t_max, use_lstm, discrete=True, episodic=True,
-                  steps=1000000):
+                  steps=1000000, require_success=True):
 
         nproc = 8
 
@@ -76,7 +85,8 @@ class TestA3C(unittest.TestCase):
                     pi=policies.FCSoftmaxPolicy(
                         n_hidden_channels, action_space.n,
                         n_hidden_channels=n_hidden_channels,
-                        n_hidden_layers=2),
+                        n_hidden_layers=2,
+                        min_prob=1e-1),
                     v=v_function.FCVFunction(
                         n_hidden_channels,
                         n_hidden_channels=n_hidden_channels,
@@ -91,7 +101,8 @@ class TestA3C(unittest.TestCase):
                         n_hidden_layers=2,
                         bound_mean=True,
                         min_action=action_space.low,
-                        max_action=action_space.high),
+                        max_action=action_space.high,
+                        min_var=0.1),
                     v=v_function.FCVFunction(
                         n_hidden_channels,
                         n_hidden_channels=n_hidden_channels,
@@ -103,7 +114,8 @@ class TestA3C(unittest.TestCase):
                     pi=policies.FCSoftmaxPolicy(
                         obs_space.low.size, action_space.n,
                         n_hidden_channels=n_hidden_channels,
-                        n_hidden_layers=2),
+                        n_hidden_layers=2,
+                        min_prob=1e-1),
                     v=v_function.FCVFunction(
                         obs_space.low.size,
                         n_hidden_channels=n_hidden_channels,
@@ -117,7 +129,8 @@ class TestA3C(unittest.TestCase):
                         n_hidden_layers=2,
                         bound_mean=True,
                         min_action=action_space.low,
-                        max_action=action_space.high),
+                        max_action=action_space.high,
+                        min_var=0.1),
                     v=v_function.FCVFunction(
                         obs_space.low.size,
                         n_hidden_channels=n_hidden_channels,
@@ -145,7 +158,8 @@ class TestA3C(unittest.TestCase):
         # The agent returned by train_agent_async is not guaranteed to be
         # successful because parameters could be modified by other processes
         # after success. Thus here the successful model is loaded explicitly.
-        agent.load(os.path.join(self.outdir, 'successful'))
+        if require_success:
+            agent.load(os.path.join(self.outdir, 'successful'))
         agent.stop_episode()
 
         # Test
@@ -163,5 +177,6 @@ class TestA3C(unittest.TestCase):
                 print('state:', obs, 'action:', action)
                 obs, reward, done, _ = env.step(action)
                 total_r += reward
-            self.assertAlmostEqual(total_r, 1)
+            if require_success:
+                self.assertAlmostEqual(total_r, 1)
             agent.stop_episode()

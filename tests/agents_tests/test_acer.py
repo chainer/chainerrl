@@ -349,8 +349,12 @@ class TestACER(unittest.TestCase):
         self._test_abc(self.t_max, self.use_lstm, discrete=self.discrete,
                        episodic=self.episodic)
 
+    def test_abc_fast(self):
+        self._test_abc(self.t_max, self.use_lstm, discrete=self.discrete,
+                       episodic=self.episodic, steps=10, require_success=False)
+
     def _test_abc(self, t_max, use_lstm, discrete=True, episodic=True,
-                  steps=1000000):
+                  steps=1000000, require_success=True):
 
         nproc = 8
 
@@ -379,7 +383,8 @@ class TestACER(unittest.TestCase):
                         n_hidden_channels, action_space.n,
                         n_hidden_channels=n_hidden_channels,
                         n_hidden_layers=n_hidden_layers,
-                        nonlinearity=nonlinearity),
+                        nonlinearity=nonlinearity,
+                        min_prob=1e-1),
                     q=q_function.FCStateQFunctionWithDiscreteAction(
                         n_hidden_channels, action_space.n,
                         n_hidden_channels=n_hidden_channels,
@@ -396,7 +401,8 @@ class TestACER(unittest.TestCase):
                         bound_mean=True,
                         min_action=action_space.low,
                         max_action=action_space.high,
-                        nonlinearity=nonlinearity),
+                        nonlinearity=nonlinearity,
+                        min_var=1e-1),
                     v=v_function.FCVFunction(
                         n_hidden_channels,
                         n_hidden_channels=n_hidden_channels,
@@ -415,7 +421,8 @@ class TestACER(unittest.TestCase):
                         obs_space.low.size, action_space.n,
                         n_hidden_channels=n_hidden_channels,
                         n_hidden_layers=n_hidden_layers,
-                        nonlinearity=nonlinearity),
+                        nonlinearity=nonlinearity,
+                        min_prob=1e-1),
                     q=q_function.FCStateQFunctionWithDiscreteAction(
                         obs_space.low.size, action_space.n,
                         n_hidden_channels=n_hidden_channels,
@@ -431,7 +438,8 @@ class TestACER(unittest.TestCase):
                         bound_mean=True,
                         min_action=action_space.low,
                         max_action=action_space.high,
-                        nonlinearity=nonlinearity),
+                        nonlinearity=nonlinearity,
+                        min_var=1e-1),
                     v=v_function.FCVFunction(
                         obs_space.low.size,
                         n_hidden_channels=n_hidden_channels,
@@ -443,11 +451,11 @@ class TestACER(unittest.TestCase):
                         n_hidden_layers=n_hidden_layers,
                         nonlinearity=nonlinearity),
                 )
-        eps = 1e-2
+        eps = 1e-8
         opt = rmsprop_async.RMSpropAsync(lr=1e-3, eps=eps, alpha=0.99)
         opt.setup(model)
         gamma = 0.5
-        beta = 1e-2
+        beta = 1e-5
         if self.n_times_replay == 0 and self.disable_online_update:
             # At least one of them must be enabled
             self.disable_online_update = False
@@ -474,7 +482,8 @@ class TestACER(unittest.TestCase):
         # The agent returned by train_agent_async is not guaranteed to be
         # successful because parameters could be modified by other processes
         # after success. Thus here the successful model is loaded explicitly.
-        agent.load(os.path.join(self.outdir, 'successful'))
+        if require_success:
+            agent.load(os.path.join(self.outdir, 'successful'))
         agent.stop_episode()
 
         # Test
@@ -492,5 +501,6 @@ class TestACER(unittest.TestCase):
                 print('state:', obs, 'action:', action)
                 obs, reward, done, _ = env.step(action)
                 total_r += reward
-            self.assertAlmostEqual(total_r, 1)
+            if require_success:
+                self.assertAlmostEqual(total_r, 1)
             agent.stop_episode()

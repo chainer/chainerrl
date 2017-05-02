@@ -33,7 +33,7 @@ def _unwrap_variable(x):
         return x
 
 
-def _sample_discrete_actions(batch_probs):
+def sample_discrete_actions(batch_probs):
     """Sample a batch of actions from a batch of action probabilities.
 
     Args:
@@ -41,19 +41,10 @@ def _sample_discrete_actions(batch_probs):
     Returns:
       List consisting of sampled actions
     """
-    action_indices = []
-
     xp = chainer.cuda.get_array_module(batch_probs)
-    batch_probs = chainer.cuda.to_cpu(batch_probs)
-
-    # Subtract a tiny value from probabilities in order to avoid
-    # "ValueError: sum(pvals[:-1]) > 1.0" in numpy.multinomial
-    batch_probs = batch_probs - np.finfo(np.float32).epsneg
-
-    for i in range(batch_probs.shape[0]):
-        histogram = np.random.multinomial(1, batch_probs[i])
-        action_indices.append(int(np.nonzero(histogram)[0]))
-    return xp.asarray(action_indices, dtype=np.int32)
+    return xp.argmax(
+        xp.log(batch_probs) - xp.random.gumbel(size=batch_probs.shape),
+        axis=1).astype(np.int32, copy=False)
 
 
 class Distribution(with_metaclass(ABCMeta, object)):
@@ -148,7 +139,7 @@ class CategoricalDistribution(Distribution):
             np.argmax(self.all_prob.data, axis=1).astype(np.int32))
 
     def sample(self):
-        return chainer.Variable(_sample_discrete_actions(self.all_prob.data))
+        return chainer.Variable(sample_discrete_actions(self.all_prob.data))
 
     def prob(self, x):
         return F.select_item(self.all_prob, x)
@@ -177,9 +168,12 @@ class SoftmaxDistribution(CategoricalDistribution):
             distribution.
     """
 
-    def __init__(self, logits, beta=1.0):
+    def __init__(self, logits, beta=1.0, min_prob=0.0):
         self.logits = logits
         self.beta = 1.0
+        self.min_prob = min_prob
+        self.n = logits.shape[1]
+        assert self.min_prob * self.n <= 1.0
 
     @property
     def params(self):
@@ -188,12 +182,19 @@ class SoftmaxDistribution(CategoricalDistribution):
     @cached_property
     def all_prob(self):
         with chainer.force_backprop_mode():
-            return F.softmax(self.beta * self.logits)
+            if self.min_prob > 0:
+                return (F.softmax(self.beta * self.logits)
+                        * (1 - self.min_prob * self.n)) + self.min_prob
+            else:
+                return F.softmax(self.beta * self.logits)
 
     @cached_property
     def all_log_prob(self):
         with chainer.force_backprop_mode():
-            return F.log_softmax(self.beta * self.logits)
+            if self.min_prob > 0:
+                return F.log(self.all_prob)
+            else:
+                return F.log_softmax(self.beta * self.logits)
 
     def copy(self):
         return SoftmaxDistribution(_unwrap_variable(self.logits).copy(),
