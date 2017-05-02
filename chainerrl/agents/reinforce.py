@@ -34,6 +34,8 @@ class REINFORCE(agent.AttributeSavingMixin, agent.Agent):
             each episode and accumulate only gradients.
         average_entropy_decay (float): Decay rate of average entropy. Used only
             to record statistics.
+        batch_states (callable): Method which makes a batch of observations.
+            default is `chainerrl.misc.batch_states`
         logger (logging.Logger): Logger to be used.
     """
 
@@ -46,6 +48,7 @@ class REINFORCE(agent.AttributeSavingMixin, agent.Agent):
                  act_deterministically=False,
                  average_entropy_decay=0.999,
                  backward_separately=False,
+                 batch_states=chainerrl.misc.batch_states,
                  logger=None):
 
         self.model = model
@@ -57,6 +60,7 @@ class REINFORCE(agent.AttributeSavingMixin, agent.Agent):
         self.backward_separately = backward_separately
         self.act_deterministically = act_deterministically
         self.average_entropy_decay = average_entropy_decay
+        self.batch_states = batch_states
         self.logger = logger or getLogger(__name__)
 
         # Statistics
@@ -69,10 +73,10 @@ class REINFORCE(agent.AttributeSavingMixin, agent.Agent):
 
     def act_and_train(self, obs, reward):
 
-        batch_obs = self.xp.expand_dims(self.phi(obs), 0)
+        batch_obs = self.batch_states([obs], self.xp, self.phi)
         action_distrib = self.model(batch_obs)
         batch_action = action_distrib.sample().data  # Do not backprop
-        action = batch_action[0]
+        action = chainer.cuda.to_cpu(batch_action)[0]
 
         # Save values used to compute losses
         self.reward_sequences[-1].append(reward)
@@ -95,12 +99,13 @@ class REINFORCE(agent.AttributeSavingMixin, agent.Agent):
 
     def act(self, obs):
         with chainer.no_backprop_mode():
-            batch_obs = self.xp.expand_dims(self.phi(obs), 0)
+            batch_obs = self.batch_states([obs], self.xp, self.phi)
             action_distrib = self.model(batch_obs)
             if self.act_deterministically:
-                return action_distrib.most_probable.data[0]
+                return chainer.cuda.to_cpu(
+                    action_distrib.most_probable.data)[0]
             else:
-                return action_distrib.sample().data[0]
+                return chainer.cuda.to_cpu(action_distrib.sample().data)[0]
 
     def stop_episode_and_train(self, obs, reward, done=False):
 
