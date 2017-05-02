@@ -7,7 +7,6 @@ from future import standard_library
 standard_library.install_aliases()
 
 from chainer import optimizers
-from chainer import testing
 import numpy as np
 
 from chainerrl.envs.abc import ABC

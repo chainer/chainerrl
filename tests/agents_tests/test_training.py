@@ -90,4 +90,5 @@ class _TestTraining(unittest.TestCase):
 
     def test_training_cpu_fast(self):
         self._test_training(-1, steps=10, require_success=False)
-        self._test_training(-1, steps=0, load_model=True, require_success=False)
+        self._test_training(-1, steps=0, load_model=True,
+                            require_success=False)
