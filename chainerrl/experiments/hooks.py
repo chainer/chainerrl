@@ -23,6 +23,13 @@ class StepHook(with_metaclass(ABCMeta, object)):
 
     @abstractmethod
     def __call__(self, env, agent, step):
+        """Call the hook.
+
+        Args:
+            env: Environment.
+            agent: Agent.
+            step: Current timestep.
+        """
         raise NotImplementedError
 
 
@@ -30,12 +37,14 @@ class LinearInterpolationHook(StepHook):
     """Hook that will set a linearly interpolated value.
 
     You can use this hook to decay the learning rate by using a setter function
-    like:
+    as follows:
 
     .. code-block:: python
 
         def lr_setter(env, agent, value):
             agent.optimizer.lr = value
+
+        hook = LinearInterpolationHook(10 ** 6, 1e-3, 0, lr_setter)
 
 
     Args:
