@@ -100,6 +100,7 @@ class TestPCL(unittest.TestCase):
                         n_hidden_layers=n_hidden_layers,
                         nonlinearity=nonlinearity,
                         last_wscale=1e-2,
+                        min_prob=1e-1,
                     ),
                     v=v_function.FCVFunction(
                         n_hidden_channels,
@@ -121,7 +122,9 @@ class TestPCL(unittest.TestCase):
                         var_bias=1,
                         bound_mean=True,
                         min_action=action_space.low,
-                        max_action=action_space.high),
+                        max_action=action_space.high,
+                        min_var=1e-1,
+                    ),
                     v=v_function.FCVFunction(
                         n_hidden_channels,
                         n_hidden_channels=n_hidden_channels,
@@ -139,6 +142,7 @@ class TestPCL(unittest.TestCase):
                         n_hidden_layers=n_hidden_layers,
                         nonlinearity=nonlinearity,
                         last_wscale=1e-2,
+                        min_prob=1e-1,
                     ),
                     v=v_function.FCVFunction(
                         obs_space.low.size,
@@ -159,7 +163,9 @@ class TestPCL(unittest.TestCase):
                         var_bias=1,
                         bound_mean=True,
                         min_action=action_space.low,
-                        max_action=action_space.high),
+                        max_action=action_space.high,
+                        min_var=1e-1,
+                    ),
                     v=v_function.FCVFunction(
                         obs_space.low.size,
                         n_hidden_channels=n_hidden_channels,

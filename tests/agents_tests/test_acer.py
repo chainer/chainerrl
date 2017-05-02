@@ -383,7 +383,8 @@ class TestACER(unittest.TestCase):
                         n_hidden_channels, action_space.n,
                         n_hidden_channels=n_hidden_channels,
                         n_hidden_layers=n_hidden_layers,
-                        nonlinearity=nonlinearity),
+                        nonlinearity=nonlinearity,
+                        min_prob=1e-1),
                     q=q_function.FCStateQFunctionWithDiscreteAction(
                         n_hidden_channels, action_space.n,
                         n_hidden_channels=n_hidden_channels,
@@ -400,7 +401,8 @@ class TestACER(unittest.TestCase):
                         bound_mean=True,
                         min_action=action_space.low,
                         max_action=action_space.high,
-                        nonlinearity=nonlinearity),
+                        nonlinearity=nonlinearity,
+                        min_var=1e-1),
                     v=v_function.FCVFunction(
                         n_hidden_channels,
                         n_hidden_channels=n_hidden_channels,
@@ -419,7 +421,8 @@ class TestACER(unittest.TestCase):
                         obs_space.low.size, action_space.n,
                         n_hidden_channels=n_hidden_channels,
                         n_hidden_layers=n_hidden_layers,
-                        nonlinearity=nonlinearity),
+                        nonlinearity=nonlinearity,
+                        min_prob=1e-1),
                     q=q_function.FCStateQFunctionWithDiscreteAction(
                         obs_space.low.size, action_space.n,
                         n_hidden_channels=n_hidden_channels,
@@ -435,7 +438,8 @@ class TestACER(unittest.TestCase):
                         bound_mean=True,
                         min_action=action_space.low,
                         max_action=action_space.high,
-                        nonlinearity=nonlinearity),
+                        nonlinearity=nonlinearity,
+                        min_var=1e-1),
                     v=v_function.FCVFunction(
                         obs_space.low.size,
                         n_hidden_channels=n_hidden_channels,
@@ -447,11 +451,11 @@ class TestACER(unittest.TestCase):
                         n_hidden_layers=n_hidden_layers,
                         nonlinearity=nonlinearity),
                 )
-        eps = 1e-2
+        eps = 1e-8
         opt = rmsprop_async.RMSpropAsync(lr=1e-3, eps=eps, alpha=0.99)
         opt.setup(model)
         gamma = 0.5
-        beta = 1e-2
+        beta = 1e-5
         if self.n_times_replay == 0 and self.disable_online_update:
             # At least one of them must be enabled
             self.disable_online_update = False
