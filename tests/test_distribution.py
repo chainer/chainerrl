@@ -16,6 +16,35 @@ import scipy.stats
 from chainerrl import distribution
 
 
+class TestSampleDiscreteActions(unittest.TestCase):
+
+    def _test(self, gpu):
+        if gpu >= 0:
+            chainer.cuda.get_device(gpu).use()
+            xp = chainer.cuda.cupy
+        else:
+            xp = np
+        batch_probs = xp.asarray([[0.3, 0.7],
+                                  [0.8, 0.2]], dtype=np.float32)
+        counter = np.zeros((2, 2))
+        for _ in range(1000):
+            batch_indices = chainer.cuda.to_cpu(
+                distribution.sample_discrete_actions(batch_probs))
+            counter[0][batch_indices[0]] += 1
+            counter[1][batch_indices[1]] += 1
+        np.testing.assert_allclose(
+            counter / 1000, chainer.cuda.to_cpu(batch_probs), atol=0.1)
+
+    @testing.condition.retry(3)
+    def test_cpu(self):
+        self._test(-1)
+
+    @testing.condition.retry(3)
+    @testing.attr.gpu
+    def test_gpu(self):
+        self._test(0)
+
+
 @testing.parameterize(*testing.product({
     'batch_size': [1, 3],
     'n': [1, 2, 10],
