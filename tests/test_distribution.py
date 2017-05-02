@@ -20,6 +20,8 @@ from chainerrl import distribution
     'batch_size': [1, 3],
     'n': [1, 2, 10],
     'wrap_by_variable': [True, False],
+    'beta': [1.0, 10.0],
+    'min_prob': [0.0, 0.01, 0.1],
 }))
 class TestSoftmaxDistribution(unittest.TestCase):
 
@@ -27,9 +29,14 @@ class TestSoftmaxDistribution(unittest.TestCase):
         self.logits = np.random.rand(self.batch_size, self.n)
         if self.wrap_by_variable:
             self.distrib = distribution.SoftmaxDistribution(
-                chainer.Variable(self.logits))
+                chainer.Variable(self.logits),
+                beta=self.beta,
+                min_prob=self.min_prob)
         else:
-            self.distrib = distribution.SoftmaxDistribution(self.logits)
+            self.distrib = distribution.SoftmaxDistribution(
+                self.logits,
+                beta=self.beta,
+                min_prob=self.min_prob)
 
     def test_sample(self):
         sample = self.distrib.sample()
@@ -47,7 +54,7 @@ class TestSoftmaxDistribution(unittest.TestCase):
             self.assertTrue(isinstance(batch_p, chainer.Variable))
             for b in range(self.batch_size):
                 p = batch_p.data[b]
-                self.assertGreaterEqual(p, 0)
+                self.assertGreaterEqual(p, self.min_prob)
                 self.assertLessEqual(p, 1)
             batch_ps.append(batch_p.data)
         np.testing.assert_almost_equal(sum(batch_ps), np.ones(self.batch_size))

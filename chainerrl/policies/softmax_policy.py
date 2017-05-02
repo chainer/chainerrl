@@ -27,13 +27,15 @@ class SoftmaxPolicy(chainer.Chain, Policy):
             Parameter of Boltzmann distributions.
     """
 
-    def __init__(self, model, beta=1.0):
+    def __init__(self, model, beta=1.0, min_prob=0.0):
         self.beta = beta
+        self.min_prob = min_prob
         super().__init__(model=model)
 
     def __call__(self, x, test=False):
         h = self.model(x, test=test)
-        return distribution.SoftmaxDistribution(h, beta=self.beta)
+        return distribution.SoftmaxDistribution(
+            h, beta=self.beta, min_prob=self.min_prob)
 
 
 class FCSoftmaxPolicy(SoftmaxPolicy):
@@ -42,7 +44,8 @@ class FCSoftmaxPolicy(SoftmaxPolicy):
     def __init__(self, n_input_channels, n_actions,
                  n_hidden_layers=0, n_hidden_channels=None,
                  beta=1.0, nonlinearity=F.relu,
-                 last_wscale=1.0):
+                 last_wscale=1.0,
+                 min_prob=0.0):
         self.n_input_channels = n_input_channels
         self.n_actions = n_actions
         self.n_hidden_layers = n_hidden_layers
@@ -55,4 +58,5 @@ class FCSoftmaxPolicy(SoftmaxPolicy):
                       (n_hidden_channels,) * n_hidden_layers,
                       nonlinearity=nonlinearity,
                       last_wscale=last_wscale),
-            beta=self.beta)
+            beta=self.beta,
+            min_prob=min_prob)
