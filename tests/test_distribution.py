@@ -25,13 +25,16 @@ class TestSampleDiscreteActions(unittest.TestCase):
         else:
             xp = np
         batch_probs = xp.asarray([[0.3, 0.7],
-                                  [0.8, 0.2]], dtype=np.float32)
-        counter = np.zeros((2, 2))
+                                  [0.8, 0.2],
+                                  [0.5, 0.5],
+                                  [0.0, 1.0],
+                                  [1.0, 0.0]], dtype=np.float32)
+        counter = np.zeros_like(batch_probs)
         for _ in range(1000):
             batch_indices = chainer.cuda.to_cpu(
                 distribution.sample_discrete_actions(batch_probs))
-            counter[0][batch_indices[0]] += 1
-            counter[1][batch_indices[1]] += 1
+            for i in range(batch_probs.shape[0]):
+                counter[i][batch_indices[i]] += 1
         np.testing.assert_allclose(
             counter / 1000, chainer.cuda.to_cpu(batch_probs), atol=0.1)
 
