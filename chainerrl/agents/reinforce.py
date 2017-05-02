@@ -7,6 +7,7 @@ from future import standard_library
 standard_library.install_aliases()
 
 from logging import getLogger
+import warnings
 
 import chainer
 import numpy as np
@@ -109,21 +110,28 @@ class REINFORCE(agent.AttributeSavingMixin, agent.Agent):
 
     def stop_episode_and_train(self, obs, reward, done=False):
 
-        assert done, 'REINFORCE supports episodic environments only'
-
-        self.reward_sequences[-1].append(reward)
-        if self.backward_separately:
-            self.accumulate_grad()
-            if self.n_backward == self.batchsize:
-                self.update_with_accumulated_grad()
+        if not done:
+            warnings.warn(
+                'Since REINFORCE supports episodic environments only, '
+                'calling stop_episode_and_train with done=False will throw '
+                'away the last episode.')
+            self.reward_sequences[-1] = []
+            self.log_prob_sequences[-1] = []
+            self.entropy_sequences[-1] = []
         else:
-            if len(self.reward_sequences) == self.batchsize:
-                self.batch_update()
+            self.reward_sequences[-1].append(reward)
+            if self.backward_separately:
+                self.accumulate_grad()
+                if self.n_backward == self.batchsize:
+                    self.update_with_accumulated_grad()
             else:
-                # Prepare for the next episode
-                self.reward_sequences.append([])
-                self.log_prob_sequences.append([])
-                self.entropy_sequences.append([])
+                if len(self.reward_sequences) == self.batchsize:
+                    self.batch_update()
+                else:
+                    # Prepare for the next episode
+                    self.reward_sequences.append([])
+                    self.log_prob_sequences.append([])
+                    self.entropy_sequences.append([])
 
         if isinstance(self.model, Recurrent):
             self.model.reset_state()
