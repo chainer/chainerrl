@@ -13,6 +13,7 @@ logger = getLogger(__name__)
 import chainer
 from chainer import functions as F
 from chainer import links as L
+import numpy as np
 
 from chainerrl import distribution
 from chainerrl.functions.bound_by_tanh import bound_by_tanh
@@ -38,7 +39,36 @@ class GaussianPolicy(Policy):
 
 
 class FCGaussianPolicy(chainer.ChainList, GaussianPolicy):
-    """Gaussian policy that consists of FC layers and rectifiers"""
+    """Gaussian policy that consists of fully-connected layers.
+
+    This model has two output layers: the mean layer and the variance layer.
+    The mean of the Gaussian is computed as follows:
+        Let y as the output of the mean layer.
+        If bound_mean=False:
+            mean = y (if bound_mean=False)
+        If bound_mean=True:
+            mean = min_action + tanh(y) * (max_action - min_action) / 2
+    The variance of the Gaussian is computed as follows:
+        Let y as the output of the variance layer.
+        variance = softplus(y) + min_var
+
+    Args:
+        n_input_channels (int): Number of input channels.
+        action_size (int): Number of dimensions of the action space.
+        n_hidden_layers (int): Number of hidden layers.
+        n_hidden_channels (int): Number of hidden channels.
+        min_action (ndarray): Minimum action. Used only when bound_mean=True.
+        max_action (ndarray): Maximum action. Used only when bound_mean=True.
+        var_type (str): Type of parameterization of variance. It must be
+            'spherical' or 'diagonal'.
+        nonlinearity (callable): Nonlinearity placed between layers.
+        mean_wscale (float): Scale of weight initialization of the mean layer.
+        var_wscale (float): Scale of weight initialization of the variance
+            layer.
+        var_bias (float): The initial value of the bias parameter for the
+            variance layer.
+        min_var (float): Minimum value of the variance.
+    """
 
     def __init__(self, n_input_channels, action_size,
                  n_hidden_layers=0, n_hidden_channels=None,
@@ -97,12 +127,30 @@ class FCGaussianPolicy(chainer.ChainList, GaussianPolicy):
 
 
 class FCGaussianPolicyWithFixedCovariance(links.Sequence, GaussianPolicy):
-    """Gaussian policy that consists of FC layers and rectifiers"""
+    """Gaussian policy that consists of FC layers with fixed covariance.
+
+    This model has one output layers: the mean layer.
+    The mean of the Gaussian is computed in the same way as FCGaussianPolicy.
+    The variance of the Gaussian must be specified as an argument.
+
+    Args:
+        n_input_channels (int): Number of input channels.
+        action_size (int): Number of dimensions of the action space.
+        var (float or ndarray): Variance of the Gaussian distribution.
+        n_hidden_layers (int): Number of hidden layers.
+        n_hidden_channels (int): Number of hidden channels.
+        min_action (ndarray): Minimum action. Used only when bound_mean=True.
+        max_action (ndarray): Maximum action. Used only when bound_mean=True.
+        var_type (str): Type of parameterization of variance. It must be
+            'spherical' or 'diagonal'.
+        nonlinearity (callable): Nonlinearity placed between layers.
+        mean_wscale (float): Scale of weight initialization of the mean layer.
+    """
 
     def __init__(self, n_input_channels, action_size, var,
                  n_hidden_layers=0, n_hidden_channels=None,
                  min_action=None, max_action=None, bound_mean=False,
-                 nonlinearity=F.relu):
+                 nonlinearity=F.relu, mean_wscale=1):
 
         self.n_input_channels = n_input_channels
         self.action_size = action_size
@@ -112,18 +160,29 @@ class FCGaussianPolicyWithFixedCovariance(links.Sequence, GaussianPolicy):
         self.max_action = max_action
         self.bound_mean = bound_mean
         self.nonlinearity = nonlinearity
-        self.var = var
+        if np.isscalar(var):
+            self.var = np.full(action_size, var, dtype=np.float32)
+        else:
+            self.var = var
         layers = []
         layers.append(L.Linear(n_input_channels, n_hidden_channels))
         for _ in range(n_hidden_layers - 1):
             layers.append(self.nonlinearity)
             layers.append(L.Linear(n_hidden_channels, n_hidden_channels))
-        layers.append(L.Linear(n_hidden_channels, action_size))
+        # The last layer is used to compute the mean
+        layers.append(
+            L.Linear(n_hidden_channels, action_size, wscale=mean_wscale))
+
         if self.bound_mean:
             layers.append(lambda x: bound_by_tanh(
                 x, self.min_action, self.max_action))
+
+        def get_var_array(shape):
+            self.var = self.xp.asarray(self.var)
+            return self.xp.broadcast_to(self.var, shape)
+
         layers.append(lambda x: distribution.GaussianDistribution(
-            x, self.xp.broadcast_to(self.var, x.shape)))
+            x, get_var_array(x.shape)))
         super().__init__(*layers)
 
 

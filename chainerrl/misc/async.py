@@ -75,12 +75,6 @@ def share_params_as_shared_arrays(link):
     return shared_arrays
 
 
-def share_states_as_shared_arrays(link):
-    shared_arrays = extract_states_as_shared_arrays(link)
-    set_shared_states(link, shared_arrays)
-    return shared_arrays
-
-
 def extract_states_as_shared_arrays(optimizer):
     assert isinstance(optimizer, chainer.Optimizer)
     assert hasattr(optimizer, 'target'), 'Optimizer.setup must be called first'
@@ -90,6 +84,12 @@ def extract_states_as_shared_arrays(optimizer):
         for param_name, param in state.items():
             shared_arrays[state_name][
                 param_name] = mp.RawArray('f', param.ravel())
+    return shared_arrays
+
+
+def share_states_as_shared_arrays(optimizer):
+    shared_arrays = extract_states_as_shared_arrays(optimizer)
+    set_shared_states(optimizer, shared_arrays)
     return shared_arrays
 
 

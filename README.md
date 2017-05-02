@@ -2,7 +2,7 @@
 [![Build Status](https://travis-ci.org/pfnet/chainerrl.svg?branch=master)](https://travis-ci.org/pfnet/chainerrl)
 [![coveralls](https://img.shields.io/coveralls/pfnet/chainerrl.svg)](https://coveralls.io/github/pfnet/chainerrl)
 [![Documentation Status](https://readthedocs.org/projects/chainerrl/badge/?version=latest)](http://chainerrl.readthedocs.io/en/latest/?badge=latest)
-[![PyPI](https://img.shields.io/pypi/v/chainerrl.svg)]()
+[![PyPI](https://img.shields.io/pypi/v/chainerrl.svg)](https://pypi.python.org/pypi/chainerrl)
 
 ChainerRL is a deep reinforcement learning library that implements various state-of-the-art deep reinforcement algorithms in Python using [Chainer](https://github.com/pfnet/chainer), a flexible deep learning framework.
 

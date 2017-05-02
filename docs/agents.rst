@@ -37,6 +37,8 @@ Agent implementations
 
 .. autoclass:: chainerrl.agents.PGT
 
+.. autoclass:: chainerrl.agents.REINFORCE
+
 .. autoclass:: chainerrl.agents.ResidualDQN
 
 .. autoclass:: chainerrl.agents.SARSA

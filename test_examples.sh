@@ -51,3 +51,8 @@ python examples/gym/train_pcl_gym.py --demo --load $model --eval-n-runs 1 --gpu 
 python examples/gym/train_ddpg_gym.py --steps 100 --replay-start-size 50 --minibatch-size 32 --outdir $outdir/gym/ddpg --env Pendulum-v0 --gpu $gpu
 model=$(find $outdir/gym/ddpg -name "*_finish")
 python examples/gym/train_ddpg_gym.py --demo --load $model --eval-n-runs 1 --env Pendulum-v0 --gpu $gpu
+
+# gym/reinforce
+python examples/gym/train_reinforce_gym.py --steps 100 --batchsize 1 --outdir $outdir/gym/reinforce --gpu $gpu
+model=$(find $outdir/gym/reinforce -name "*_finish")
+python examples/gym/train_reinforce_gym.py --demo --load $model --eval-n-runs 1 --gpu $gpu
