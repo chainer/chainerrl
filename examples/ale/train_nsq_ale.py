@@ -37,6 +37,7 @@ def main():
     parser.add_argument('processes', type=int)
     parser.add_argument('rom', type=str)
     parser.add_argument('--seed', type=int, default=None)
+    parser.add_argument('--lr', type=float, default=7e-4)
     parser.add_argument('--steps', type=int, default=8 * 10 ** 7)
     parser.add_argument('--use-sdl', action='store_true', default=False)
     parser.add_argument('--final-exploration-frames',
@@ -72,7 +73,7 @@ def main():
         links.NIPSDQNHead(),
         L.Linear(256, action_space.n),
         DiscreteActionValue)
-    opt = rmsprop_async.RMSpropAsync(lr=7e-4, eps=1e-1, alpha=0.99)
+    opt = rmsprop_async.RMSpropAsync(lr=args.lr, eps=1e-1, alpha=0.99)
     opt.setup(q_func)
 
     # Make process-specific agents to diversify exploration
