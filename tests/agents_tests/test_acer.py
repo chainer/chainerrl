@@ -349,8 +349,12 @@ class TestACER(unittest.TestCase):
         self._test_abc(self.t_max, self.use_lstm, discrete=self.discrete,
                        episodic=self.episodic)
 
+    def test_abc_fast(self):
+        self._test_abc(self.t_max, self.use_lstm, discrete=self.discrete,
+                       episodic=self.episodic, steps=10, require_success=False)
+
     def _test_abc(self, t_max, use_lstm, discrete=True, episodic=True,
-                  steps=1000000):
+                  steps=1000000, require_success=True):
 
         nproc = 8
 
@@ -474,7 +478,8 @@ class TestACER(unittest.TestCase):
         # The agent returned by train_agent_async is not guaranteed to be
         # successful because parameters could be modified by other processes
         # after success. Thus here the successful model is loaded explicitly.
-        agent.load(os.path.join(self.outdir, 'successful'))
+        if require_success:
+            agent.load(os.path.join(self.outdir, 'successful'))
         agent.stop_episode()
 
         # Test
@@ -492,5 +497,6 @@ class TestACER(unittest.TestCase):
                 print('state:', obs, 'action:', action)
                 obs, reward, done, _ = env.step(action)
                 total_r += reward
-            self.assertAlmostEqual(total_r, 1)
+            if require_success:
+                self.assertAlmostEqual(total_r, 1)
             agent.stop_episode()

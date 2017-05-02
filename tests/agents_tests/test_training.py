@@ -29,7 +29,8 @@ class _TestTraining(unittest.TestCase):
     def make_env_and_successful_return(self, test):
         raise NotImplementedError()
 
-    def _test_training(self, gpu, steps=5000, load_model=False):
+    def _test_training(self, gpu, steps=5000, load_model=False,
+                       require_success=True):
 
         random_seed.set_random_seed(1)
         logging.basicConfig(level=logging.DEBUG)
@@ -64,7 +65,8 @@ class _TestTraining(unittest.TestCase):
                 obs, reward, done, _ = test_env.step(action)
                 total_r += reward
             agent.stop_episode()
-            self.assertAlmostEqual(total_r, successful_return)
+            if require_success:
+                self.assertAlmostEqual(total_r, successful_return)
 
         # Save
         agent.save(self.agent_dirname)
@@ -80,3 +82,12 @@ class _TestTraining(unittest.TestCase):
     def test_training_cpu(self):
         self._test_training(-1, steps=100000)
         self._test_training(-1, steps=0, load_model=True)
+
+    @testing.attr.gpu
+    def test_training_gpu_fast(self):
+        self._test_training(0, steps=10, require_success=False)
+        self._test_training(0, steps=0, load_model=True, require_success=False)
+
+    def test_training_cpu_fast(self):
+        self._test_training(-1, steps=10, require_success=False)
+        self._test_training(-1, steps=0, load_model=True, require_success=False)

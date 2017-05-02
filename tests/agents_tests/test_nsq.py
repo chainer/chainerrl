@@ -53,7 +53,10 @@ class TestNSQ(unittest.TestCase):
     def test_abc(self):
         self._test_abc()
 
-    def _test_abc(self):
+    def test_abc_fast(self):
+        self._test_abc(steps=10, require_success=False)
+
+    def _test_abc(self, steps=100000, require_success=True):
 
         nproc = 8
 
@@ -97,7 +100,7 @@ class TestNSQ(unittest.TestCase):
 
         agent = train_agent_async(
             outdir=self.outdir, processes=nproc, make_env=make_env,
-            make_agent=make_agent, steps=100000,
+            make_agent=make_agent, steps=steps,
             max_episode_len=5,
             eval_interval=500,
             eval_n_runs=5,
@@ -107,7 +110,8 @@ class TestNSQ(unittest.TestCase):
         # The agent returned by train_agent_async is not guaranteed to be
         # successful because parameters could be modified by other processes
         # after success. Thus here the successful model is loaded explicitly.
-        agent.load(os.path.join(self.outdir, 'successful'))
+        if require_success:
+            agent.load(os.path.join(self.outdir, 'successful'))
         agent.stop_episode()
 
         # Test
@@ -125,5 +129,6 @@ class TestNSQ(unittest.TestCase):
                 print(('state:', obs, 'action:', action))
                 obs, r, done, _ = env.step(action)
                 total_r += r
+            if require_success:
+                self.assertAlmostEqual(total_r, 1)
             agent.stop_episode()
-            self.assertAlmostEqual(total_r, 1)
