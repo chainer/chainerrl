@@ -40,15 +40,12 @@ def main():
     parser.add_argument('--seed', type=int, default=None)
     parser.add_argument('--gpu', type=int, default=0)
     parser.add_argument('--outdir', type=str, default='results')
-    parser.add_argument('--t-max', type=int, default=5)
-    parser.add_argument('--beta', type=float, default=0)
+    parser.add_argument('--beta', type=float, default=1e-4)
     parser.add_argument('--batchsize', type=int, default=10)
-    parser.add_argument('--profile', action='store_true')
     parser.add_argument('--steps', type=int, default=8 * 10 ** 7)
     parser.add_argument('--eval-interval', type=int, default=10 ** 5)
     parser.add_argument('--eval-n-runs', type=int, default=10)
     parser.add_argument('--reward-scale-factor', type=float, default=1e-2)
-    parser.add_argument('--rmsprop-epsilon', type=float, default=1e-1)
     parser.add_argument('--render', action='store_true', default=False)
     parser.add_argument('--lr', type=float, default=1e-3)
     parser.add_argument('--demo', action='store_true', default=False)
@@ -84,12 +81,13 @@ def main():
 
     # Switch policy types accordingly to action space types
     if isinstance(action_space, gym.spaces.Box):
-        model = chainerrl.policies.FCGaussianPolicy(
+        model = chainerrl.policies.FCGaussianPolicyWithFixedCovariance(
             obs_space.low.size,
             action_space.low.size,
+            var=0.1,
             n_hidden_channels=200,
             n_hidden_layers=2,
-            nonlinearity=chainer.functions.tanh,
+            nonlinearity=chainer.functions.leaky_relu,
         )
     else:
         model = chainerrl.policies.FCSoftmaxPolicy(
@@ -97,7 +95,7 @@ def main():
             action_space.n,
             n_hidden_channels=200,
             n_hidden_layers=2,
-            nonlinearity=chainer.functions.tanh,
+            nonlinearity=chainer.functions.leaky_relu,
         )
 
     if args.gpu >= 0:
@@ -106,6 +104,7 @@ def main():
 
     opt = chainer.optimizers.Adam(alpha=args.lr)
     opt.setup(model)
+    opt.add_hook(chainer.optimizer.GradientClipping(1))
 
     agent = chainerrl.agents.REINFORCE(
         model, opt, beta=args.beta, phi=phi, batchsize=args.batchsize)
