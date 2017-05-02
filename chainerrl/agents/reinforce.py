@@ -151,7 +151,10 @@ class REINFORCE(agent.AttributeSavingMixin, agent.Agent):
                 loss = -R * log_prob - self.beta * entropy
                 losses.append(loss)
         total_loss = chainerrl.functions.sum_arrays(losses)
-        total_loss /= self.batchsize
+        # When self.batchsize is future.types.newint.newint, dividing a
+        # Variable with it will raise an error, so it is manually converted to
+        # float here.
+        total_loss /= float(self.batchsize)
         total_loss.backward()
         self.reward_sequences = [[]]
         self.log_prob_sequences = [[]]
