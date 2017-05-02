@@ -33,7 +33,7 @@ def _unwrap_variable(x):
         return x
 
 
-def _sample_discrete_actions(batch_probs):
+def sample_discrete_actions(batch_probs):
     """Sample a batch of actions from a batch of action probabilities.
 
     Args:
@@ -41,19 +41,10 @@ def _sample_discrete_actions(batch_probs):
     Returns:
       List consisting of sampled actions
     """
-    action_indices = []
-
     xp = chainer.cuda.get_array_module(batch_probs)
-    batch_probs = chainer.cuda.to_cpu(batch_probs)
-
-    # Subtract a tiny value from probabilities in order to avoid
-    # "ValueError: sum(pvals[:-1]) > 1.0" in numpy.multinomial
-    batch_probs = batch_probs - np.finfo(np.float32).epsneg
-
-    for i in range(batch_probs.shape[0]):
-        histogram = np.random.multinomial(1, batch_probs[i])
-        action_indices.append(int(np.nonzero(histogram)[0]))
-    return xp.asarray(action_indices, dtype=np.int32)
+    return xp.argmax(
+        xp.log(batch_probs) - xp.random.gumbel(size=batch_probs.shape),
+        axis=1).astype(np.int32, copy=False)
 
 
 class Distribution(with_metaclass(ABCMeta, object)):
@@ -148,7 +139,7 @@ class CategoricalDistribution(Distribution):
             np.argmax(self.all_prob.data, axis=1).astype(np.int32))
 
     def sample(self):
-        return chainer.Variable(_sample_discrete_actions(self.all_prob.data))
+        return chainer.Variable(sample_discrete_actions(self.all_prob.data))
 
     def prob(self, x):
         return F.select_item(self.all_prob, x)
