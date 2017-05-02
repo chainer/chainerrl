@@ -37,6 +37,7 @@ def main():
     parser.add_argument('processes', type=int)
     parser.add_argument('rom', type=str)
     parser.add_argument('--seed', type=int, default=None)
+    parser.add_argument('--lr', type=float, default=7e-4)
     parser.add_argument('--steps', type=int, default=8 * 10 ** 7)
     parser.add_argument('--use-sdl', action='store_true', default=False)
     parser.add_argument('--final-exploration-frames',
@@ -72,7 +73,7 @@ def main():
         links.NIPSDQNHead(),
         L.Linear(256, action_space.n),
         DiscreteActionValue)
-    opt = rmsprop_async.RMSpropAsync(lr=7e-4, eps=1e-1, alpha=0.99)
+    opt = rmsprop_async.RMSpropAsync(lr=args.lr, eps=1e-1, alpha=0.99)
     opt.setup(q_func)
 
     # Make process-specific agents to diversify exploration
@@ -106,6 +107,14 @@ def main():
             eval_stats['stdev']))
     else:
         explorer = explorers.ConstantEpsilonGreedy(0.05, action_space.sample)
+
+        # Linearly decay the learning rate to zero
+        def lr_setter(env, agent, value):
+            agent.optimizer.lr = value
+
+        lr_decay_hook = experiments.LinearInterpolationHook(
+            args.steps, args.lr, 0, lr_setter)
+
         experiments.train_agent_async(
             outdir=args.outdir,
             processes=args.processes,
@@ -115,7 +124,8 @@ def main():
             steps=args.steps,
             eval_n_runs=args.eval_n_runs,
             eval_interval=args.eval_interval,
-            eval_explorer=explorer)
+            eval_explorer=explorer,
+            global_step_hooks=[lr_decay_hook])
 
 if __name__ == '__main__':
     main()

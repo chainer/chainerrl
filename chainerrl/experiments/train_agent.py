@@ -29,7 +29,7 @@ def ask_and_save_agent_replay_buffer(agent, t, outdir, suffix=''):
 
 def train_agent(agent, env, steps, outdir, max_episode_len=None,
                 step_offset=0, evaluator=None, successful_score=None,
-                logger=None):
+                step_hooks=[], logger=None):
 
     logger = logger or logging.getLogger(__name__)
 
@@ -55,6 +55,9 @@ def train_agent(agent, env, steps, outdir, max_episode_len=None,
             t += 1
             episode_r += r
             episode_len += 1
+
+            for hook in step_hooks:
+                hook(env, agent, t)
 
             if done or episode_len == max_episode_len or t == steps:
                 agent.stop_episode_and_train(obs, r, done=done)
@@ -90,22 +93,26 @@ def train_agent_with_evaluation(
         agent, env, steps, eval_n_runs, eval_interval,
         outdir, max_episode_len=None, step_offset=0, eval_explorer=None,
         eval_max_episode_len=None, eval_env=None, successful_score=None,
-        render=False, logger=None):
-    """Run a DQN-like agent.
+        step_hooks=[], logger=None):
+    """Train an agent while regularly evaluating it.
 
     Args:
-      agent: Agent.
-      env: Environment.
-      steps (int): Number of total time steps for training.
-      eval_n_runs (int): Number of runs for each time of evaluation.
-      eval_interval (int): Interval of evaluation.
-      outdir (str): Path to the directory to output things.
-      max_episode_len (int): Maximum episode length.
-      step_offset (int): Time step from which training starts.
-      eval_explorer: Explorer used for evaluation.
-      eval_env: Environment used for evaluation.
-      successful_score (float): Finish training if the mean score is greater
-          or equal to this value if not None
+        agent: Agent to train.
+        env: Environment train the againt against.
+        steps (int): Number of total time steps for training.
+        eval_n_runs (int): Number of runs for each time of evaluation.
+        eval_interval (int): Interval of evaluation.
+        outdir (str): Path to the directory to output things.
+        max_episode_len (int): Maximum episode length.
+        step_offset (int): Time step from which training starts.
+        eval_explorer: Explorer used for evaluation.
+        eval_env: Environment used for evaluation.
+        successful_score (float): Finish training if the mean score is greater
+            or equal to this value if not None
+        step_hooks (list): List of callable objects that accepts
+            (env, agent, step) as arguments. They are called every step.
+            See chainerrl.experiments.hooks.
+        logger (logging.Logger): Logger used in this function.
     """
 
     logger = logger or logging.getLogger(__name__)
@@ -128,6 +135,10 @@ def train_agent_with_evaluation(
                           logger=logger)
 
     train_agent(
-        agent, env, steps, outdir, max_episode_len=max_episode_len,
-        step_offset=step_offset, evaluator=evaluator,
-        successful_score=successful_score, logger=logger)
+        agent, env, steps, outdir,
+        max_episode_len=max_episode_len,
+        step_offset=step_offset,
+        evaluator=evaluator,
+        successful_score=successful_score,
+        step_hooks=step_hooks,
+        logger=logger)
