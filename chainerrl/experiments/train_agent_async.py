@@ -124,27 +124,44 @@ def set_shared_objects(agent, shared_objects):
 
 
 def train_agent_async(outdir, processes, make_env,
-                      profile=False, steps=8 * 10 ** 7, eval_interval=10 ** 6,
-                      eval_n_runs=10, gamma=0.99, max_episode_len=None,
-                      step_offset=0, successful_score=None,
+                      profile=False,
+                      steps=8 * 10 ** 7,
+                      eval_interval=10 ** 6,
+                      eval_n_runs=10,
+                      max_episode_len=None,
+                      step_offset=0,
+                      successful_score=None,
                       eval_explorer=None,
-                      agent=None, make_agent=None,
+                      agent=None,
+                      make_agent=None,
                       global_step_hooks=[],
                       logger=None):
-    """Train agent asynchronously.
+    """Train agent asynchronously using multiprocessing.
 
-    One of agent and make_agent must be specified.
+    Either `agent` or `make_agent` must be specified.
 
     Args:
-      agent (Agent): Agent to train
-      make_agent (callable): (process_idx) -> Agent
-      processes (int): Number of processes.
-      make_env (callable): (process_idx, test) -> env
-      model_opt (callable): () -> (models, optimizers)
-      profile (bool): Profile if set True
-      global_step_hooks (list): List of StepHook objects called every global
-          step.
-      steps (int): Number of global time steps for training
+        outdir (str): Path to the directory to output things.
+        processes (int): Number of processes.
+        make_env (callable): (process_idx, test) -> Environment.
+        profile (bool): Profile if set True.
+        steps (int): Number of global time steps for training.
+        eval_interval (int): Interval of evaluation.
+        eval_n_runs (int): Number of runs for each time of evaluation.
+        max_episode_len (int): Maximum episode length.
+        step_offset (int): Time step from which training starts.
+        successful_score (float): Finish training if the mean score is greater
+            or equal to this value if not None
+        eval_explorer: Explorer used for evaluation.
+        agent (Agent): Agent to train.
+        make_agent (callable): (process_idx) -> Agent
+        global_step_hooks (list): List of callable objects that accepts
+            (env, agent, step) as arguments. They are called every global
+            step. See chainerrl.experiments.hooks.
+        logger (logging.Logger): Logger used in this function.
+
+    Returns:
+        Trained agent.
     """
 
     logger = logger or logging.getLogger(__name__)

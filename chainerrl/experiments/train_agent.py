@@ -93,25 +93,26 @@ def train_agent_with_evaluation(
         agent, env, steps, eval_n_runs, eval_interval,
         outdir, max_episode_len=None, step_offset=0, eval_explorer=None,
         eval_max_episode_len=None, eval_env=None, successful_score=None,
-        render=False, step_hooks=[], logger=None):
-    """Run a DQN-like agent.
+        step_hooks=[], logger=None):
+    """Train an agent while regularly evaluating it.
 
     Args:
-      agent: Agent.
-      env: Environment.
-      steps (int): Number of total time steps for training.
-      eval_n_runs (int): Number of runs for each time of evaluation.
-      eval_interval (int): Interval of evaluation.
-      outdir (str): Path to the directory to output things.
-      max_episode_len (int): Maximum episode length.
-      step_offset (int): Time step from which training starts.
-      eval_explorer: Explorer used for evaluation.
-      eval_env: Environment used for evaluation.
-      successful_score (float): Finish training if the mean score is greater
-          or equal to this value if not None
-      step_hooks (list): List of callable objects that accepts
-          (env, agent, step) as arguments. They are called every step.
-          See chainerrl.experiments.hooks.
+        agent: Agent to train.
+        env: Environment train the againt against.
+        steps (int): Number of total time steps for training.
+        eval_n_runs (int): Number of runs for each time of evaluation.
+        eval_interval (int): Interval of evaluation.
+        outdir (str): Path to the directory to output things.
+        max_episode_len (int): Maximum episode length.
+        step_offset (int): Time step from which training starts.
+        eval_explorer: Explorer used for evaluation.
+        eval_env: Environment used for evaluation.
+        successful_score (float): Finish training if the mean score is greater
+            or equal to this value if not None
+        step_hooks (list): List of callable objects that accepts
+            (env, agent, step) as arguments. They are called every step.
+            See chainerrl.experiments.hooks.
+        logger (logging.Logger): Logger used in this function.
     """
 
     logger = logger or logging.getLogger(__name__)
