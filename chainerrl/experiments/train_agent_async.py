@@ -180,19 +180,25 @@ def train_agent_async(outdir, processes, make_env,
     shared_objects = extract_shared_objects_from_agent(agent)
     set_shared_objects(agent, shared_objects)
 
-    evaluator = AsyncEvaluator(
-        n_runs=eval_n_runs,
-        eval_interval=eval_interval, outdir=outdir,
-        max_episode_len=max_episode_len,
-        step_offset=step_offset,
-        explorer=eval_explorer,
-        logger=logger)
+    if eval_interval is None:
+        evaluator = None
+    else:
+        evaluator = AsyncEvaluator(
+            n_runs=eval_n_runs,
+            eval_interval=eval_interval, outdir=outdir,
+            max_episode_len=max_episode_len,
+            step_offset=step_offset,
+            explorer=eval_explorer,
+            logger=logger)
 
     def run_func(process_idx):
         random_seed.set_random_seed(process_idx)
 
         env = make_env(process_idx, test=False)
-        eval_env = make_env(process_idx, test=True)
+        if evaluator is None:
+            eval_env = env
+        else:
+            eval_env = make_env(process_idx, test=True)
         if make_agent is not None:
             local_agent = make_agent(process_idx)
             set_shared_objects(local_agent, shared_objects)
