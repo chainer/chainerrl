@@ -146,7 +146,8 @@ def train_agent_async(outdir, processes, make_env,
         make_env (callable): (process_idx, test) -> Environment.
         profile (bool): Profile if set True.
         steps (int): Number of global time steps for training.
-        eval_interval (int): Interval of evaluation.
+        eval_interval (int): Interval of evaluation. If set to None, the agent
+            will not be evaluated at all.
         eval_n_runs (int): Number of runs for each time of evaluation.
         max_episode_len (int): Maximum episode length.
         step_offset (int): Time step from which training starts.
