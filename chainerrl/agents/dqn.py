@@ -285,6 +285,12 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
                         for err, index in zip(errors_out_step, indices):
                             errors_out[index] += err
                 loss /= max_epi_len
+
+                # Update stats
+                self.average_loss *= self.average_loss_decay
+                self.average_loss += \
+                    (1 - self.average_loss_decay) * float(loss.data)
+
                 self.optimizer.zero_grads()
                 loss.backward()
                 self.optimizer.update()
