@@ -100,13 +100,13 @@ class FCGaussianPolicy(chainer.ChainList, GaussianPolicy):
                                        initialW=LeCunNormal(mean_wscale))
             self.var_layer = L.Linear(n_hidden_channels, var_size,
                                       initialW=LeCunNormal(var_wscale),
-                                      bias=var_bias)
+                                      initial_bias=var_bias)
         else:
             self.mean_layer = L.Linear(n_input_channels, action_size,
                                        initialW=LeCunNormal(mean_wscale))
             self.var_layer = L.Linear(n_input_channels, var_size,
                                       initialW=LeCunNormal(var_wscale),
-                                      bias=var_bias)
+                                      initial_bias=var_bias)
 
         super().__init__(
             self.mean_layer, self.var_layer, *self.hidden_layers)

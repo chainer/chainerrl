@@ -24,9 +24,10 @@ class DuelingDQN(chainer.Chain, StateQFunction):
         self.activation = activation
 
         conv_layers = chainer.ChainList(
-            L.Convolution2D(n_input_channels, 32, 8, stride=4, bias=bias),
-            L.Convolution2D(32, 64, 4, stride=2, bias=bias),
-            L.Convolution2D(64, 64, 3, stride=1, bias=bias))
+            L.Convolution2D(n_input_channels, 32, 8, stride=4,
+                            initial_bias=bias),
+            L.Convolution2D(32, 64, 4, stride=2, initial_bias=bias),
+            L.Convolution2D(64, 64, 3, stride=1, initial_bias=bias))
 
         a_stream = MLP(3136, n_actions, [512])
         v_stream = MLP(3136, 1, [512])
