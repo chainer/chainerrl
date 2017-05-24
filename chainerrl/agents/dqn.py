@@ -233,7 +233,7 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
         self.average_loss *= self.average_loss_decay
         self.average_loss += (1 - self.average_loss_decay) * float(loss.data)
 
-        self.optimizer.zero_grads()
+        self.model.cleargrads()
         loss.backward()
         self.optimizer.update()
 
@@ -291,7 +291,7 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
                 self.average_loss += \
                     (1 - self.average_loss_decay) * float(loss.data)
 
-                self.optimizer.zero_grads()
+                self.model.cleargrads()
                 loss.backward()
                 self.optimizer.update()
         if has_weights:
