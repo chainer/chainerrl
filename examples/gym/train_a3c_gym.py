@@ -4,10 +4,10 @@ This script is an example of training a PCL agent against OpenAI Gym envs.
 Both discrete and continuous action spaces are supported.
 
 To solve CartPole-v0, run:
-    python train_a3c_gym.py --env CartPole-v0
+    python train_a3c_gym.py 8 --env CartPole-v0
 
 To solve InvertedPendulum-v1, run:
-    python train_a3c_gym.py --env InvertedPendulum-v1 --arch LSTMGaussian --t-max 50  # noqa
+    python train_a3c_gym.py 8 --env InvertedPendulum-v1 --arch LSTMGaussian --t-max 50  # noqa
 """
 from __future__ import division
 from __future__ import print_function
