@@ -1,3 +1,14 @@
+"""An example of training A3C against OpenAI Gym Envs.
+
+This script is an example of training a PCL agent against OpenAI Gym envs.
+Both discrete and continuous action spaces are supported.
+
+To solve CartPole-v0, run:
+    python train_a3c_gym.py 8 --env CartPole-v0
+
+To solve InvertedPendulum-v1, run:
+    python train_a3c_gym.py 8 --env InvertedPendulum-v1 --arch LSTMGaussian --t-max 50  # noqa
+"""
 from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
@@ -30,6 +41,7 @@ def phi(obs):
 
 
 class A3CFFSoftmax(chainer.ChainList, a3c.A3CModel):
+    """An example of A3C feedforward softmax policy."""
 
     def __init__(self, ndim_obs, n_actions, hidden_sizes=(200, 200)):
         self.pi = policies.SoftmaxPolicy(
@@ -42,6 +54,7 @@ class A3CFFSoftmax(chainer.ChainList, a3c.A3CModel):
 
 
 class A3CFFMellowmax(chainer.ChainList, a3c.A3CModel):
+    """An example of A3C feedforward mellowmax policy."""
 
     def __init__(self, ndim_obs, n_actions, hidden_sizes=(200, 200)):
         self.pi = policies.MellowmaxPolicy(
@@ -54,6 +67,7 @@ class A3CFFMellowmax(chainer.ChainList, a3c.A3CModel):
 
 
 class A3CLSTMGaussian(chainer.ChainList, a3c.A3CModel, RecurrentChainMixin):
+    """An example of A3C recurrent Gaussian policy."""
 
     def __init__(self, obs_size, action_size, hidden_size=200, lstm_size=128):
         self.pi_head = L.Linear(obs_size, hidden_size)
