@@ -12,6 +12,7 @@ logger = getLogger(__name__)
 
 import chainer
 from chainer import functions as F
+from chainer.initializers import LeCunNormal
 from chainer import links as L
 import numpy as np
 
@@ -96,15 +97,15 @@ class FCGaussianPolicy(chainer.ChainList, GaussianPolicy):
                 self.hidden_layers.append(
                     L.Linear(n_hidden_channels, n_hidden_channels))
             self.mean_layer = L.Linear(n_hidden_channels, action_size,
-                                       wscale=mean_wscale)
+                                       initialW=LeCunNormal(mean_wscale))
             self.var_layer = L.Linear(n_hidden_channels, var_size,
-                                      wscale=var_wscale,
+                                      initialW=LeCunNormal(var_wscale),
                                       bias=var_bias)
         else:
             self.mean_layer = L.Linear(n_input_channels, action_size,
-                                       wscale=mean_wscale)
+                                       initialW=LeCunNormal(mean_wscale))
             self.var_layer = L.Linear(n_input_channels, var_size,
-                                      wscale=var_wscale,
+                                      initialW=LeCunNormal(var_wscale),
                                       bias=var_bias)
 
         super().__init__(
@@ -171,7 +172,8 @@ class FCGaussianPolicyWithFixedCovariance(links.Sequence, GaussianPolicy):
             layers.append(L.Linear(n_hidden_channels, n_hidden_channels))
         # The last layer is used to compute the mean
         layers.append(
-            L.Linear(n_hidden_channels, action_size, wscale=mean_wscale))
+            L.Linear(n_hidden_channels, action_size,
+                     initialW=LeCunNormal(mean_wscale)))
 
         if self.bound_mean:
             layers.append(lambda x: bound_by_tanh(

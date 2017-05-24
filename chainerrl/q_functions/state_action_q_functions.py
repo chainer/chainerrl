@@ -8,6 +8,7 @@ standard_library.install_aliases()
 
 import chainer
 from chainer import functions as F
+from chainer.initializers import LeCunNormal
 from chainer import links as L
 
 from chainerrl.links.mlp import MLP
@@ -58,7 +59,8 @@ class FCSAQFunction(chainer.ChainList, StateActionQFunction):
         for i in range(self.n_hidden_layers - 1):
             layers.append(
                 L.Linear(self.n_hidden_channels, self.n_hidden_channels))
-        layers.append(L.Linear(self.n_hidden_channels, 1, wscale=last_wscale))
+        layers.append(L.Linear(self.n_hidden_channels, 1,
+                               initialW=LeCunNormal(last_wscale)))
         super().__init__(*layers)
         self.output = layers[-1]
 

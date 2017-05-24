@@ -10,6 +10,7 @@ import argparse
 import chainer
 from chainer import functions as F
 from chainer import links as L
+from chainer.initializers import LeCunNormal
 import gym
 import gym.wrappers
 import numpy as np
@@ -112,12 +113,14 @@ def main():
             pi=links.Sequence(
                 L.Linear(obs_space.low.size, args.n_hidden_channels),
                 F.relu,
-                L.Linear(args.n_hidden_channels, action_space.n, wscale=1e-3),
+                L.Linear(args.n_hidden_channels, action_space.n,
+                         initialW=LeCunNormal(1e-3)),
                 SoftmaxDistribution),
             q=links.Sequence(
                 L.Linear(obs_space.low.size, args.n_hidden_channels),
                 F.relu,
-                L.Linear(args.n_hidden_channels, action_space.n, wscale=1e-3),
+                L.Linear(args.n_hidden_channels, action_space.n,
+                         initialW=LeCunNormal(1e-3)),
                 DiscreteActionValue),
         )
 

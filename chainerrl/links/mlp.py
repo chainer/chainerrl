@@ -8,6 +8,7 @@ standard_library.install_aliases()
 
 import chainer
 from chainer import functions as F
+from chainer.initializers import LeCunNormal
 from chainer import links as L
 
 
@@ -30,9 +31,10 @@ class MLP(chainer.Chain):
                 hidden_layers.append(L.Linear(hin, hout))
             layers['hidden_layers'] = chainer.ChainList(*hidden_layers)
             layers['output'] = L.Linear(hidden_sizes[-1], out_size,
-                                        wscale=last_wscale)
+                                        initialW=LeCunNormal(last_wscale))
         else:
-            layers['output'] = L.Linear(in_size, out_size, wscale=last_wscale)
+            layers['output'] = L.Linear(in_size, out_size,
+                                        initialW=LeCunNormal(last_wscale))
 
         super().__init__(**layers)
 
