@@ -226,7 +226,10 @@ class A3C(agent.AttributeSavingMixin, agent.AsyncAgent):
             target_link=self.shared_model, source_link=self.model)
         # Update the globally shared model
         if self.process_idx == 0:
-            norm = self.optimizer.compute_grads_norm()
+            # norm = self.optimizer.compute_grads_norm()
+            norm = 0.0
+            for param in self.optimizer.target.params():
+                norm += np.sum(np.square(param.grad))
             logger.debug('grad norm:%s', norm)
         self.optimizer.update()
         if self.process_idx == 0:
@@ -255,8 +258,7 @@ class A3C(agent.AttributeSavingMixin, agent.AsyncAgent):
 
         self.past_states[self.t] = statevar
         pout, vout = self.model.pi_and_v(statevar)
-        action = pout.sample()
-        action.creator = None  # Do not backprop through sampled actions
+        action = pout.sample().data  # Do not backprop through sampled actions
         self.past_action_log_prob[self.t] = pout.log_prob(action)
         self.past_action_entropy[self.t] = pout.entropy
         self.past_values[self.t] = vout
