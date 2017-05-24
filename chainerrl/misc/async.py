@@ -53,12 +53,12 @@ def assert_params_not_shared(a, b):
 def set_shared_states(a, b):
     assert isinstance(a, chainer.Optimizer)
     assert hasattr(a, 'target'), 'Optimizer.setup must be called first'
-    for state_name, shared_state in b.items():
-        for param_name, param in shared_state.items():
-            old_param = a._states[state_name][param_name]
-            a._states[state_name][param_name] = np.frombuffer(
-                param,
-                dtype=old_param.dtype).reshape(old_param.shape)
+    for param_name, param in a.target.namedparams():
+        state = param.update_rule.state
+        for state_name, state_val in b[param_name].items():
+            state[state_name] = np.frombuffer(
+                state_val,
+                dtype=state.dtype).reshape(state.shape)
 
 
 def extract_params_as_shared_arrays(link):
@@ -79,11 +79,13 @@ def extract_states_as_shared_arrays(optimizer):
     assert isinstance(optimizer, chainer.Optimizer)
     assert hasattr(optimizer, 'target'), 'Optimizer.setup must be called first'
     shared_arrays = {}
-    for state_name, state in optimizer._states.items():
-        shared_arrays[state_name] = {}
-        for param_name, param in state.items():
-            shared_arrays[state_name][
-                param_name] = mp.RawArray('f', param.ravel())
+    for param_name, param in optimizer.target.namedparams():
+        shared_arrays[param_name] = {}
+        state = param.update_rule.state
+        if state:
+            for state_name, state_val in state.items():
+                shared_arrays[param_name][
+                    state_name] = mp.RawArray('f', state_val.ravel())
     return shared_arrays
 
 
