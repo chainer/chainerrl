@@ -194,10 +194,10 @@ class ACERSharedModel(links.Sequence, RecurrentChainMixin):
 def backprop_truncated(*variables):
     backup = [v.creator for v in variables]
     for v in variables:
-        v.creator = None
+        v.unchain()
     yield
     for v, backup_creator in zip(variables, backup):
-        v.creator = backup_creator
+        v.set_creator(backup_creator)
 
 
 def compute_loss_with_kl_constraint(distrib, another_distrib, original_loss,
