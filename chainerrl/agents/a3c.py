@@ -227,9 +227,8 @@ class A3C(agent.AttributeSavingMixin, agent.AsyncAgent):
         # Update the globally shared model
         if self.process_idx == 0:
             # norm = self.optimizer.compute_grads_norm()
-            norm = 0.0
-            for param in self.optimizer.target.params():
-                norm += np.sum(np.square(param.grad))
+            norm = sum(np.sum(np.square(param.grad))
+                       for param in self.optimizer.target.params())
             logger.debug('grad norm:%s', norm)
         self.optimizer.update()
         if self.process_idx == 0:
