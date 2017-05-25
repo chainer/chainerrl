@@ -66,7 +66,8 @@ class RMSpropAsync(optimizer.GradientMethod):
     outside the square root.
     """
 
-    def __init__(self, parent_hyperparam=None, lr=None, alpha=None, eps=None):
+    def __init__(self, lr=_default_hyperparam.lr,
+                 alpha=_default_hyperparam.alpha, eps=_default_hyperparam.eps):
         super(RMSpropAsync, self).__init__()
         self.hyperparam.lr = lr
         self.hyperparam.alpha = alpha
