@@ -181,8 +181,7 @@ class PGT(AttributeSavingMixin, Agent):
 
         def compute_actor_loss():
             pout = self.policy(batch_state, test=False)
-            sampled_actions = pout.sample()
-            sampled_actions.creator = None
+            sampled_actions = pout.sample().data
             q = self.q_function(batch_state, sampled_actions, test=True)
             log_probs = pout.log_prob(sampled_actions)
             v = self.q_function(
