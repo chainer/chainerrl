@@ -4,7 +4,7 @@ import sys
 
 install_requires = [
     'cached-property',
-    'chainer>=1.20.0.1',
+    'chainer>=2.0.0',
     'future',
     'gym>=0.7.3',
     'numpy>=1.10.4',
