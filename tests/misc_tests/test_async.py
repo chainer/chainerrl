@@ -12,6 +12,7 @@ import unittest
 import chainer
 import chainer.links as L
 from chainer import optimizers
+import copy
 import numpy as np
 
 from chainerrl.misc import async
@@ -67,42 +68,56 @@ class TestAsync(unittest.TestCase):
         opt_a.setup(model)
         arrays = async.share_states_as_shared_arrays(opt_a)
         opt_b = optimizers.RMSprop()
-        opt_b.setup(model)
+        opt_b.setup(copy.deepcopy(model))
+        opt_b.update()  # sorry
         opt_c = optimizers.RMSprop()
-        opt_c.setup(model)
+        opt_c.setup(copy.deepcopy(model))
+        opt_c.update()  # sorry
 
         def assert_different_pointers(a, b):
-            self.assertTrue(a)
-            for param_name in a:
-                self.assertTrue(a[param_name])
-                for state_name in a[param_name]:
+            a = a.target
+            b = b.target
+            for param_name, param_a in a.namedparams():
+                param_b = dict(b.namedparams())[param_name]
+                state_a = param_a.update_rule.state
+                state_b = param_b.update_rule.state
+                self.assertTrue(state_a)
+                self.assertTrue(state_b)
+                for state_name, state_val_a in state_a.items():
+                    state_val_b = state_b[state_name]
                     self.assertTrue(isinstance(
-                        a[param_name][state_name], np.ndarray))
+                        state_val_a, np.ndarray))
                     self.assertTrue(isinstance(
-                        b[param_name][state_name], np.ndarray))
-                    self.assertNotEqual(a[param_name][state_name].ctypes.data,
-                                        b[param_name][state_name].ctypes.data)
+                        state_val_b, np.ndarray))
+                    self.assertNotEqual(state_val_a.ctypes.data,
+                                        state_val_b.ctypes.data)
 
-        assert_different_pointers(opt_a._states, opt_b._states)
-        assert_different_pointers(opt_a._states, opt_c._states)
+        assert_different_pointers(opt_a, opt_b)
+        assert_different_pointers(opt_a, opt_c)
 
         async.set_shared_states(opt_b, arrays)
         async.set_shared_states(opt_c, arrays)
 
         def assert_same_pointers(a, b):
-            self.assertTrue(a)
-            for param_name in a:
-                self.assertTrue(a[param_name])
-                for state_name in a[param_name]:
+            a = a.target
+            b = b.target
+            for param_name, param_a in a.namedparams():
+                param_b = dict(b.namedparams())[param_name]
+                state_a = param_a.update_rule.state
+                state_b = param_b.update_rule.state
+                self.assertTrue(state_a)
+                self.assertTrue(state_b)
+                for state_name, state_val_a in state_a.items():
+                    state_val_b = state_b[state_name]
                     self.assertTrue(isinstance(
-                        a[param_name][state_name], np.ndarray))
+                        state_val_a, np.ndarray))
                     self.assertTrue(isinstance(
-                        b[param_name][state_name], np.ndarray))
-                    self.assertEqual(a[param_name][state_name].ctypes.data,
-                                     b[param_name][state_name].ctypes.data)
+                        state_val_b, np.ndarray))
+                    self.assertEqual(state_val_a.ctypes.data,
+                                     state_val_b.ctypes.data)
 
-        assert_same_pointers(opt_a._states, opt_b._states)
-        assert_same_pointers(opt_a._states, opt_c._states)
+        assert_same_pointers(opt_a, opt_b)
+        assert_same_pointers(opt_a, opt_c)
 
     def test_shared_link(self):
         """Check interprocess parameter sharing works if models share links"""
