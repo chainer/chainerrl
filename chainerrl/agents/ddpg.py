@@ -26,9 +26,11 @@ from chainerrl.replay_buffer import ReplayUpdater
 
 def disable_train(chain):
     call_orig = chain.__call__
+
     def call_test(self, x):
         with chainer.using_config('train', False):
             return call_orig(self, x)
+
     chain.__call__ = call_test
 
 

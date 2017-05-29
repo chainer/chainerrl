@@ -193,9 +193,11 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
         if self.target_model is None:
             self.target_model = copy.deepcopy(self.model)
             call_orig = self.target_model.__call__
+
             def call_test(self_, x):
                 with chainer.using_config('train', False):
                     return call_orig(self_, x)
+
             self.target_model.__call__ = call_test
         else:
             synchronize_parameters(
@@ -406,7 +408,8 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
                 action_value = self.model(
                     self.batch_states([state], self.xp, self.phi))
                 q = float(action_value.max.data)
-                greedy_action = cuda.to_cpu(action_value.greedy_actions.data)[0]
+                greedy_action = cuda.to_cpu(action_value.greedy_actions.data)[
+                    0]
 
         # Update stats
         self.average_q *= self.average_q_decay
