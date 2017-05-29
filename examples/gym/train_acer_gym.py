@@ -9,7 +9,6 @@ import argparse
 
 import chainer
 from chainer import functions as F
-from chainer.initializers import LeCunNormal
 from chainer import links as L
 import gym
 import gym.wrappers
@@ -19,6 +18,7 @@ from chainerrl.action_value import DiscreteActionValue
 from chainerrl.agents import acer
 from chainerrl.distribution import SoftmaxDistribution
 from chainerrl import experiments
+from chainerrl.initializers import LeCunNormal
 from chainerrl import links
 from chainerrl import misc
 from chainerrl.optimizers import rmsprop_async
