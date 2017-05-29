@@ -131,7 +131,7 @@ class FCLSTMDeterministicPolicy(ContinuousDeterministicPolicy):
                    n_hidden_channels,
                    (self.n_hidden_channels,) * self.n_hidden_layers),
             lstm=L.LSTM(n_hidden_channels, n_hidden_channels),
-            out=F.Linear(n_hidden_channels, action_size),
+            out=L.Linear(n_hidden_channels, action_size),
         )
 
         def model_call(model, x):
