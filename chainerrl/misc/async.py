@@ -14,6 +14,13 @@ import numpy as np
 from chainerrl.misc import random_seed
 
 
+def ensure_initialized_update_rule(param):
+    u = param.update_rule
+    if u.state is None:
+        u._state = {}  # Sorry!
+        u.init_state(param)
+
+
 def set_shared_params(a, b):
     """Set shared params to a link.
 
@@ -54,11 +61,13 @@ def set_shared_states(a, b):
     assert isinstance(a, chainer.Optimizer)
     assert hasattr(a, 'target'), 'Optimizer.setup must be called first'
     for param_name, param in a.target.namedparams():
+        ensure_initialized_update_rule(param)
         state = param.update_rule.state
         for state_name, state_val in b[param_name].items():
+            s = state[state_name]
             state[state_name] = np.frombuffer(
                 state_val,
-                dtype=state.dtype).reshape(state.shape)
+                dtype=s.dtype).reshape(s.shape)
 
 
 def extract_params_as_shared_arrays(link):
@@ -81,11 +90,11 @@ def extract_states_as_shared_arrays(optimizer):
     shared_arrays = {}
     for param_name, param in optimizer.target.namedparams():
         shared_arrays[param_name] = {}
+        ensure_initialized_update_rule(param)
         state = param.update_rule.state
-        if state:
-            for state_name, state_val in state.items():
-                shared_arrays[param_name][
-                    state_name] = mp.RawArray('f', state_val.ravel())
+        for state_name, state_val in state.items():
+            shared_arrays[param_name][
+                state_name] = mp.RawArray('f', state_val.ravel())
     return shared_arrays
 
 
