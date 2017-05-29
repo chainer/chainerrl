@@ -6,7 +6,14 @@ python:
 # command to install dependencies
 install:
   - pip install --upgrade pip setuptools wheel
+  - sed -i.bak '/chainer>/d' requirements.txt
+  - sed -i.bak '/chainer>/d' setup.py
   - pip install -r requirements.txt --only-binary=numpy,scipy
+  - git clone https://github.com/pfnet/chainer.git
+  - cd chainer
+  - git checkout _v2
+  - python setup.py install
+  - cd ..
   - pip install jupyter
   - pip install atari_py
   - pip install hacking
