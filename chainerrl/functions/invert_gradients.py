@@ -33,13 +33,13 @@ class InvertGradients(function.Function):
 
     def backward(self, inputs, grad_outputs):
         x, = inputs
-        grad, = grad_outputs
+        gy, = grad_outputs
         # In chainer, update will be like x.data -= lr * x.grad,
         # which means negative gradients will increase values.
-        increasing = grad < 0
-        grad *= ((self.range_max - x) / self.range_width * increasing +
-                 (x - self.range_min) / self.range_width * (1 - increasing))
-        return grad,
+        increasing = (gy < 0).astype(gy.dtype)
+        gx = gy * ((self.range_max - x) / self.range_width * increasing +
+                   (x - self.range_min) / self.range_width * (1 - increasing))
+        return gx,
 
 
 def invert_gradients(x, range_min, range_max):
