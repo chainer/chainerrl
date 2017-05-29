@@ -69,6 +69,13 @@ class FCSAQFunction(chainer.ChainList, StateActionQFunction):
         for layer in self[:-1]:
             h = self.nonlinearity(layer(h))
         h = self[-1](h)
+
+        h = h[:, :]
+        """To avoid the bug of numpy #9165
+
+        (see also: chainer #2744)
+        """
+
         return h
 
 
