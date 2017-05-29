@@ -25,7 +25,7 @@ class ResidualDQN(DQN):
 
         batch_next_state = exp_batch['next_state']
 
-        target_next_qout = self.q_function(batch_next_state, test=False)
+        target_next_qout = self.q_function(batch_next_state)
         next_q_max = target_next_qout.max
 
         batch_rewards = exp_batch['reward']
@@ -39,7 +39,7 @@ class ResidualDQN(DQN):
         batch_size = len(batch_state)
 
         # Compute Q-values for current states
-        qout = self.q_function(batch_state, test=False)
+        qout = self.q_function(batch_state)
 
         batch_actions = exp_batch['action']
         batch_q = F.reshape(qout.evaluate_actions(

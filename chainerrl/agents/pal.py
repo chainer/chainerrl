@@ -34,7 +34,7 @@ class PAL(dqn.DQN):
         batch_state = exp_batch['state']
         batch_size = len(exp_batch['reward'])
 
-        qout = self.q_function(batch_state, test=False)
+        qout = self.q_function(batch_state)
 
         batch_actions = exp_batch['action']
         batch_q = qout.evaluate_actions(batch_actions)
@@ -42,13 +42,13 @@ class PAL(dqn.DQN):
         # Compute target values
         with chainer.no_backprop_mode():
 
-            target_qout = self.target_q_function(batch_state, test=True)
+            target_qout = self.target_q_function(batch_state)
 
             batch_next_state = exp_batch['next_state']
 
             with state_kept(self.target_q_function):
                 target_next_qout = self.target_q_function(
-                    batch_next_state, test=True)
+                    batch_next_state)
             next_q_max = F.reshape(target_next_qout.max, (batch_size,))
 
             batch_rewards = exp_batch['reward']
