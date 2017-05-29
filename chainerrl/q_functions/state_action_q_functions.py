@@ -29,8 +29,8 @@ class SingleModelStateActionQFunction(
     def __init__(self, model):
         super().__init__(model=model)
 
-    def __call__(self, x, a, test=False):
-        h = self.model(x, a, test=test)
+    def __call__(self, x, a):
+        h = self.model(x, a)
         return h
 
 
@@ -64,7 +64,7 @@ class FCSAQFunction(chainer.ChainList, StateActionQFunction):
         super().__init__(*layers)
         self.output = layers[-1]
 
-    def __call__(self, state, action, test=False):
+    def __call__(self, state, action):
         h = F.concat((state, action), axis=1)
         for layer in self[:-1]:
             h = self.nonlinearity(layer(h))
@@ -95,9 +95,9 @@ class FCLSTMSAQFunction(chainer.Chain, StateActionQFunction,
             out=L.Linear(n_hidden_channels, 1),
         )
 
-    def __call__(self, x, a, test=False):
+    def __call__(self, x, a):
         h = F.concat((x, a), axis=1)
-        h = F.relu(self.fc(h, test=test))
+        h = F.relu(self.fc(h))
         h = self.lstm(h)
         return self.out(h)
 
@@ -123,9 +123,9 @@ class FCBNSAQFunction(MLPBN, StateActionQFunction):
             hidden_sizes=[self.n_hidden_channels] * self.n_hidden_layers,
             normalize_input=self.normalize_input)
 
-    def __call__(self, state, action, test=False):
+    def __call__(self, state, action):
         h = F.concat((state, action), axis=1)
-        return super().__call__(h, test=test)
+        return super().__call__(h)
 
 
 class FCBNLateActionSAQFunction(chainer.Chain, StateActionQFunction,
@@ -160,10 +160,10 @@ class FCBNLateActionSAQFunction(chainer.Chain, StateActionQFunction,
                                   (self.n_hidden_layers - 1))))
         self.output = self.mlp.output
 
-    def __call__(self, state, action, test=False):
-        h = F.relu(self.obs_mlp(state, test=test))
+    def __call__(self, state, action):
+        h = F.relu(self.obs_mlp(state))
         h = F.concat((h, action), axis=1)
-        return self.mlp(h, test=test)
+        return self.mlp(h)
 
 
 class FCLateActionSAQFunction(chainer.Chain, StateActionQFunction,
@@ -196,7 +196,7 @@ class FCLateActionSAQFunction(chainer.Chain, StateActionQFunction,
                                   (self.n_hidden_layers - 1))))
         self.output = self.mlp.output
 
-    def __call__(self, state, action, test=False):
-        h = F.relu(self.obs_mlp(state, test=test))
+    def __call__(self, state, action):
+        h = F.relu(self.obs_mlp(state))
         h = F.concat((h, action), axis=1)
-        return self.mlp(h, test=test)
+        return self.mlp(h)

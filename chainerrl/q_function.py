@@ -15,12 +15,12 @@ from future.utils import with_metaclass
 class StateQFunction(with_metaclass(ABCMeta, object)):
 
     @abstractmethod
-    def __call__(self, x, test=False):
+    def __call__(self, x):
         raise NotImplementedError()
 
 
 class StateActionQFunction(with_metaclass(ABCMeta, object)):
 
     @abstractmethod
-    def __call__(self, x, a, test=False):
+    def __call__(self, x, a):
         raise NotImplementedError()

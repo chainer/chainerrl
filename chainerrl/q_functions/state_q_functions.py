@@ -42,8 +42,8 @@ class SingleModelStateQFunctionWithDiscreteAction(
     def __init__(self, model):
         super().__init__(model=model)
 
-    def __call__(self, x, test=False):
-        h = self.model(x, test=test)
+    def __call__(self, x):
+        h = self.model(x)
         return DiscreteActionValue(h)
 
 
@@ -92,8 +92,8 @@ class FCLSTMStateQFunction(chainer.Chain, StateQFunction, RecurrentChainMixin):
             out=L.Linear(n_hidden_channels, n_dim_action)
         )
 
-    def __call__(self, x, test=False):
-        h = F.relu(self.fc(x, test=test))
+    def __call__(self, x):
+        h = F.relu(self.fc(x))
         h = self.lstm(h)
         return DiscreteActionValue(self.out(h))
 
@@ -140,7 +140,7 @@ class FCQuadraticStateQFunction(
 
         super().__init__(**layers)
 
-    def __call__(self, state, test=False):
+    def __call__(self, state):
         h = state
         for layer in self.hidden_layers:
             h = F.relu(layer(h))
@@ -203,8 +203,8 @@ class FCBNQuadraticStateQFunction(chainer.Chain, StateQFunction):
 
         super().__init__(**layers)
 
-    def __call__(self, state, test=False):
-        h = self.hidden_layers(state, test=test)
+    def __call__(self, state):
+        h = self.hidden_layers(state)
         v = self.v(h)
         mu = self.mu(h)
 

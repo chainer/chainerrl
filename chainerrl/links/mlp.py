@@ -39,7 +39,7 @@ class MLP(chainer.Chain):
 
         super().__init__(**layers)
 
-    def __call__(self, x, test=False):
+    def __call__(self, x):
         h = x
         if self.hidden_sizes:
             for l in self.hidden_layers:

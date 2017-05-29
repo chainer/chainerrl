@@ -15,7 +15,7 @@ class Policy(object):
     """Abstract policy."""
 
     @abstractmethod
-    def __call__(self, state, test=False):
+    def __call__(self, state):
         """Evaluate a policy.
 
         Returns:

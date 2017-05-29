@@ -26,7 +26,7 @@ class GaussianPolicy(Policy):
     """Abstract Gaussian policy."""
 
     @abstractmethod
-    def compute_mean_and_var(self, x, test=False):
+    def compute_mean_and_var(self, x):
         """Compute mean and variance.
 
         Returns:
@@ -34,8 +34,8 @@ class GaussianPolicy(Policy):
         """
         raise NotImplementedError()
 
-    def __call__(self, x, test=False):
-        mean, var = self.compute_mean_and_var(x, test=test)
+    def __call__(self, x):
+        mean, var = self.compute_mean_and_var(x)
         return distribution.GaussianDistribution(mean=mean, var=var)
 
 
@@ -111,7 +111,7 @@ class FCGaussianPolicy(chainer.ChainList, GaussianPolicy):
         super().__init__(
             self.mean_layer, self.var_layer, *self.hidden_layers)
 
-    def compute_mean_and_var(self, x, test=False):
+    def compute_mean_and_var(self, x):
         h = x
         for layer in self.hidden_layers:
             h = self.nonlinearity(layer(h))
@@ -122,8 +122,8 @@ class FCGaussianPolicy(chainer.ChainList, GaussianPolicy):
             self.min_var
         return mean, var
 
-    def __call__(self, x, test=False):
-        mean, var = self.compute_mean_and_var(x, test=test)
+    def __call__(self, x):
+        mean, var = self.compute_mean_and_var(x)
         return distribution.GaussianDistribution(mean, var=var)
 
 
@@ -202,7 +202,7 @@ class LinearGaussianPolicyWithDiagonalCovariance(
 
         super().__init__(self.mean_layer, self.var_layer)
 
-    def compute_mean_and_var(self, x, test=False):
+    def compute_mean_and_var(self, x):
         # mean = self.mean_layer(x)
         mean = F.tanh(self.mean_layer(x)) * 2.0
         var = F.softplus(self.var_layer(x))
@@ -223,7 +223,7 @@ class LinearGaussianPolicyWithSphericalCovariance(
 
         super().__init__(self.mean_layer, self.var_layer)
 
-    def compute_mean_and_var(self, x, test=False):
+    def compute_mean_and_var(self, x):
         # mean = self.mean_layer(x)
         mean = F.tanh(self.mean_layer(x)) * 2.0
         var = F.softplus(F.broadcast_to(self.var_layer(x), mean.data.shape))

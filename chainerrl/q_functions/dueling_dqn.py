@@ -36,21 +36,21 @@ class DuelingDQN(chainer.Chain, StateQFunction):
                          a_stream=a_stream,
                          v_stream=v_stream)
 
-    def __call__(self, x, test=False):
+    def __call__(self, x):
         h = x
         for l in self.conv_layers:
             h = self.activation(l(h))
 
         # Advantage
         batch_size = x.shape[0]
-        ya = self.a_stream(h, test=test)
+        ya = self.a_stream(h)
         mean = F.reshape(
             F.sum(ya, axis=1) / self.n_actions, (batch_size, 1))
         ya, mean = F.broadcast(ya, mean)
         ya -= mean
 
         # State value
-        ys = self.v_stream(h, test=test)
+        ys = self.v_stream(h)
 
         ya, ys = F.broadcast(ya, ys)
         q = ya + ys

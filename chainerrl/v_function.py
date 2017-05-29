@@ -15,5 +15,5 @@ from future.utils import with_metaclass
 class VFunction(with_metaclass(ABCMeta, object)):
 
     @abstractmethod
-    def __call__(self, x, test=False):
+    def __call__(self, x):
         raise NotImplementedError()
