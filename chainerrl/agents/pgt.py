@@ -16,6 +16,7 @@ import numpy as np
 
 from chainerrl.agent import Agent
 from chainerrl.agent import AttributeSavingMixin
+from chainerrl.agents.ddpg import disable_train
 from chainerrl.misc.batch_states import batch_states
 from chainerrl.misc.copy_param import synchronize_parameters
 from chainerrl.recurrent import Recurrent
@@ -114,6 +115,8 @@ class PGT(AttributeSavingMixin, Agent):
         self.last_state = None
         self.last_action = None
         self.target_model = copy.deepcopy(self.model)
+        disable_train(self.target_model['q_function'])
+        disable_train(self.target_model['policy'])
         self.average_q = 0
         self.average_actor_loss = 0.0
         self.average_critic_loss = 0.0
@@ -160,15 +163,14 @@ class PGT(AttributeSavingMixin, Agent):
         def compute_critic_loss():
 
             with chainer.no_backprop_mode():
-                pout = self.target_policy(batch_next_state, test=True)
+                pout = self.target_policy(batch_next_state)
                 next_actions = pout.sample()
-                next_q = self.target_q_function(batch_next_state, next_actions,
-                                                test=True)
+                next_q = self.target_q_function(batch_next_state, next_actions)
 
                 target_q = batch_rewards + self.gamma * \
                     (1.0 - batch_terminal) * next_q
 
-            predict_q = self.q_function(batch_state, batch_actions, test=False)
+            predict_q = self.q_function(batch_state, batch_actions)
 
             loss = F.mean_squared_error(target_q, predict_q)
 
@@ -180,12 +182,13 @@ class PGT(AttributeSavingMixin, Agent):
             return loss
 
         def compute_actor_loss():
-            pout = self.policy(batch_state, test=False)
+            pout = self.policy(batch_state)
             sampled_actions = pout.sample().data
-            q = self.q_function(batch_state, sampled_actions, test=True)
             log_probs = pout.log_prob(sampled_actions)
-            v = self.q_function(
-                batch_state, pout.most_probable, test=True)
+            with chainer.using_config('train', False):
+                q = self.q_function(batch_state, sampled_actions)
+                v = self.q_function(
+                    batch_state, pout.most_probable)
             advantage = F.reshape(q - v, (batch_size,))
             advantage = chainer.Variable(advantage.data)
             loss = - F.sum(advantage * log_probs + self.beta * pout.entropy) \
@@ -233,13 +236,14 @@ class PGT(AttributeSavingMixin, Agent):
 
     def act(self, state):
 
-        s = self.batch_states([state], self.xp, self.phi)
-        if self.act_deterministically:
-            action = self.policy(s, test=True).most_probable
-        else:
-            action = self.policy(s, test=True).sample()
-        # Q is not needed here, but log it just for information
-        q = self.q_function(s, action, test=True)
+        with chainer.using_config('train', False):
+            s = self.batch_states([state], self.xp, self.phi)
+            if self.act_deterministically:
+                action = self.policy(s).most_probable
+            else:
+                action = self.policy(s).sample()
+            # Q is not needed here, but log it just for information
+            q = self.q_function(s, action)
 
         # Update stats
         self.average_q *= self.average_q_decay
