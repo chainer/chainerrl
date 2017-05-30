@@ -262,7 +262,7 @@ class A3C(agent.AttributeSavingMixin, agent.AsyncAgent):
         self.past_action_entropy[self.t] = pout.entropy
         self.past_values[self.t] = vout
         self.t += 1
-        action = action.data[0]
+        action = action[0]
         if self.process_idx == 0:
             logger.debug('t:%s r:%s a:%s pout:%s',
                          self.t, reward, action, pout)
