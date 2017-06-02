@@ -69,31 +69,15 @@ class TestAsync(unittest.TestCase):
         arrays = async.share_states_as_shared_arrays(opt_a)
         opt_b = optimizers.RMSprop()
         opt_b.setup(copy.deepcopy(model))
-        opt_b.update()  # sorry
+        # In Chainer v2, a model cannot be set up by two optimizers or more.
+
         opt_c = optimizers.RMSprop()
         opt_c.setup(copy.deepcopy(model))
-        opt_c.update()  # sorry
 
-        def assert_different_pointers(a, b):
-            a = a.target
-            b = b.target
-            for param_name, param_a in a.namedparams():
-                param_b = dict(b.namedparams())[param_name]
-                state_a = param_a.update_rule.state
-                state_b = param_b.update_rule.state
-                self.assertTrue(state_a)
-                self.assertTrue(state_b)
-                for state_name, state_val_a in state_a.items():
-                    state_val_b = state_b[state_name]
-                    self.assertTrue(isinstance(
-                        state_val_a, np.ndarray))
-                    self.assertTrue(isinstance(
-                        state_val_b, np.ndarray))
-                    self.assertNotEqual(state_val_a.ctypes.data,
-                                        state_val_b.ctypes.data)
-
-        assert_different_pointers(opt_a, opt_b)
-        assert_different_pointers(opt_a, opt_c)
+        """
+        Removed the tests by assert_different_pointers
+        since they are trivial now.
+        """
 
         async.set_shared_states(opt_b, arrays)
         async.set_shared_states(opt_c, arrays)
