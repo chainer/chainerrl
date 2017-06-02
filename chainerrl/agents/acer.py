@@ -523,7 +523,6 @@ class ACER(agent.AttributeSavingMixin, agent.AsyncAgent):
             target_link=self.shared_model, source_link=self.model)
         # Update the globally shared model
         if self.process_idx == 0:
-            # norm = self.optimizer.compute_grads_norm()
             norm = sum(np.sum(np.square(param.grad))
                        for param in self.optimizer.target.params())
             self.logger.debug('grad norm:%s', norm)

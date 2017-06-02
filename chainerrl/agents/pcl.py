@@ -254,7 +254,6 @@ class PCL(agent.AttributeSavingMixin, agent.AsyncAgent):
             copy_param.copy_grad(
                 target_link=self.shared_model, source_link=self.model)
             if self.process_idx == 0:
-                # norm = self.optimizer.compute_grads_norm()
                 xp = self.xp
                 norm = sum(xp.sum(xp.square(param.grad))
                            for param in self.optimizer.target.params())
