@@ -17,7 +17,12 @@ from chainerrl.misc import random_seed
 def ensure_initialized_update_rule(param):
     u = param.update_rule
     if u.state is None:
-        u._state = {}  # Sorry!
+        u._state = {}
+        """FIXME: UpdateRule.state is read-only.
+
+        But, force u.state = {}.
+        """
+
         u.init_state(param)
 
 

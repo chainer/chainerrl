@@ -137,7 +137,13 @@ class PCL(agent.AttributeSavingMixin, agent.AsyncAgent):
         self.pi_loss_coef = pi_loss_coef
         self.v_loss_coef = v_loss_coef
         self.rollout_len = rollout_len
-        self.batchsize = self.xp.int32(batchsize)
+        if not self.xp.isscalar(batchsize):
+            batchsize = self.xp.int32(batchsize)
+            """Fix Chainer Issue #2807
+
+            batchsize should (look to) be scalar.
+            """
+        self.batchsize = batchsize
         self.normalize_loss_by_steps = normalize_loss_by_steps
         self.act_deterministically = act_deterministically
         self.disable_online_update = disable_online_update

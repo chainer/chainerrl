@@ -119,6 +119,11 @@ class AttributeSavingMixin(object):
     def load(self, dirname):
         """Load internal states."""
         for attr in self.saved_attributes:
+            """Fix Chainer Issue #2772
+
+            In Chainer v2, a (stateful) optimizer cannot be loaded from
+            an npz saved before the first update.
+            """
             load_npz_no_strict(
                 os.path.join(dirname, '{}.npz'.format(attr)),
                 getattr(self, attr))
