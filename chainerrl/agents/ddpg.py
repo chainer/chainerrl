@@ -240,6 +240,9 @@ class DDPG(AttributeSavingMixin, Agent):
         if isinstance(self.q_function, Recurrent):
             self.q_function.update_state(batch_state, batch_action)
 
+        # Avoid the numpy #9165 bug (see also: chainer #2744)
+        q = q[:, :]
+
         # Since we want to maximize Q, loss is negation of Q
         loss = - F.sum(q) / batch_size
 
