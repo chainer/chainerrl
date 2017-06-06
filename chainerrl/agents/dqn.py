@@ -350,7 +350,7 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
 
         if errors_out is not None:
             del errors_out[:]
-            delta = F.sum(F.basic_math.absolute(y - t), axis=1)
+            delta = F.sum(abs(y - t), axis=1)
             delta = cuda.to_cpu(delta.data)
             for e in delta:
                 errors_out.append(e)
