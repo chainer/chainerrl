@@ -36,7 +36,7 @@ class TestSampleDiscreteActions(unittest.TestCase):
             for i in range(batch_probs.shape[0]):
                 counter[i][batch_indices[i]] += 1
         np.testing.assert_allclose(
-            counter / 1000, chainer.cuda.to_cpu(batch_probs), atol=0.1)
+            counter / 1000, chainer.cuda.to_cpu(batch_probs), atol=0.05)
 
     @testing.condition.retry(3)
     def test_cpu(self):
