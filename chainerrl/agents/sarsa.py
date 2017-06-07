@@ -22,7 +22,7 @@ class SARSA(dqn.DQN):
         batch_next_action = exp_batch['next_action']
 
         next_target_action_value = self.target_q_function(
-            batch_next_state, test=True)
+            batch_next_state)
         next_q = next_target_action_value.evaluate_actions(
             batch_next_action)
 

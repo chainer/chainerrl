@@ -192,6 +192,13 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
         """Synchronize target network with current network."""
         if self.target_model is None:
             self.target_model = copy.deepcopy(self.model)
+            call_orig = self.target_model.__call__
+
+            def call_test(self_, x):
+                with chainer.using_config('train', False):
+                    return call_orig(self_, x)
+
+            self.target_model.__call__ = call_test
         else:
             synchronize_parameters(
                 src=self.model,
@@ -233,7 +240,7 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
         self.average_loss *= self.average_loss_decay
         self.average_loss += (1 - self.average_loss_decay) * float(loss.data)
 
-        self.optimizer.zero_grads()
+        self.model.cleargrads()
         loss.backward()
         self.optimizer.update()
 
@@ -291,7 +298,7 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
                 self.average_loss += \
                     (1 - self.average_loss_decay) * float(loss.data)
 
-                self.optimizer.zero_grads()
+                self.model.cleargrads()
                 loss.backward()
                 self.optimizer.update()
         if has_weights:
@@ -301,7 +308,7 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
 
         batch_next_state = exp_batch['next_state']
 
-        target_next_qout = self.target_model(batch_next_state, test=True)
+        target_next_qout = self.target_model(batch_next_state)
         next_q_max = target_next_qout.max
 
         batch_rewards = exp_batch['reward']
@@ -315,7 +322,7 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
         # Compute Q-values for current states
         batch_state = exp_batch['state']
 
-        qout = self.model(batch_state, test=False)
+        qout = self.model(batch_state)
 
         batch_actions = exp_batch['action']
         batch_q = F.reshape(qout.evaluate_actions(
@@ -343,7 +350,7 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
 
         if errors_out is not None:
             del errors_out[:]
-            delta = F.sum(F.basic_math.absolute(y - t), axis=1)
+            delta = F.sum(abs(y - t), axis=1)
             delta = cuda.to_cpu(delta.data)
             for e in delta:
                 errors_out.append(e)
@@ -365,12 +372,13 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
         Returns:
           list of numpy.ndarray
         """
-        if not states:
-            return []
-        batch_x = self.batch_states(states, self.xp, self.phi)
-        q_values = list(cuda.to_cpu(
-            self.model(batch_x, test=True).q_values))
-        return q_values
+        with chainer.using_config('train', False):
+            if not states:
+                return []
+            batch_x = self.batch_states(states, self.xp, self.phi)
+            q_values = list(cuda.to_cpu(
+                self.model(batch_x).q_values))
+            return q_values
 
     def _to_my_device(self, model):
         if self.gpu >= 0:
@@ -379,11 +387,12 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
             model.to_cpu()
 
     def act(self, state):
-        with chainer.no_backprop_mode():
-            action_value = self.model(
-                self.batch_states([state], self.xp, self.phi), test=True)
-            q = float(action_value.max.data)
-            action = cuda.to_cpu(action_value.greedy_actions.data)[0]
+        with chainer.using_config('train', False):
+            with chainer.no_backprop_mode():
+                action_value = self.model(
+                    self.batch_states([state], self.xp, self.phi))
+                q = float(action_value.max.data)
+                action = cuda.to_cpu(action_value.greedy_actions.data)[0]
 
         # Update stats
         self.average_q *= self.average_q_decay
@@ -394,11 +403,13 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
 
     def act_and_train(self, state, reward):
 
-        with chainer.no_backprop_mode():
-            action_value = self.model(
-                self.batch_states([state], self.xp, self.phi), test=True)
-            q = float(action_value.max.data)
-            greedy_action = cuda.to_cpu(action_value.greedy_actions.data)[0]
+        with chainer.using_config('train', False):
+            with chainer.no_backprop_mode():
+                action_value = self.model(
+                    self.batch_states([state], self.xp, self.phi))
+                q = float(action_value.max.data)
+                greedy_action = cuda.to_cpu(action_value.greedy_actions.data)[
+                    0]
 
         # Update stats
         self.average_q *= self.average_q_decay

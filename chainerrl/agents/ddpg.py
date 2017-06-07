@@ -24,6 +24,16 @@ from chainerrl.replay_buffer import batch_experiences
 from chainerrl.replay_buffer import ReplayUpdater
 
 
+def disable_train(chain):
+    call_orig = chain.__call__
+
+    def call_test(self, x):
+        with chainer.using_config('train', False):
+            return call_orig(self, x)
+
+    chain.__call__ = call_test
+
+
 class DDPGModel(chainer.Chain, RecurrentChainMixin):
 
     def __init__(self, policy, q_func):
@@ -127,6 +137,8 @@ class DDPG(AttributeSavingMixin, Agent):
         self.last_state = None
         self.last_action = None
         self.target_model = copy.deepcopy(self.model)
+        disable_train(self.target_model['q_function'])
+        disable_train(self.target_model['policy'])
         self.average_q = 0
         self.average_actor_loss = 0.0
         self.average_critic_loss = 0.0
@@ -172,25 +184,24 @@ class DDPG(AttributeSavingMixin, Agent):
         with chainer.no_backprop_mode():
             # Target policy observes s_{t+1}
             next_actions = self.target_policy(
-                batch_next_state, test=True).sample()
+                batch_next_state).sample()
 
             # Q(s_{t+1}, mu(a_{t+1})) is evaluated.
             # This should not affect the internal state of Q.
             with state_kept(self.target_q_function):
-                next_q = self.target_q_function(batch_next_state, next_actions,
-                                                test=True)
+                next_q = self.target_q_function(batch_next_state, next_actions)
 
             # Target Q-function observes s_{t+1} and a_{t+1}
             if isinstance(self.target_q_function, Recurrent):
                 self.target_q_function.update_state(
-                    batch_next_state, batch_next_actions, test=True)
+                    batch_next_state, batch_next_actions)
 
             target_q = batch_rewards + self.gamma * \
                 (1.0 - batch_terminal) * F.reshape(next_q, (batchsize,))
 
         # Estimated Q-function observes s_t and a_t
         predict_q = F.reshape(
-            self.q_function(batch_state, batch_actions, test=False),
+            self.q_function(batch_state, batch_actions),
             (batchsize,))
 
         loss = F.mean_squared_error(target_q, predict_q)
@@ -218,16 +229,19 @@ class DDPG(AttributeSavingMixin, Agent):
         batch_size = len(batch_action)
 
         # Estimated policy observes s_t
-        onpolicy_actions = self.policy(batch_state, test=False).sample()
+        onpolicy_actions = self.policy(batch_state).sample()
 
         # Q(s_t, mu(s_t)) is evaluated.
         # This should not affect the internal state of Q.
         with state_kept(self.q_function):
-            q = self.q_function(batch_state, onpolicy_actions, test=False)
+            q = self.q_function(batch_state, onpolicy_actions)
 
         # Estimated Q-function observes s_t and a_t
         if isinstance(self.q_function, Recurrent):
-            self.q_function.update_state(batch_state, batch_action, test=False)
+            self.q_function.update_state(batch_state, batch_action)
+
+        # Avoid the numpy #9165 bug (see also: chainer #2744)
+        q = q[:, :]
 
         # Since we want to maximize Q, loss is negation of Q
         loss = - F.sum(q) / batch_size
@@ -268,8 +282,8 @@ class DDPG(AttributeSavingMixin, Agent):
                 # Since the target model is evaluated one-step ahead,
                 # its internal states need to be updated
                 self.target_q_function.update_state(
-                    batches[0]['state'], batches[0]['action'], test=True)
-                self.target_policy(batches[0]['state'], test=True)
+                    batches[0]['state'], batches[0]['action'])
+                self.target_policy(batches[0]['state'])
 
                 # Update critic through time
                 critic_loss = 0
@@ -317,10 +331,11 @@ class DDPG(AttributeSavingMixin, Agent):
 
     def act(self, state):
 
-        s = self.batch_states([state], self.xp, self.phi)
-        action = self.policy(s, test=True).sample()
-        # Q is not needed here, but log it just for information
-        q = self.q_function(s, action, test=True)
+        with chainer.using_config('train', False):
+            s = self.batch_states([state], self.xp, self.phi)
+            action = self.policy(s).sample()
+            # Q is not needed here, but log it just for information
+            q = self.q_function(s, action)
 
         # Update stats
         self.average_q *= self.average_q_decay

@@ -20,8 +20,8 @@ class LinearBN(chainer.Chain):
         bn.avg_var[:] = 1
         super().__init__(linear=linear, bn=bn)
 
-    def __call__(self, x, test=False):
-        return self.bn(self.linear(x), test=test)
+    def __call__(self, x):
+        return self.bn(self.linear(x))
 
 
 class MLPBN(chainer.Chain):
@@ -57,15 +57,15 @@ class MLPBN(chainer.Chain):
 
         super().__init__(**layers)
 
-    def __call__(self, x, test=False):
+    def __call__(self, x):
         h = x
-        assert test or x.shape[0] > 1
+        assert (not chainer.config.train) or x.shape[0] > 1
         if self.normalize_input:
-            h = self.input_bn(h, test=test)
+            h = self.input_bn(h)
         if self.hidden_sizes:
             for l in self.hidden_layers:
-                h = F.relu(l(h, test=test))
+                h = F.relu(l(h))
         h = self.output(h)
         if self.normalize_output:
-            h = self.output_bn(h, test=test)
+            h = self.output_bn(h)
         return h

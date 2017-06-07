@@ -31,6 +31,6 @@ class MellowmaxPolicy(chainer.Chain, Policy):
         self.omega = omega
         super().__init__(model=model)
 
-    def __call__(self, x, test=False):
-        h = self.model(x, test=test)
+    def __call__(self, x):
+        h = self.model(x)
         return distribution.MellowmaxDistribution(h, omega=self.omega)

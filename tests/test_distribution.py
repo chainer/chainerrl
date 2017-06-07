@@ -29,7 +29,7 @@ class TestSampleDiscreteActions(unittest.TestCase):
                                   [0.5, 0.5],
                                   [0.0, 1.0],
                                   [1.0, 0.0]], dtype=np.float32)
-        counter = np.zeros_like(batch_probs)
+        counter = np.zeros(batch_probs.shape, dtype=batch_probs.dtype)
         for _ in range(1000):
             batch_indices = chainer.cuda.to_cpu(
                 distribution.sample_discrete_actions(batch_probs))

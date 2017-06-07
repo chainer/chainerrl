@@ -13,8 +13,20 @@ import os
 
 from chainer import serializers
 from future.utils import with_metaclass
+import numpy
+import warnings
 
 from chainerrl.misc.makedirs import makedirs
+
+
+def load_npz_no_strict(filename, obj):
+    try:
+        serializers.load_npz(filename, obj)
+    except KeyError as e:
+        warnings.warn(repr(e))
+        with numpy.load(filename) as f:
+            d = serializers.NpzDeserializer(f, strict=False)
+            d.load(obj)
 
 
 class Agent(with_metaclass(ABCMeta, object)):
@@ -107,7 +119,12 @@ class AttributeSavingMixin(object):
     def load(self, dirname):
         """Load internal states."""
         for attr in self.saved_attributes:
-            serializers.load_npz(
+            """Fix Chainer Issue #2772
+
+            In Chainer v2, a (stateful) optimizer cannot be loaded from
+            an npz saved before the first update.
+            """
+            load_npz_no_strict(
                 os.path.join(dirname, '{}.npz'.format(attr)),
                 getattr(self, attr))
 

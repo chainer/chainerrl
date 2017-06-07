@@ -32,8 +32,8 @@ class SoftmaxPolicy(chainer.Chain, Policy):
         self.min_prob = min_prob
         super().__init__(model=model)
 
-    def __call__(self, x, test=False):
-        h = self.model(x, test=test)
+    def __call__(self, x):
+        h = self.model(x)
         return distribution.SoftmaxDistribution(
             h, beta=self.beta, min_prob=self.min_prob)
 

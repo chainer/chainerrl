@@ -5,6 +5,8 @@ from __future__ import absolute_import
 from future import standard_library
 standard_library.install_aliases()
 
+import chainer
+
 from chainerrl.agents import dqn
 from chainerrl.recurrent import state_kept
 
@@ -19,10 +21,11 @@ class DoubleDQN(dqn.DQN):
 
         batch_next_state = exp_batch['next_state']
 
-        with state_kept(self.q_function):
-            next_qout = self.q_function(batch_next_state, test=True)
+        with chainer.using_config('train', False):
+            with state_kept(self.q_function):
+                next_qout = self.q_function(batch_next_state)
 
-        target_next_qout = self.target_q_function(batch_next_state, test=True)
+        target_next_qout = self.target_q_function(batch_next_state)
 
         next_q_max = target_next_qout.evaluate_actions(
             next_qout.greedy_actions)

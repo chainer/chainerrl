@@ -43,7 +43,7 @@ model=$(find $outdir/gym/acer -name "*_finish")
 python examples/gym/train_acer_gym.py 4 --demo --load $model --eval-n-runs 1
 
 # gym/pcl
-python examples/gym/train_pcl_gym.py --steps 100 --outdir $outdir/gym/pcl --gpu $gpu
+python examples/gym/train_pcl_gym.py --steps 100 --batchsize 2 --replay-start-size 2 --outdir $outdir/gym/pcl --gpu $gpu
 model=$(find $outdir/gym/pcl -name "*_finish")
 python examples/gym/train_pcl_gym.py --demo --load $model --eval-n-runs 1 --gpu $gpu
 

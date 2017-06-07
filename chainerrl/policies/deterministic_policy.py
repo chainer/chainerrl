@@ -39,12 +39,12 @@ class ContinuousDeterministicPolicy(
         self.model_call = model_call
         self.action_filter = action_filter
 
-    def __call__(self, x, test=False):
+    def __call__(self, x):
         # Model
         if self.model_call is not None:
-            h = self.model_call(self.model, x, test=False)
+            h = self.model_call(self.model, x)
         else:
-            h = self.model(x, test=test)
+            h = self.model(x)
         # Action filter
         if self.action_filter is not None:
             h = self.action_filter(h)
@@ -131,11 +131,11 @@ class FCLSTMDeterministicPolicy(ContinuousDeterministicPolicy):
                    n_hidden_channels,
                    (self.n_hidden_channels,) * self.n_hidden_layers),
             lstm=L.LSTM(n_hidden_channels, n_hidden_channels),
-            out=F.Linear(n_hidden_channels, action_size),
+            out=L.Linear(n_hidden_channels, action_size),
         )
 
-        def model_call(model, x, test=False):
-            h = F.relu(model.fc(x, test=test))
+        def model_call(model, x):
+            h = F.relu(model.fc(x))
             h = model.lstm(h)
             h = model.out(h)
             return h

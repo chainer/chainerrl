@@ -26,8 +26,8 @@ class SingleModelVFunction(
     def __init__(self, model):
         super().__init__(model=model)
 
-    def __call__(self, x, test=False):
-        h = self.model(x, test=test)
+    def __call__(self, x):
+        h = self.model(x)
         return h
 
 

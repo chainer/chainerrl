@@ -1,5 +1,5 @@
 cached-property
-chainer
+chainer>=2.0.0
 fastcache; python_version<'3.2'
 funcsigs; python_version<'3.5'
 future

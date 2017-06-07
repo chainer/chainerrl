@@ -137,6 +137,12 @@ class PCL(agent.AttributeSavingMixin, agent.AsyncAgent):
         self.pi_loss_coef = pi_loss_coef
         self.v_loss_coef = v_loss_coef
         self.rollout_len = rollout_len
+        if not self.xp.isscalar(batchsize):
+            batchsize = self.xp.int32(batchsize)
+            """Fix Chainer Issue #2807
+
+            batchsize should (look to) be scalar.
+            """
         self.batchsize = batchsize
         self.normalize_loss_by_steps = normalize_loss_by_steps
         self.act_deterministically = act_deterministically
@@ -248,7 +254,9 @@ class PCL(agent.AttributeSavingMixin, agent.AsyncAgent):
             copy_param.copy_grad(
                 target_link=self.shared_model, source_link=self.model)
             if self.process_idx == 0:
-                norm = self.optimizer.compute_grads_norm()
+                xp = self.xp
+                norm = sum(xp.sum(xp.square(param.grad))
+                           for param in self.optimizer.target.params())
                 self.logger.debug('grad norm:%s', norm)
         self.optimizer.update()
 

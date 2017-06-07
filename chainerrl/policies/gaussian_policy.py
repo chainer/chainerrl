@@ -17,6 +17,7 @@ import numpy as np
 
 from chainerrl import distribution
 from chainerrl.functions.bound_by_tanh import bound_by_tanh
+from chainerrl.initializers import LeCunNormal
 from chainerrl import links
 from chainerrl.policy import Policy
 
@@ -25,7 +26,7 @@ class GaussianPolicy(Policy):
     """Abstract Gaussian policy."""
 
     @abstractmethod
-    def compute_mean_and_var(self, x, test=False):
+    def compute_mean_and_var(self, x):
         """Compute mean and variance.
 
         Returns:
@@ -33,8 +34,8 @@ class GaussianPolicy(Policy):
         """
         raise NotImplementedError()
 
-    def __call__(self, x, test=False):
-        mean, var = self.compute_mean_and_var(x, test=test)
+    def __call__(self, x):
+        mean, var = self.compute_mean_and_var(x)
         return distribution.GaussianDistribution(mean=mean, var=var)
 
 
@@ -96,21 +97,21 @@ class FCGaussianPolicy(chainer.ChainList, GaussianPolicy):
                 self.hidden_layers.append(
                     L.Linear(n_hidden_channels, n_hidden_channels))
             self.mean_layer = L.Linear(n_hidden_channels, action_size,
-                                       wscale=mean_wscale)
+                                       initialW=LeCunNormal(mean_wscale))
             self.var_layer = L.Linear(n_hidden_channels, var_size,
-                                      wscale=var_wscale,
-                                      bias=var_bias)
+                                      initialW=LeCunNormal(var_wscale),
+                                      initial_bias=var_bias)
         else:
             self.mean_layer = L.Linear(n_input_channels, action_size,
-                                       wscale=mean_wscale)
+                                       initialW=LeCunNormal(mean_wscale))
             self.var_layer = L.Linear(n_input_channels, var_size,
-                                      wscale=var_wscale,
-                                      bias=var_bias)
+                                      initialW=LeCunNormal(var_wscale),
+                                      initial_bias=var_bias)
 
         super().__init__(
             self.mean_layer, self.var_layer, *self.hidden_layers)
 
-    def compute_mean_and_var(self, x, test=False):
+    def compute_mean_and_var(self, x):
         h = x
         for layer in self.hidden_layers:
             h = self.nonlinearity(layer(h))
@@ -121,8 +122,8 @@ class FCGaussianPolicy(chainer.ChainList, GaussianPolicy):
             self.min_var
         return mean, var
 
-    def __call__(self, x, test=False):
-        mean, var = self.compute_mean_and_var(x, test=test)
+    def __call__(self, x):
+        mean, var = self.compute_mean_and_var(x)
         return distribution.GaussianDistribution(mean, var=var)
 
 
@@ -171,7 +172,8 @@ class FCGaussianPolicyWithFixedCovariance(links.Sequence, GaussianPolicy):
             layers.append(L.Linear(n_hidden_channels, n_hidden_channels))
         # The last layer is used to compute the mean
         layers.append(
-            L.Linear(n_hidden_channels, action_size, wscale=mean_wscale))
+            L.Linear(n_hidden_channels, action_size,
+                     initialW=LeCunNormal(mean_wscale)))
 
         if self.bound_mean:
             layers.append(lambda x: bound_by_tanh(
@@ -200,7 +202,7 @@ class LinearGaussianPolicyWithDiagonalCovariance(
 
         super().__init__(self.mean_layer, self.var_layer)
 
-    def compute_mean_and_var(self, x, test=False):
+    def compute_mean_and_var(self, x):
         # mean = self.mean_layer(x)
         mean = F.tanh(self.mean_layer(x)) * 2.0
         var = F.softplus(self.var_layer(x))
@@ -221,7 +223,7 @@ class LinearGaussianPolicyWithSphericalCovariance(
 
         super().__init__(self.mean_layer, self.var_layer)
 
-    def compute_mean_and_var(self, x, test=False):
+    def compute_mean_and_var(self, x):
         # mean = self.mean_layer(x)
         mean = F.tanh(self.mean_layer(x)) * 2.0
         var = F.softplus(F.broadcast_to(self.var_layer(x), mean.data.shape))

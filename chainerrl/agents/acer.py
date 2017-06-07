@@ -194,10 +194,10 @@ class ACERSharedModel(links.Sequence, RecurrentChainMixin):
 def backprop_truncated(*variables):
     backup = [v.creator for v in variables]
     for v in variables:
-        v.creator = None
+        v.unchain()
     yield
     for v, backup_creator in zip(variables, backup):
-        v.creator = backup_creator
+        v.set_creator(backup_creator)
 
 
 def compute_loss_with_kl_constraint(distrib, another_distrib, original_loss,
@@ -523,7 +523,8 @@ class ACER(agent.AttributeSavingMixin, agent.AsyncAgent):
             target_link=self.shared_model, source_link=self.model)
         # Update the globally shared model
         if self.process_idx == 0:
-            norm = self.optimizer.compute_grads_norm()
+            norm = sum(np.sum(np.square(param.grad))
+                       for param in self.optimizer.target.params())
             self.logger.debug('grad norm:%s', norm)
         self.optimizer.update()
 

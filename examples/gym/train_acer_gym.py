@@ -18,6 +18,7 @@ from chainerrl.action_value import DiscreteActionValue
 from chainerrl.agents import acer
 from chainerrl.distribution import SoftmaxDistribution
 from chainerrl import experiments
+from chainerrl.initializers import LeCunNormal
 from chainerrl import links
 from chainerrl import misc
 from chainerrl.optimizers import rmsprop_async
@@ -112,12 +113,14 @@ def main():
             pi=links.Sequence(
                 L.Linear(obs_space.low.size, args.n_hidden_channels),
                 F.relu,
-                L.Linear(args.n_hidden_channels, action_space.n, wscale=1e-3),
+                L.Linear(args.n_hidden_channels, action_space.n,
+                         initialW=LeCunNormal(1e-3)),
                 SoftmaxDistribution),
             q=links.Sequence(
                 L.Linear(obs_space.low.size, args.n_hidden_channels),
                 F.relu,
-                L.Linear(args.n_hidden_channels, action_space.n, wscale=1e-3),
+                L.Linear(args.n_hidden_channels, action_space.n,
+                         initialW=LeCunNormal(1e-3)),
                 DiscreteActionValue),
         )
 
