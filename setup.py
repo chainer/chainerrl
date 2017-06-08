@@ -26,7 +26,7 @@ if sys.version_info < (3, 5):
     install_requires.append('funcsigs')
 
 setup(name='chainerrl',
-      version='0.1.0',
+      version='0.2.0',
       description='ChainerRL, a deep reinforcement learning library',
       author='Yasuhiro Fujita',
       author_email='fujita@preferred.jp',
