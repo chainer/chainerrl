@@ -1,15 +1,21 @@
 import numpy as np
 
 
-def lambda_return(lambd, rewards, next_values, gamma, R=0.0):
-    n = rewards.size
-    ret = np.zeros(n)
+def lambda_return(one_step_values, rewards, lambd, gamma):
+    n = len(rewards)
+    ret = [None] * n
+    accum = np.array([])
     for i in reversed(range(n)):
-        # R = lambd * (rewards[i] + gamma * R) \
-        #     + (1 - lambd) * (rewards[i] + gamma * next_values[i])
-        R = lambd * R + (1 - lambd) * next_values[i]
-        R = rewards[i] + gamma * R
-        ret[i] = R
+        ret[i] = np.array(one_step_values[i])
+        # print(one_step_values[i])
+        # print(rewards[i])
+        # print(accum)
+        b = accum.shape[0]
+        # print(b)
+        # print(one_step_values[i][:b])
+        # print(accum - one_step_values[i][:b])
+        ret[i][:b] += lambd * (accum - one_step_values[i][:b])
+        accum = rewards[i] + gamma * ret[i]
     return ret
 
 
