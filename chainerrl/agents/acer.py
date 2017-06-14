@@ -17,8 +17,8 @@ import numpy as np
 from chainerrl.action_value import SingleActionValue
 from chainerrl import agent
 from chainerrl import distribution
-from chainerrl import links
 from chainerrl.eligibility_trace import retrace
+from chainerrl import links
 from chainerrl.misc import async
 from chainerrl.misc import copy_param
 from chainerrl.recurrent import Recurrent
@@ -29,13 +29,6 @@ from chainerrl.recurrent import state_reset
 
 def compute_importance(pi, mu, x):
     return np.nan_to_num(float(pi.prob(x).data) / float(mu.prob(x).data))
-
-
-def compute_all_importance(t_iter, pi, mu, x):
-    return np.array(
-        [compute_importance(pi[t], mu[t], np.expand_dims(x[t], 0))
-         for t in t_iter],
-        dtype=np.float32)
 
 
 def compute_full_importance(pi, mu):
@@ -430,8 +423,10 @@ class ACER(agent.AttributeSavingMixin, agent.AsyncAgent):
                               distribution.CategoricalDistribution)
 
         if action_distribs_mu is not None:
-            rho = compute_all_importance(
-                t_iter, action_distribs, action_distribs_mu, actions)
+            rho = np.array(
+                [compute_importance(action_distribs[t], action_distribs_mu[t],
+                                    np.expand_dims(x[t], 0)) for t in t_iter],
+                dtype=np.float32)
         else:
             rho = np.ones(t_stop - t_start)
 
@@ -443,10 +438,10 @@ class ACER(agent.AttributeSavingMixin, agent.AsyncAgent):
             np.expand_dims(actions[t], axis=0))
             for t in t_iter]
         assert isinstance(Q[0], chainer.Variable), "Q must be backprop-able"
-        Q = F.flatten(F.stack(Q, axis=0))
+        Q = F.concat(Q, axis=0)
 
         rewards_data = np.array([rewards[t] for t in t_iter])
-        values = F.flatten(F.stack([values[t] for t in t_iter]))
+        values = F.concat([values[t] for t in t_iter], axis=0)
 
         Q_ret = retrace(Q.data, rewards_data, values.data, self.gamma,
                         correction_coefs, R=R)

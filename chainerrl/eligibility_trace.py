@@ -25,10 +25,10 @@ def general_trace(Q, rewards, values, gamma, correction_coefs, R=0.0):
     assert rewards.shape == (n,)
     assert values.shape == (n,)
     assert correction_coefs.shape == (n,)
-    Q_ret = np.zeros(n+1, dtype=np.float32)
-    Q_ret[n] = R
+    assert np.isscalar(R)
+    Q_ret = np.zeros(n, dtype=np.float32)
     for i in reversed(range(n)):
-        tmp = rewards[i] + gamma * Q_ret[i+1]
+        tmp = rewards[i] + gamma * R
         assert np.isscalar(tmp)
-        Q_ret[i] = correction_coefs[i] * (tmp - Q[i]) + values[i]
-    return Q_ret[0:n]
+        R = Q_ret[i] = correction_coefs[i] * (tmp - Q[i]) + values[i]
+    return Q_ret
