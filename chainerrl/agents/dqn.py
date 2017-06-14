@@ -248,11 +248,13 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
         self.target_model(batch['state'])
 
     def update_from_episodes(self, episodes, errors_out=None):
-        has_weights = isinstance(episodes, tuple)
-        if has_weights:
+        if isinstance(episodes, tuple):
             episodes, weights = episodes
             if errors_out is None:
                 errors_out = []
+        else:
+            weights = None
+
         if errors_out is None:
             errors_out_step = None
         else:
@@ -260,9 +262,31 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
             for _ in episodes:
                 errors_out.append(0.0)
             errors_out_step = []
+
+        losses = []
+        for batch, indices in self._step_batch_generator(episodes, weights):
+            loss_step = self._compute_loss(batch, self.gamma,
+                                           errors_out=errors_out_step)
+            losses.append(loss_step)
+            if errors_out is not None:
+                for err, index in zip(errors_out_step, indices):
+                    errors_out[index] += err
+        loss = F.average(F.stack(losses))
+
+        # Update stats
+        self.average_loss *= self.average_loss_decay
+        self.average_loss += \
+            (1 - self.average_loss_decay) * float(loss.data)
+
+        self.model.cleargrads()
+        loss.backward()
+        self.optimizer.update()
+        if weights is not None:
+            self.replay_buffer.update_errors(errors_out)
+
+    def _step_batch_generator(self, episodes, weights=None):
         with state_reset(self.model):
             with state_reset(self.target_model):
-                loss = 0
                 tmp = list(reversed(sorted(
                     enumerate(episodes), key=lambda x: len(x[1]))))
                 sorted_episodes = [elem[1] for elem in tmp]
@@ -275,34 +299,19 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
                         if len(ep) <= i:
                             break
                         transitions.append(ep[i])
-                        if has_weights:
+                        if weights is not None:
                             weights_step.append(weights[index])
+                    batchsize = len(transitions)
                     batch = batch_experiences(transitions,
                                               xp=self.xp,
                                               phi=self.phi,
                                               batch_states=self.batch_states)
                     if i == 0:
                         self.input_initial_batch_to_target_model(batch)
-                    if has_weights:
+                    if weights is not None:
                         batch['weights'] = self.xp.asarray(
                             weights_step, dtype=self.xp.float32)
-                    loss += self._compute_loss(batch, self.gamma,
-                                               errors_out=errors_out_step)
-                    if errors_out is not None:
-                        for err, index in zip(errors_out_step, indices):
-                            errors_out[index] += err
-                loss /= max_epi_len
-
-                # Update stats
-                self.average_loss *= self.average_loss_decay
-                self.average_loss += \
-                    (1 - self.average_loss_decay) * float(loss.data)
-
-                self.model.cleargrads()
-                loss.backward()
-                self.optimizer.update()
-        if has_weights:
-            self.replay_buffer.update_errors(errors_out)
+                    yield batch, indices[:batchsize]
 
     def _compute_target_values(self, exp_batch, gamma):
 
