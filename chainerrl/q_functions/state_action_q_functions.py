@@ -88,12 +88,12 @@ class FCLSTMSAQFunction(chainer.Chain, StateActionQFunction,
         self.n_input_channels = n_dim_obs + n_dim_action
         self.n_hidden_layers = n_hidden_layers
         self.n_hidden_channels = n_hidden_channels
-        super().__init__(
-            fc=MLP(self.n_input_channels, n_hidden_channels,
-                   [self.n_hidden_channels] * self.n_hidden_layers),
-            lstm=L.LSTM(n_hidden_channels, n_hidden_channels),
-            out=L.Linear(n_hidden_channels, 1),
-        )
+        super().__init__()
+        with self.init_scope():
+            self.fc = MLP(self.n_input_channels, n_hidden_channels,
+                          [self.n_hidden_channels] * self.n_hidden_layers)
+            self.lstm = L.LSTM(n_hidden_channels, n_hidden_channels)
+            self.out = L.Linear(n_hidden_channels, 1)
 
     def __call__(self, x, a):
         h = F.concat((x, a), axis=1)
@@ -150,14 +150,17 @@ class FCBNLateActionSAQFunction(chainer.Chain, StateActionQFunction,
         self.n_hidden_channels = n_hidden_channels
         self.normalize_input = normalize_input
 
-        super().__init__(
-            obs_mlp=MLPBN(in_size=n_dim_obs, out_size=n_hidden_channels,
-                          hidden_sizes=[], normalize_input=normalize_input,
-                          normalize_output=True),
-            mlp=MLP(in_size=n_hidden_channels + n_dim_action,
-                    out_size=1,
-                    hidden_sizes=([self.n_hidden_channels] *
-                                  (self.n_hidden_layers - 1))))
+        super().__init__()
+        with self.init_scope():
+            self.obs_mlp = MLPBN(in_size=n_dim_obs, out_size=n_hidden_channels,
+                                 hidden_sizes=[],
+                                 normalize_input=normalize_input,
+                                 normalize_output=True)
+            self.mlp = MLP(in_size=n_hidden_channels + n_dim_action,
+                           out_size=1,
+                           hidden_sizes=([self.n_hidden_channels] *
+                                         (self.n_hidden_layers - 1)))
+
         self.output = self.mlp.output
 
     def __call__(self, state, action):
@@ -187,13 +190,15 @@ class FCLateActionSAQFunction(chainer.Chain, StateActionQFunction,
         self.n_hidden_layers = n_hidden_layers
         self.n_hidden_channels = n_hidden_channels
 
-        super().__init__(
-            obs_mlp=MLP(in_size=n_dim_obs, out_size=n_hidden_channels,
-                        hidden_sizes=[]),
-            mlp=MLP(in_size=n_hidden_channels + n_dim_action,
-                    out_size=1,
-                    hidden_sizes=([self.n_hidden_channels] *
-                                  (self.n_hidden_layers - 1))))
+        super().__init__()
+        with self.init_scope():
+            self.obs_mlp = MLP(in_size=n_dim_obs, out_size=n_hidden_channels,
+                               hidden_sizes=[])
+            self.mlp = MLP(in_size=n_hidden_channels + n_dim_action,
+                           out_size=1,
+                           hidden_sizes=([self.n_hidden_channels] *
+                                         (self.n_hidden_layers - 1)))
+
         self.output = self.mlp.output
 
     def __call__(self, state, action):
