@@ -13,3 +13,4 @@ from chainerrl.agents.pgt import PGT  # NOQA
 from chainerrl.agents.reinforce import REINFORCE  # NOQA
 from chainerrl.agents.residual_dqn import ResidualDQN  # NOQA
 from chainerrl.agents.sarsa import SARSA  # NOQA
+from chainerrl.agents.trust_pcl import TrustPCL  # NOQA
