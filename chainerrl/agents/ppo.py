@@ -148,7 +148,8 @@ class PPO(agent.AttributeSavingMixin, agent.Agent):
         return action
 
     def act(self, state):
-        return self._act(state, train=False)
+        action, _ = self._act(state, train=False)
+        return action
 
     def stop_episode_and_train(self, state, reward, done=False):
         _, v = self._act(state, train=True)

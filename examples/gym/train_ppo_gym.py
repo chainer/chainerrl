@@ -192,6 +192,7 @@ def main():
         experiments.train_agent_with_evaluation(
             agent=agent,
             env=make_env(0, False),
+            eval_env=make_env(0, True),
             outdir=args.outdir,
             # processes=args.processes,
             # make_env=make_env,
