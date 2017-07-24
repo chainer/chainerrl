@@ -120,9 +120,9 @@ def main():
     parser.add_argument('--logger-level', type=int, default=logging.DEBUG)
     parser.add_argument('--monitor', action='store_true')
 
-    parser.add_argument('--horizon', type=int)
-    parser.add_argument('--batchsize', type=int)
-    parser.add_argument('--epochs', type=int)
+    parser.add_argument('--horizon', type=int, default=2048)
+    parser.add_argument('--batchsize', type=int, default=64)
+    parser.add_argument('--epochs', type=int, default=10)
     args = parser.parse_args()
 
     logging.getLogger().setLevel(args.logger_level)
