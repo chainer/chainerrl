@@ -83,46 +83,50 @@ class PPO(agent.AttributeSavingMixin, agent.Agent):
             transition['adv'] = adv
             transition['v_teacher'] = adv + transition['v_pred']  # ????
 
+    def lossfun(self, prob_ratio, advs, vs_pred, vs_teacher, ent):
+        # print((prob_ratio.shape, advs.shape, vs_pred.shape, vs_teacher.shape))
+        prob_ratio = F.expand_dims(prob_ratio, axis=-1)
+        # print((prob_ratio.shape, advs.shape, vs_pred.shape, vs_teacher.shape))
+        loss_policy = - F.mean(F.minimum(
+            prob_ratio * advs,
+            F.clip(prob_ratio, 1-self.clip_eps, 1+self.clip_eps) * advs))
+
+        loss_value_func = F.mean_squared_error(vs_pred, vs_teacher)
+
+        loss_entropy = F.mean(ent)
+
+        # print((loss_policy, loss_value_func, loss_entropy))
+        return (
+            loss_policy
+            + self.value_func_coeff * loss_value_func
+            + self.entropy_coeff * loss_entropy
+            )
+
     def update(self):
         xp = self.xp
         target_model = copy.deepcopy(self.model)
-        dataset = {k: xp.array([e[k] for e in self.memory], dtype=xp.float32)
-                   for k in self.memory[0].keys()}
-        n = len(dataset)
-        ix_iter = chainer.iterators.SerialIterator(range(n), self.batchsize)
+        dataset_iter = chainer.iterators.SerialIterator(self.memory, self.batchsize)
 
-        def lossfun(states, actions, rewards, advs, vs_teacher):
+        dataset_iter.reset()
+        while dataset_iter.epoch < self.epochs:
+            batch = dataset_iter.__next__()
+            states = xp.array([b['state'] for b in batch], dtype=xp.float32)
+            actions = xp.array([b['action'] for b in batch], dtype=xp.int32)
+
             distribs, vs_pred = self.model(states)
+            # print(distribs)
             log_probs = distribs.log_prob(actions)
-            target_distribs = target_model(states)
+            target_distribs, _ = target_model(states)
             target_log_probs = target_distribs.log_prob(actions)
-            prob_ratio = F.exp(log_prob - target_distribs)
+            prob_ratio = F.exp(log_probs - target_log_probs)
 
-            loss_policy = - F.minimum(
-                prob_ratio * advs,
-                F.clip(prob_ratio, 1-self.clip_eps, 1+self.clip_eps) * advs)
+            advs = xp.array([b['adv'] for b in batch], dtype=xp.float32)
+            vs_teacher = xp.array([b['v_teacher'] for b in batch], dtype=xp.float32)
+            ent = distribs.entropy
 
-            loss_value_func = F.mean_squared_loss(vs_pred, vs_teacher)
-
-            ent = distribs.entropy()
-            loss_entropy = F.mean(ent)
-
-            return (
-                loss_policy
-                + self.value_func_coeff * loss_value_func
-                + self.entropy_coeff * loss_entropy
-                )
-
-        ix_iter.reset()
-        while ix_iter.epoch < self.epochs:
-            ix = ix_iter.__next__()
             self.optimizer.update(
-                lossfun,
-                dataset['state'][ix],
-                dataset['action'][ix],
-                dataset['reward'][ix],
-                dataset['adv'][ix],
-                dataset['v_teacher'][ix])
+                self.lossfun,
+                prob_ratio, advs, vs_pred, vs_teacher, ent)
 
     def act_and_train(self, state, reward, done=False):
         action, v = self._act(state, train=True)
