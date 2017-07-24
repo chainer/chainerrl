@@ -8,6 +8,9 @@ import chainerrl
 from chainerrl.agents.pcl import PCL
 from chainerrl.misc.copy_param import soft_copy_param
 from chainerrl.recurrent import Recurrent
+from chainerrl.recurrent import state_kept
+from chainerrl.recurrent import state_reset
+from chainerrl.replay_buffer import batch_experiences
 
 
 def estimate_policy_divergence(returns, lambd):
@@ -24,6 +27,7 @@ def estimate_policy_divergence(returns, lambd):
     max_return = np.amax(returns)
     logZ = np.log(np.mean(np.exp(returns - max_return))) + max_return
     return np.mean(returns * np.exp(returns - logZ)) - logZ
+
 
 def binary_search(increasing_func, low, high, precision):
     while True:
@@ -118,7 +122,8 @@ class TrustPCL(PCL):
                 xs=[log_probs[t + i] for i in range(d)],
                 weights=[self.gamma ** i for i in range(d)])
             G_rel = chainerrl.functions.weighted_sum_arrays(
-                xs=[log_probs[t + i] - target_log_probs[t + i] for i in range(d)],
+                xs=[log_probs[t + i] - target_log_probs[t + i]
+                    for i in range(d)],
                 weights=[self.gamma ** i for i in range(d)])
             G = F.expand_dims(self.tau * G_abs + self.lambd * G_rel, -1)
             last_v = next_values[t + d - 1]
@@ -215,7 +220,8 @@ class TrustPCL(PCL):
                     (1 - batch['is_state_terminal'].reshape(next_v.shape))
                 rewards[t] = chainer.cuda.to_cpu(batch['reward'])
                 log_probs[t] = action_distrib.log_prob(batch['action'])
-                target_log_probs[t] = target_action_distrib.log_prob(batch['action'])
+                target_log_probs[t] = \
+                    target_action_distrib.log_prob(batch['action'])
             # Loss is computed one by one episode
             losses = []
             for i, ep in enumerate(sorted_episodes):
@@ -281,4 +287,3 @@ class TrustPCL(PCL):
                 self.online_batch_losses = []
 
         self.init_history_data_for_online_update()
-
