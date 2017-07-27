@@ -34,11 +34,20 @@ except Exception:
 
 try:
     import atari_py
-    atari_py_available = True
+    from packaging import version
+    import pkg_resources
+    atari_py_version = version.parse(
+        pkg_resources.get_distribution("atari_py").version)
+    if atari_py_version < version.parse('0.1.1'):
+        warnings.warn(
+            'atari_py is old. You need to install atari_py>=0.1.1 to use ALE.')  # NOQA
+        atari_py_available = False
+    else:
+        atari_py_available = True
 except Exception:
     atari_py_available = False
     warnings.warn(
-        'atari_py is not available. You need to install atari_py to use ALE.')
+        'atari_py is not available. You need to install atari_py>=0.1.1 to use ALE.')  # NOQA
 
 
 class ALE(env.Env):
@@ -56,7 +65,7 @@ class ALE(env.Env):
         # atari_py is used only to provide rom files. atari_py has its own
         # ale_python_interface, but it is obsolete.
         if not atari_py_available:
-            raise RuntimeError('You need to install atari_py to use ALE.')
+            raise RuntimeError('You need to install atari_py>=0.1.1 to use ALE.')  # NOQA
         game_path = atari_py.get_game_path(game)
 
         ale = atari_py.ALEInterface()
