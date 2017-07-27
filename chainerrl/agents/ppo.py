@@ -82,14 +82,16 @@ class PPO(agent.AttributeSavingMixin, agent.Agent):
             prob_ratio * advs,
             F.clip(prob_ratio, 1-self.clip_eps, 1+self.clip_eps) * advs))
 
-        # loss_value_func = F.mean_squared_error(vs_pred, vs_teacher)
-        loss_value_func = F.mean(F.maximum(
-            F.square(vs_pred - vs_teacher),
-            F.square(_F_clip(vs_pred,
-                             vs_pred_old - self.clip_eps_vf,
-                             vs_pred_old + self.clip_eps_vf)
-                     - vs_teacher)
-            ))
+        if self.clip_eps_vf is None:
+            loss_value_func = F.mean_squared_error(vs_pred, vs_teacher)
+        else:
+            loss_value_func = F.mean(F.maximum(
+                F.square(vs_pred - vs_teacher),
+                F.square(_F_clip(vs_pred,
+                                 vs_pred_old - self.clip_eps_vf,
+                                 vs_pred_old + self.clip_eps_vf)
+                         - vs_teacher)
+                ))
 
         loss_entropy = F.mean(ent)
 

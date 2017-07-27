@@ -173,7 +173,8 @@ def main():
     agent = a3c.A3C(model, opt, t_max=args.t_max, gamma=0.99,
                     beta=args.beta, phi=phi)
     """
-    agent = PPO(model, opt, horizon=args.horizon, batchsize=args.batchsize, epochs=args.epochs)
+    agent = PPO(model, opt, horizon=args.horizon, batchsize=args.batchsize, epochs=args.epochs,
+                clip_eps_vf=None)
 
     if args.load:
         agent.load(args.load)
