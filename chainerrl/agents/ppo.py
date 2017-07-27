@@ -4,7 +4,6 @@ import copy
 
 
 from chainerrl import agent
-from chainerrl.misc.copy_param import synchronize_parameters
 
 
 def _F_clip(x, x_min, x_max):
@@ -24,10 +23,7 @@ class PPO(agent.AttributeSavingMixin, agent.Agent):
                  epochs=10,
                  clip_eps=0.2,
                  clip_eps_vf=0.2,
-#                 sync_config={
-#                     'method': 'soft',
-#                     'tau': 0.99},
-                ):
+                 ):
         self.model = model
         self.optimizer = optimizer
         self.gamma = gamma
@@ -39,7 +35,6 @@ class PPO(agent.AttributeSavingMixin, agent.Agent):
         self.epochs = epochs
         self.clip_eps = clip_eps
         self.clip_eps_vf = clip_eps_vf
-#        self.sync_config = sync_config
 
         self.xp = self.model.xp
         self.target_model = None
@@ -62,15 +57,6 @@ class PPO(agent.AttributeSavingMixin, agent.Agent):
             self.update()
             self.memory = []
 
-#    def sync_target_network(self):
-#        if self.target_model is None:
-#            self.target_model = copy.deepcopy(self.model)
-#        else:
-#            synchronize_parameters(
-#                src=self.model,
-#                dst=self.target_model,
-#                **self.sync_config)
-
     def flush_last_episode(self):
         if self.last_episode:
             self.compute_v_teacher()
@@ -82,7 +68,8 @@ class PPO(agent.AttributeSavingMixin, agent.Agent):
         for transition in reversed(self.last_episode):
             td_err = (
                 transition['reward']
-                + self.gamma * transition['nonterminal'] * transition['next_v_pred']
+                + (self.gamma * transition['nonterminal']
+                   * transition['next_v_pred'])
                 - transition['v_pred']
                 )
             adv = td_err + self.lambd * adv
@@ -90,9 +77,7 @@ class PPO(agent.AttributeSavingMixin, agent.Agent):
             transition['v_teacher'] = adv + transition['v_pred']  # ????
 
     def lossfun(self, prob_ratio, advs, vs_pred, vs_pred_old, vs_teacher, ent):
-        # print((prob_ratio.shape, advs.shape, vs_pred.shape, vs_teacher.shape))
         prob_ratio = F.expand_dims(prob_ratio, axis=-1)
-        # print((prob_ratio.shape, advs.shape, vs_pred.shape, vs_teacher.shape))
         loss_policy = - F.mean(F.minimum(
             prob_ratio * advs,
             F.clip(prob_ratio, 1-self.clip_eps, 1+self.clip_eps) * advs))
@@ -100,7 +85,10 @@ class PPO(agent.AttributeSavingMixin, agent.Agent):
         # loss_value_func = F.mean_squared_error(vs_pred, vs_teacher)
         loss_value_func = F.mean(F.maximum(
             F.square(vs_pred - vs_teacher),
-            F.square(_F_clip(vs_pred, vs_pred_old - self.clip_eps_vf, vs_pred_old + self.clip_eps_vf) - vs_teacher)
+            F.square(_F_clip(vs_pred,
+                             vs_pred_old - self.clip_eps_vf,
+                             vs_pred_old + self.clip_eps_vf)
+                     - vs_teacher)
             ))
 
         loss_entropy = F.mean(ent)
@@ -115,14 +103,16 @@ class PPO(agent.AttributeSavingMixin, agent.Agent):
     def update(self):
         xp = self.xp
         target_model = copy.deepcopy(self.model)
-        dataset_iter = chainer.iterators.SerialIterator(self.memory, self.batchsize)
+        dataset_iter = chainer.iterators.SerialIterator(
+            self.memory, self.batchsize)
 
         dataset_iter.reset()
         while dataset_iter.epoch < self.epochs:
             batch = dataset_iter.__next__()
             states = xp.array([b['state'] for b in batch], dtype=xp.float32)
             actions = xp.array([b['action'] for b in batch], dtype=xp.int32)
-            vs_pred_old = xp.array([b['v_pred'] for b in batch], dtype=xp.float32)
+            vs_pred_old = xp.array(
+                [b['v_pred'] for b in batch], dtype=xp.float32)
 
             distribs, vs_pred = self.model(states)
             # print(distribs)
@@ -132,7 +122,8 @@ class PPO(agent.AttributeSavingMixin, agent.Agent):
             prob_ratio = F.exp(log_probs - target_log_probs)
 
             advs = xp.array([b['adv'] for b in batch], dtype=xp.float32)
-            vs_teacher = xp.array([b['v_teacher'] for b in batch], dtype=xp.float32)
+            vs_teacher = xp.array(
+                [b['v_teacher'] for b in batch], dtype=xp.float32)
             ent = distribs.entropy
 
             self.optimizer.update(
