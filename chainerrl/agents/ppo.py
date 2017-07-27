@@ -7,6 +7,10 @@ from chainerrl import agent
 from chainerrl.misc.copy_param import synchronize_parameters
 
 
+def _F_clip(x, x_min, x_max):
+    return F.minimum(F.maximum(x, x_min), x_max)
+
+
 class PPO(agent.AttributeSavingMixin, agent.Agent):
     saved_attributes = ['model', 'optimizer']
 
@@ -19,6 +23,7 @@ class PPO(agent.AttributeSavingMixin, agent.Agent):
                  batchsize=64,
                  epochs=10,
                  clip_eps=0.2,
+                 clip_eps_vf=0.2,
 #                 sync_config={
 #                     'method': 'soft',
 #                     'tau': 0.99},
@@ -33,6 +38,7 @@ class PPO(agent.AttributeSavingMixin, agent.Agent):
         self.batchsize = batchsize
         self.epochs = epochs
         self.clip_eps = clip_eps
+        self.clip_eps_vf = clip_eps_vf
 #        self.sync_config = sync_config
 
         self.xp = self.model.xp
@@ -83,7 +89,7 @@ class PPO(agent.AttributeSavingMixin, agent.Agent):
             transition['adv'] = adv
             transition['v_teacher'] = adv + transition['v_pred']  # ????
 
-    def lossfun(self, prob_ratio, advs, vs_pred, vs_teacher, ent):
+    def lossfun(self, prob_ratio, advs, vs_pred, vs_pred_old, vs_teacher, ent):
         # print((prob_ratio.shape, advs.shape, vs_pred.shape, vs_teacher.shape))
         prob_ratio = F.expand_dims(prob_ratio, axis=-1)
         # print((prob_ratio.shape, advs.shape, vs_pred.shape, vs_teacher.shape))
@@ -91,7 +97,11 @@ class PPO(agent.AttributeSavingMixin, agent.Agent):
             prob_ratio * advs,
             F.clip(prob_ratio, 1-self.clip_eps, 1+self.clip_eps) * advs))
 
-        loss_value_func = F.mean_squared_error(vs_pred, vs_teacher)
+        # loss_value_func = F.mean_squared_error(vs_pred, vs_teacher)
+        loss_value_func = F.mean(F.maximum(
+            F.square(vs_pred - vs_teacher),
+            F.square(_F_clip(vs_pred, vs_pred_old - self.clip_eps_vf, vs_pred_old + self.clip_eps_vf) - vs_teacher)
+            ))
 
         loss_entropy = F.mean(ent)
 
@@ -112,6 +122,7 @@ class PPO(agent.AttributeSavingMixin, agent.Agent):
             batch = dataset_iter.__next__()
             states = xp.array([b['state'] for b in batch], dtype=xp.float32)
             actions = xp.array([b['action'] for b in batch], dtype=xp.int32)
+            vs_pred_old = xp.array([b['v_pred'] for b in batch], dtype=xp.float32)
 
             distribs, vs_pred = self.model(states)
             # print(distribs)
@@ -126,7 +137,7 @@ class PPO(agent.AttributeSavingMixin, agent.Agent):
 
             self.optimizer.update(
                 self.lossfun,
-                prob_ratio, advs, vs_pred, vs_teacher, ent)
+                prob_ratio, advs, vs_pred, vs_pred_old, vs_teacher, ent)
 
     def act_and_train(self, state, reward, done=False):
         action, v = self._act(state, train=True)
