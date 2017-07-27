@@ -10,7 +10,6 @@ import os
 import sys
 import warnings
 
-from ale_python_interface import ALEInterface
 import numpy as np
 
 from chainerrl import env
@@ -60,7 +59,7 @@ class ALE(env.Env):
             raise RuntimeError('You need to install atari_py to use ALE.')
         game_path = atari_py.get_game_path(game)
 
-        ale = ALEInterface()
+        ale = atari_py.ALEInterface()
         if seed is not None:
             assert seed >= 0 and seed < 2 ** 16, \
                 "ALE's random seed must be represented by unsigned int"
