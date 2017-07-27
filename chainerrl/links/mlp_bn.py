@@ -15,10 +15,12 @@ class LinearBN(chainer.Chain):
     """Linear layer with BatchNormalization."""
 
     def __init__(self, in_size, out_size):
-        linear = L.Linear(in_size, out_size)
-        bn = L.BatchNormalization(out_size)
-        bn.avg_var[:] = 1
-        super().__init__(linear=linear, bn=bn)
+        super().__init__()
+        with self.init_scope():
+            self.linear = L.Linear(in_size, out_size)
+            bn = L.BatchNormalization(out_size)
+            bn.avg_var[:] = 1
+            self.bn = bn
 
     def __call__(self, x):
         return self.bn(self.linear(x))
@@ -35,27 +37,25 @@ class MLPBN(chainer.Chain):
         self.normalize_input = normalize_input
         self.normalize_output = normalize_output
 
-        layers = {}
+        super().__init__()
+        with self.init_scope():
+            if normalize_input:
+                self.input_bn = L.BatchNormalization(in_size)
+                self.input_bn.avg_var[:] = 1
 
-        if normalize_input:
-            layers['input_bn'] = L.BatchNormalization(in_size)
-            layers['input_bn'].avg_var[:] = 1
+            if hidden_sizes:
+                hidden_layers = []
+                hidden_layers.append(LinearBN(in_size, hidden_sizes[0]))
+                for hin, hout in zip(hidden_sizes, hidden_sizes[1:]):
+                    hidden_layers.append(LinearBN(hin, hout))
+                self.hidden_layers = chainer.ChainList(*hidden_layers)
+                self.output = L.Linear(hidden_sizes[-1], out_size)
+            else:
+                self.output = L.Linear(in_size, out_size)
 
-        if hidden_sizes:
-            hidden_layers = []
-            hidden_layers.append(LinearBN(in_size, hidden_sizes[0]))
-            for hin, hout in zip(hidden_sizes, hidden_sizes[1:]):
-                hidden_layers.append(LinearBN(hin, hout))
-            layers['hidden_layers'] = chainer.ChainList(*hidden_layers)
-            layers['output'] = L.Linear(hidden_sizes[-1], out_size)
-        else:
-            layers['output'] = L.Linear(in_size, out_size)
-
-        if normalize_output:
-            layers['output_bn'] = L.BatchNormalization(out_size)
-            layers['output_bn'].avg_var[:] = 1
-
-        super().__init__(**layers)
+            if normalize_output:
+                self.output_bn = L.BatchNormalization(out_size)
+                self.output_bn.avg_var[:] = 1
 
     def __call__(self, x):
         h = x
