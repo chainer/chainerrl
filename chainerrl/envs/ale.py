@@ -34,11 +34,11 @@ except Exception:
 
 try:
     import atari_py
-    from packaging import version
+    from distutils.version import StrictVersion
     import pkg_resources
-    atari_py_version = version.parse(
+    atari_py_version = StrictVersion(
         pkg_resources.get_distribution("atari_py").version)
-    if atari_py_version < version.parse('0.1.1'):
+    if atari_py_version < StrictVersion('0.1.1'):
         warnings.warn(
             'atari_py is old. You need to install atari_py>=0.1.1 to use ALE.')  # NOQA
         atari_py_available = False
