@@ -113,7 +113,7 @@ def main():
     parser.add_argument('--reward-scale-factor', type=float, default=1e-2)
     parser.add_argument('--rmsprop-epsilon', type=float, default=1e-1)
     parser.add_argument('--render', action='store_true', default=False)
-    parser.add_argument('--lr', type=float, default=7e-4)
+    parser.add_argument('--lr', type=float, default=3e-4)
     parser.add_argument('--weight-decay', type=float, default=0.0)
     parser.add_argument('--demo', action='store_true', default=False)
     parser.add_argument('--load', type=str, default='')
@@ -158,7 +158,7 @@ def main():
     elif args.arch == 'FFMellowmax':
         model = A3CFFMellowmax(obs_space.low.size, action_space.n)
 
-    opt = chainer.optimizers.Adam()
+    opt = chainer.optimizers.Adam(alpha=args.lr)
     opt.setup(model)
     """
     opt = rmsprop_async.RMSpropAsync(
