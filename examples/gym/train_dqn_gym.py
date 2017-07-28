@@ -5,10 +5,10 @@ Both discrete and continuous action spaces are supported. For continuous action
 spaces, A NAF (Normalized Advantage Function) is used to approximate Q-values.
 
 To solve CartPole-v0, run:
-    python train_gym_gym.py --env CartPole-v0
+    python train_dqn_gym.py --env CartPole-v0
 
 To solve Pendulum-v0, run:
-    python train_gym_gym.py --env Pendulum-v0
+    python train_dqn_gym.py --env Pendulum-v0
 """
 from __future__ import print_function
 from __future__ import unicode_literals
