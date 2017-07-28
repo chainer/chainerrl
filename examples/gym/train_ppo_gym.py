@@ -1,13 +1,13 @@
-"""An example of training A3C against OpenAI Gym Envs.
+"""An example of training PPO against OpenAI Gym Envs.
 
-This script is an example of training a PCL agent against OpenAI Gym envs.
+This script is an example of training a PPO agent against OpenAI Gym envs.
 Both discrete and continuous action spaces are supported.
 
 To solve CartPole-v0, run:
-    python train_a3c_gym.py 8 --env CartPole-v0
+    python train_ppo_gym.py --env CartPole-v0
 
 To solve InvertedPendulum-v1, run:
-    python train_a3c_gym.py 8 --env InvertedPendulum-v1 --arch LSTMGaussian --t-max 50  # noqa
+    python train_ppo_gym.py --env InvertedPendulum-v1 --arch LSTMGaussian --t-max 50  # noqa
 """
 from __future__ import division
 from __future__ import print_function
@@ -26,12 +26,11 @@ import gym.wrappers
 import numpy as np
 
 from chainerrl.agents import a3c
-from chainerrl.agents.ppo import PPO
+from chainerrl.agents import PPO
 from chainerrl import experiments
 from chainerrl import links
 from chainerrl import misc
 from chainerrl.optimizers.nonbias_weight_decay import NonbiasWeightDecay
-from chainerrl.optimizers import rmsprop_async
 from chainerrl import policies
 from chainerrl.recurrent import RecurrentChainMixin
 from chainerrl import v_function
@@ -98,20 +97,17 @@ def main():
     import logging
 
     parser = argparse.ArgumentParser()
-    # parser.add_argument('processes', type=int)
-    parser.add_argument('--env', type=str, default='CartPole-v0')
+    parser.add_argument('--env', type=str, default='CartPole-v1')
     parser.add_argument('--arch', type=str, default='FFSoftmax',
                         choices=('FFSoftmax', 'FFMellowmax', 'LSTMGaussian'))
     parser.add_argument('--seed', type=int, default=None)
     parser.add_argument('--outdir', type=str, default=None)
     parser.add_argument('--t-max', type=int, default=5)
     parser.add_argument('--beta', type=float, default=1e-2)
-    parser.add_argument('--profile', action='store_true')
-    parser.add_argument('--steps', type=int, default=8 * 10 ** 7)
-    parser.add_argument('--eval-interval', type=int, default=10 ** 5)
+    parser.add_argument('--steps', type=int, default=10 ** 5)
+    parser.add_argument('--eval-interval', type=int, default=2048)
     parser.add_argument('--eval-n-runs', type=int, default=10)
     parser.add_argument('--reward-scale-factor', type=float, default=1e-2)
-    parser.add_argument('--rmsprop-epsilon', type=float, default=1e-1)
     parser.add_argument('--render', action='store_true', default=False)
     parser.add_argument('--lr', type=float, default=3e-4)
     parser.add_argument('--weight-decay', type=float, default=0.0)
@@ -160,19 +156,8 @@ def main():
 
     opt = chainer.optimizers.Adam(alpha=args.lr)
     opt.setup(model)
-    """
-    opt = rmsprop_async.RMSpropAsync(
-        lr=args.lr, eps=args.rmsprop_epsilon, alpha=0.99)
-    opt.setup(model)
-    opt.add_hook(chainer.optimizer.GradientClipping(40))
     if args.weight_decay > 0:
         opt.add_hook(NonbiasWeightDecay(args.weight_decay))
-    """
-
-    """
-    agent = a3c.A3C(model, opt, t_max=args.t_max, gamma=0.99,
-                    beta=args.beta, phi=phi)
-    """
     agent = PPO(model, opt, horizon=args.horizon, batchsize=args.batchsize, epochs=args.epochs,
                 clip_eps_vf=None)
 
@@ -195,9 +180,6 @@ def main():
             env=make_env(0, False),
             eval_env=make_env(0, True),
             outdir=args.outdir,
-            # processes=args.processes,
-            # make_env=make_env,
-            # profile=args.profile,
             steps=args.steps,
             eval_n_runs=args.eval_n_runs,
             eval_interval=args.eval_interval,
