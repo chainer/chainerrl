@@ -116,7 +116,7 @@ def main():
     parser.add_argument('--logger-level', type=int, default=logging.DEBUG)
     parser.add_argument('--monitor', action='store_true')
 
-    parser.add_argument('--horizon', type=int, default=2048)
+    parser.add_argument('--update-interval', type=int, default=2048)
     parser.add_argument('--batchsize', type=int, default=64)
     parser.add_argument('--epochs', type=int, default=10)
     args = parser.parse_args()
@@ -158,7 +158,9 @@ def main():
     opt.setup(model)
     if args.weight_decay > 0:
         opt.add_hook(NonbiasWeightDecay(args.weight_decay))
-    agent = PPO(model, opt, horizon=args.horizon, batchsize=args.batchsize, epochs=args.epochs,
+    agent = PPO(model, opt,
+                update_interval=args.update_interval,
+                minibatch_size=args.batchsize, epochs=args.epochs,
                 clip_eps_vf=None)
 
     if args.load:

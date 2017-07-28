@@ -58,6 +58,6 @@ model=$(find $outdir/gym/reinforce -name "*_finish")
 python examples/gym/train_reinforce_gym.py --demo --load $model --eval-n-runs 1 --gpu $gpu
 
 # gym/ppo
-python examples/gym/train_ppo_gym.py --steps 100 --horizon 50 --batchsize 16 --epochs 2 --outdir $outdir/gym/ppo --gpu $gpu
+python examples/gym/train_ppo_gym.py --steps 100 --update-interval 50 --batchsize 16 --epochs 2 --outdir $outdir/gym/ppo --gpu $gpu
 model=$(find $outdir/gym/ppo -name "*_finish")
 python examples/gym/train_ppo_gym.py --demo --load $model --eval-n-runs 1 --gpu $gpu

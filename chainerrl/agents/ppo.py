@@ -11,6 +11,28 @@ def _F_clip(x, x_min, x_max):
 
 
 class PPO(agent.AttributeSavingMixin, agent.Agent):
+    """Proximal Policy Optimization
+
+    See https://blog.openai.com/openai-baselines-ppo/
+
+    Args:
+        model (A3CModel): Model to train.
+            state s  |->  (pi(s, _), v(s))
+        optimizer (chainer.Optimizer): optimizer used to train the model
+        gamma (float): Discount factor [0, 1]
+        lambd (float): Lambda-return factor [0, 1]
+        value_func_coeff (float): Weight coefficient for loss of
+            value function (0, inf)
+        entropy_coeff (float): Weight coefficient for entropoy bonus [0, inf)
+        update_interval (int): Model update interval in step
+        minibatch_size (int): Minibatch size
+        epochs (int): Training epochs in an update
+        clip_eps (float): Epsilon for pessimistic clipping of likelihood ratio
+            to update policy
+        clip_eps_vf (float): Epsilon for pessimistic clipping of value
+            to update value function
+    """
+
     saved_attributes = ['model', 'optimizer']
 
     def __init__(self, model, optimizer,
@@ -18,8 +40,8 @@ class PPO(agent.AttributeSavingMixin, agent.Agent):
                  lambd=0.95,
                  value_func_coeff=1.0,
                  entropy_coeff=0.01,
-                 horizon=2048,
-                 batchsize=64,
+                 update_interval=2048,
+                 minibatch_size=64,
                  epochs=10,
                  clip_eps=0.2,
                  clip_eps_vf=0.2,
@@ -30,8 +52,8 @@ class PPO(agent.AttributeSavingMixin, agent.Agent):
         self.lambd = lambd
         self.value_func_coeff = value_func_coeff
         self.entropy_coeff = entropy_coeff
-        self.horizon = horizon
-        self.batchsize = batchsize
+        self.update_interval = update_interval
+        self.minibatch_size = minibatch_size
         self.epochs = epochs
         self.clip_eps = clip_eps
         self.clip_eps_vf = clip_eps_vf
@@ -52,7 +74,7 @@ class PPO(agent.AttributeSavingMixin, agent.Agent):
             return action[0].data, v[0].data
 
     def _train(self):
-        if len(self.memory) + len(self.last_episode) >= self.horizon:
+        if len(self.memory) + len(self.last_episode) >= self.update_interval:
             self.flush_last_episode()
             self.update()
             self.memory = []
@@ -106,7 +128,7 @@ class PPO(agent.AttributeSavingMixin, agent.Agent):
         xp = self.xp
         target_model = copy.deepcopy(self.model)
         dataset_iter = chainer.iterators.SerialIterator(
-            self.memory, self.batchsize)
+            self.memory, self.minibatch_size)
 
         dataset_iter.reset()
         while dataset_iter.epoch < self.epochs:
