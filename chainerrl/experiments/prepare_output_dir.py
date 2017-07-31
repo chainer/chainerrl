@@ -25,7 +25,7 @@ def is_return_code_zero(args):
     except subprocess.CalledProcessError:
         # The given command returned an error
         return False
-    except FileNotFoundError:
+    except OSError:
         # The given command was not found
         return False
     return True
