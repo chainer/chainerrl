@@ -97,6 +97,7 @@ def main():
     import logging
 
     parser = argparse.ArgumentParser()
+    parser.add_argument('--gpu', type=int, default=None)
     parser.add_argument('--env', type=str, default='CartPole-v1')
     parser.add_argument('--arch', type=str, default='FFSoftmax',
                         choices=('FFSoftmax', 'FFMellowmax', 'LSTMGaussian'))
@@ -159,6 +160,7 @@ def main():
     if args.weight_decay > 0:
         opt.add_hook(NonbiasWeightDecay(args.weight_decay))
     agent = PPO(model, opt,
+                gpu=args.gpu,
                 update_interval=args.update_interval,
                 minibatch_size=args.batchsize, epochs=args.epochs,
                 clip_eps_vf=None)

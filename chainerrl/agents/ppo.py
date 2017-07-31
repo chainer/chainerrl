@@ -1,4 +1,5 @@
 import chainer
+from chainer import cuda
 import chainer.functions as F
 import copy
 
@@ -19,6 +20,7 @@ class PPO(agent.AttributeSavingMixin, agent.Agent):
         model (A3CModel): Model to train.
             state s  |->  (pi(s, _), v(s))
         optimizer (chainer.Optimizer): optimizer used to train the model
+        gpu (int): GPU device id if not None nor negative
         gamma (float): Discount factor [0, 1]
         lambd (float): Lambda-return factor [0, 1]
         value_func_coeff (float): Weight coefficient for loss of
@@ -36,6 +38,7 @@ class PPO(agent.AttributeSavingMixin, agent.Agent):
     saved_attributes = ['model', 'optimizer']
 
     def __init__(self, model, optimizer,
+                 gpu=None,
                  gamma=0.99,
                  lambd=0.95,
                  value_func_coeff=1.0,
@@ -47,6 +50,11 @@ class PPO(agent.AttributeSavingMixin, agent.Agent):
                  clip_eps_vf=0.2,
                  ):
         self.model = model
+
+        if gpu is not None and gpu >= 0:
+            cuda.get_device(gpu).use()
+            self.model.to_gpu(device=gpu)
+
         self.optimizer = optimizer
         self.gamma = gamma
         self.lambd = lambd
