@@ -23,10 +23,10 @@ def is_return_code_zero(args):
     try:
         subprocess.check_call(args, stdout=FNULL, stderr=FNULL)
     except subprocess.CalledProcessError:
-        # Git returned an error
+        # The given command returned an error
         return False
     except FileNotFoundError:
-        # Git is not installed
+        # The given command was not found
         return False
     return True
 
