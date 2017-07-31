@@ -62,7 +62,7 @@ class ABC(env.Env):
         return self.observe()
 
     def step(self, action):
-        if isinstance(action, np.ndarray):
+        if isinstance(action, np.ndarray) and action.dtype.kind == 'f':
             action = np.clip(action,
                              self.action_space.low,
                              self.action_space.high)
