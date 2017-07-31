@@ -9,6 +9,7 @@ standard_library.install_aliases()
 import chainer
 from chainer import optimizers
 from chainer import testing
+import numpy as np
 import os
 import tempfile
 import unittest
@@ -38,14 +39,14 @@ class TestPPO(unittest.TestCase):
         self._test_abc(gpu=0)
 
     def test_abc_fast_cpu(self):
-        self._test_abc(steps=10, require_success=False)
+        self._test_abc(steps=100, require_success=False)
         self._test_abc(steps=0, require_success=False, load_model=True)
 
     @testing.attr.gpu
     def test_abc_fast_gpu(self):
-        self._test_abc(steps=10, require_success=False, gpu=0)
+        self._test_abc(steps=100, require_success=False, gpu=0)
 
-    def _test_abc(self, discrete=True, steps=100000,
+    def _test_abc(self, discrete=True, steps=1000000,
                   require_success=True, gpu=-1, load_model=False):
 
         env, _ = self.make_env_and_successful_return(test=False)
@@ -60,13 +61,14 @@ class TestPPO(unittest.TestCase):
         # Train
         train_agent_with_evaluation(
             agent=agent, env=env, steps=steps, outdir=self.tmpdir,
-            eval_interval=200, eval_n_runs=20, successful_score=1,
+            eval_interval=200, eval_n_runs=50, successful_score=1,
             eval_env=test_env)
 
         agent.stop_episode()
 
         # Test
-        n_test_runs = 5
+        n_test_runs = 100
+        n_succeeded = 0
         for _ in range(n_test_runs):
             total_r = 0.0
             obs = test_env.reset()
@@ -77,8 +79,11 @@ class TestPPO(unittest.TestCase):
                 obs, reward, done, _ = test_env.step(action)
                 total_r += reward
             agent.stop_episode()
-            if require_success:
-                self.assertAlmostEqual(total_r, successful_return)
+            if np.isclose(total_r, successful_return):
+                n_succeeded += 1
+
+        if require_success:
+            self.assertGreater(n_succeeded, 0.8 * n_test_runs)
 
         # Save
         agent.save(self.agent_dirname)
@@ -98,7 +103,7 @@ class TestPPO(unittest.TestCase):
     def make_ppo_agent(self, env, model, opt, gpu):
         # TODO(kataoka): GPU
         return PPO(model, opt, gamma=0.9, lambd=0.5,
-                   update_interval=512, minibatch_size=32, epochs=3)
+                   update_interval=50, minibatch_size=25, epochs=3)
 
     def make_model(self, env):
         n_dim_obs = env.observation_space.low.size
