@@ -91,18 +91,13 @@ class TestPPO(unittest.TestCase):
     def make_agent(self, env, gpu):
         model = self.make_model(env)
 
-        if gpu >= 0:
-            chainer.cuda.get_device(gpu).use()
-            model.to_gpu()
-
         opt = optimizers.Adam(alpha=3e-4)
         opt.setup(model)
 
         return self.make_ppo_agent(env=env, model=model, opt=opt, gpu=gpu)
 
     def make_ppo_agent(self, env, model, opt, gpu):
-        # TODO(kataoka): GPU
-        return PPO(model, opt, gamma=0.9, lambd=0.5,
+        return PPO(model, opt, gpu=gpu, gamma=0.9, lambd=0.5,
                    update_interval=50, minibatch_size=25, epochs=3)
 
     def make_model(self, env):
