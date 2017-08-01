@@ -6,7 +6,6 @@ from builtins import *  # NOQA
 from future import standard_library
 standard_library.install_aliases()
 
-import chainer
 from chainer import optimizers
 from chainer import testing
 import numpy as np
