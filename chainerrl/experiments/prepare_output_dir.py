@@ -23,6 +23,10 @@ def is_return_code_zero(args):
     try:
         subprocess.check_call(args, stdout=FNULL, stderr=FNULL)
     except subprocess.CalledProcessError:
+        # The given command returned an error
+        return False
+    except OSError:
+        # The given command was not found
         return False
     return True
 
