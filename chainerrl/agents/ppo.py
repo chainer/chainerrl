@@ -52,7 +52,7 @@ class PPO(agent.AttributeSavingMixin, agent.Agent):
         self.model = model
 
         if gpu is not None and gpu >= 0:
-            cuda.get_device(gpu).use()
+            cuda.get_device_from_id(gpu).use()
             self.model.to_gpu(device=gpu)
 
         self.optimizer = optimizer
@@ -74,7 +74,8 @@ class PPO(agent.AttributeSavingMixin, agent.Agent):
         self.last_episode = []
 
     def _act(self, state, train):
-        state = state.astype(self.xp.float32)
+        xp = self.xp
+        state = xp.asarray(state, dtype=xp.float32)
         with chainer.using_config('train', train):
             b_state = F.expand_dims(state, axis=0)
             action_distrib, v = self.model(b_state)
@@ -179,11 +180,11 @@ class PPO(agent.AttributeSavingMixin, agent.Agent):
         self.last_v = v
 
         self._train()
-        return action
+        return cuda.to_cpu(action)
 
     def act(self, state):
         action, _ = self._act(state, train=False)
-        return action
+        return cuda.to_cpu(action)
 
     def stop_episode_and_train(self, state, reward, done=False):
         _, v = self._act(state, train=True)
