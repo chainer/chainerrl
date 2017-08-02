@@ -66,6 +66,22 @@ class A3CFFMellowmax(chainer.ChainList, a3c.A3CModel):
         return self.pi(state), self.v(state)
 
 
+class A3CFFGaussian(chainer.ChainList, a3c.A3CModel):
+    """An example of A3C feedforward Gaussian policy."""
+
+    def __init__(self, obs_size, action_size,
+                 n_hidden_layers=2, n_hidden_channels=200):
+        hidden_sizes = (n_hidden_channels,) * n_hidden_layers
+        self.pi = policies.FCGaussianPolicy(
+            obs_size, action_size, n_hidden_layers, n_hidden_channels,
+            var_type='spherical')
+        self.v = links.MLP(obs_size, 1, hidden_sizes=hidden_sizes)
+        super().__init__(self.pi, self.v)
+
+    def pi_and_v(self, state):
+        return self.pi(state), self.v(state)
+
+
 class A3CLSTMGaussian(chainer.ChainList, a3c.A3CModel, RecurrentChainMixin):
     """An example of A3C recurrent Gaussian policy."""
 
@@ -100,11 +116,12 @@ def main():
     parser.add_argument('--gpu', type=int, default=None)
     parser.add_argument('--env', type=str, default='CartPole-v1')
     parser.add_argument('--arch', type=str, default='FFSoftmax',
-                        choices=('FFSoftmax', 'FFMellowmax', 'LSTMGaussian'))
+                        choices=('FFSoftmax', 'FFMellowmax',
+                                 'FFGaussian', 'LSTMGaussian'))
     parser.add_argument('--seed', type=int, default=None)
     parser.add_argument('--outdir', type=str, default=None)
-    parser.add_argument('--t-max', type=int, default=5)
-    parser.add_argument('--beta', type=float, default=1e-2)
+    # parser.add_argument('--t-max', type=int, default=5)
+    # parser.add_argument('--beta', type=float, default=1e-2)
     parser.add_argument('--steps', type=int, default=10 ** 5)
     parser.add_argument('--eval-interval', type=int, default=2048)
     parser.add_argument('--eval-n-runs', type=int, default=10)
@@ -150,6 +167,8 @@ def main():
     # Switch policy types accordingly to action space types
     if args.arch == 'LSTMGaussian':
         model = A3CLSTMGaussian(obs_space.low.size, action_space.low.size)
+    elif args.arch == 'FFGaussian':
+        model = A3CFFGaussian(obs_space.low.size, action_space.low.size)
     elif args.arch == 'FFSoftmax':
         model = A3CFFSoftmax(obs_space.low.size, action_space.n)
     elif args.arch == 'FFMellowmax':
