@@ -8,15 +8,9 @@ install:
   - pip install --upgrade pip setuptools wheel
   - pip install -r requirements.txt --only-binary=numpy,scipy
   - pip install jupyter
-  - pip install atari_py
+  - pip install atari_py>=0.1.1
   - pip install hacking
   - pip install coveralls
-  - git clone https://github.com/mgbellemare/Arcade-Learning-Environment.git
-  - cd Arcade-Learning-Environment
-  - cmake -DUSE_SDL=OFF -DUSE_RLGLUE=OFF -DBUILD_EXAMPLES=OFF
-  - make
-  - python setup.py install
-  - cd ..
   - python setup.py develop
 before_script:
   - "export DISPLAY=:99.0"
