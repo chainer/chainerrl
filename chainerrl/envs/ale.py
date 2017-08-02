@@ -65,7 +65,8 @@ class ALE(env.Env):
         # atari_py is used only to provide rom files. atari_py has its own
         # ale_python_interface, but it is obsolete.
         if not atari_py_available:
-            raise RuntimeError('You need to install atari_py>=0.1.1 to use ALE.')  # NOQA
+            raise RuntimeError(
+                'You need to install atari_py>=0.1.1 to use ALE.')
         game_path = atari_py.get_game_path(game)
 
         ale = atari_py.ALEInterface()
