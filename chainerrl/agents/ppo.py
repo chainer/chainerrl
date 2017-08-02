@@ -33,6 +33,10 @@ class PPO(agent.AttributeSavingMixin, agent.Agent):
             to update policy
         clip_eps_vf (float): Epsilon for pessimistic clipping of value
             to update value function
+        average_v_decay (float): Decay rate of average V, only used for
+            recording statistics
+        average_loss_decay (float): Decay rate of average loss, only used for
+            recording statistics
     """
 
     saved_attributes = ['model', 'optimizer']
@@ -48,6 +52,7 @@ class PPO(agent.AttributeSavingMixin, agent.Agent):
                  epochs=10,
                  clip_eps=0.2,
                  clip_eps_vf=0.2,
+                 average_v_decay=0.999, average_loss_decay=0.99,
                  ):
         self.model = model
 
@@ -65,6 +70,13 @@ class PPO(agent.AttributeSavingMixin, agent.Agent):
         self.epochs = epochs
         self.clip_eps = clip_eps
         self.clip_eps_vf = clip_eps_vf
+
+        self.average_v = 0
+        self.average_v_decay = average_v_decay
+        self.average_loss_policy = 0
+        self.average_loss_value_func = 0
+        self.average_loss_entropy = 0
+        self.average_loss_decay = average_loss_decay
 
         self.xp = self.model.xp
         self.target_model = None
@@ -126,7 +138,17 @@ class PPO(agent.AttributeSavingMixin, agent.Agent):
 
         loss_entropy = F.mean(ent)
 
-        # print((loss_policy, loss_value_func, loss_entropy))
+        # Update stats
+        self.average_loss_policy += (
+            (1 - self.average_loss_decay) *
+            (loss_policy.data - self.average_loss_policy))
+        self.average_loss_value_func += (
+            (1 - self.average_loss_decay) *
+            (loss_value_func.data - self.average_loss_value_func))
+        self.average_loss_entropy += (
+            (1 - self.average_loss_decay) *
+            (loss_entropy.data - self.average_loss_entropy))
+
         return (
             loss_policy
             + self.value_func_coeff * loss_value_func
@@ -166,6 +188,11 @@ class PPO(agent.AttributeSavingMixin, agent.Agent):
     def act_and_train(self, state, reward, done=False):
         action, v = self._act(state, train=True)
 
+        # Update stats
+        self.average_v += (
+            (1 - self.average_v_decay) *
+            (v - self.average_v))
+
         if self.last_state is not None:
             self.last_episode.append({
                 'state': self.last_state,
@@ -183,7 +210,13 @@ class PPO(agent.AttributeSavingMixin, agent.Agent):
         return cuda.to_cpu(action)
 
     def act(self, state):
-        action, _ = self._act(state, train=False)
+        action, v = self._act(state, train=False)
+
+        # Update stats
+        self.average_v += (
+            (1 - self.average_v_decay) *
+            (v - self.average_v))
+
         return cuda.to_cpu(action)
 
     def stop_episode_and_train(self, state, reward, done=False):
@@ -209,4 +242,9 @@ class PPO(agent.AttributeSavingMixin, agent.Agent):
         pass
 
     def get_statistics(self):
-        return []
+        return [
+            ('average_v', self.average_v),
+            ('average_loss_policy', self.average_loss_policy),
+            ('average_loss_value_func', self.average_loss_value_func),
+            ('average_loss_entropy', self.average_loss_entropy),
+            ]
