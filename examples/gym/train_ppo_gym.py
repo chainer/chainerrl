@@ -72,9 +72,9 @@ class A3CFFGaussian(chainer.ChainList, a3c.A3CModel):
     def __init__(self, obs_size, action_size,
                  n_hidden_layers=2, n_hidden_channels=200):
         hidden_sizes = (n_hidden_channels,) * n_hidden_layers
-        self.pi = policies.FCGaussianPolicy(
+        self.pi = policies.FCGaussianPolicyWithStateIndependentCovariance(
             obs_size, action_size, n_hidden_layers, n_hidden_channels,
-            var_type='spherical')
+            var_type='diagonal', nonlinearity=F.tanh)
         self.v = links.MLP(obs_size, 1, hidden_sizes=hidden_sizes)
         super().__init__(self.pi, self.v)
 
@@ -182,7 +182,7 @@ def main():
                 gpu=args.gpu,
                 update_interval=args.update_interval,
                 minibatch_size=args.batchsize, epochs=args.epochs,
-                clip_eps_vf=None)
+                clip_eps_vf=None, entropy_coeff=0)
 
     if args.load:
         agent.load(args.load)
