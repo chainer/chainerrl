@@ -1,6 +1,6 @@
 # ChainerRL
 [![Build Status](https://travis-ci.org/chainer/chainerrl.svg?branch=master)](https://travis-ci.org/pfnet/chainerrl)
-[![coveralls](https://img.shields.io/coveralls/pfnet/chainerrl.svg)](https://coveralls.io/github/pfnet/chainerrl)
+[![Coverage Status](https://coveralls.io/repos/github/chainer/chainerrl/badge.svg?branch=master)](https://coveralls.io/github/chainer/chainerrl?branch=master)
 [![Documentation Status](https://readthedocs.org/projects/chainerrl/badge/?version=latest)](http://chainerrl.readthedocs.io/en/latest/?badge=latest)
 [![PyPI](https://img.shields.io/pypi/v/chainerrl.svg)](https://pypi.python.org/pypi/chainerrl)
 
