@@ -128,7 +128,7 @@ class FCGaussianPolicy(chainer.ChainList, GaussianPolicy):
 
 
 class FCGaussianPolicyWithStateIndependentCovariance(
-        chainer.ChainList, GaussianPolicy):
+        chainer.Chain, GaussianPolicy):
     """Gaussian policy that consists of FC layers with parametrized covariance.
 
     This model has one output layers: the mean layer.
