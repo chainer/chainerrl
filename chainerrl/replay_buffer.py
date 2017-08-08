@@ -185,11 +185,11 @@ class EpisodicReplayBuffer(object):
 
     def save(self, filename):
         with open(filename, 'wb') as f:
-            pickle.dump(self.memory, f)
+            pickle.dump((self.memory, self.episodic_memory), f)
 
     def load(self, filename):
         with open(filename, 'rb') as f:
-            self.memory = pickle.load(f)
+            self.memory, self.episodic_memory = pickle.load(f)
 
     def stop_current_episode(self):
         if self.current_episode:
