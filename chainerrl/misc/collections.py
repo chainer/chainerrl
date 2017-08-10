@@ -15,6 +15,12 @@ class RandomAccessQueue(object):
         assert self.maxlen is None or self.maxlen >= 0
         self._queue_front = []
         self._queue_back = list(*args, **kwargs)
+        self._apply_maxlen()
+
+    def _apply_maxlen(self):
+        if self.maxlen is not None:
+            while len(self) > self.maxlen:
+                self.popleft()
 
     def __iter__(self):
         return itertools.chain(reversed(self._queue_front),
@@ -79,9 +85,7 @@ class RandomAccessQueue(object):
 
     def extend(self, xs):
         self._queue_back.extend(xs)
-        if self.maxlen is not None:
-            while len(self) > self.maxlen:
-                self.popleft()
+        self._apply_maxlen()
 
     def popleft(self):
         if not self._queue_front:
