@@ -128,6 +128,62 @@ class TestEpisodicReplayBuffer(unittest.TestCase):
                     self.assertEqual(t0['next_state'], t1['state'])
                     self.assertEqual(t0['next_action'], t1['action'])
 
+    def test_save_and_load(self):
+        for capacity in [100, None]:
+            self.subtest_append_and_sample(capacity)
+
+    def subtest_save_and_load(self, capacity):
+
+        tempdir = tempfile.mkdtemp()
+
+        rbuf = replay_buffer.ReplayBuffer(capacity)
+
+        transs = [dict(state=n, action=n+10, reward=n+20,
+                       next_state=n+1, next_action=n+11,
+                       is_state_terminal=False)
+                  for n in range(5)]
+
+        # Add two episodes
+        rbuf.append(**transs[0])
+        rbuf.append(**transs[1])
+        rbuf.stop_current_episode()
+
+        rbuf.append(**transs[2])
+        rbuf.append(**transs[3])
+        rbuf.append(**transs[4])
+        rbuf.stop_current_episode()
+
+        # Save
+        filename = os.path.join(tempdir, 'rbuf.pkl')
+        rbuf.save(filename)
+
+        # Initialize rbuf
+        rbuf = replay_buffer.ReplayBuffer(capacity)
+
+        # Of course it has no transition yet
+        self.assertEqual(len(rbuf), 0)
+
+        # Load the previously saved buffer
+        rbuf.load(filename)
+
+        # Sampled transitions are exactly what I added!
+        s5 = rbuf.sample(5)
+        self.assertEqual(len(s5) == 5)
+        for t in s5:
+            n = t['state']
+            self.assertIn(n, range(5))
+            self.assertEqual(t, transs[n])
+
+        # And sampled episodes are exactly what I added!
+        s2e = rbuf.sample_episodes(2)
+        self.assertEqual(len(s2e) == 2)
+        if s2e[0][0]['state'] == 0:
+            self.assertEqual(s2e[0], [transs[0], transs[1]])
+            self.assertEqual(s2e[1], [transs[2], transs[3], transs[4]])
+        else:
+            self.assertEqual(s2e[0], [transs[2], transs[3], transs[4]])
+            self.assertEqual(s2e[1], [transs[0], transs[1]])
+
 
 class TestPrioritizedReplayBuffer(unittest.TestCase):
 
