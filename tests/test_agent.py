@@ -55,8 +55,8 @@ class TestAttributeSavingMixin(unittest.TestCase):
         assert os.path.isfile(os.path.join(dirname, 'child', 'link.npz'))
         # Load
         parent = Parent()
-        assert int(parent.link.param.data[:]) == 0
-        assert int(parent.child.link.param.data[:]) == 0
+        assert int(parent.link.param.data) == 0
+        assert int(parent.child.link.param.data) == 0
         parent.load(dirname)
-        assert int(parent.link.param.data[:]) == 1
-        assert int(parent.child.link.param.data[:]) == 2
+        assert int(parent.link.param.data) == 1
+        assert int(parent.child.link.param.data) == 2
