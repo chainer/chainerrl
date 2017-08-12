@@ -115,7 +115,7 @@ class AttributeSavingMixin(object):
             assert hasattr(self, attr)
             attr_value = getattr(self, attr)
             if isinstance(attr_value, AttributeSavingMixin):
-                assert attr_value != self, "Avoid an infinite loop"
+                assert attr_value is not self, "Avoid an infinite loop"
                 attr_value.save(os.path.join(dirname, attr))
             else:
                 serializers.save_npz(
@@ -128,7 +128,7 @@ class AttributeSavingMixin(object):
             assert hasattr(self, attr)
             attr_value = getattr(self, attr)
             if isinstance(attr_value, AttributeSavingMixin):
-                assert attr_value != self, "Avoid an infinite loop"
+                assert attr_value is not self, "Avoid an infinite loop"
                 attr_value.load(os.path.join(dirname, attr))
             else:
                 """Fix Chainer Issue #2772
