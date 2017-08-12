@@ -49,14 +49,15 @@ class TestAttributeSavingMixin(unittest.TestCase):
         # Save
         dirname = tempfile.mkdtemp()
         parent.save(dirname)
-        assert os.path.isdir(dirname)
-        assert os.path.isfile(os.path.join(dirname, 'link.npz'))
-        assert os.path.isdir(os.path.join(dirname, 'child'))
-        assert os.path.isfile(os.path.join(dirname, 'child', 'link.npz'))
+        self.assertTrue(os.path.isdir(dirname))
+        self.assertTrue(os.path.isfile(os.path.join(dirname, 'link.npz')))
+        self.assertTrue(os.path.isdir(os.path.join(dirname, 'child')))
+        self.assertTrue(os.path.isfile(
+            os.path.join(dirname, 'child', 'link.npz')))
         # Load
         parent = Parent()
-        assert int(parent.link.param.data) == 0
-        assert int(parent.child.link.param.data) == 0
+        self.assertEqual(int(parent.link.param.data), 0)
+        self.assertEqual(int(parent.child.link.param.data), 0)
         parent.load(dirname)
-        assert int(parent.link.param.data) == 1
-        assert int(parent.child.link.param.data) == 2
+        self.assertEqual(int(parent.link.param.data), 1)
+        self.assertEqual(int(parent.child.link.param.data), 2)
