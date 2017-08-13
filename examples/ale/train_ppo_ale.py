@@ -18,7 +18,6 @@ from chainerrl import experiments
 from chainerrl import links
 from chainerrl import misc
 from chainerrl.optimizers.nonbias_weight_decay import NonbiasWeightDecay
-from chainerrl.optimizers import rmsprop_async
 from chainerrl import policy
 from chainerrl.recurrent import RecurrentChainMixin
 from chainerrl import v_function
@@ -74,7 +73,10 @@ def main():
     parser.add_argument('--max-episode-len', type=int, default=10000)
     parser.add_argument('--profile', action='store_true')
     parser.add_argument('--steps', type=int, default=8 * 10 ** 7)
-    parser.add_argument('--lr', type=float, default=2.5e-4)  # TODO(kataoka): anneal
+
+    # TODO(kataoka): anneal
+    parser.add_argument('--lr', type=float, default=2.5e-4)
+
     parser.add_argument('--eval-interval', type=int, default=10 ** 6)
     parser.add_argument('--eval-n-runs', type=int, default=10)
     parser.add_argument('--weight-decay', type=float, default=0.0)
@@ -82,7 +84,9 @@ def main():
     parser.add_argument('--demo', action='store_true', default=False)
     parser.add_argument('--load', type=str, default='')
 
-    parser.add_argument('--update-interval', type=int, default=128 * 8)  # TODO(kataoka): async
+    # TODO(kataoka): async
+    parser.add_argument('--update-interval', type=int, default=128 * 8)
+
     parser.add_argument('--batchsize', type=int, default=32)
     parser.add_argument('--epochs', type=int, default=3)
     parser.set_defaults(use_sdl=False)
