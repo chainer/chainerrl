@@ -74,7 +74,7 @@ def main():
     parser.add_argument('--max-episode-len', type=int, default=10000)
     parser.add_argument('--profile', action='store_true')
     parser.add_argument('--steps', type=int, default=8 * 10 ** 7)
-    parser.add_argument('--lr', type=float, default=7e-4)
+    parser.add_argument('--lr', type=float, default=2.5e-4)  # TODO(kataoka): anneal
     parser.add_argument('--eval-interval', type=int, default=10 ** 6)
     parser.add_argument('--eval-n-runs', type=int, default=10)
     parser.add_argument('--weight-decay', type=float, default=0.0)
@@ -82,9 +82,9 @@ def main():
     parser.add_argument('--demo', action='store_true', default=False)
     parser.add_argument('--load', type=str, default='')
 
-    parser.add_argument('--update-interval', type=int, default=2048)
-    parser.add_argument('--batchsize', type=int, default=64)
-    parser.add_argument('--epochs', type=int, default=10)
+    parser.add_argument('--update-interval', type=int, default=128 * 8)  # TODO(kataoka): async
+    parser.add_argument('--batchsize', type=int, default=32)
+    parser.add_argument('--epochs', type=int, default=3)
     parser.set_defaults(use_sdl=False)
     parser.set_defaults(use_lstm=False)
     args = parser.parse_args()
@@ -102,7 +102,7 @@ def main():
         model = A3CLSTM(n_actions)
     else:
         model = A3CFF(n_actions)
-    opt = rmsprop_async.RMSpropAsync(lr=7e-4, eps=1e-1, alpha=0.99)
+    opt = chainer.optimizers.Adam(args.lr)
     opt.setup(model)
     opt.add_hook(chainer.optimizer.GradientClipping(40))
     if args.weight_decay > 0:
@@ -111,7 +111,8 @@ def main():
                 gpu=args.gpu,
                 update_interval=args.update_interval,
                 minibatch_size=args.batchsize, epochs=args.epochs,
-                clip_eps_vf=None, entropy_coeff=0)
+                clip_eps=0.1,  # TODO(kataoka) anneal
+                clip_eps_vf=None)
     if args.load:
         agent.load(args.load)
 
