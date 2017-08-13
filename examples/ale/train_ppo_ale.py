@@ -112,7 +112,9 @@ def main():
                 update_interval=args.update_interval,
                 minibatch_size=args.batchsize, epochs=args.epochs,
                 clip_eps=0.1,  # TODO(kataoka) anneal
-                clip_eps_vf=None)
+                clip_eps_vf=None,
+                phi=dqn_phi,
+                )
     if args.load:
         agent.load(args.load)
 

@@ -5,6 +5,7 @@ import copy
 
 
 from chainerrl import agent
+from chainerrl.misc.batch_states import batch_states
 
 
 def _F_clip(x, x_min, x_max):
@@ -23,6 +24,7 @@ class PPO(agent.AttributeSavingMixin, agent.Agent):
         gpu (int): GPU device id if not None nor negative
         gamma (float): Discount factor [0, 1]
         lambd (float): Lambda-return factor [0, 1]
+        phi (callable): Feature extractor function
         value_func_coeff (float): Weight coefficient for loss of
             value function (0, inf)
         entropy_coeff (float): Weight coefficient for entropoy bonus [0, inf)
@@ -45,6 +47,7 @@ class PPO(agent.AttributeSavingMixin, agent.Agent):
                  gpu=None,
                  gamma=0.99,
                  lambd=0.95,
+                 phi=lambda x: x,
                  value_func_coeff=1.0,
                  entropy_coeff=0.01,
                  update_interval=2048,
@@ -63,6 +66,7 @@ class PPO(agent.AttributeSavingMixin, agent.Agent):
         self.optimizer = optimizer
         self.gamma = gamma
         self.lambd = lambd
+        self.phi = phi
         self.value_func_coeff = value_func_coeff
         self.entropy_coeff = entropy_coeff
         self.update_interval = update_interval
@@ -87,9 +91,8 @@ class PPO(agent.AttributeSavingMixin, agent.Agent):
 
     def _act(self, state, train):
         xp = self.xp
-        state = xp.asarray(state, dtype=xp.float32)
+        b_state = batch_states([state], xp, self.phi)
         with chainer.using_config('train', train):
-            b_state = F.expand_dims(state, axis=0)
             action_distrib, v = self.model(b_state)
             action = action_distrib.sample()
             return action[0].data, v[0].data
@@ -164,7 +167,7 @@ class PPO(agent.AttributeSavingMixin, agent.Agent):
         dataset_iter.reset()
         while dataset_iter.epoch < self.epochs:
             batch = dataset_iter.__next__()
-            states = xp.array([b['state'] for b in batch], dtype=xp.float32)
+            states = batch_states([b['state'] for b in batch], xp, self.phi)
             actions = xp.array([b['action'] for b in batch], dtype=xp.int32)
             vs_pred_old = xp.array(
                 [b['v_pred'] for b in batch], dtype=xp.float32)
