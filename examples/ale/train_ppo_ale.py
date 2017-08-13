@@ -11,7 +11,8 @@ import os
 import chainer
 from chainer import links as L
 
-from chainerrl.agents import a3c
+from chainerrl.agents.a3c import A3CModel
+from chainerrl.agents import PPO
 from chainerrl.envs import ale
 from chainerrl import experiments
 from chainerrl import links
@@ -25,7 +26,7 @@ from chainerrl import v_function
 from dqn_phi import dqn_phi
 
 
-class A3CFF(chainer.ChainList, a3c.A3CModel):
+class A3CFF(chainer.ChainList, A3CModel):
 
     def __init__(self, n_actions):
         self.head = links.NIPSDQNHead()
@@ -39,7 +40,7 @@ class A3CFF(chainer.ChainList, a3c.A3CModel):
         return self.pi(out), self.v(out)
 
 
-class A3CLSTM(chainer.ChainList, a3c.A3CModel, RecurrentChainMixin):
+class A3CLSTM(chainer.ChainList, A3CModel, RecurrentChainMixin):
 
     def __init__(self, n_actions):
         self.head = links.NIPSDQNHead()
@@ -65,14 +66,12 @@ def main():
     logging.basicConfig(level=logging.DEBUG)
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('processes', type=int)
     parser.add_argument('rom', type=str)
+    parser.add_argument('--gpu', type=int, default=None)
     parser.add_argument('--seed', type=int, default=None)
     parser.add_argument('--outdir', type=str, default=None)
     parser.add_argument('--use-sdl', action='store_true')
-    parser.add_argument('--t-max', type=int, default=5)
     parser.add_argument('--max-episode-len', type=int, default=10000)
-    parser.add_argument('--beta', type=float, default=1e-2)
     parser.add_argument('--profile', action='store_true')
     parser.add_argument('--steps', type=int, default=8 * 10 ** 7)
     parser.add_argument('--lr', type=float, default=7e-4)
@@ -82,6 +81,10 @@ def main():
     parser.add_argument('--use-lstm', action='store_true')
     parser.add_argument('--demo', action='store_true', default=False)
     parser.add_argument('--load', type=str, default='')
+
+    parser.add_argument('--update-interval', type=int, default=2048)
+    parser.add_argument('--batchsize', type=int, default=64)
+    parser.add_argument('--epochs', type=int, default=10)
     parser.set_defaults(use_sdl=False)
     parser.set_defaults(use_lstm=False)
     args = parser.parse_args()
@@ -104,12 +107,15 @@ def main():
     opt.add_hook(chainer.optimizer.GradientClipping(40))
     if args.weight_decay > 0:
         opt.add_hook(NonbiasWeightDecay(args.weight_decay))
-    agent = a3c.A3C(model, opt, t_max=args.t_max, gamma=0.99,
-                    beta=args.beta, phi=dqn_phi)
+    agent = PPO(model, opt,
+                gpu=args.gpu,
+                update_interval=args.update_interval,
+                minibatch_size=args.batchsize, epochs=args.epochs,
+                clip_eps_vf=None, entropy_coeff=0)
     if args.load:
         agent.load(args.load)
 
-    def make_env(process_idx, test):
+    def make_env(test):
         env = ale.ALE(args.rom, use_sdl=args.use_sdl,
                       treat_life_lost_as_terminal=not test)
         if not test:
@@ -117,7 +123,7 @@ def main():
         return env
 
     if args.demo:
-        env = make_env(0, True)
+        env = make_env(True)
         eval_stats = experiments.eval_performance(
             env=env,
             agent=agent,
@@ -126,25 +132,15 @@ def main():
             args.eval_n_runs, eval_stats['mean'], eval_stats['median'],
             eval_stats['stdev']))
     else:
-
-        # Linearly decay the learning rate to zero
-        def lr_setter(env, agent, value):
-            agent.optimizer.lr = value
-
-        lr_decay_hook = experiments.LinearInterpolationHook(
-            args.steps, args.lr, 0, lr_setter)
-
-        experiments.train_agent_async(
+        experiments.train_agent_with_evaluation(
             agent=agent,
+            env=make_env(False),
+            eval_env=make_env(True),
             outdir=args.outdir,
-            processes=args.processes,
-            make_env=make_env,
-            profile=args.profile,
             steps=args.steps,
             eval_n_runs=args.eval_n_runs,
             eval_interval=args.eval_interval,
-            max_episode_len=args.max_episode_len,
-            global_step_hooks=[lr_decay_hook])
+            max_episode_len=args.max_episode_len)
 
 
 if __name__ == '__main__':
