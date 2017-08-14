@@ -15,7 +15,7 @@ def _F_clip(x, x_min, x_max):
 class PPO(agent.AttributeSavingMixin, agent.Agent):
     """Proximal Policy Optimization
 
-    See https://blog.openai.com/openai-baselines-ppo/
+    See https://arxiv.org/abs/1707.06347
 
     Args:
         model (A3CModel): Model to train.
