@@ -91,8 +91,8 @@ class PPO(agent.AttributeSavingMixin, agent.Agent):
 
     def _act(self, state, train):
         xp = self.xp
-        b_state = batch_states([state], xp, self.phi)
         with chainer.using_config('train', train):
+            b_state = batch_states([state], xp, self.phi)
             action_distrib, v = self.model(b_state)
             action = action_distrib.sample()
             return action[0].data, v[0].data

@@ -180,6 +180,7 @@ def main():
         opt.add_hook(NonbiasWeightDecay(args.weight_decay))
     agent = PPO(model, opt,
                 gpu=args.gpu,
+                phi=phi,
                 update_interval=args.update_interval,
                 minibatch_size=args.batchsize, epochs=args.epochs,
                 clip_eps_vf=None, entropy_coeff=0)
