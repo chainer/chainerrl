@@ -113,11 +113,11 @@ def main():
         opt.add_hook(NonbiasWeightDecay(args.weight_decay))
     agent = PPO(model, opt,
                 gpu=args.gpu,
+                phi=dqn_phi,
                 update_interval=args.update_interval,
                 minibatch_size=args.batchsize, epochs=args.epochs,
                 clip_eps=0.1,  # TODO(kataoka) anneal
                 clip_eps_vf=None,
-                phi=dqn_phi,
                 )
     if args.load:
         agent.load(args.load)
