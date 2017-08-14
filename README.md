@@ -1,4 +1,5 @@
-![ChainerRL](assets/ChainerRL.png)
+<div align="center"><img src="assets/ChainerRL.png" width="400"/></div>
+
 # ChainerRL
 [![Build Status](https://travis-ci.org/chainer/chainerrl.svg?branch=master)](https://travis-ci.org/pfnet/chainerrl)
 [![coveralls](https://img.shields.io/coveralls/pfnet/chainerrl.svg)](https://coveralls.io/github/pfnet/chainerrl)
