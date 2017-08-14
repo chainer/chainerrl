@@ -42,7 +42,8 @@ def train_agent(agent, env, steps, outdir, max_episode_len=None,
     done = False
 
     t = step_offset
-    agent.t = step_offset
+    if hasattr(agent, 't'):
+        agent.t = step_offset
 
     episode_len = 0
     try:
