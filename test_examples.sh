@@ -27,6 +27,11 @@ python examples/ale/train_nsq_ale.py 4 pong --steps 100 --outdir $outdir/ale/nsq
 model=$(find $outdir/ale/nsq -name "*_finish")
 python examples/ale/train_nsq_ale.py 4 pong --demo --load $model --eval-n-runs 1
 
+# ale/ppo
+python examples/ale/train_ppo_ale.py pong --steps 100 --outdir $outdir/ale/ppo
+model=$(find $outdir/ale/ppo -name "*_finish")
+python examples/ale/train_ppo_ale.py pong --demo --load $model --eval-n-runs 1
+
 # gym/dqn
 python examples/gym/train_dqn_gym.py --steps 100 --replay-start-size 50 --outdir $outdir/gym/dqn --gpu $gpu
 model=$(find $outdir/gym/dqn -name "*_finish")
