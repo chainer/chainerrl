@@ -194,7 +194,7 @@ class PPO(agent.AttributeSavingMixin, agent.Agent):
         # Update stats
         self.average_v += (
             (1 - self.average_v_decay) *
-            (v - self.average_v))
+            (v[0] - self.average_v))
 
         if self.last_state is not None:
             self.last_episode.append({
@@ -218,7 +218,7 @@ class PPO(agent.AttributeSavingMixin, agent.Agent):
         # Update stats
         self.average_v += (
             (1 - self.average_v_decay) *
-            (v - self.average_v))
+            (v[0] - self.average_v))
 
         return cuda.to_cpu(action)
 
