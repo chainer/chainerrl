@@ -28,7 +28,7 @@ model=$(find $outdir/ale/nsq -name "*_finish")
 python examples/ale/train_nsq_ale.py 4 pong --demo --load $model --eval-n-runs 1
 
 # ale/ppo
-python examples/ale/train_ppo_ale.py pong --steps 100 --outdir $outdir/ale/ppo
+python examples/ale/train_ppo_ale.py pong --steps 100 --update-interval 50 --batchsize 16 --epochs 2 --outdir $outdir/ale/ppo
 model=$(find $outdir/ale/ppo -name "*_finish")
 python examples/ale/train_ppo_ale.py pong --demo --load $model --eval-n-runs 1
 
