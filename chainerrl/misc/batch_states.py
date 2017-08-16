@@ -1,3 +1,7 @@
+import chainer
+import numpy
+
+
 def batch_states(states, xp, phi):
     """The default method for making batch of observations.
 
@@ -11,4 +15,10 @@ def batch_states(states, xp, phi):
     """
 
     states = [phi(s) for s in states]
-    return xp.asarray(states)
+    if chainer.cuda.get_array_module(states[0]) == numpy:
+        # xp can be numpy or cupy
+        return xp.asarray(states)
+    else:
+        # xp must be cupy when observation is in gpu
+        assert xp == chainer.cuda.cupy
+        return xp.stack(states)
