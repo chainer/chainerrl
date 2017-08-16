@@ -150,10 +150,8 @@ class FCGaussianPolicyWithStateIndependentCovariance(
     def __init__(self, n_input_channels, action_size,
                  n_hidden_layers=0, n_hidden_channels=None,
                  min_action=None, max_action=None, bound_mean=False,
-                 var_type='diagonal',
+                 var_type='spherical',
                  nonlinearity=F.relu, mean_wscale=1):
-
-        assert var_type == 'diagonal'  # sorry
 
         self.n_input_channels = n_input_channels
         self.action_size = action_size
@@ -163,6 +161,7 @@ class FCGaussianPolicyWithStateIndependentCovariance(
         self.max_action = max_action
         self.bound_mean = bound_mean
         self.nonlinearity = nonlinearity
+        var_size = {'spherical': 1, 'diagonal': action_size}[var_type]
 
         layers = []
         layers.append(L.Linear(n_input_channels, n_hidden_channels))
@@ -182,12 +181,14 @@ class FCGaussianPolicyWithStateIndependentCovariance(
         with self.init_scope():
             self.hidden_layers = links.Sequence(*layers)
             self.var_param = chainer.Parameter(
-                initializer=0.0, shape=(action_size,))
+                initializer=0.0, shape=(var_size,))
 
     def __call__(self, x):
-        h = self.hidden_layers(x)
-        var = F.softplus(self.var_param)
-        return distribution.GaussianDistribution(h, var)
+        mean = self.hidden_layers(x)
+        var = F.broadcast_to(
+            F.softplus(self.var_param),
+            mean.shape)
+        return distribution.GaussianDistribution(mean, var)
 
 
 class FCGaussianPolicyWithFixedCovariance(links.Sequence, GaussianPolicy):
