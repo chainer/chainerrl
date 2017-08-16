@@ -9,7 +9,6 @@ import argparse
 import os
 
 import chainer
-from chainer import links as L
 
 from chainerrl.agents.a3c import A3CModel
 from chainerrl.agents import PPO
@@ -19,7 +18,6 @@ from chainerrl import links
 from chainerrl import misc
 from chainerrl.optimizers.nonbias_weight_decay import NonbiasWeightDecay
 from chainerrl import policy
-from chainerrl.recurrent import RecurrentChainMixin
 from chainerrl import v_function
 
 from dqn_phi import dqn_phi
