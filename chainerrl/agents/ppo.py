@@ -9,6 +9,10 @@ from chainerrl.misc.batch_states import batch_states
 
 
 def _F_clip(x, x_min, x_max):
+    """Elementwise clipping
+
+    Note: chainer.functions.clip supports clipping to constant intervals
+    """
     return F.minimum(F.maximum(x, x_min), x_max)
 
 
@@ -18,7 +22,7 @@ class PPO(agent.AttributeSavingMixin, agent.Agent):
     See https://arxiv.org/abs/1707.06347
 
     Args:
-        model (A3CModel): Model to train.
+        model (A3CModel): Model to train.  Recurrent models are not supported.
             state s  |->  (pi(s, _), v(s))
         optimizer (chainer.Optimizer): optimizer used to train the model
         gpu (int): GPU device id if not None nor negative
@@ -34,7 +38,8 @@ class PPO(agent.AttributeSavingMixin, agent.Agent):
         clip_eps (float): Epsilon for pessimistic clipping of likelihood ratio
             to update policy
         clip_eps_vf (float): Epsilon for pessimistic clipping of value
-            to update value function
+            to update value function. If it is ``None``, value function is not
+            clipped on updates.
         average_v_decay (float): Decay rate of average V, only used for
             recording statistics
         average_loss_decay (float): Decay rate of average loss, only used for
@@ -99,17 +104,22 @@ class PPO(agent.AttributeSavingMixin, agent.Agent):
 
     def _train(self):
         if len(self.memory) + len(self.last_episode) >= self.update_interval:
-            self.flush_last_episode()
+            self._flush_last_episode()
             self.update()
             self.memory = []
 
-    def flush_last_episode(self):
+    def _flush_last_episode(self):
         if self.last_episode:
-            self.compute_v_teacher()
+            self._compute_teacher()
             self.memory.extend(self.last_episode)
             self.last_episode = []
 
-    def compute_v_teacher(self):
+    def _compute_teacher(self):
+        """Estimate state values and advantages of self.last_episode
+
+        TD(lambda) estimation
+        """
+
         adv = 0.0
         for transition in reversed(self.last_episode):
             td_err = (
@@ -120,9 +130,10 @@ class PPO(agent.AttributeSavingMixin, agent.Agent):
                 )
             adv = td_err + self.lambd * adv
             transition['adv'] = adv
-            transition['v_teacher'] = adv + transition['v_pred']  # ????
+            transition['v_teacher'] = adv + transition['v_pred']
 
-    def lossfun(self, prob_ratio, advs, vs_pred, vs_pred_old, vs_teacher, ent):
+    def _lossfun(self, prob_ratio, advs,
+                 vs_pred, vs_pred_old, vs_teacher, ent):
         prob_ratio = F.expand_dims(prob_ratio, axis=-1)
         loss_policy = - F.mean(F.minimum(
             prob_ratio * advs,
@@ -185,10 +196,10 @@ class PPO(agent.AttributeSavingMixin, agent.Agent):
             ent = distribs.entropy
 
             self.optimizer.update(
-                self.lossfun,
+                self._lossfun,
                 prob_ratio, advs, vs_pred, vs_pred_old, vs_teacher, ent)
 
-    def act_and_train(self, state, reward, done=False):
+    def act_and_train(self, state, reward):
         action, v = self._act(state, train=True)
 
         # Update stats
@@ -204,7 +215,7 @@ class PPO(agent.AttributeSavingMixin, agent.Agent):
                 'v_pred': self.last_v,
                 'next_state': state,
                 'next_v_pred': v,
-                'nonterminal': 0.0 if done else 1.0})
+                'nonterminal': 0.0})
         self.last_state = state
         self.last_action = action
         self.last_v = v
@@ -225,20 +236,21 @@ class PPO(agent.AttributeSavingMixin, agent.Agent):
     def stop_episode_and_train(self, state, reward, done=False):
         _, v = self._act(state, train=True)
 
-        if self.last_state is not None:
-            self.last_episode.append({
-                'state': self.last_state,
-                'action': self.last_action,
-                'reward': reward,
-                'v_pred': self.last_v,
-                'next_state': state,
-                'next_v_pred': v,
-                'nonterminal': 0.0 if done else 1.0})
+        assert self.last_state is not None
+        self.last_episode.append({
+            'state': self.last_state,
+            'action': self.last_action,
+            'reward': reward,
+            'v_pred': self.last_v,
+            'next_state': state,
+            'next_v_pred': v,
+            'nonterminal': 0.0 if done else 1.0})
+
         self.last_state = None
         del self.last_action
         del self.last_v
 
-        self.flush_last_episode()
+        self._flush_last_episode()
         self.stop_episode()
 
     def stop_episode(self):
