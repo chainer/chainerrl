@@ -21,6 +21,11 @@ from chainerrl import policies
 from chainerrl import v_functions
 
 
+@testing.parameterize(*(
+    testing.product({
+        'discrete': [False, True]
+    })
+))
 class TestPPO(unittest.TestCase):
 
     def setUp(self):
@@ -45,7 +50,7 @@ class TestPPO(unittest.TestCase):
     def test_abc_fast_gpu(self):
         self._test_abc(steps=100, require_success=False, gpu=0)
 
-    def _test_abc(self, discrete=True, steps=1000000,
+    def _test_abc(self, steps=1000000,
                   require_success=True, gpu=-1, load_model=False):
 
         env, _ = self.make_env_and_successful_return(test=False)
@@ -100,21 +105,30 @@ class TestPPO(unittest.TestCase):
                    update_interval=50, minibatch_size=25, epochs=3)
 
     def make_model(self, env):
-        n_dim_obs = env.observation_space.low.size
-        n_actions = env.action_space.n
         n_hidden_channels = 50
 
-        pi = policies.FCSoftmaxPolicy(
-            n_dim_obs, n_actions,
-            n_hidden_layers=2,
-            n_hidden_channels=n_hidden_channels)
-
+        n_dim_obs = env.observation_space.low.size
         v = v_functions.FCVFunction(
             n_dim_obs,
             n_hidden_layers=2,
             n_hidden_channels=n_hidden_channels)
 
+        if self.discrete:
+            n_actions = env.action_space.n
+
+            pi = policies.FCSoftmaxPolicy(
+                n_dim_obs, n_actions,
+                n_hidden_layers=2,
+                n_hidden_channels=n_hidden_channels)
+        else:
+            n_dim_actions = env.action_space.low.size
+
+            pi = policies.FCGaussianPolicy(
+                n_dim_obs, n_dim_actions,
+                n_hidden_layers=2,
+                n_hidden_channels=n_hidden_channels)
+
         return A3CSeparateModel(pi=pi, v=v)
 
     def make_env_and_successful_return(self, test):
-        return ABC(discrete=True, deterministic=test), 1
+        return ABC(discrete=self.discrete, deterministic=test), 1
