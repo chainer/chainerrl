@@ -39,23 +39,6 @@ class A3CFF(chainer.ChainList, A3CModel):
         return self.pi(out), self.v(out)
 
 
-class A3CLSTM(chainer.ChainList, A3CModel, RecurrentChainMixin):
-
-    def __init__(self, n_actions):
-        self.head = links.NIPSDQNHead()
-        self.pi = policy.FCSoftmaxPolicy(
-            self.head.n_output_channels, n_actions)
-        self.v = v_function.FCVFunction(self.head.n_output_channels)
-        self.lstm = L.LSTM(self.head.n_output_channels,
-                           self.head.n_output_channels)
-        super().__init__(self.head, self.lstm, self.pi, self.v)
-
-    def pi_and_v(self, state):
-        h = self.head(state)
-        h = self.lstm(h)
-        return self.pi(h), self.v(h)
-
-
 def main():
 
     # Prevent numpy from using multiple threads
@@ -80,7 +63,6 @@ def main():
     parser.add_argument('--eval-interval', type=int, default=10 ** 6)
     parser.add_argument('--eval-n-runs', type=int, default=10)
     parser.add_argument('--weight-decay', type=float, default=0.0)
-    parser.add_argument('--use-lstm', action='store_true')
     parser.add_argument('--demo', action='store_true', default=False)
     parser.add_argument('--load', type=str, default='')
 
@@ -90,7 +72,6 @@ def main():
     parser.add_argument('--batchsize', type=int, default=32)
     parser.add_argument('--epochs', type=int, default=3)
     parser.set_defaults(use_sdl=False)
-    parser.set_defaults(use_lstm=False)
     args = parser.parse_args()
 
     if args.seed is not None:
@@ -102,10 +83,7 @@ def main():
 
     n_actions = ale.ALE(args.rom).number_of_actions
 
-    if args.use_lstm:
-        model = A3CLSTM(n_actions)
-    else:
-        model = A3CFF(n_actions)
+    model = A3CFF(n_actions)
     opt = chainer.optimizers.Adam(args.lr)
     opt.setup(model)
     opt.add_hook(chainer.optimizer.GradientClipping(40))
