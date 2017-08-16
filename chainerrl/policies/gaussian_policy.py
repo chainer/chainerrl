@@ -181,15 +181,12 @@ class FCGaussianPolicyWithStateIndependentCovariance(
         super().__init__()
         with self.init_scope():
             self.hidden_layers = links.Sequence(*layers)
-
-            # use the bias part of L.Linear to represent a vector
-            self.var_layer = L.Linear(0, action_size,
-                                      initialW=self.xp.empty((action_size, 0)))
+            self.var_param = chainer.Parameter(
+                initializer=0.0, shape=(action_size,))
 
     def __call__(self, x):
         h = self.hidden_layers(x)
-        var = F.softplus(
-            self.var_layer(self.xp.empty((x.shape[0], 0), dtype=x.dtype)))
+        var = F.softplus(self.var_param)
         return distribution.GaussianDistribution(h, var)
 
 
