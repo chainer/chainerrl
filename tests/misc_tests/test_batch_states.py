@@ -9,7 +9,6 @@ import unittest
 import chainer
 from chainer import testing
 from chainer.testing import attr
-from chainer.testing import condition
 
 import numpy as np
 
