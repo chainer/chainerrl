@@ -54,8 +54,6 @@ def main():
     parser.add_argument('--max-episode-len', type=int, default=10000)
     parser.add_argument('--profile', action='store_true')
     parser.add_argument('--steps', type=int, default=8 * 10 ** 7)
-
-    # TODO(kataoka): anneal
     parser.add_argument('--lr', type=float, default=2.5e-4)
 
     parser.add_argument('--eval-interval', type=int, default=10 ** 6)
@@ -82,7 +80,7 @@ def main():
     n_actions = ale.ALE(args.rom).number_of_actions
 
     model = A3CFF(n_actions)
-    opt = chainer.optimizers.Adam(args.lr)
+    opt = chainer.optimizers.Adam(alpha=args.lr)
     opt.setup(model)
     opt.add_hook(chainer.optimizer.GradientClipping(40))
     if args.weight_decay > 0:
@@ -92,7 +90,7 @@ def main():
                 phi=dqn_phi,
                 update_interval=args.update_interval,
                 minibatch_size=args.batchsize, epochs=args.epochs,
-                clip_eps=0.1,  # TODO(kataoka) anneal
+                clip_eps=0.1,
                 clip_eps_vf=None,
                 )
     if args.load:
@@ -115,6 +113,20 @@ def main():
             args.eval_n_runs, eval_stats['mean'], eval_stats['median'],
             eval_stats['stdev']))
     else:
+        # Linearly decay the learning rate to zero
+        def lr_setter(env, agent, value):
+            agent.optimizer.alpha = value
+
+        lr_decay_hook = experiments.LinearInterpolationHook(
+            args.steps, args.lr, 0, lr_setter)
+
+        # Linearly decay the clipping parameter to zero
+        def clip_eps_setter(env, agent, value):
+            agent.clip_eps = value
+
+        clip_eps_decay_hook = experiments.LinearInterpolationHook(
+            args.steps, 0.1, 0, clip_eps_setter)
+
         experiments.train_agent_with_evaluation(
             agent=agent,
             env=make_env(False),
@@ -123,7 +135,12 @@ def main():
             steps=args.steps,
             eval_n_runs=args.eval_n_runs,
             eval_interval=args.eval_interval,
-            max_episode_len=args.max_episode_len)
+            max_episode_len=args.max_episode_len,
+            step_hooks=[
+                lr_decay_hook,
+                clip_eps_decay_hook,
+                ],
+            )
 
 
 if __name__ == '__main__':
