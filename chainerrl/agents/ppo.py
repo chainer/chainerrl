@@ -155,7 +155,7 @@ class PPO(agent.AttributeSavingMixin, agent.Agent):
                          - vs_teacher)
                 ))
 
-        loss_entropy = F.mean(ent)
+        loss_entropy = -F.mean(ent)
 
         # Update stats
         self.average_loss_policy += (
