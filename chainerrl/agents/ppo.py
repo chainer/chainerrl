@@ -100,7 +100,7 @@ class PPO(agent.AttributeSavingMixin, agent.Agent):
             b_state = batch_states([state], xp, self.phi)
             action_distrib, v = self.model(b_state)
             action = action_distrib.sample()
-            return action[0].data, v[0].data
+            return cuda.to_cpu(action.data)[0], v.data[0]
 
     def _train(self):
         if len(self.memory) + len(self.last_episode) >= self.update_interval:
@@ -221,7 +221,7 @@ class PPO(agent.AttributeSavingMixin, agent.Agent):
         self.last_v = v
 
         self._train()
-        return cuda.to_cpu(action)
+        return action
 
     def act(self, state):
         action, v = self._act(state, train=False)
@@ -231,7 +231,7 @@ class PPO(agent.AttributeSavingMixin, agent.Agent):
             (1 - self.average_v_decay) *
             (v[0] - self.average_v))
 
-        return cuda.to_cpu(action)
+        return action
 
     def stop_episode_and_train(self, state, reward, done=False):
         _, v = self._act(state, train=True)
