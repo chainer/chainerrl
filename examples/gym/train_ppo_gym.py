@@ -5,9 +5,6 @@ Both discrete and continuous action spaces are supported.
 
 To solve CartPole-v0, run:
     python train_ppo_gym.py --env CartPole-v0
-
-To solve InvertedPendulum-v1, run:
-    python train_ppo_gym.py --env InvertedPendulum-v1 --arch LSTMGaussian --t-max 50  # noqa
 """
 from __future__ import division
 from __future__ import print_function
@@ -20,7 +17,6 @@ import argparse
 
 import chainer
 from chainer import functions as F
-from chainer import links as L
 import gym
 import gym.wrappers
 import numpy as np
@@ -32,8 +28,6 @@ from chainerrl import links
 from chainerrl import misc
 from chainerrl.optimizers.nonbias_weight_decay import NonbiasWeightDecay
 from chainerrl import policies
-from chainerrl.recurrent import RecurrentChainMixin
-from chainerrl import v_function
 
 
 def phi(obs):
@@ -69,44 +63,20 @@ class A3CFFMellowmax(chainer.ChainList, a3c.A3CModel):
 class A3CFFGaussian(chainer.ChainList, a3c.A3CModel):
     """An example of A3C feedforward Gaussian policy."""
 
-    def __init__(self, obs_size, action_size,
+    def __init__(self, obs_size, action_space,
                  n_hidden_layers=2, n_hidden_channels=200):
         hidden_sizes = (n_hidden_channels,) * n_hidden_layers
         self.pi = policies.FCGaussianPolicyWithStateIndependentCovariance(
-            obs_size, action_size, n_hidden_layers, n_hidden_channels,
-            var_type='diagonal', nonlinearity=F.tanh)
+            obs_size, action_space.low.size,
+            n_hidden_layers, n_hidden_channels,
+            var_type='diagonal', nonlinearity=F.tanh,
+            bound_mean=True,
+            min_action=action_space.low, max_action=action_space.high)
         self.v = links.MLP(obs_size, 1, hidden_sizes=hidden_sizes)
         super().__init__(self.pi, self.v)
 
     def pi_and_v(self, state):
         return self.pi(state), self.v(state)
-
-
-class A3CLSTMGaussian(chainer.ChainList, a3c.A3CModel, RecurrentChainMixin):
-    """An example of A3C recurrent Gaussian policy."""
-
-    def __init__(self, obs_size, action_size, hidden_size=200, lstm_size=128):
-        self.pi_head = L.Linear(obs_size, hidden_size)
-        self.v_head = L.Linear(obs_size, hidden_size)
-        self.pi_lstm = L.LSTM(hidden_size, lstm_size)
-        self.v_lstm = L.LSTM(hidden_size, lstm_size)
-        self.pi = policies.LinearGaussianPolicyWithDiagonalCovariance(
-            lstm_size, action_size)
-        self.v = v_function.FCVFunction(lstm_size)
-        super().__init__(self.pi_head, self.v_head,
-                         self.pi_lstm, self.v_lstm, self.pi, self.v)
-
-    def pi_and_v(self, state):
-
-        def forward(head, lstm, tail):
-            h = F.relu(head(state))
-            h = lstm(h)
-            return tail(h)
-
-        pout = forward(self.pi_head, self.pi_lstm, self.pi)
-        vout = forward(self.v_head, self.v_lstm, self.v)
-
-        return pout, vout
 
 
 def main():
@@ -117,11 +87,9 @@ def main():
     parser.add_argument('--env', type=str, default='CartPole-v1')
     parser.add_argument('--arch', type=str, default='FFSoftmax',
                         choices=('FFSoftmax', 'FFMellowmax',
-                                 'FFGaussian', 'LSTMGaussian'))
+                                 'FFGaussian'))
     parser.add_argument('--seed', type=int, default=None)
     parser.add_argument('--outdir', type=str, default=None)
-    # parser.add_argument('--t-max', type=int, default=5)
-    # parser.add_argument('--beta', type=float, default=1e-2)
     parser.add_argument('--steps', type=int, default=10 ** 5)
     parser.add_argument('--eval-interval', type=int, default=2048)
     parser.add_argument('--eval-n-runs', type=int, default=10)
@@ -146,15 +114,15 @@ def main():
 
     args.outdir = experiments.prepare_output_dir(args, args.outdir)
 
-    def make_env(process_idx, test):
+    def make_env(test):
         env = gym.make(args.env)
-        if args.monitor and process_idx == 0:
+        if args.monitor:
             env = gym.wrappers.Monitor(env, args.outdir)
         # Scale rewards observed by agents
         if not test:
             misc.env_modifiers.make_reward_filtered(
                 env, lambda x: x * args.reward_scale_factor)
-        if args.render and process_idx == 0 and not test:
+        if args.render:
             misc.env_modifiers.make_rendered(env)
         return env
 
@@ -165,14 +133,12 @@ def main():
     action_space = sample_env.action_space
 
     # Switch policy types accordingly to action space types
-    if args.arch == 'LSTMGaussian':
-        model = A3CLSTMGaussian(obs_space.low.size, action_space.low.size)
-    elif args.arch == 'FFGaussian':
-        model = A3CFFGaussian(obs_space.low.size, action_space.low.size)
-    elif args.arch == 'FFSoftmax':
+    if args.arch == 'FFSoftmax':
         model = A3CFFSoftmax(obs_space.low.size, action_space.n)
     elif args.arch == 'FFMellowmax':
         model = A3CFFMellowmax(obs_space.low.size, action_space.n)
+    elif args.arch == 'FFGaussian':
+        model = A3CFFGaussian(obs_space.low.size, action_space)
 
     opt = chainer.optimizers.Adam(alpha=args.lr)
     opt.setup(model)
@@ -189,7 +155,7 @@ def main():
         agent.load(args.load)
 
     if args.demo:
-        env = make_env(0, True)
+        env = make_env(True)
         eval_stats = experiments.eval_performance(
             env=env,
             agent=agent,
@@ -201,8 +167,8 @@ def main():
     else:
         experiments.train_agent_with_evaluation(
             agent=agent,
-            env=make_env(0, False),
-            eval_env=make_env(0, True),
+            env=make_env(False),
+            eval_env=make_env(True),
             outdir=args.outdir,
             steps=args.steps,
             eval_n_runs=args.eval_n_runs,
