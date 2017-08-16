@@ -132,8 +132,13 @@ class PPO(agent.AttributeSavingMixin, agent.Agent):
             transition['adv'] = adv
             transition['v_teacher'] = adv + transition['v_pred']
 
-    def _lossfun(self, prob_ratio, advs,
-                 vs_pred, vs_pred_old, vs_teacher, ent):
+    def _lossfun(self,
+                 distribs, vs_pred, log_probs,
+                 target_distribs, vs_pred_old, target_log_probs,
+                 advs, vs_teacher):
+        prob_ratio = F.exp(log_probs - target_log_probs)
+        ent = distribs.entropy
+
         prob_ratio = F.expand_dims(prob_ratio, axis=-1)
         loss_policy = - F.mean(F.minimum(
             prob_ratio * advs,
@@ -180,24 +185,19 @@ class PPO(agent.AttributeSavingMixin, agent.Agent):
             batch = dataset_iter.__next__()
             states = batch_states([b['state'] for b in batch], xp, self.phi)
             actions = xp.array([b['action'] for b in batch], dtype=xp.int32)
-            vs_pred_old = xp.array(
-                [b['v_pred'] for b in batch], dtype=xp.float32)
-
             distribs, vs_pred = self.model(states)
-            # print(distribs)
-            log_probs = distribs.log_prob(actions)
             target_distribs, _ = target_model(states)
-            target_log_probs = target_distribs.log_prob(actions)
-            prob_ratio = F.exp(log_probs - target_log_probs)
-
-            advs = xp.array([b['adv'] for b in batch], dtype=xp.float32)
-            vs_teacher = xp.array(
-                [b['v_teacher'] for b in batch], dtype=xp.float32)
-            ent = distribs.entropy
-
             self.optimizer.update(
                 self._lossfun,
-                prob_ratio, advs, vs_pred, vs_pred_old, vs_teacher, ent)
+                distribs, vs_pred, distribs.log_prob(actions),
+                target_distribs=target_distribs,
+                vs_pred_old=xp.array(
+                    [b['v_pred'] for b in batch], dtype=xp.float32),
+                target_log_probs=target_distribs.log_prob(actions),
+                advs=xp.array([b['adv'] for b in batch], dtype=xp.float32),
+                vs_teacher=xp.array(
+                    [b['v_teacher'] for b in batch], dtype=xp.float32),
+                )
 
     def act_and_train(self, state, reward):
         action, v = self._act(state, train=True)
