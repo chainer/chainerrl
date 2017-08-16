@@ -62,7 +62,9 @@ def main():
     parser.add_argument('--demo', action='store_true', default=False)
     parser.add_argument('--load', type=str, default='')
 
-    # TODO(kataoka): async
+    # In the original paper, agent runs in 8 environments parallely
+    # and samples 128 steps per environment.
+    # Sample 128 * 8 steps, instead.
     parser.add_argument('--update-interval', type=int, default=128 * 8)
 
     parser.add_argument('--batchsize', type=int, default=32)
