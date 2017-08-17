@@ -1,6 +1,5 @@
 import itertools
-import random
-import six
+import numpy as np
 
 
 class RandomAccessQueue(object):
@@ -103,4 +102,4 @@ class RandomAccessQueue(object):
         if k > n:
             raise ValueError("Sample larger than population or is negative")
 
-        return [self[i] for i in random.sample(six.moves.range(n), k)]
+        return [self[i] for i in np.random.choice(n, k)]
