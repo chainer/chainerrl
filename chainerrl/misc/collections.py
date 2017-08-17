@@ -1,7 +1,5 @@
 import itertools
 import numpy as np
-import random
-import six
 
 
 """
@@ -9,7 +7,10 @@ def _sample_n_k(n, k):
     return random.sample(six.moves.range(n), k)
 """
 
+
 def _sample_n_k(n, k):
+    if not 0 <= k <= n:
+        raise ValueError("Sample larger than population or is negative")
     if 3 * k >= n:
         return np.random.choice(n, k, replace=False)
     else:
@@ -63,7 +64,6 @@ def _sample_n_k(n, k):
             selected_add(x)
         return result[0]
         """
-
 
 
 class RandomAccessQueue(object):
@@ -162,13 +162,6 @@ class RandomAccessQueue(object):
         return self._queue_front.pop()
 
     def _sample(self, k):
-        n = len(self)
-        if k > n:
-            raise ValueError("Sample larger than population or is negative")
-
-        # The following code is equivalent to
-        # return [self[i] for i in np.random.choice(n, k, replace=False)]
-
         nf = len(self._queue_front)
         return [self._queue_front[i] if i < nf else self._queue_back[i - nf]
-                for i in _sample_n_k(n, k)]
+                for i in _sample_n_k(len(self), k)]
