@@ -1,8 +1,86 @@
 from chainer import testing
 import collections
+import numpy as np
+import timeit
 import unittest
 
+from chainerrl.misc.collections import _sample_n_k
 from chainerrl.misc.collections import RandomAccessQueue
+
+
+@testing.parameterize(
+    {'n': 2, 'k': 2},
+    {'n': 5, 'k': 1},
+    {'n': 5, 'k': 4},
+    {'n': 20, 'k': 10},
+    {'n': 100, 'k': 5},
+)
+class TestSampleNK(unittest.TestCase):
+    @testing.attr.slow
+    def test_slow(self):
+        self.samples = [_sample_n_k(self.n, self.k) for _ in range(100000)]
+        self.subtest_constraints()
+        self.subtest_total_counts()
+        # self.subtest_orders()
+
+    def subtest_constraints(self):
+        for s in self.samples:
+            self.assertEqual(len(s), self.k)
+
+            # distinct
+            t = np.unique(s)
+            self.assertEqual(len(t), self.k)
+
+    def subtest_total_counts(self):
+        cnt = np.zeros(self.n)
+        for s in self.samples:
+            for x in s:
+                cnt[x] += 1
+        low = np.amin(cnt)
+        high = np.amax(cnt)
+
+        m = len(self.samples)
+
+        p = self.k / self.n
+        mean = m * p
+        std = np.sqrt(m * p * (1 - p))
+
+        self.assertLessEqual(
+            mean - low,
+            3 * std * np.sqrt(2 * np.log(self.n)))
+
+        self.assertLessEqual(
+            high - mean,
+            3 * std * np.sqrt(2 * np.log(self.n)))
+
+
+class TestSampleNKSpeed(unittest.TestCase):
+    def get_timeit(self, setup):
+        return min(timeit.Timer(
+            'for n in range(64, 10000): _sample_n_k(n, 64)',
+            setup=setup).  repeat(repeat=10, number=1))
+
+    @testing.attr.slow
+    def test(self):
+        t = self.get_timeit(
+            "from chainerrl.misc.collections import _sample_n_k")
+
+        # faster than random.sample
+        t1 = self.get_timeit("""
+import random
+import six
+def _sample_n_k(n, k):
+    return random.sample(six.moves.range(n), k)
+""")
+        self.assertLess(t, t1)
+
+        # faster than np.random.choice(..., replace=False)
+        t2 = self.get_timeit("""
+import numpy as np
+def _sample_n_k(n, k):
+    return np.random.choice(n, k, replace=False)
+""")
+        self.assertLess(t, t2)
 
 
 @testing.parameterize(*(
