@@ -102,4 +102,9 @@ class RandomAccessQueue(object):
         if k > n:
             raise ValueError("Sample larger than population or is negative")
 
-        return [self[i] for i in np.random.choice(n, k)]
+        # The following code is equivalent to
+        # return [self[i] for i in np.random.choice(n, k)]
+
+        nf = len(self._queue_front)
+        return [self._queue_front[i] if i < nf else self._queue_back[i - nf]
+                for i in np.random.choice(n, k)]
