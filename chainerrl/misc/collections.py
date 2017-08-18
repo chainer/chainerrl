@@ -2,12 +2,6 @@ import itertools
 import numpy as np
 
 
-"""
-def _sample_n_k(n, k):
-    return random.sample(six.moves.range(n), k)
-"""
-
-
 def _sample_n_k(n, k):
     """Sample k distinct elements uniformly from range(n)"""
 
