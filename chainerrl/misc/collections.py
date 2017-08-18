@@ -14,23 +14,6 @@ def _sample_n_k(n, k):
     if 3 * k >= n:
         return np.random.choice(n, k, replace=False)
     else:
-        """
-        result = np.random.choice(n, 2 * k)
-        _, indices = np.unique(result, return_index=True)
-        while indices.size < k:
-            result = np.random.choice(n, 2 * k)
-            _, indices = np.unique(result, return_index=True)
-        return result[indices[:k]]
-        """
-
-        """
-        result = np.unique(np.random.choice(n, 2 * k))
-        while result.size < k:
-            result = np.unique(np.random.choice(n, 2 * k))
-        np.random.shuffle(result)
-        return result[:k]
-        """
-
         result = np.random.choice(n, 2 * k)
         selected = set()
         selected_add = selected.add
@@ -46,24 +29,6 @@ def _sample_n_k(n, k):
                     j = k
             selected_add(x)
         return result[:k]
-
-        """
-        result = np.random.choice(n, (2, k))
-        selected = set()
-        selected_add = selected.add
-        j = 0
-        for i in range(k):
-            x = result[0, i]
-            while x in selected:
-                x = result[0, i] = result[1, j]
-                j += 1
-                if j == k:
-                    # This is slow, but it rarely happens.
-                    result[1] = np.random.choice(n, k)
-                    j = 0
-            selected_add(x)
-        return result[0]
-        """
 
 
 class RandomAccessQueue(object):
