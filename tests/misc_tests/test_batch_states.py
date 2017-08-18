@@ -4,6 +4,7 @@ from __future__ import division
 from __future__ import absolute_import
 from future import standard_library
 standard_library.install_aliases()
+import random
 import unittest
 
 import chainer
@@ -46,3 +47,24 @@ class TestBatchStates(unittest.TestCase):
     @attr.gpu
     def test_batch_states_cupy_to_cupy(self):
         self._test_batch_states(chainer.cuda.cupy, chainer.cuda.cupy)
+
+    @attr.gpu
+    def test_batch_states_with_mixed_inputs(self):
+        output_xp = chainer.cuda.cupy
+        np_observations = [np.ones(self.obs_shape)
+                           for _ in range(self.n_states)]
+        cp_observations = [chainer.cuda.cupy.ones(self.obs_shape)
+                           for _ in range(self.n_states)]
+        observations = np_observations + cp_observations
+        random.shuffle(observations)
+
+        def phi(x):
+            # identity
+            return x
+
+        batch = batch_states(observations, xp=output_xp, phi=phi)
+        self.assertTrue(isinstance(batch, output_xp.ndarray))
+        expected_output_shape = (self.n_states * 2,) + self.obs_shape
+        self.assertEqual(batch.shape, expected_output_shape)
+        testing.assert_allclose(
+            batch, output_xp.ones(expected_output_shape))
