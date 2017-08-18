@@ -9,6 +9,8 @@ def _sample_n_k(n, k):
 
 
 def _sample_n_k(n, k):
+    """Sample k distinct elements uniformly from range(n)"""
+
     if not 0 <= k <= n:
         raise ValueError("Sample larger than population or is negative")
     if 3 * k >= n:
