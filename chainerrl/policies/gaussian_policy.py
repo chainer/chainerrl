@@ -142,8 +142,6 @@ class FCGaussianPolicyWithFixedCovariance(links.Sequence, GaussianPolicy):
         n_hidden_channels (int): Number of hidden channels.
         min_action (ndarray): Minimum action. Used only when bound_mean=True.
         max_action (ndarray): Maximum action. Used only when bound_mean=True.
-        var_type (str): Type of parameterization of variance. It must be
-            'spherical' or 'diagonal'.
         nonlinearity (callable): Nonlinearity placed between layers.
         mean_wscale (float): Scale of weight initialization of the mean layer.
     """
