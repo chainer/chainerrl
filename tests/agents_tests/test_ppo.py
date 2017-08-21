@@ -6,12 +6,13 @@ from builtins import *  # NOQA
 from future import standard_library
 standard_library.install_aliases()
 
-from chainer import optimizers
-from chainer import testing
-import numpy as np
 import os
 import tempfile
 import unittest
+
+from chainer import optimizers
+from chainer import testing
+import numpy as np
 
 from chainerrl.agents.a3c import A3CSeparateModel
 from chainerrl.agents.ppo import PPO

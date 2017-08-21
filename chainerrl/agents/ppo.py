@@ -6,11 +6,11 @@ from builtins import *  # NOQA
 from future import standard_library
 standard_library.install_aliases()
 
+import copy
+
 import chainer
 from chainer import cuda
 import chainer.functions as F
-import copy
-
 
 from chainerrl import agent
 from chainerrl.misc.batch_states import batch_states
