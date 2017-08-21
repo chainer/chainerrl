@@ -160,13 +160,13 @@ class PPO(agent.AttributeSavingMixin, agent.Agent):
         # Update stats
         self.average_loss_policy += (
             (1 - self.average_loss_decay) *
-            (loss_policy.data - self.average_loss_policy))
+            (cuda.to_cpu(loss_policy.data) - self.average_loss_policy))
         self.average_loss_value_func += (
             (1 - self.average_loss_decay) *
-            (loss_value_func.data - self.average_loss_value_func))
+            (cuda.to_cpu(loss_value_func.data) - self.average_loss_value_func))
         self.average_loss_entropy += (
             (1 - self.average_loss_decay) *
-            (loss_entropy.data - self.average_loss_entropy))
+            (cuda.to_cpu(loss_entropy.data) - self.average_loss_entropy))
 
         return (
             loss_policy
