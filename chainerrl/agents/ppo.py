@@ -128,7 +128,7 @@ class PPO(agent.AttributeSavingMixin, agent.Agent):
                    * transition['next_v_pred'])
                 - transition['v_pred']
                 )
-            adv = td_err + self.lambd * adv
+            adv = td_err + self.gamma * self.lambd * adv
             transition['adv'] = adv
             transition['v_teacher'] = adv + transition['v_pred']
 
