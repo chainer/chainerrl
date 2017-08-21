@@ -107,7 +107,7 @@ def main():
     parser.add_argument('--epochs', type=int, default=10)
     args = parser.parse_args()
 
-    logging.basicConfig(level=args.logger_level)
+    logging.getLogger().setLevel(args.logger_level)
 
     if args.seed is not None:
         misc.set_random_seed(args.seed)
