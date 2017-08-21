@@ -8,7 +8,7 @@ from chainerrl import agent
 from chainerrl.misc.batch_states import batch_states
 
 
-def _F_clip(x, x_min, x_max):
+def _elementwise_clip(x, x_min, x_max):
     """Elementwise clipping
 
     Note: chainer.functions.clip supports clipping to constant intervals
@@ -149,9 +149,9 @@ class PPO(agent.AttributeSavingMixin, agent.Agent):
         else:
             loss_value_func = F.mean(F.maximum(
                 F.square(vs_pred - vs_teacher),
-                F.square(_F_clip(vs_pred,
-                                 vs_pred_old - self.clip_eps_vf,
-                                 vs_pred_old + self.clip_eps_vf)
+                F.square(_elementwise_clip(vs_pred,
+                                           vs_pred_old - self.clip_eps_vf,
+                                           vs_pred_old + self.clip_eps_vf)
                          - vs_teacher)
                 ))
 
