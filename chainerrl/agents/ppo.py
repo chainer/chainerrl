@@ -100,7 +100,7 @@ class PPO(agent.AttributeSavingMixin, agent.Agent):
             b_state = batch_states([state], xp, self.phi)
             action_distrib, v = self.model(b_state)
             action = action_distrib.sample()
-            return cuda.to_cpu(action.data)[0], v.data[0]
+            return cuda.to_cpu(action.data)[0], cuda.to_cpu(v.data)[0]
 
     def _train(self):
         if len(self.memory) + len(self.last_episode) >= self.update_interval:
