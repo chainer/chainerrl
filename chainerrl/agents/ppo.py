@@ -184,7 +184,7 @@ class PPO(agent.AttributeSavingMixin, agent.Agent):
         while dataset_iter.epoch < self.epochs:
             batch = dataset_iter.__next__()
             states = batch_states([b['state'] for b in batch], xp, self.phi)
-            actions = xp.array([b['action'] for b in batch], dtype=xp.int32)
+            actions = xp.array([b['action'] for b in batch])
             distribs, vs_pred = self.model(states)
             target_distribs, _ = target_model(states)
             self.optimizer.update(
@@ -215,7 +215,7 @@ class PPO(agent.AttributeSavingMixin, agent.Agent):
                 'v_pred': self.last_v,
                 'next_state': state,
                 'next_v_pred': v,
-                'nonterminal': 0.0})
+                'nonterminal': 1.0})
         self.last_state = state
         self.last_action = action
         self.last_v = v
