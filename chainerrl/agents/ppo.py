@@ -135,7 +135,7 @@ class PPO(agent.AttributeSavingMixin, agent.Agent):
 
     def _lossfun(self,
                  distribs, vs_pred, log_probs,
-                 target_distribs, vs_pred_old, target_log_probs,
+                 vs_pred_old, target_log_probs,
                  advs, vs_teacher):
         prob_ratio = F.exp(log_probs - target_log_probs)
         ent = distribs.entropy
@@ -191,7 +191,6 @@ class PPO(agent.AttributeSavingMixin, agent.Agent):
             self.optimizer.update(
                 self._lossfun,
                 distribs, vs_pred, distribs.log_prob(actions),
-                target_distribs=target_distribs,
                 vs_pred_old=xp.array(
                     [b['v_pred'] for b in batch], dtype=xp.float32),
                 target_log_probs=target_distribs.log_prob(actions),
