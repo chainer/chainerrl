@@ -94,12 +94,13 @@ class PPO(agent.AttributeSavingMixin, agent.Agent):
         self.memory = []
         self.last_episode = []
 
-    def _act(self, state, train):
+    def _act(self, state):
         xp = self.xp
-        with chainer.using_config('train', train):
+        with chainer.using_config('train', False):
             b_state = batch_states([state], xp, self.phi)
-            action_distrib, v = self.model(b_state)
-            action = action_distrib.sample()
+            with chainer.no_backprop_mode():
+                action_distrib, v = self.model(b_state)
+                action = action_distrib.sample()
             return cuda.to_cpu(action.data)[0], cuda.to_cpu(v.data)[0]
 
     def _train(self):
@@ -200,7 +201,7 @@ class PPO(agent.AttributeSavingMixin, agent.Agent):
                 )
 
     def act_and_train(self, state, reward):
-        action, v = self._act(state, train=True)
+        action, v = self._act(state)
 
         # Update stats
         self.average_v += (
@@ -224,7 +225,7 @@ class PPO(agent.AttributeSavingMixin, agent.Agent):
         return action
 
     def act(self, state):
-        action, v = self._act(state, train=False)
+        action, v = self._act(state)
 
         # Update stats
         self.average_v += (
@@ -234,7 +235,7 @@ class PPO(agent.AttributeSavingMixin, agent.Agent):
         return action
 
     def stop_episode_and_train(self, state, reward, done=False):
-        _, v = self._act(state, train=True)
+        _, v = self._act(state)
 
         assert self.last_state is not None
         self.last_episode.append({
