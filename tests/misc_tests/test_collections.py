@@ -6,12 +6,13 @@ from builtins import *  # NOQA
 from future import standard_library
 standard_library.install_aliases()
 
-from chainer import testing
 import collections
-import numpy as np
-from scipy import special
 import timeit
 import unittest
+
+from chainer import testing
+import numpy as np
+from scipy import special
 
 from chainerrl.misc.collections import _sample_n_k
 from chainerrl.misc.collections import RandomAccessQueue
