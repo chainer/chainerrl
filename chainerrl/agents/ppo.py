@@ -67,7 +67,7 @@ class PPO(agent.AttributeSavingMixin, agent.Agent):
                  minibatch_size=64,
                  epochs=10,
                  clip_eps=0.2,
-                 clip_eps_vf=0.2,
+                 clip_eps_vf=None,
                  average_v_decay=0.999, average_loss_decay=0.99,
                  ):
         self.model = model
