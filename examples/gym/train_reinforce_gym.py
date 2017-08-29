@@ -4,10 +4,10 @@ This script is an example of training a REINFORCE agent against OpenAI Gym
 envs. Both discrete and continuous action spaces are supported.
 
 To solve CartPole-v0, run:
-    python train_pcl_gym.py
+    python train_reinforce_gym.py
 
 To solve InvertedPendulum-v1, run:
-    python train_pcl_gym.py --env InvertedPendulum-v1
+    python train_reinforce_gym.py --env InvertedPendulum-v1
 """
 from __future__ import division
 from __future__ import print_function

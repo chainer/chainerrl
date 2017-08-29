@@ -16,11 +16,11 @@ from chainerrl.v_function import VFunction
 
 class SingleModelVFunction(
         chainer.Chain, VFunction, RecurrentChainMixin):
-    """Q-function with discrete actions.
+    """V-function
 
     Args:
         model (chainer.Link):
-            Link that is callable and outputs action values.
+            Link that is callable, inputs states, and outputs state values.
     """
 
     def __init__(self, model):
