@@ -146,10 +146,10 @@ class QuadraticActionValue(ActionValue):
     def evaluate_actions(self, actions):
         u_minus_mu = actions - self.mu
         a = - 0.5 * \
-            F.batch_matmul(F.batch_matmul(
-                u_minus_mu, self.mat, transa=True), u_minus_mu)
-        return (F.reshape(a, (self.batch_size,)) +
-                F.reshape(self.v, (self.batch_size,)))
+            F.matmul(F.matmul(
+                u_minus_mu[:, None, :], self.mat),
+                u_minus_mu[:, :, None])[:, 0, 0]
+        return a + F.reshape(self.v, (self.batch_size,))
 
     def compute_advantage(self, actions):
         return self.evaluate_actions(actions) - self.max
