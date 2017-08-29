@@ -6,6 +6,8 @@ from builtins import *  # NOQA
 from future import standard_library
 standard_library.install_aliases()
 from collections import deque
+from distutils.version import LooseVersion
+import platform
 import random
 
 import numpy as np
@@ -40,7 +42,11 @@ class ReplayBuffer(object):
     def sample(self, n):
         """Sample n unique samples from this replay buffer"""
         assert len(self.memory) >= n
-        return random.sample(self.memory, n)
+        if (LooseVersion('3.5') > LooseVersion(platform.python_version()) and
+                LooseVersion(platform.python_version()) > LooseVersion('3.0')):
+            return random.sample(list(self.memory), n)
+        else:
+            return random.sample(self.memory, n)
 
     def __len__(self):
         return len(self.memory)
@@ -169,12 +175,20 @@ class EpisodicReplayBuffer(object):
     def sample(self, n):
         """Sample n unique samples from this replay buffer"""
         assert len(self.memory) >= n
-        return random.sample(self.memory, n)
+        if (LooseVersion('3.5') > LooseVersion(platform.python_version()) and
+                LooseVersion(platform.python_version()) > LooseVersion('3.0')):
+            return random.sample(list(self.memory), n)
+        else:
+            return random.sample(self.memory, n)
 
     def sample_episodes(self, n_episodes, max_len=None):
         """Sample n unique samples from this replay buffer"""
         assert len(self.episodic_memory) >= n_episodes
-        episodes = random.sample(self.episodic_memory, n_episodes)
+        if (LooseVersion('3.5') > LooseVersion(platform.python_version()) and
+                LooseVersion(platform.python_version()) > LooseVersion('3.0')):
+            episodes = random.sample(list(self.episodic_memory), n_episodes)
+        else:
+            episodes = random.sample(self.episodic_memory, n_episodes)
         if max_len is not None:
             return [random_subseq(ep, max_len) for ep in episodes]
         else:
