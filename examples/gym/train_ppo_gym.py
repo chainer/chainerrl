@@ -140,7 +140,7 @@ def main():
     elif args.arch == 'FFGaussian':
         model = A3CFFGaussian(obs_space.low.size, action_space)
 
-    opt = chainer.optimizers.Adam(alpha=args.lr)
+    opt = chainer.optimizers.Adam(alpha=args.lr, eps=1e-5)
     opt.setup(model)
     if args.weight_decay > 0:
         opt.add_hook(NonbiasWeightDecay(args.weight_decay))
@@ -165,6 +165,13 @@ def main():
             args.eval_n_runs, eval_stats['mean'], eval_stats['median'],
             eval_stats['stdev']))
     else:
+        # Linearly decay the learning rate to zero
+        def lr_setter(env, agent, value):
+            agent.optimizer.alpha = value
+
+        lr_decay_hook = experiments.LinearInterpolationHook(
+            args.steps, args.lr, 0, lr_setter)
+
         experiments.train_agent_with_evaluation(
             agent=agent,
             env=make_env(False),
@@ -173,7 +180,11 @@ def main():
             steps=args.steps,
             eval_n_runs=args.eval_n_runs,
             eval_interval=args.eval_interval,
-            max_episode_len=timestep_limit)
+            max_episode_len=timestep_limit,
+            step_hooks=[
+                lr_decay_hook,
+                ],
+            )
 
 
 if __name__ == '__main__':
