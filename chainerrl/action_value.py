@@ -41,7 +41,7 @@ class ActionValue(with_metaclass(ABCMeta, object)):
 
 
 class DiscreteActionValue(ActionValue):
-    """Qfunction output for discrete action space.
+    """Q-function output for discrete action space.
 
     Args:
         q_values (ndarray or chainer.Variable):
@@ -95,7 +95,7 @@ class DiscreteActionValue(ActionValue):
 
 
 class QuadraticActionValue(ActionValue):
-    """Qfunction output for continuous action space.
+    """Q-function output for continuous action space.
 
     See: http://arxiv.org/abs/1603.00748
 
