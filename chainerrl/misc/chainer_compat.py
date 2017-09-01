@@ -9,11 +9,9 @@ chainer_version = StrictVersion(
 
 if chainer_version < StrictVersion('3.0.0a1'):
     def matmul_v3(a, b, **kwargs):
-        adim = len(a.shape)
-        bdim = len(b.shape)
-        if (adim, bdim) == (3, 3):
+        if (a.ndim, b.ndim) == (3, 3):
             return F.batch_matmul(a, b, **kwargs)
-        elif (adim, bdim) == (2, 2):
+        elif (a.ndim, b.ndim) == (2, 2):
             return F.matmul(a, b, **kwargs)
         else:
             raise Exception("unsupported shapes: {}, {}".format(
