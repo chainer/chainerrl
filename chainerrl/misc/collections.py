@@ -123,7 +123,7 @@ class RandomAccessQueue(object):
 
         return self._queue_front.pop()
 
-    def _sample(self, k):
+    def sample(self, k):
         nf = len(self._queue_front)
         return [self._queue_front[i] if i < nf else self._queue_back[i - nf]
                 for i in _sample_n_k(len(self), k)]

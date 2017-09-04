@@ -39,7 +39,7 @@ class ReplayBuffer(object):
     def sample(self, n):
         """Sample n unique samples from this replay buffer"""
         assert len(self.memory) >= n
-        return self.memory._sample(n)
+        return self.memory.sample(n)
 
     def __len__(self):
         return len(self.memory)
@@ -168,12 +168,12 @@ class EpisodicReplayBuffer(object):
     def sample(self, n):
         """Sample n unique samples from this replay buffer"""
         assert len(self.memory) >= n
-        return self.memory._sample(n)
+        return self.memory.sample(n)
 
     def sample_episodes(self, n_episodes, max_len=None):
         """Sample n unique samples from this replay buffer"""
         assert len(self.episodic_memory) >= n_episodes
-        episodes = self.episodic_memory._sample(n_episodes)
+        episodes = self.episodic_memory.sample(n_episodes)
         if max_len is not None:
             return [random_subseq(ep, max_len) for ep in episodes]
         else:
