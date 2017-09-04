@@ -86,7 +86,7 @@ class TestSampleNK(unittest.TestCase):
 
     def subtest_normal_distrib(self, xs, mean, std):
         _, pvalue = stats.kstest(xs, 'norm', (mean, std))
-        self.assertLess(pvalue, 3e-3)
+        self.assertGreater(pvalue, 3e-3)
 
 
 class TestSampleNKSpeed(unittest.TestCase):
