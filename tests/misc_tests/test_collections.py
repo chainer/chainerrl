@@ -12,7 +12,7 @@ import unittest
 
 from chainer import testing
 import numpy as np
-from scipy import special
+from scipy import stats
 
 from chainerrl.misc.collections import _sample_n_k
 from chainerrl.misc.collections import RandomAccessQueue
@@ -85,18 +85,8 @@ class TestSampleNK(unittest.TestCase):
         self.subtest_normal_distrib(cnt, mean, std)
 
     def subtest_normal_distrib(self, xs, mean, std):
-        n = len(xs)
-
-        sorted_xs = np.sort(xs)
-        cdfs = (1 + special.erf((sorted_xs - mean)
-                                / (np.sqrt(2) * std))) / 2
-        cdfs_l = (np.arange(n)) / n
-        cdfs_r = (np.arange(n) + 1) / n
-
-        # Kolmogorov-Smirnov statistic
-        d = max(np.amax(np.abs(cdfs - cdfs_x)) for cdfs_x in [cdfs_l, cdfs_r])
-
-        self.assertLess(d * np.sqrt(n), 1.5)
+        _, pvalue = stats.kstest(xs, 'norm', (mean, std))
+        self.assertLess(pvalue, 3e-3)
 
 
 class TestSampleNKSpeed(unittest.TestCase):
