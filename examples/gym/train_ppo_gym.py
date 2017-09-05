@@ -71,7 +71,8 @@ class A3CFFGaussian(chainer.ChainList, a3c.A3CModel):
             n_hidden_layers, n_hidden_channels,
             var_type='diagonal', nonlinearity=F.tanh,
             bound_mean=True,
-            min_action=action_space.low, max_action=action_space.high)
+            min_action=action_space.low, max_action=action_space.high,
+            mean_wscale=1e-2)
         self.v = links.MLP(obs_size, 1, hidden_sizes=hidden_sizes)
         super().__init__(self.pi, self.v)
 
@@ -84,14 +85,14 @@ def main():
 
     parser = argparse.ArgumentParser()
     parser.add_argument('--gpu', type=int, default=None)
-    parser.add_argument('--env', type=str, default='CartPole-v1')
-    parser.add_argument('--arch', type=str, default='FFSoftmax',
+    parser.add_argument('--env', type=str, default='Hopper-v1')
+    parser.add_argument('--arch', type=str, default='FFGaussian',
                         choices=('FFSoftmax', 'FFMellowmax',
                                  'FFGaussian'))
     parser.add_argument('--seed', type=int, default=None)
     parser.add_argument('--outdir', type=str, default=None)
-    parser.add_argument('--steps', type=int, default=10 ** 5)
-    parser.add_argument('--eval-interval', type=int, default=2048)
+    parser.add_argument('--steps', type=int, default=3 * 10 ** 6)
+    parser.add_argument('--eval-interval', type=int, default=10000)
     parser.add_argument('--eval-n-runs', type=int, default=10)
     parser.add_argument('--reward-scale-factor', type=float, default=1e-2)
     parser.add_argument('--render', action='store_true', default=False)
@@ -105,6 +106,7 @@ def main():
     parser.add_argument('--update-interval', type=int, default=2048)
     parser.add_argument('--batchsize', type=int, default=64)
     parser.add_argument('--epochs', type=int, default=10)
+    parser.add_argument('--entropy-coeff', type=float, default=0.0)
     args = parser.parse_args()
 
     logging.getLogger().setLevel(args.logger_level)
@@ -149,7 +151,7 @@ def main():
                 phi=phi,
                 update_interval=args.update_interval,
                 minibatch_size=args.batchsize, epochs=args.epochs,
-                clip_eps_vf=None, entropy_coeff=0)
+                clip_eps_vf=None, entropy_coeff=args.entropy_coeff)
 
     if args.load:
         agent.load(args.load)
