@@ -1,3 +1,9 @@
+"""Plot scores.txt
+
+Examples:
+    python plot_scores.py --label 1 --file 1/scores.txt --label 2 --file 2/scores.txt --savefile out.png
+    python plot_scores.py --label 1 --file 1/scores.txt --label 2 --file 2/scores.txt --x episodes --y-range stdev
+"""
 from __future__ import print_function
 from __future__ import unicode_literals
 from __future__ import division
@@ -22,6 +28,9 @@ def main():
     parser.add_argument('--label', action='append', dest='labels',
                         default=[], type=str,
                         help='specify labels for scores.txt files')
+    parser.add_argument('--x', type=str, default='steps')
+    parser.add_argument('--y-range', type=str, default=None)
+    parser.add_argument('--fill-alpha', type=float, default=0.3)
     args = parser.parse_args()
 
     if args.savefile:
@@ -33,14 +42,33 @@ def main():
     assert len(args.files) > 0
     assert len(args.labels) == len(args.files)
 
+    if args.y_range:
+        yerr = args.y_range.split(',')
+        assert 1 <= len(yerr) <= 2
+    else:
+        yerr = []
+
     for fpath, label in zip(args.files, args.labels):
         if os.path.isdir(fpath):
             fpath = os.path.join(fpath, 'scores.txt')
         assert os.path.exists(fpath)
         scores = pd.read_csv(fpath, delimiter='\t')
-        plt.plot(scores['steps'], scores['mean'], label=label)
+        xs = scores[args.x]
+        ys = scores['mean']
+        p, = plt.plot(xs, ys, label=label)
+        if yerr:
+            color = p.get_color()
+            if len(yerr) == 1:
+                es = scores[yerr[0]]
+                ys_high = ys + es
+                ys_low = ys - es
+            else:
+                ys_high = scores[yerr[0]]
+                ys_low = scores[yerr[1]]
+            plt.fill_between(xs, ys_high, ys_low,
+                             label=None, color=color, linewidth=0.0, alpha=args.fill_alpha)
 
-    plt.xlabel('steps')
+    plt.xlabel(args.x)
     plt.ylabel('score')
     plt.legend(loc='best')
     if args.title:
