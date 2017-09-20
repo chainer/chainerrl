@@ -8,13 +8,13 @@ import argparse
 import os
 
 import matplotlib
-matplotlib.use('Agg')  # Needed to run without X-server
-import matplotlib.pyplot as plt
+# Don't `import matplotlib.pyplot` here
 import pandas as pd
 
 
 def main():
     parser = argparse.ArgumentParser()
+    parser.add_argument('--savefile', type=str, default=None)
     parser.add_argument('--title', type=str, default='')
     parser.add_argument('--file', action='append', dest='files',
                         default=[], type=str,
@@ -23,6 +23,12 @@ def main():
                         default=[], type=str,
                         help='specify labels for scores.txt files')
     args = parser.parse_args()
+
+    if args.savefile:
+        matplotlib.use('Agg')  # Needed to run without X-server
+    import matplotlib.pyplot as plt_
+    global plt
+    plt = plt_
 
     assert len(args.files) > 0
     assert len(args.labels) == len(args.files)
@@ -40,9 +46,17 @@ def main():
     if args.title:
         plt.title(args.title)
 
-    fig_fname = args.files[0] + args.title + '.png'
-    plt.savefig(fig_fname)
-    print('Saved a figure as {}'.format(fig_fname))
+    if args.savefile:
+        fig_fname = args.savefile
+
+        _, ext = os.path.splitext(fig_fname)
+        if ext != '.png':
+            fig_fname += '.png'
+
+        plt.savefig(fig_fname)
+        print('Saved a figure as {}'.format(fig_fname))
+    else:
+        plt.show()
 
 if __name__ == '__main__':
     main()
