@@ -174,6 +174,13 @@ def main():
         lr_decay_hook = experiments.LinearInterpolationHook(
             args.steps, args.lr, 0, lr_setter)
 
+        # Linearly decay the clipping parameter to zero
+        def clip_eps_setter(env, agent, value):
+            agent.clip_eps = value
+
+        clip_eps_decay_hook = experiments.LinearInterpolationHook(
+            args.steps, 0.2, 0, clip_eps_setter)
+
         experiments.train_agent_with_evaluation(
             agent=agent,
             env=make_env(False),
@@ -185,6 +192,7 @@ def main():
             max_episode_len=timestep_limit,
             step_hooks=[
                 lr_decay_hook,
+                clip_eps_decay_hook,
                 ],
             )
 
