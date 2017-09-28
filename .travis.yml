@@ -12,7 +12,7 @@ install:
   - pip install -r requirements.txt --only-binary=numpy,scipy
   - |
     if [ $CHAINER_VERSION -eq 2 ]; then
-      pip install "chainer>=2.0.0,<3.0.0"
+      pip install "chainer<3.0.0"
     else
       pip install "chainer>=3.0.0rc1"
     fi
