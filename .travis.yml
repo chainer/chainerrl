@@ -9,13 +9,13 @@ env:
 # command to install dependencies
 install:
   - pip install --upgrade pip setuptools wheel
-  - pip install -r requirements.txt --only-binary=numpy,scipy
   - |
     if [ $CHAINER_VERSION -eq 2 ]; then
       pip install "chainer<3.0.0"
     else
       pip install "chainer>=3.0.0rc1"
     fi
+  - pip install -r requirements.txt --only-binary=numpy,scipy
   - pip install jupyter
   - pip install atari_py>=0.1.1
   - pip install hacking
