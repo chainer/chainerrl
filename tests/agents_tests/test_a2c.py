@@ -75,6 +75,7 @@ class TestA2C(unittest.TestCase):
             eval_env=test_env)
 
         agent.stop_episode()
+        env.close()
 
         # Test
         n_test_runs = 100

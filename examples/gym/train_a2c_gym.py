@@ -197,6 +197,7 @@ def main():
             log_interval=args.log_interval,
             eval_n_runs=args.eval_n_runs, eval_interval=args.eval_interval,
             outdir=args.outdir, eval_env=eval_env)
+    sample_env.close()
 
 
 if __name__ == '__main__':
