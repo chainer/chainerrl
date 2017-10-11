@@ -1,3 +1,4 @@
+from chainerrl.agents.a2c import A2C  # NOQA
 from chainerrl.agents.a3c import A3C  # NOQA
 from chainerrl.agents.acer import ACER  # NOQA
 from chainerrl.agents.al import AL  # NOQA
