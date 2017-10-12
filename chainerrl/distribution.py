@@ -276,13 +276,13 @@ class GaussianDistribution(Distribution):
     def prob(self, x):
         return F.exp(self.log_prob(x))
 
-    def log_prob(self, x, keepdims=False):
+    def log_prob(self, x):
         # log N(x|mean,var)
         #   = -0.5log(2pi) - 0.5log(var) - (x - mean)**2 / (2*var)
         log_probs = -0.5 * np.log(2 * np.pi) - \
             0.5 * self.ln_var - \
             ((x - self.mean) ** 2) / (2 * self.var)
-        return F.sum(log_probs, axis=1, keepdims=keepdims)
+        return F.sum(log_probs, axis=1)
 
     @cached_property
     def entropy(self):
