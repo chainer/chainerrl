@@ -12,7 +12,6 @@ import chainer
 from chainer import functions as F
 
 from chainerrl import agent
-from chainerrl import distribution
 from chainerrl.misc.batch_states import batch_states
 from chainerrl.recurrent import RecurrentChainMixin
 
@@ -191,13 +190,7 @@ class A2C(agent.AttributeSavingMixin):
 
         actions = chainer.Variable(
             self.actions.reshape([-1] + list(self.action_shape)))
-        if isinstance(pout, distribution.CategoricalDistribution):
-            dist_entropy = F.mean(pout.entropy)
-        elif isinstance(pout, distribution.GaussianDistribution):
-            log_prob = pout.log_prob(actions, keepdims=True)
-            dist_entropy = F.mean(F.sum(log_prob, axis=-1))
-        else:
-            raise TypeError("Type of {} is not supported.".format(type(pout)))
+        dist_entropy = F.mean(pout.entropy)
         action_log_probs = pout.log_prob(actions)
 
         values = values.reshape(self.update_steps, self.num_processes, 1)
