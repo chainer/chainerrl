@@ -94,7 +94,8 @@ def main():
     parser.add_argument('--steps', type=int, default=3 * 10 ** 6)
     parser.add_argument('--eval-interval', type=int, default=10000)
     parser.add_argument('--eval-n-runs', type=int, default=10)
-    parser.add_argument('--reward-scale-factor', type=float, default=1e-2)
+    parser.add_argument('--reward-scale-factor', type=float, default=None)
+    parser.add_argument('--standardize-advantages', action='store_true')
     parser.add_argument('--render', action='store_true', default=False)
     parser.add_argument('--lr', type=float, default=3e-4)
     parser.add_argument('--weight-decay', type=float, default=0.0)
@@ -121,7 +122,7 @@ def main():
         if args.monitor:
             env = gym.wrappers.Monitor(env, args.outdir)
         # Scale rewards observed by agents
-        if not test:
+        if args.reward_scale_factor and not test:
             misc.env_modifiers.make_reward_filtered(
                 env, lambda x: x * args.reward_scale_factor)
         if args.render:
@@ -151,7 +152,9 @@ def main():
                 phi=phi,
                 update_interval=args.update_interval,
                 minibatch_size=args.batchsize, epochs=args.epochs,
-                clip_eps_vf=None, entropy_coeff=args.entropy_coeff)
+                clip_eps_vf=None, entropy_coeff=args.entropy_coeff,
+                standardize_advantages=args.standardize_advantages,
+                )
 
     if args.load:
         agent.load(args.load)

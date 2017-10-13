@@ -58,6 +58,7 @@ def main():
 
     parser.add_argument('--eval-interval', type=int, default=10 ** 6)
     parser.add_argument('--eval-n-runs', type=int, default=10)
+    parser.add_argument('--standardize-advantages', action='store_true')
     parser.add_argument('--weight-decay', type=float, default=0.0)
     parser.add_argument('--demo', action='store_true', default=False)
     parser.add_argument('--load', type=str, default='')
@@ -94,6 +95,7 @@ def main():
                 minibatch_size=args.batchsize, epochs=args.epochs,
                 clip_eps=0.1,
                 clip_eps_vf=None,
+                standardize_advantages=args.standardize_advantages,
                 )
     if args.load:
         agent.load(args.load)
