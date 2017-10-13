@@ -107,7 +107,7 @@ def main():
     parser.add_argument('--update-interval', type=int, default=2048)
     parser.add_argument('--batchsize', type=int, default=64)
     parser.add_argument('--epochs', type=int, default=10)
-    parser.add_argument('--entropy-coeff', type=float, default=0.0)
+    parser.add_argument('--entropy-coef', type=float, default=0.0)
     args = parser.parse_args()
 
     logging.getLogger().setLevel(args.logger_level)
@@ -152,7 +152,7 @@ def main():
                 phi=phi,
                 update_interval=args.update_interval,
                 minibatch_size=args.batchsize, epochs=args.epochs,
-                clip_eps_vf=None, entropy_coeff=args.entropy_coeff,
+                clip_eps_vf=None, entropy_coef=args.entropy_coef,
                 standardize_advantages=args.standardize_advantages,
                 )
 

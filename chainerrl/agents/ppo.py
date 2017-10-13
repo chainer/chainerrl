@@ -37,9 +37,9 @@ class PPO(agent.AttributeSavingMixin, agent.Agent):
         gamma (float): Discount factor [0, 1]
         lambd (float): Lambda-return factor [0, 1]
         phi (callable): Feature extractor function
-        value_func_coeff (float): Weight coefficient for loss of
+        value_func_coef (float): Weight coefficient for loss of
             value function (0, inf)
-        entropy_coeff (float): Weight coefficient for entropoy bonus [0, inf)
+        entropy_coef (float): Weight coefficient for entropoy bonus [0, inf)
         update_interval (int): Model update interval in step
         minibatch_size (int): Minibatch size
         epochs (int): Training epochs in an update
@@ -61,8 +61,8 @@ class PPO(agent.AttributeSavingMixin, agent.Agent):
                  gamma=0.99,
                  lambd=0.95,
                  phi=lambda x: x,
-                 value_func_coeff=1.0,
-                 entropy_coeff=0.01,
+                 value_func_coef=1.0,
+                 entropy_coef=0.01,
                  update_interval=2048,
                  minibatch_size=64,
                  epochs=10,
@@ -81,8 +81,8 @@ class PPO(agent.AttributeSavingMixin, agent.Agent):
         self.gamma = gamma
         self.lambd = lambd
         self.phi = phi
-        self.value_func_coeff = value_func_coeff
-        self.entropy_coeff = entropy_coeff
+        self.value_func_coef = value_func_coef
+        self.entropy_coef = entropy_coef
         self.update_interval = update_interval
         self.minibatch_size = minibatch_size
         self.epochs = epochs
@@ -181,8 +181,8 @@ class PPO(agent.AttributeSavingMixin, agent.Agent):
 
         return (
             loss_policy
-            + self.value_func_coeff * loss_value_func
-            + self.entropy_coeff * loss_entropy
+            + self.value_func_coef * loss_value_func
+            + self.entropy_coef * loss_entropy
             )
 
     def update(self):
