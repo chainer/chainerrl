@@ -26,7 +26,8 @@ from chainerrl import v_functions
     testing.product({
         'clip_eps_vf': [None, 0.2],
         'lambd': [0.0, 0.5],
-        'discrete': [False, True]
+        'discrete': [False, True],
+        'standardize_advantages': [False, True],
     })
 ))
 class TestPPO(unittest.TestCase):
@@ -106,7 +107,8 @@ class TestPPO(unittest.TestCase):
     def make_ppo_agent(self, env, model, opt, gpu):
         return PPO(model, opt, gpu=gpu, gamma=0.9, lambd=self.lambd,
                    update_interval=50, minibatch_size=25, epochs=3,
-                   clip_eps_vf=self.clip_eps_vf)
+                   clip_eps_vf=self.clip_eps_vf,
+                   standardize_advantages=self.standardize_advantages)
 
     def make_model(self, env):
         n_hidden_channels = 50
