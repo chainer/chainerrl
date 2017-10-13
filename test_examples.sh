@@ -62,7 +62,7 @@ python examples/gym/train_reinforce_gym.py --steps 100 --batchsize 1 --outdir $o
 model=$(find $outdir/gym/reinforce -name "*_finish")
 python examples/gym/train_reinforce_gym.py --demo --load $model --eval-n-runs 1 --gpu $gpu
 
-# gym/ppo
-python examples/gym/train_ppo_gym.py --steps 100 --update-interval 50 --batchsize 16 --epochs 2 --outdir $outdir/gym/ppo --gpu $gpu
+# gym/ppo (specify non-mujoco env to test without mujoco)
+python examples/gym/train_ppo_gym.py --steps 100 --update-interval 50 --batchsize 16 --epochs 2 --outdir $outdir/gym/ppo --env Pendulum-v0 --gpu $gpu
 model=$(find $outdir/gym/ppo -name "*_finish")
-python examples/gym/train_ppo_gym.py --demo --load $model --eval-n-runs 1 --gpu $gpu
+python examples/gym/train_ppo_gym.py --demo --load $model --eval-n-runs 1 --env Pendulum-v0 --gpu $gpu
