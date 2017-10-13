@@ -5,20 +5,19 @@ from __future__ import absolute_import
 from builtins import *  # NOQA
 from future import standard_library
 standard_library.install_aliases()
-from collections import deque
-import random
 
 import numpy as np
 import six.moves.cPickle as pickle
 
 from chainerrl.misc.batch_states import batch_states
+from chainerrl.misc.collections import RandomAccessQueue
 from chainerrl.misc.prioritized import PrioritizedBuffer
 
 
 class ReplayBuffer(object):
 
     def __init__(self, capacity=None):
-        self.memory = deque(maxlen=capacity)
+        self.memory = RandomAccessQueue(maxlen=capacity)
 
     def append(self, state, action, reward, next_state=None, next_action=None,
                is_state_terminal=False):
@@ -40,7 +39,7 @@ class ReplayBuffer(object):
     def sample(self, n):
         """Sample n unique samples from this replay buffer"""
         assert len(self.memory) >= n
-        return random.sample(self.memory, n)
+        return self.memory.sample(n)
 
     def __len__(self):
         return len(self.memory)
@@ -142,8 +141,8 @@ class EpisodicReplayBuffer(object):
 
     def __init__(self, capacity=None):
         self.current_episode = []
-        self.episodic_memory = deque()
-        self.memory = deque()
+        self.episodic_memory = RandomAccessQueue()
+        self.memory = RandomAccessQueue()
         self.capacity = capacity
 
     def append(self, state, action, reward, next_state=None, next_action=None,
@@ -169,12 +168,12 @@ class EpisodicReplayBuffer(object):
     def sample(self, n):
         """Sample n unique samples from this replay buffer"""
         assert len(self.memory) >= n
-        return random.sample(self.memory, n)
+        return self.memory.sample(n)
 
     def sample_episodes(self, n_episodes, max_len=None):
         """Sample n unique samples from this replay buffer"""
         assert len(self.episodic_memory) >= n_episodes
-        episodes = random.sample(self.episodic_memory, n_episodes)
+        episodes = self.episodic_memory.sample(n_episodes)
         if max_len is not None:
             return [random_subseq(ep, max_len) for ep in episodes]
         else:
@@ -218,7 +217,7 @@ class PrioritizedEpisodicReplayBuffer (
         self.episodic_memory = PrioritizedBuffer(
             capacity=None,
             wait_priority_after_sampling=wait_priority_after_sampling)
-        self.memory = deque(maxlen=capacity)
+        self.memory = RandomAccessQueue(maxlen=capacity)
         self.capacity_left = capacity
         self.default_priority_func = default_priority_func
         self.uniform_ratio = uniform_ratio
