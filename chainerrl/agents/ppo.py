@@ -68,6 +68,7 @@ class PPO(agent.AttributeSavingMixin, agent.Agent):
                  epochs=10,
                  clip_eps=0.2,
                  clip_eps_vf=None,
+                 standardize_advantages=True,
                  average_v_decay=0.999, average_loss_decay=0.99,
                  ):
         self.model = model
@@ -87,6 +88,7 @@ class PPO(agent.AttributeSavingMixin, agent.Agent):
         self.epochs = epochs
         self.clip_eps = clip_eps
         self.clip_eps_vf = clip_eps_vf
+        self.standardize_advantages = standardize_advantages
 
         self.average_v = 0
         self.average_v_decay = average_v_decay
@@ -185,6 +187,12 @@ class PPO(agent.AttributeSavingMixin, agent.Agent):
 
     def update(self):
         xp = self.xp
+
+        if self.standardize_advantages:
+            all_advs = xp.array([b['adv'] for b in self.memory])
+            mean_advs = xp.mean(all_advs)
+            std_advs = xp.std(all_advs)
+
         target_model = copy.deepcopy(self.model)
         dataset_iter = chainer.iterators.SerialIterator(
             self.memory, self.minibatch_size)
@@ -196,13 +204,18 @@ class PPO(agent.AttributeSavingMixin, agent.Agent):
             actions = xp.array([b['action'] for b in batch])
             distribs, vs_pred = self.model(states)
             target_distribs, _ = target_model(states)
+
+            advs = xp.array([b['adv'] for b in batch], dtype=xp.float32)
+            if self.standardize_advantages:
+                advs = (advs - mean_advs) / std_advs
+
             self.optimizer.update(
                 self._lossfun,
                 distribs, vs_pred, distribs.log_prob(actions),
                 vs_pred_old=xp.array(
                     [b['v_pred'] for b in batch], dtype=xp.float32),
                 target_log_probs=target_distribs.log_prob(actions),
-                advs=xp.array([b['adv'] for b in batch], dtype=xp.float32),
+                advs=advs,
                 vs_teacher=xp.array(
                     [b['v_teacher'] for b in batch], dtype=xp.float32),
                 )
