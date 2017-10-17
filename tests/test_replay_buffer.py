@@ -130,13 +130,13 @@ class TestEpisodicReplayBuffer(unittest.TestCase):
 
     def test_save_and_load(self):
         for capacity in [100, None]:
-            self.subtest_append_and_sample(capacity)
+            self.subtest_save_and_load(capacity)
 
     def subtest_save_and_load(self, capacity):
 
         tempdir = tempfile.mkdtemp()
 
-        rbuf = replay_buffer.ReplayBuffer(capacity)
+        rbuf = replay_buffer.EpisodicReplayBuffer(capacity)
 
         transs = [dict(state=n, action=n+10, reward=n+20,
                        next_state=n+1, next_action=n+11,
@@ -158,7 +158,7 @@ class TestEpisodicReplayBuffer(unittest.TestCase):
         rbuf.save(filename)
 
         # Initialize rbuf
-        rbuf = replay_buffer.ReplayBuffer(capacity)
+        rbuf = replay_buffer.EpisodicReplayBuffer(capacity)
 
         # Of course it has no transition yet
         self.assertEqual(len(rbuf), 0)
@@ -168,7 +168,7 @@ class TestEpisodicReplayBuffer(unittest.TestCase):
 
         # Sampled transitions are exactly what I added!
         s5 = rbuf.sample(5)
-        self.assertEqual(len(s5) == 5)
+        self.assertEqual(len(s5), 5)
         for t in s5:
             n = t['state']
             self.assertIn(n, range(5))
@@ -176,7 +176,7 @@ class TestEpisodicReplayBuffer(unittest.TestCase):
 
         # And sampled episodes are exactly what I added!
         s2e = rbuf.sample_episodes(2)
-        self.assertEqual(len(s2e) == 2)
+        self.assertEqual(len(s2e), 2)
         if s2e[0][0]['state'] == 0:
             self.assertEqual(s2e[0], [transs[0], transs[1]])
             self.assertEqual(s2e[1], [transs[2], transs[3], transs[4]])
