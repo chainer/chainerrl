@@ -1,12 +1,15 @@
-from distutils.version import StrictVersion
+try:
+    from packaging import version
+except ImportError:
+    from pip._vendor.packaging import version
 
 import chainer
 import chainer.functions as F
 
 
-chainer_version = StrictVersion(chainer.__version__)
+chainer_version = version.parse(chainer.__version__)
 
-if chainer_version < StrictVersion('3.0.0a1'):
+if chainer_version < version.parse('3.0.0a1'):
     """Chainer's PR #2426 changed the behavior of matmul
 
     Simulate the newer behavior by functions in Chainer v2
