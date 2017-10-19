@@ -273,6 +273,9 @@ class PCL(agent.AttributeSavingMixin, agent.AsyncAgent):
         if len(self.replay_buffer) < self.replay_start_size:
             return
 
+        if self.replay_buffer.n_episodes < self.batchsize:
+            return
+
         if self.process_idx == 0:
             self.logger.debug('update_from_replay')
 
