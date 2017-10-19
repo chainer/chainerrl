@@ -17,6 +17,7 @@ from chainerrl.action_value import QuadraticActionValue
 from chainerrl.functions.lower_triangular_matrix import lower_triangular_matrix
 from chainerrl.links.mlp import MLP
 from chainerrl.links.mlp_bn import MLPBN
+from chainerrl.misc.chainer_compat import matmul_v3
 from chainerrl.q_function import StateQFunction
 from chainerrl.recurrent import RecurrentChainMixin
 
@@ -154,7 +155,7 @@ class FCQuadraticStateQFunction(
         if hasattr(self, 'mat_non_diag'):
             mat_non_diag = self.mat_non_diag(h)
             tril = lower_triangular_matrix(mat_diag, mat_non_diag)
-            mat = F.batch_matmul(tril, tril, transb=True)
+            mat = matmul_v3(tril, tril, transb=True)
         else:
             mat = F.expand_dims(mat_diag ** 2, axis=2)
         return QuadraticActionValue(
@@ -213,7 +214,7 @@ class FCBNQuadraticStateQFunction(chainer.Chain, StateQFunction):
         if hasattr(self, 'mat_non_diag'):
             mat_non_diag = self.mat_non_diag(h)
             tril = lower_triangular_matrix(mat_diag, mat_non_diag)
-            mat = F.batch_matmul(tril, tril, transb=True)
+            mat = matmul_v3(tril, tril, transb=True)
         else:
             mat = F.expand_dims(mat_diag ** 2, axis=2)
         return QuadraticActionValue(

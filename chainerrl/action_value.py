@@ -17,6 +17,8 @@ from chainer import cuda
 from chainer import functions as F
 import numpy as np
 
+from chainerrl.misc.chainer_compat import matmul_v3
+
 
 class ActionValue(with_metaclass(ABCMeta, object)):
     """Struct that holds state-fixed Q-functions and its subproducts.
@@ -146,10 +148,10 @@ class QuadraticActionValue(ActionValue):
     def evaluate_actions(self, actions):
         u_minus_mu = actions - self.mu
         a = - 0.5 * \
-            F.batch_matmul(F.batch_matmul(
-                u_minus_mu, self.mat, transa=True), u_minus_mu)
-        return (F.reshape(a, (self.batch_size,)) +
-                F.reshape(self.v, (self.batch_size,)))
+            matmul_v3(matmul_v3(
+                u_minus_mu[:, None, :], self.mat),
+                u_minus_mu[:, :, None])[:, 0, 0]
+        return a + F.reshape(self.v, (self.batch_size,))
 
     def compute_advantage(self, actions):
         return self.evaluate_actions(actions) - self.max
