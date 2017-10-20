@@ -4,7 +4,12 @@ from __future__ import division
 from __future__ import absolute_import
 from builtins import *  # NOQA
 from future import standard_library
+from future.utils import with_metaclass
 standard_library.install_aliases()
+
+from abc import ABCMeta
+from abc import abstractmethod
+from abc import abstractproperty
 
 import numpy as np
 import six.moves.cPickle as pickle
@@ -14,13 +19,14 @@ from chainerrl.misc.collections import RandomAccessQueue
 from chainerrl.misc.prioritized import PrioritizedBuffer
 
 
-class AbstractReplayBuffer(object):
+class AbstractReplayBuffer(with_metaclass(ABCMeta, object)):
     """Defines a common interface of replay buffer.
 
     You can append transitions to the replay buffer and later sample from it.
     Replay buffers are typically used in experience replay.
     """
 
+    @abstractmethod
     def append(self, state, action, reward, next_state=None, next_action=None,
                is_state_terminal=False):
         """Append a transition to this replay buffer.
@@ -35,6 +41,7 @@ class AbstractReplayBuffer(object):
         """
         raise NotImplementedError
 
+    @abstractmethod
     def sample(self, n):
         """Sample n unique transitions from this replay buffer.
 
@@ -45,6 +52,7 @@ class AbstractReplayBuffer(object):
         """
         raise NotImplementedError
 
+    @abstractmethod
     def __len__(self):
         """Return the number of transitions in the buffer.
 
@@ -53,6 +61,7 @@ class AbstractReplayBuffer(object):
         """
         raise NotImplementedError
 
+    @abstractmethod
     def save(self, filename):
         """Save the content of the buffer to a file.
 
@@ -61,6 +70,7 @@ class AbstractReplayBuffer(object):
         """
         raise NotImplementedError
 
+    @abstractmethod
     def load(self, filename):
         """Load the content of the buffer from a file.
 
@@ -76,6 +86,7 @@ class AbstractEpisodicReplayBuffer(AbstractReplayBuffer):
     Episodic replay buffers allows you to append and sample episodes.
     """
 
+    @abstractmethod
     def sample_episodes(self, n_episodes, max_len=None):
         """Sample n unique (sub)episodes from this replay buffer.
 
@@ -91,7 +102,7 @@ class AbstractEpisodicReplayBuffer(AbstractReplayBuffer):
         """
         raise NotImplementedError
 
-    @property
+    @abstractproperty
     def n_episodes(self):
         """Returns the number of episodes in the buffer.
 
@@ -100,6 +111,7 @@ class AbstractEpisodicReplayBuffer(AbstractReplayBuffer):
         """
         raise NotImplementedError
 
+    @abstractmethod
     def stop_current_episode(self):
         """Notify the buffer that the current episode is interrupted.
 
