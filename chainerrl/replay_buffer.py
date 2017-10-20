@@ -4,7 +4,12 @@ from __future__ import division
 from __future__ import absolute_import
 from builtins import *  # NOQA
 from future import standard_library
+from future.utils import with_metaclass
 standard_library.install_aliases()
+
+from abc import ABCMeta
+from abc import abstractmethod
+from abc import abstractproperty
 
 import numpy as np
 import six.moves.cPickle as pickle
@@ -14,14 +19,17 @@ from chainerrl.misc.collections import RandomAccessQueue
 from chainerrl.misc.prioritized import PrioritizedBuffer
 
 
-class ReplayBuffer(object):
+class AbstractReplayBuffer(with_metaclass(ABCMeta, object)):
+    """Defines a common interface of replay buffer.
 
-    def __init__(self, capacity=None):
-        self.memory = RandomAccessQueue(maxlen=capacity)
+    You can append transitions to the replay buffer and later sample from it.
+    Replay buffers are typically used in experience replay.
+    """
 
+    @abstractmethod
     def append(self, state, action, reward, next_state=None, next_action=None,
                is_state_terminal=False):
-        """Append a transition to this replay buffer
+        """Append a transition to this replay buffer.
 
         Args:
             state: s_t
@@ -31,13 +39,107 @@ class ReplayBuffer(object):
             next_action: a_{t+1} (can be None for off-policy algorithms)
             is_state_terminal (bool)
         """
+        raise NotImplementedError
+
+    @abstractmethod
+    def sample(self, n):
+        """Sample n unique transitions from this replay buffer.
+
+        Args:
+            n (int): Number of transitions to sample.
+        Returns:
+            Sequence of n sampled transitions.
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def __len__(self):
+        """Return the number of transitions in the buffer.
+
+        Returns:
+            Number of transitions in the buffer.
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def save(self, filename):
+        """Save the content of the buffer to a file.
+
+        Args:
+            filename (str): Path to a file.
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def load(self, filename):
+        """Load the content of the buffer from a file.
+
+        Args:
+            filename (str): Path to a file.
+        """
+        raise NotImplementedError
+
+
+class AbstractEpisodicReplayBuffer(AbstractReplayBuffer):
+    """Defines a common interface of episodic replay buffer.
+
+    Episodic replay buffers allows you to append and sample episodes.
+    """
+
+    @abstractmethod
+    def sample_episodes(self, n_episodes, max_len=None):
+        """Sample n unique (sub)episodes from this replay buffer.
+
+        Args:
+            n (int): Number of episodes to sample.
+            max_len (int or None): Maximum length of sampled episodes. If it is
+                smaller than the length of some episode, the subsequence of the
+                episode is sampled instead. If None, full episodes are always
+                returned.
+        Returns:
+            Sequence of n sampled epiosodes, each of which is a sequence of
+            transitions.
+        """
+        raise NotImplementedError
+
+    @abstractproperty
+    def n_episodes(self):
+        """Returns the number of episodes in the buffer.
+
+        Returns:
+            Number of episodes in the buffer.
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def stop_current_episode(self):
+        """Notify the buffer that the current episode is interrupted.
+
+        You may want to interrupt the current episode and start a new one
+        before observing a terminal state. This is typical in continuing envs.
+        In such cases, you need to call this method before appending a new
+        transition so that the buffer will treat it as an initial transition of
+        a new episode.
+
+        This method should not be called after an episode whose termination is
+        already notified by appending a transition with is_state_terminal=True.
+        """
+        raise NotImplementedError
+
+
+class ReplayBuffer(AbstractReplayBuffer):
+
+    def __init__(self, capacity=None):
+        self.memory = RandomAccessQueue(maxlen=capacity)
+
+    def append(self, state, action, reward, next_state=None, next_action=None,
+               is_state_terminal=False):
         experience = dict(state=state, action=action, reward=reward,
                           next_state=next_state, next_action=next_action,
                           is_state_terminal=is_state_terminal)
         self.memory.append(experience)
 
     def sample(self, n):
-        """Sample n unique samples from this replay buffer"""
         assert len(self.memory) >= n
         return self.memory.sample(n)
 
@@ -117,7 +219,6 @@ class PrioritizedReplayBuffer(ReplayBuffer, PriorityWeightError):
             self, alpha, beta0, betasteps, eps, normalize_by_max)
 
     def sample(self, n):
-        """Sample n unique samples from this replay buffer"""
         assert len(self.memory) >= n
         sampled, probabilities = self.memory.sample(n)
         weights = self.weights_from_probabilities(probabilities)
@@ -137,7 +238,7 @@ def random_subseq(seq, subseq_len):
         return seq[i:i + subseq_len]
 
 
-class EpisodicReplayBuffer(object):
+class EpisodicReplayBuffer(AbstractEpisodicReplayBuffer):
 
     def __init__(self, capacity=None):
         self.current_episode = []
@@ -147,16 +248,6 @@ class EpisodicReplayBuffer(object):
 
     def append(self, state, action, reward, next_state=None, next_action=None,
                is_state_terminal=False, **kwargs):
-        """Append a transition to this replay buffer
-
-        Args:
-            state: s_t
-            action: a_t
-            reward: r_t
-            next_state: s_{t+1} (can be None if terminal)
-            next_action: a_{t+1} (can be None for off-policy algorithms)
-            is_state_terminal (bool)
-        """
         experience = dict(state=state, action=action, reward=reward,
                           next_state=next_state, next_action=next_action,
                           is_state_terminal=is_state_terminal,
@@ -166,12 +257,10 @@ class EpisodicReplayBuffer(object):
             self.stop_current_episode()
 
     def sample(self, n):
-        """Sample n unique samples from this replay buffer"""
         assert len(self.memory) >= n
         return self.memory.sample(n)
 
     def sample_episodes(self, n_episodes, max_len=None):
-        """Sample n unique samples from this replay buffer"""
         assert len(self.episodic_memory) >= n_episodes
         episodes = self.episodic_memory.sample(n_episodes)
         if max_len is not None:
@@ -180,6 +269,10 @@ class EpisodicReplayBuffer(object):
             return episodes
 
     def __len__(self):
+        return len(self.memory)
+
+    @property
+    def n_episodes(self):
         return len(self.episodic_memory)
 
     def save(self, filename):
@@ -313,6 +406,11 @@ class ReplayUpdater(object):
     def update_if_necessary(self, iteration):
         if len(self.replay_buffer) < self.replay_start_size:
             return
+
+        if (self.episodic_update
+                and self.replay_buffer.n_episodes < self.batchsize):
+            return
+
         if iteration % self.update_interval != 0:
             return
 
