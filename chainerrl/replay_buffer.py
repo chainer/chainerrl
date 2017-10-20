@@ -115,17 +115,16 @@ class AbstractEpisodicReplayBuffer(AbstractReplayBuffer):
     def stop_current_episode(self):
         """Notify the buffer that the current episode is interrupted.
 
-        When a transtion with is_state_terminal=True is appended, the buffer
-        will treat it as the last transition in an episode and the next
-        transition as the initial transition of the next episode. You don't
-        have to call this method in such cases. On the other hand, sometimes
-        you may want to interrupt the current episode and start a new one
+        You may want to interrupt the current episode and start a new one
         before observing a terminal state. This is typical in continuing envs.
         In such cases, you need to call this method before appending a new
         transition so that the buffer will treat it as an initial transition of
         a new episode.
+
+        This method should not be called after an episode whose termination is
+        already notified by appending a transition with is_state_terminal=True.
         """
-        pass
+        raise NotImplementedError
 
 
 class ReplayBuffer(AbstractReplayBuffer):
