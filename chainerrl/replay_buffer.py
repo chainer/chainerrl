@@ -407,6 +407,11 @@ class ReplayUpdater(object):
     def update_if_necessary(self, iteration):
         if len(self.replay_buffer) < self.replay_start_size:
             return
+
+        if (self.episodic_update
+                and self.replay_buffer.n_episodes < self.batchsize):
+            return
+
         if iteration % self.update_interval != 0:
             return
 
