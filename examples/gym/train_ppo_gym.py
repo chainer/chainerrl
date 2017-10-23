@@ -60,23 +60,34 @@ class A3CFFMellowmax(chainer.ChainList, a3c.A3CModel):
         return self.pi(state), self.v(state)
 
 
-class A3CFFGaussian(chainer.ChainList, a3c.A3CModel):
+class A3CFFGaussian(chainer.Chain, a3c.A3CModel):
     """An example of A3C feedforward Gaussian policy."""
 
     def __init__(self, obs_size, action_space,
-                 n_hidden_layers=2, n_hidden_channels=64):
+                 n_hidden_layers=2, n_hidden_channels=64,
+                 normalize_obs=None):
+        assert normalize_obs in [False, True]
+        super().__init__()
         hidden_sizes = (n_hidden_channels,) * n_hidden_layers
-        self.pi = policies.FCGaussianPolicyWithStateIndependentCovariance(
-            obs_size, action_space.low.size,
-            n_hidden_layers, n_hidden_channels,
-            var_type='diagonal', nonlinearity=F.tanh,
-            bound_mean=True,
-            min_action=action_space.low, max_action=action_space.high,
-            mean_wscale=1e-2)
-        self.v = links.MLP(obs_size, 1, hidden_sizes=hidden_sizes)
-        super().__init__(self.pi, self.v)
+        self.normalize_obs = normalize_obs
+        with self.init_scope():
+            self.pi = policies.FCGaussianPolicyWithStateIndependentCovariance(
+                obs_size, action_space.low.size,
+                n_hidden_layers, n_hidden_channels,
+                var_type='diagonal', nonlinearity=F.tanh,
+                bound_mean=True,
+                min_action=action_space.low, max_action=action_space.high,
+                mean_wscale=1e-2)
+            self.v = links.MLP(obs_size, 1, hidden_sizes=hidden_sizes)
+            if self.normalize_obs:
+                self.obs_filter = links.EmpiricalNormalization(
+                    shape=obs_size
+                )
 
     def pi_and_v(self, state):
+        if self.normalize_obs:
+            state = self.obs_filter(state)
+
         return self.pi(state), self.v(state)
 
 
@@ -89,6 +100,7 @@ def main():
     parser.add_argument('--arch', type=str, default='FFGaussian',
                         choices=('FFSoftmax', 'FFMellowmax',
                                  'FFGaussian'))
+    parser.add_argument('--normalize-obs', action='store_true')
     parser.add_argument('--seed', type=int, default=None)
     parser.add_argument('--outdir', type=str, default=None)
     parser.add_argument('--steps', type=int, default=10 ** 6)
@@ -141,7 +153,8 @@ def main():
     elif args.arch == 'FFMellowmax':
         model = A3CFFMellowmax(obs_space.low.size, action_space.n)
     elif args.arch == 'FFGaussian':
-        model = A3CFFGaussian(obs_space.low.size, action_space)
+        model = A3CFFGaussian(obs_space.low.size, action_space,
+                              normalize_obs=args.normalize_obs)
 
     opt = chainer.optimizers.Adam(alpha=args.lr, eps=1e-5)
     opt.setup(model)
