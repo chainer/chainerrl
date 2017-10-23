@@ -64,7 +64,7 @@ class A3CFFGaussian(chainer.ChainList, a3c.A3CModel):
     """An example of A3C feedforward Gaussian policy."""
 
     def __init__(self, obs_size, action_space,
-                 n_hidden_layers=2, n_hidden_channels=200):
+                 n_hidden_layers=2, n_hidden_channels=64):
         hidden_sizes = (n_hidden_channels,) * n_hidden_layers
         self.pi = policies.FCGaussianPolicyWithStateIndependentCovariance(
             obs_size, action_space.low.size,
@@ -91,10 +91,10 @@ def main():
                                  'FFGaussian'))
     parser.add_argument('--seed', type=int, default=None)
     parser.add_argument('--outdir', type=str, default=None)
-    parser.add_argument('--steps', type=int, default=3 * 10 ** 6)
+    parser.add_argument('--steps', type=int, default=10 ** 6)
     parser.add_argument('--eval-interval', type=int, default=10000)
     parser.add_argument('--eval-n-runs', type=int, default=10)
-    parser.add_argument('--reward-scale-factor', type=float, default=None)
+    parser.add_argument('--reward-scale-factor', type=float, default=1e-2)
     parser.add_argument('--standardize-advantages', action='store_true')
     parser.add_argument('--render', action='store_true', default=False)
     parser.add_argument('--lr', type=float, default=3e-4)
