@@ -67,6 +67,7 @@ class REINFORCE(agent.AttributeSavingMixin, agent.Agent):
         # Statistics
         self.average_entropy = 0
 
+        self.t = 0
         self.reward_sequences = [[]]
         self.log_prob_sequences = [[]]
         self.entropy_sequences = [[]]

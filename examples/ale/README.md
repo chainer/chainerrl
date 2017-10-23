@@ -7,8 +7,8 @@
 
 ## Requirements
 
-- Arcade Learning Environment
-- OpenCV
+- atari_py>=0.1.1
+- OpenCV (optional)
 
 ## How to run
 

@@ -1,6 +1,6 @@
 """An example of training A3C against OpenAI Gym Envs.
 
-This script is an example of training a PCL agent against OpenAI Gym envs.
+This script is an example of training a A3C agent against OpenAI Gym envs.
 Both discrete and continuous action spaces are supported.
 
 To solve CartPole-v0, run:

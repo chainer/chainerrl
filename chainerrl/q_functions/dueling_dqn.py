@@ -23,18 +23,16 @@ class DuelingDQN(chainer.Chain, StateQFunction):
         self.n_input_channels = n_input_channels
         self.activation = activation
 
-        conv_layers = chainer.ChainList(
-            L.Convolution2D(n_input_channels, 32, 8, stride=4,
-                            initial_bias=bias),
-            L.Convolution2D(32, 64, 4, stride=2, initial_bias=bias),
-            L.Convolution2D(64, 64, 3, stride=1, initial_bias=bias))
+        super().__init__()
+        with self.init_scope():
+            self.conv_layers = chainer.ChainList(
+                L.Convolution2D(n_input_channels, 32, 8, stride=4,
+                                initial_bias=bias),
+                L.Convolution2D(32, 64, 4, stride=2, initial_bias=bias),
+                L.Convolution2D(64, 64, 3, stride=1, initial_bias=bias))
 
-        a_stream = MLP(3136, n_actions, [512])
-        v_stream = MLP(3136, 1, [512])
-
-        super().__init__(conv_layers=conv_layers,
-                         a_stream=a_stream,
-                         v_stream=v_stream)
+            self.a_stream = MLP(3136, n_actions, [512])
+            self.v_stream = MLP(3136, 1, [512])
 
     def __call__(self, x):
         h = x

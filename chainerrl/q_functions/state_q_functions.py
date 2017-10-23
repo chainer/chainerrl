@@ -17,6 +17,7 @@ from chainerrl.action_value import QuadraticActionValue
 from chainerrl.functions.lower_triangular_matrix import lower_triangular_matrix
 from chainerrl.links.mlp import MLP
 from chainerrl.links.mlp_bn import MLPBN
+from chainerrl.misc.chainer_compat import matmul_v3
 from chainerrl.q_function import StateQFunction
 from chainerrl.recurrent import RecurrentChainMixin
 
@@ -84,13 +85,14 @@ class FCLSTMStateQFunction(chainer.Chain, StateQFunction, RecurrentChainMixin):
         self.n_hidden_layers = n_hidden_layers
         self.n_hidden_channels = n_hidden_channels
         self.state_stack = []
-        super().__init__(
-            fc=MLP(in_size=self.n_input_channels, out_size=n_hidden_channels,
-                   hidden_sizes=[self.n_hidden_channels] *
-                   self.n_hidden_layers),
-            lstm=L.LSTM(n_hidden_channels, n_hidden_channels),
-            out=L.Linear(n_hidden_channels, n_dim_action)
-        )
+        super().__init__()
+        with self.init_scope():
+            self.fc = MLP(in_size=self.n_input_channels,
+                          out_size=n_hidden_channels,
+                          hidden_sizes=[self.n_hidden_channels] *
+                          self.n_hidden_layers)
+            self.lstm = L.LSTM(n_hidden_channels, n_hidden_channels)
+            self.out = L.Linear(n_hidden_channels, n_dim_action)
 
     def __call__(self, x):
         h = F.relu(self.fc(x))
@@ -121,24 +123,22 @@ class FCQuadraticStateQFunction(
         self.scale_mu = scale_mu
         self.action_space = action_space
 
-        layers = {}
+        super().__init__()
+        with self.init_scope():
+            hidden_layers = []
+            assert n_hidden_layers >= 1
+            hidden_layers.append(L.Linear(n_input_channels, n_hidden_channels))
+            for i in range(n_hidden_layers - 1):
+                hidden_layers.append(
+                    L.Linear(n_hidden_channels, n_hidden_channels))
+            self.hidden_layers = chainer.ChainList(*hidden_layers)
 
-        hidden_layers = []
-        assert n_hidden_layers >= 1
-        hidden_layers.append(L.Linear(n_input_channels, n_hidden_channels))
-        for i in range(n_hidden_layers - 1):
-            hidden_layers.append(
-                L.Linear(n_hidden_channels, n_hidden_channels))
-        layers['hidden_layers'] = chainer.ChainList(*hidden_layers)
-
-        layers['v'] = L.Linear(n_hidden_channels, 1)
-        layers['mu'] = L.Linear(n_hidden_channels, n_dim_action)
-        layers['mat_diag'] = L.Linear(n_hidden_channels, n_dim_action)
-        non_diag_size = n_dim_action * (n_dim_action - 1) // 2
-        if non_diag_size > 0:
-            layers['mat_non_diag'] = L.Linear(n_hidden_channels, non_diag_size)
-
-        super().__init__(**layers)
+            self.v = L.Linear(n_hidden_channels, 1)
+            self.mu = L.Linear(n_hidden_channels, n_dim_action)
+            self.mat_diag = L.Linear(n_hidden_channels, n_dim_action)
+            non_diag_size = n_dim_action * (n_dim_action - 1) // 2
+            if non_diag_size > 0:
+                self.mat_non_diag = L.Linear(n_hidden_channels, non_diag_size)
 
     def __call__(self, state):
         h = state
@@ -155,7 +155,7 @@ class FCQuadraticStateQFunction(
         if hasattr(self, 'mat_non_diag'):
             mat_non_diag = self.mat_non_diag(h)
             tril = lower_triangular_matrix(mat_diag, mat_non_diag)
-            mat = F.batch_matmul(tril, tril, transb=True)
+            mat = matmul_v3(tril, tril, transb=True)
         else:
             mat = F.expand_dims(mat_diag ** 2, axis=2)
         return QuadraticActionValue(
@@ -186,22 +186,20 @@ class FCBNQuadraticStateQFunction(chainer.Chain, StateQFunction):
         self.scale_mu = scale_mu
         self.action_space = action_space
 
-        layers = {}
+        super().__init__()
+        with self.init_scope():
+            assert n_hidden_layers >= 1
+            self.hidden_layers = MLPBN(
+                in_size=n_input_channels, out_size=n_hidden_channels,
+                hidden_sizes=[n_hidden_channels] * (n_hidden_layers - 1),
+                normalize_input=normalize_input)
 
-        assert n_hidden_layers >= 1
-        layers['hidden_layers'] = MLPBN(
-            in_size=n_input_channels, out_size=n_hidden_channels,
-            hidden_sizes=[n_hidden_channels] * (n_hidden_layers - 1),
-            normalize_input=normalize_input)
-
-        layers['v'] = L.Linear(n_hidden_channels, 1)
-        layers['mu'] = L.Linear(n_hidden_channels, n_dim_action)
-        layers['mat_diag'] = L.Linear(n_hidden_channels, n_dim_action)
-        non_diag_size = n_dim_action * (n_dim_action - 1) // 2
-        if non_diag_size > 0:
-            layers['mat_non_diag'] = L.Linear(n_hidden_channels, non_diag_size)
-
-        super().__init__(**layers)
+            self.v = L.Linear(n_hidden_channels, 1)
+            self.mu = L.Linear(n_hidden_channels, n_dim_action)
+            self.mat_diag = L.Linear(n_hidden_channels, n_dim_action)
+            non_diag_size = n_dim_action * (n_dim_action - 1) // 2
+            if non_diag_size > 0:
+                self.mat_non_diag = L.Linear(n_hidden_channels, non_diag_size)
 
     def __call__(self, state):
         h = self.hidden_layers(state)
@@ -216,7 +214,7 @@ class FCBNQuadraticStateQFunction(chainer.Chain, StateQFunction):
         if hasattr(self, 'mat_non_diag'):
             mat_non_diag = self.mat_non_diag(h)
             tril = lower_triangular_matrix(mat_diag, mat_non_diag)
-            mat = F.batch_matmul(tril, tril, transb=True)
+            mat = matmul_v3(tril, tril, transb=True)
         else:
             mat = F.expand_dims(mat_diag ** 2, axis=2)
         return QuadraticActionValue(

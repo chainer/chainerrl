@@ -10,7 +10,6 @@ import os
 import sys
 import warnings
 
-from ale_python_interface import ALEInterface
 import numpy as np
 
 from chainerrl import env
@@ -35,11 +34,20 @@ except Exception:
 
 try:
     import atari_py
-    atari_py_available = True
+    from distutils.version import StrictVersion
+    import pkg_resources
+    atari_py_version = StrictVersion(
+        pkg_resources.get_distribution("atari_py").version)
+    if atari_py_version < StrictVersion('0.1.1'):
+        warnings.warn(
+            'atari_py is old. You need to install atari_py>=0.1.1 to use ALE.')  # NOQA
+        atari_py_available = False
+    else:
+        atari_py_available = True
 except Exception:
     atari_py_available = False
     warnings.warn(
-        'atari_py is not available. You need to install atari_py to use ALE.')
+        'atari_py is not available. You need to install atari_py>=0.1.1 to use ALE.')  # NOQA
 
 
 class ALE(env.Env):
@@ -57,10 +65,11 @@ class ALE(env.Env):
         # atari_py is used only to provide rom files. atari_py has its own
         # ale_python_interface, but it is obsolete.
         if not atari_py_available:
-            raise RuntimeError('You need to install atari_py to use ALE.')
+            raise RuntimeError(
+                'You need to install atari_py>=0.1.1 to use ALE.')
         game_path = atari_py.get_game_path(game)
 
-        ale = ALEInterface()
+        ale = atari_py.ALEInterface()
         if seed is not None:
             assert seed >= 0 and seed < 2 ** 16, \
                 "ALE's random seed must be represented by unsigned int"

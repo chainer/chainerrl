@@ -23,21 +23,19 @@ class MLP(chainer.Chain):
         self.hidden_sizes = hidden_sizes
         self.nonlinearity = nonlinearity
 
-        layers = {}
-
-        if hidden_sizes:
-            hidden_layers = []
-            hidden_layers.append(L.Linear(in_size, hidden_sizes[0]))
-            for hin, hout in zip(hidden_sizes, hidden_sizes[1:]):
-                hidden_layers.append(L.Linear(hin, hout))
-            layers['hidden_layers'] = chainer.ChainList(*hidden_layers)
-            layers['output'] = L.Linear(hidden_sizes[-1], out_size,
-                                        initialW=LeCunNormal(last_wscale))
-        else:
-            layers['output'] = L.Linear(in_size, out_size,
-                                        initialW=LeCunNormal(last_wscale))
-
-        super().__init__(**layers)
+        super().__init__()
+        with self.init_scope():
+            if hidden_sizes:
+                hidden_layers = []
+                hidden_layers.append(L.Linear(in_size, hidden_sizes[0]))
+                for hin, hout in zip(hidden_sizes, hidden_sizes[1:]):
+                    hidden_layers.append(L.Linear(hin, hout))
+                self.hidden_layers = chainer.ChainList(*hidden_layers)
+                self.output = L.Linear(hidden_sizes[-1], out_size,
+                                       initialW=LeCunNormal(last_wscale))
+            else:
+                self.output = L.Linear(in_size, out_size,
+                                       initialW=LeCunNormal(last_wscale))
 
     def __call__(self, x):
         h = x

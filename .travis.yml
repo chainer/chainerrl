@@ -3,20 +3,23 @@ cache: pip
 python:
   - "2.7"
   - "3.5.1"
+env:
+  - CHAINER_VERSION=2
+  - CHAINER_VERSION=3
 # command to install dependencies
 install:
   - pip install --upgrade pip setuptools wheel
+  - |
+    if [ $CHAINER_VERSION -eq 2 ]; then
+      pip install "chainer<3.0.0"
+    else
+      pip install "chainer>=3.0.0rc1"
+    fi
   - pip install -r requirements.txt --only-binary=numpy,scipy
   - pip install jupyter
-  - pip install atari_py
+  - pip install atari_py>=0.1.1
   - pip install hacking
   - pip install coveralls
-  - git clone https://github.com/mgbellemare/Arcade-Learning-Environment.git
-  - cd Arcade-Learning-Environment
-  - cmake -DUSE_SDL=OFF -DUSE_RLGLUE=OFF -DBUILD_EXAMPLES=OFF
-  - make
-  - python setup.py install
-  - cd ..
   - python setup.py develop
 before_script:
   - "export DISPLAY=:99.0"
