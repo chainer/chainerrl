@@ -65,7 +65,8 @@ class A3CFFGaussian(chainer.Chain, a3c.A3CModel):
 
     def __init__(self, obs_size, action_space,
                  n_hidden_layers=2, n_hidden_channels=64,
-                 normalize_obs=None):
+                 bound_mean=None, normalize_obs=None):
+        assert bound_mean in [False, True]
         assert normalize_obs in [False, True]
         super().__init__()
         hidden_sizes = (n_hidden_channels,) * n_hidden_layers
@@ -75,7 +76,7 @@ class A3CFFGaussian(chainer.Chain, a3c.A3CModel):
                 obs_size, action_space.low.size,
                 n_hidden_layers, n_hidden_channels,
                 var_type='diagonal', nonlinearity=F.tanh,
-                bound_mean=True,
+                bound_mean=bound_mean,
                 min_action=action_space.low, max_action=action_space.high,
                 mean_wscale=1e-2)
             self.v = links.MLP(obs_size, 1, hidden_sizes=hidden_sizes)
@@ -101,6 +102,7 @@ def main():
                         choices=('FFSoftmax', 'FFMellowmax',
                                  'FFGaussian'))
     parser.add_argument('--normalize-obs', action='store_true')
+    parser.add_argument('--bound-mean', action='store_true')
     parser.add_argument('--seed', type=int, default=None)
     parser.add_argument('--outdir', type=str, default=None)
     parser.add_argument('--steps', type=int, default=10 ** 6)
@@ -154,6 +156,7 @@ def main():
         model = A3CFFMellowmax(obs_space.low.size, action_space.n)
     elif args.arch == 'FFGaussian':
         model = A3CFFGaussian(obs_space.low.size, action_space,
+                              bound_mean=args.bound_mean,
                               normalize_obs=args.normalize_obs)
 
     opt = chainer.optimizers.Adam(alpha=args.lr, eps=1e-5)
