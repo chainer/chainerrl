@@ -225,10 +225,7 @@ class PPO(agent.AttributeSavingMixin, agent.Agent):
         if hasattr(self.model, 'obs_filter'):
             xp = self.xp
             b_state = batch_states([state], xp, self.phi)
-            self.model.obs_filter(
-                b_state,
-                update_flags=xp.ones((1, 1), dtype=xp.bool)
-            )
+            self.model.obs_filter.experience(b_state)
 
         action, v = self._act(state)
 

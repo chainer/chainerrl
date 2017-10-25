@@ -87,7 +87,8 @@ class A3CFFGaussian(chainer.Chain, a3c.A3CModel):
 
     def pi_and_v(self, state):
         if self.normalize_obs:
-            state = self.obs_filter(state)
+            state = F.clip(self.obs_filter(state, update=False),
+                           -5.0, 5.0)
 
         return self.pi(state), self.v(state)
 
