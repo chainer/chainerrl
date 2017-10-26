@@ -1,5 +1,6 @@
 import unittest
 
+import chainer
 from chainer import testing
 import numpy as np
 
@@ -7,18 +8,31 @@ from chainerrl.links import empirical_normalization
 
 
 class TestEmpiricalNormalization(unittest.TestCase):
-    def test_small(self):
+    def test_small_cpu(self):
+        self._test_small(gpu=-1)
+
+    @testing.attr.gpu
+    def test_small_gpu(self):
+        self._test_small(gpu=0)
+
+    def _test_small(self, gpu):
         en = empirical_normalization.EmpiricalNormalization(10)
+        if gpu >= 0:
+            chainer.cuda.get_device(gpu).use()
+            en.to_gpu()
+
+        xp = en.xp
+
         xs = []
         for t in range(10):
-            x = np.random.normal(loc=4, scale=2, size=(t+3, 10))
+            x = xp.random.normal(loc=4, scale=2, size=(t+3, 10))
             en(x)
             xs.extend(list(x))
-        xs = np.array(xs)
-        true_mean = np.mean(xs, axis=0)
-        true_std = np.std(xs, axis=0)
-        np.testing.assert_allclose(en.mean, true_mean, rtol=1e-4)
-        np.testing.assert_allclose(en.std, true_std, rtol=1e-4)
+        xs = xp.array(xs)
+        true_mean = xp.mean(xs, axis=0)
+        true_std = xp.std(xs, axis=0)
+        xp.testing.assert_allclose(en.mean, true_mean, rtol=1e-4)
+        xp.testing.assert_allclose(en.std, true_std, rtol=1e-4)
 
     @testing.attr.slow
     def test_large(self):
@@ -65,3 +79,11 @@ class TestEmpiricalNormalization(unittest.TestCase):
 
             last_mean = en.mean
             last_std = en.std
+
+    def test_mixed_inputs(self):
+        en = empirical_normalization.EmpiricalNormalization(7)
+        for t in range(5):
+            y = en(np.random.rand(t+1, 7))
+            self.assertIsInstance(y, np.ndarray)
+            y = en(chainer.Variable(np.random.rand(t+1, 7)))
+            self.assertIsInstance(y, chainer.Variable)
