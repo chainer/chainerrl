@@ -29,10 +29,8 @@ class TestEmpiricalNormalization(unittest.TestCase):
         x = 2 * np.random.normal(loc=4, scale=2, size=(1, 10))
         enx = en(x, update=False)
 
-        mean = en.mean
-        std = en.std
-        np.testing.assert_allclose(mean, np.full_like(mean, 4), rtol=1e-1)
-        np.testing.assert_allclose(std, np.full_like(std, 2), rtol=1e-1)
+        np.testing.assert_allclose(en.mean, 4, rtol=1e-1)
+        np.testing.assert_allclose(en.std, 2, rtol=1e-1)
 
         # Compare with the ground-truth normalization
         np.testing.assert_allclose((x - 4) / 2, enx, rtol=1e-1)
@@ -53,6 +51,8 @@ class TestEmpiricalNormalization(unittest.TestCase):
 
     def test_until(self):
         en = empirical_normalization.EmpiricalNormalization(7, until=20)
+        last_mean = None
+        last_std = None
         for t in range(15):
             en(np.random.rand(2, 7) + t)
 
