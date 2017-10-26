@@ -15,10 +15,10 @@ class TestEmpiricalNormalization(unittest.TestCase):
             en(x)
             xs.extend(list(x))
         xs = np.array(xs)
-        true_mean = np.mean(xs, axis=0, keepdims=True)
-        true_std = np.std(xs, axis=0, keepdims=True)
+        true_mean = np.mean(xs, axis=0)
+        true_std = np.std(xs, axis=0)
         np.testing.assert_allclose(en.mean, true_mean, rtol=1e-4)
-        np.testing.assert_allclose(np.sqrt(en.var), true_std, rtol=1e-4)
+        np.testing.assert_allclose(en.std, true_std, rtol=1e-4)
 
     @testing.attr.slow
     def test_large(self):
@@ -28,9 +28,9 @@ class TestEmpiricalNormalization(unittest.TestCase):
             en(x)
         x = 2 * np.random.normal(loc=4, scale=2, size=(1, 10))
         enx = en(x, update=False)
-        # mean, std = en.mean_and_std()
+
         mean = en.mean
-        std = np.sqrt(en.var)
+        std = en.std
         np.testing.assert_allclose(mean, np.full_like(mean, 4), rtol=1e-1)
         np.testing.assert_allclose(std, np.full_like(std, 2), rtol=1e-1)
 
@@ -58,10 +58,10 @@ class TestEmpiricalNormalization(unittest.TestCase):
 
             if 1 <= t < 10:
                 self.assertFalse(np.allclose(en.mean, last_mean, rtol=1e-4))
-                self.assertFalse(np.allclose(en.var, last_var, rtol=1e-4))
+                self.assertFalse(np.allclose(en.std, last_std, rtol=1e-4))
             elif t >= 10:
                 np.testing.assert_allclose(en.mean, last_mean, rtol=1e-4)
-                np.testing.assert_allclose(en.var, last_var, rtol=1e-4)
+                np.testing.assert_allclose(en.std, last_std, rtol=1e-4)
 
-            last_mean = en.mean.copy()
-            last_var = en.var.copy()
+            last_mean = en.mean
+            last_std = en.std

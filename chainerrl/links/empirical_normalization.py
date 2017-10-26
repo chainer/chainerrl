@@ -19,26 +19,34 @@ class EmpiricalNormalization(chainer.Link):
         self.batch_axis = batch_axis
         self.eps = dtype.type(eps)
         self.until = until
-        self.mean = np.expand_dims(np.zeros(shape, dtype=dtype), batch_axis)
-        self.var = np.expand_dims(np.ones(shape, dtype=dtype), batch_axis)
+        self._mean = np.expand_dims(np.zeros(shape, dtype=dtype), batch_axis)
+        self._var = np.expand_dims(np.ones(shape, dtype=dtype), batch_axis)
         self.count = 0
-        self.register_persistent('mean')
-        self.register_persistent('var')
+        self.register_persistent('_mean')
+        self.register_persistent('_var')
         self.register_persistent('count')
 
         # cache
-        self._std_inverse = None
+        self._cached_std_inverse = None
 
     @property
-    def std_inverse(self):
-        if self._std_inverse is None:
+    def mean(self):
+        return np.squeeze(self._mean, self.batch_axis).copy()
+
+    @property
+    def std(self):
+        return np.sqrt(np.squeeze(self._var, self.batch_axis))
+
+    @property
+    def _std_inverse(self):
+        if self._cached_std_inverse is None:
             # TODO:
             # if self.ddof:
             #     correction = 1. - 1. / self.count
 
-            self._std_inverse = (self.var + self.eps) ** -0.5
+            self._cached_std_inverse = (self._var + self.eps) ** -0.5
 
-        return self._std_inverse
+        return self._cached_std_inverse
 
     def experience(self, x):
         if self.until is not None and self.count >= self.until:
@@ -58,20 +66,20 @@ class EmpiricalNormalization(chainer.Link):
 
         mean_x = xp.mean(x, axis=self.batch_axis, keepdims=True)
         var_x = xp.var(x, axis=self.batch_axis, keepdims=True)
-        delta_mean = mean_x - self.mean
-        self.mean += rate * delta_mean
-        self.var += rate * (
-            var_x - self.var
-            + delta_mean * (mean_x - self.mean) 
+        delta_mean = mean_x - self._mean
+        self._mean += rate * delta_mean
+        self._var += rate * (
+            var_x - self._var
+            + delta_mean * (mean_x - self._mean) 
         )
 
         # clear cache
-        self._std_inverse = None
+        self._cached_std_inverse = None
 
     def __call__(self, x, update=True):
         xp = self.xp
-        mean = xp.broadcast_to(self.mean, x.shape)
-        std_inv = xp.broadcast_to(self.std_inverse, x.shape)
+        mean = xp.broadcast_to(self._mean, x.shape)
+        std_inv = xp.broadcast_to(self._std_inverse, x.shape)
 
         if update:
             self.experience(x)
@@ -80,6 +88,6 @@ class EmpiricalNormalization(chainer.Link):
 
     def inverse(self, x):
         xp = self.xp
-        mean = xp.broadcast_to(self.mean, x.shape)
-        std = xp.broadcast_to(xp.sqrt(self.var + self.eps), x.shape)
+        mean = xp.broadcast_to(self._mean, x.shape)
+        std = xp.broadcast_to(xp.sqrt(self._var + self.eps), x.shape)
         return x * std + mean
