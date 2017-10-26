@@ -41,10 +41,6 @@ class EmpiricalNormalization(chainer.Link):
     @property
     def _std_inverse(self):
         if self._cached_std_inverse is None:
-            # TODO:
-            # if self.ddof:
-            #     correction = 1. - 1. / self.count
-
             self._cached_std_inverse = (self._var + self.eps) ** -0.5
 
         return self._cached_std_inverse
@@ -71,7 +67,7 @@ class EmpiricalNormalization(chainer.Link):
         self._mean += rate * delta_mean
         self._var += rate * (
             var_x - self._var
-            + delta_mean * (mean_x - self._mean) 
+            + delta_mean * (mean_x - self._mean)
         )
 
         # clear cache

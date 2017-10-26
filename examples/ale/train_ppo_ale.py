@@ -47,7 +47,7 @@ def main():
 
     parser = argparse.ArgumentParser()
     parser.add_argument('rom', type=str)
-    parser.add_argument('--gpu', type=int, default=None)
+    parser.add_argument('--gpu', type=int, default=0)
     parser.add_argument('--seed', type=int, default=None)
     parser.add_argument('--outdir', type=str, default=None)
     parser.add_argument('--use-sdl', action='store_true')

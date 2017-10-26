@@ -97,7 +97,7 @@ def main():
     import logging
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('--gpu', type=int, default=None)
+    parser.add_argument('--gpu', type=int, default=0)
     parser.add_argument('--env', type=str, default='Hopper-v1')
     parser.add_argument('--arch', type=str, default='FFGaussian',
                         choices=('FFSoftmax', 'FFMellowmax',
