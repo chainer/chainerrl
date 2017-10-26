@@ -18,7 +18,7 @@ class TestEmpiricalNormalization(unittest.TestCase):
     def _test_small(self, gpu):
         en = empirical_normalization.EmpiricalNormalization(10)
         if gpu >= 0:
-            chainer.cuda.get_device(gpu).use()
+            chainer.cuda.get_device_from_id(gpu).use()
             en.to_gpu()
 
         xp = en.xp
@@ -28,7 +28,7 @@ class TestEmpiricalNormalization(unittest.TestCase):
             x = xp.random.normal(loc=4, scale=2, size=(t+3, 10))
             en(x)
             xs.extend(list(x))
-        xs = xp.array(xs)
+        xs = xp.stack(xs)
         true_mean = xp.mean(xs, axis=0)
         true_std = xp.std(xs, axis=0)
         xp.testing.assert_allclose(en.mean, true_mean, rtol=1e-4)

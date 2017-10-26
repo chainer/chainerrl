@@ -31,11 +31,12 @@ class EmpiricalNormalization(chainer.Link):
 
     @property
     def mean(self):
-        return np.squeeze(self._mean, self.batch_axis).copy()
+        return self.xp.squeeze(self._mean, self.batch_axis).copy()
 
     @property
     def std(self):
-        return np.sqrt(np.squeeze(self._var, self.batch_axis))
+        xp = self.xp
+        return xp.sqrt(xp.squeeze(self._var, self.batch_axis))
 
     @property
     def _std_inverse(self):
