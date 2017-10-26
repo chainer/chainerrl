@@ -27,7 +27,7 @@ class TestEmpiricalNormalization(unittest.TestCase):
             x = np.random.normal(loc=4, scale=2, size=(7, 10))
             en(x)
         x = 2 * np.random.normal(loc=4, scale=2, size=(1, 10))
-        enx = en(x)
+        enx = en(x, update=False)
         # mean, std = en.mean_and_std()
         mean = en.mean
         std = np.sqrt(en.var)
@@ -38,4 +38,4 @@ class TestEmpiricalNormalization(unittest.TestCase):
         np.testing.assert_allclose((x - 4) / 2, enx, rtol=1e-1)
 
         # Test inverse
-        np.testing.assert_allclose(x, en.inverse(enx), rtol=1e-1)
+        np.testing.assert_allclose(x, en.inverse(enx), rtol=1e-4)
