@@ -39,3 +39,29 @@ class TestEmpiricalNormalization(unittest.TestCase):
 
         # Test inverse
         np.testing.assert_allclose(x, en.inverse(enx), rtol=1e-4)
+
+    def test_batch_axis(self):
+        shape = (2, 3, 4)
+        for batch_axis in range(3):
+            en = empirical_normalization.EmpiricalNormalization(
+                shape=shape[:batch_axis]+shape[batch_axis+1:],
+                batch_axis=batch_axis,
+            )
+            for _ in range(10):
+                x = np.random.rand(*shape)
+                en(x)
+
+    def test_until(self):
+        en = empirical_normalization.EmpiricalNormalization(7, until=20)
+        for t in range(15):
+            en(np.random.rand(2, 7) + t)
+
+            if 1 <= t < 10:
+                self.assertFalse(np.allclose(en.mean, last_mean, rtol=1e-4))
+                self.assertFalse(np.allclose(en.var, last_var, rtol=1e-4))
+            elif t >= 10:
+                np.testing.assert_allclose(en.mean, last_mean, rtol=1e-4)
+                np.testing.assert_allclose(en.var, last_var, rtol=1e-4)
+
+            last_mean = en.mean.copy()
+            last_var = en.var.copy()
