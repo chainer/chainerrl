@@ -32,7 +32,7 @@ class PPO(agent.AttributeSavingMixin, agent.Agent):
     Args:
         model (A3CModel): Model to train.  Recurrent models are not supported.
             state s  |->  (pi(s, _), v(s))
-        optimizer (chainer.Optimizer): optimizer used to train the model
+        optimizer (chainer.Optimizer): Optimizer used to train the model
         gpu (int): GPU device id if not None nor negative
         gamma (float): Discount factor [0, 1]
         lambd (float): Lambda-return factor [0, 1]
@@ -48,6 +48,7 @@ class PPO(agent.AttributeSavingMixin, agent.Agent):
         clip_eps_vf (float): Epsilon for pessimistic clipping of value
             to update value function. If it is ``None``, value function is not
             clipped on updates.
+        standardize_advantages (bool): Use standardized advantages on updates
         average_v_decay (float): Decay rate of average V, only used for
             recording statistics
         average_loss_decay (float): Decay rate of average loss, only used for
