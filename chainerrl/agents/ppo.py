@@ -99,7 +99,6 @@ class PPO(agent.AttributeSavingMixin, agent.Agent):
         self.average_loss_decay = average_loss_decay
 
         self.xp = self.model.xp
-        self.target_model = None
         self.last_state = None
 
         self.memory = []
