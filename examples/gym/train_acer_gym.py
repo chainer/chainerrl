@@ -12,8 +12,8 @@ from chainer import functions as F
 from chainer import links as L
 import gym
 import gym.wrappers
-import numpy as np
 
+import chainerrl
 from chainerrl.action_value import DiscreteActionValue
 from chainerrl.agents import acer
 from chainerrl.distribution import SoftmaxDistribution
@@ -27,10 +27,6 @@ from chainerrl import q_functions
 from chainerrl.replay_buffer import EpisodicReplayBuffer
 from chainerrl import spaces
 from chainerrl import v_functions
-
-
-def phi(obs):
-    return obs.astype(np.float32, copy=False)
 
 
 def main():
@@ -74,6 +70,8 @@ def main():
 
     def make_env(process_idx, test):
         env = gym.make(args.env)
+        # Cast observations to float32 because our model uses float32
+        env = chainerrl.wrappers.CastObservationToFloat32(env)
         if args.monitor and process_idx == 0:
             env = gym.wrappers.Monitor(env, args.outdir)
         # Scale rewards observed by agents
@@ -138,7 +136,7 @@ def main():
                       use_trust_region=True,
                       trust_region_delta=args.trust_region_delta,
                       truncation_threshold=args.truncation_threshold,
-                      beta=args.beta, phi=phi)
+                      beta=args.beta)
     if args.load:
         agent.load(args.load)
 

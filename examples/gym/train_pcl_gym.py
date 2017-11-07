@@ -82,6 +82,8 @@ def main():
 
     def make_env(process_idx, test):
         env = gym.make(args.env)
+        # Cast observations to float32 because our model uses float32
+        env = chainerrl.wrappers.CastObservationToFloat32(env)
         if args.monitor and process_idx == 0:
             env = gym.wrappers.Monitor(env, args.outdir)
         # Scale rewards observed by agents
@@ -158,7 +160,6 @@ def main():
         model, opt, replay_buffer=replay_buffer,
         t_max=args.t_max, gamma=0.99,
         tau=args.tau,
-        phi=lambda x: x.astype(np.float32, copy=False),
         rollout_len=args.rollout_len,
         n_times_replay=args.n_times_replay,
         replay_start_size=args.replay_start_size,
