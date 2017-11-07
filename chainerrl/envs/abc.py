@@ -93,7 +93,7 @@ class ABC(env.Env):
                 # Terminal
                 done = True
                 self._state = self.terminal_state
-        return self.observe(), reward, done, None
+        return self.observe(), reward, done, {}
 
     def close(self):
         pass
