@@ -18,6 +18,8 @@ class EmpiricalNormalization(chainer.Link):
         batch_axis (int): Batch axis.
         eps (float): Small value for stability.
         dtype (dtype): Dtype of input values.
+        until (int or None): If this arg is specified, the link learns input
+            values until the sum of batch sizes exceeds it.
     """
 
     def __init__(self, shape, batch_axis=0, eps=1e-2, dtype=np.float32,
@@ -54,6 +56,8 @@ class EmpiricalNormalization(chainer.Link):
         return self._cached_std_inverse
 
     def experience(self, x):
+        """Learn input values without computing the output values of them"""
+
         if self.until is not None and self.count >= self.until:
             return
 
@@ -82,6 +86,16 @@ class EmpiricalNormalization(chainer.Link):
         self._cached_std_inverse = None
 
     def __call__(self, x, update=True):
+        """Normalize mean and variance of values based on emprical values.
+
+        Args:
+            x (ndarray or Variable): Input values
+            update (bool): Flag to learn the input values
+
+        Returns:
+            ndarray or Variable: Normalized output values
+        """
+
         xp = self.xp
         mean = xp.broadcast_to(self._mean, x.shape)
         std_inv = xp.broadcast_to(self._std_inverse, x.shape)
