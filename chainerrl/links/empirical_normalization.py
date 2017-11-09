@@ -105,8 +105,8 @@ class EmpiricalNormalization(chainer.Link):
 
         return (x - mean) * std_inv
 
-    def inverse(self, x):
+    def inverse(self, y):
         xp = self.xp
-        mean = xp.broadcast_to(self._mean, x.shape)
-        std = xp.broadcast_to(xp.sqrt(self._var + self.eps), x.shape)
-        return x * std + mean
+        mean = xp.broadcast_to(self._mean, y.shape)
+        std = xp.broadcast_to(xp.sqrt(self._var + self.eps), y.shape)
+        return y * std + mean
