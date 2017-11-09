@@ -168,6 +168,7 @@ class FCGaussianPolicyWithStateIndependentCovariance(
         for _ in range(n_hidden_layers - 1):
             layers.append(self.nonlinearity)
             layers.append(L.Linear(n_hidden_channels, n_hidden_channels))
+        layers.append(self.nonlinearity)
         # The last layer is used to compute the mean
         layers.append(
             L.Linear(n_hidden_channels, action_size,
