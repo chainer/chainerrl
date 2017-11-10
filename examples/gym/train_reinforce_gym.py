@@ -99,7 +99,7 @@ def main():
             nonlinearity=chainer.functions.leaky_relu,
         )
 
-    # Visualize the model
+    # Draw the computational graph and save it in the output directory.
     chainerrl.misc.draw_computational_graph(
         [model(np.zeros_like(obs_space.low, dtype=np.float32)[None])],
         os.path.join(args.outdir, 'model'))
