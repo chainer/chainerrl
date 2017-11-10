@@ -13,27 +13,12 @@ import subprocess
 import sys
 import tempfile
 
-
-def is_return_code_zero(args):
-    """Return true iff the given command's return code is zero.
-
-    All the messages to stdout or stderr are suppressed.
-    """
-    FNULL = open(os.devnull, 'w')
-    try:
-        subprocess.check_call(args, stdout=FNULL, stderr=FNULL)
-    except subprocess.CalledProcessError:
-        # The given command returned an error
-        return False
-    except OSError:
-        # The given command was not found
-        return False
-    return True
+import chainerrl
 
 
 def is_under_git_control():
     """Return true iff the current directory is under git control."""
-    return is_return_code_zero(['git', 'rev-parse'])
+    return chainerrl.misc.is_return_code_zero(['git', 'rev-parse'])
 
 
 def prepare_output_dir(args, user_specified_dir=None, argv=None,

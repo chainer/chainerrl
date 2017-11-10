@@ -7,25 +7,35 @@ from future import standard_library
 standard_library.install_aliases()
 
 import subprocess
-import tempfile
 
 import chainer.computational_graph
 import chainerrl
 
 
 def collect_variables(obj):
+    """Collect Variable objects inside a given object.
+
+    Args:
+        obj (object): Object to collect Variable objects from.
+    Returns:
+        List of Variable objects.
+    """
     variables = []
     if isinstance(obj, chainer.Variable):
         return [obj]
     elif isinstance(obj, chainerrl.action_value.ActionValue):
-        return [obj.greedy_actions(), obj.max()]
+        return [obj.greedy_actions, obj.max]
     elif isinstance(obj, chainerrl.distribution.Distribution):
-        return obj.params
+        return list(obj.params)
     elif isinstance(obj, (list, tuple)):
         variables = []
         for child in obj:
             variables.extend(collect_variables(child))
         return variables
+
+
+def is_graphviz_available():
+    return chainerrl.misc.is_return_code_zero(['dot', '-V'])
 
 
 def draw_computational_graph(outputs, filepath):
@@ -34,21 +44,17 @@ def draw_computational_graph(outputs, filepath):
     Args:
         outputs (object): Output(s) of the computational graph. Each
             item must be Variable, ActionValue, Distribution or list of them.
-        filepath (str): Filepath to write a graph.
-            If it ends with ".dot", it will be in the dot format.
-            If it ends with ".png", in the png format.
+        filepath (str): Filepath to write a graph without file extention.
+            A DOT file will be saved with ".gv" extension added.
+            If Graphviz's dot command is available, a PNG file will also be
+            saved with ".png" extension added.
     """
     variables = collect_variables(outputs)
     g = chainer.computational_graph.build_computational_graph(variables)
-    if filepath.lower().endswith('.dot'):
-        with open(filepath, 'w') as f:
-            f.write(g.dump())
-    elif filepath.lower().endswith('.png'):
-        with tempfile.NamedTemporaryFile(mode='w') as f:
-            f.write(g.dump())
-            f.file.close()
-            subprocess.check_call(['dot', '-Tpng', f.name, '-o', filepath])
-    else:
-        raise RuntimeError(
-            'filepath should end with ".dot" or ".png", but is {}'.format(
-                filepath))
+    gv_filepath = filepath + '.gv'
+    with open(gv_filepath, 'w') as f:
+        f.write(g.dump())
+    if is_graphviz_available():
+        png_filepath = filepath + '.png'
+        subprocess.check_call(
+            ['dot', '-Tpng', gv_filepath, '-o', png_filepath])

@@ -102,7 +102,7 @@ def main():
     # Visualize the model
     chainerrl.misc.draw_computational_graph(
         [model(np.zeros_like(obs_space.low, dtype=np.float32)[None])],
-        os.path.join(args.outdir, 'model.png'))
+        os.path.join(args.outdir, 'model'))
 
     if args.gpu >= 0:
         chainer.cuda.get_device(args.gpu).use()

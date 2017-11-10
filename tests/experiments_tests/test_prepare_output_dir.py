@@ -25,17 +25,6 @@ def work_dir(dirname):
     os.chdir(orig_dir)
 
 
-class TestIsReturnCodeZero(unittest.TestCase):
-
-    def test(self):
-        # Assume ls command exists
-        self.assertTrue(chainerrl.experiments.is_return_code_zero(['ls']))
-        self.assertFalse(chainerrl.experiments.is_return_code_zero(
-            ['ls --nonexistentoption']))
-        self.assertFalse(chainerrl.experiments.is_return_code_zero(
-            ['nonexistentcommand']))
-
-
 class TestIsUnderGitControl(unittest.TestCase):
 
     def test(self):
