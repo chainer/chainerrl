@@ -1,3 +1,14 @@
+import os
+import sys
+
+
+_chainerrl_imported_gym = False
+
+if 'gym' not in sys.modules:
+    import gym
+    _chainerrl_imported_gym = True
+
+
 from chainerrl import action_value  # NOQA
 from chainerrl import agent  # NOQA
 from chainerrl import agents  # NOQA
@@ -55,3 +66,9 @@ q_function.FCBNQuadraticStateQFunction = \
 
 v_function.SingleModelVFunction = v_functions.SingleModelVFunction
 v_function.FCVFunction = v_functions.FCVFunction
+
+
+if _chainerrl_imported_gym:
+    if 'GYM_NO_LOGGER_SETUP' not in os.environ:
+        gym.undo_logger_setup()
+    del sys.modules['gym']
