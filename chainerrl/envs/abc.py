@@ -62,7 +62,8 @@ class ABC(env.Env):
         return self.observe()
 
     def step(self, action):
-        if isinstance(action, np.ndarray):
+        if isinstance(self.action_space, spaces.Box):
+            assert isinstance(action, np.ndarray)
             action = np.clip(action,
                              self.action_space.low,
                              self.action_space.high)

@@ -13,19 +13,30 @@ model=$(find $outdir/ale/dqn -name "*_finish")
 python examples/ale/train_dqn_ale.py pong --demo --load $model --eval-n-runs 1 --outdir $outdir/temp --gpu $gpu
 
 # ale/a3c
-python examples/ale/train_a3c_ale.py 4 pong --steps 100 --outdir $outdir/ale/a3c
-model=$(find $outdir/ale/a3c -name "*_finish")
-python examples/ale/train_a3c_ale.py 4 pong --demo --load $model --eval-n-runs 1 --outdir $outdir/temp
+if [[ $gpu -lt 0 ]]; then
+  python examples/ale/train_a3c_ale.py 4 pong --steps 100 --outdir $outdir/ale/a3c
+  model=$(find $outdir/ale/a3c -name "*_finish")
+  python examples/ale/train_a3c_ale.py 4 pong --demo --load $model --eval-n-runs 1 --outdir $outdir/temp
+fi
 
 # ale/acer
-python examples/ale/train_acer_ale.py 4 pong --steps 100 --outdir $outdir/ale/acer
-model=$(find $outdir/ale/acer -name "*_finish")
-python examples/ale/train_acer_ale.py 4 pong --demo --load $model --eval-n-runs 1 --outdir $outdir/temp
+if [[ $gpu -lt 0 ]]; then
+  python examples/ale/train_acer_ale.py 4 pong --steps 100 --outdir $outdir/ale/acer
+  model=$(find $outdir/ale/acer -name "*_finish")
+  python examples/ale/train_acer_ale.py 4 pong --demo --load $model --eval-n-runs 1 --outdir $outdir/temp
+fi
 
 # ale/nsq
-python examples/ale/train_nsq_ale.py 4 pong --steps 100 --outdir $outdir/ale/nsq
-model=$(find $outdir/ale/nsq -name "*_finish")
-python examples/ale/train_nsq_ale.py 4 pong --demo --load $model --eval-n-runs 1 --outdir $outdir/temp
+if [[ $gpu -lt 0 ]]; then
+  python examples/ale/train_nsq_ale.py 4 pong --steps 100 --outdir $outdir/ale/nsq
+  model=$(find $outdir/ale/nsq -name "*_finish")
+  python examples/ale/train_nsq_ale.py 4 pong --demo --load $model --eval-n-runs 1 --outdir $outdir/temp
+fi
+
+# ale/ppo
+python examples/ale/train_ppo_ale.py pong --steps 100 --update-interval 50 --batchsize 16 --epochs 2 --outdir $outdir/ale/ppo --gpu $gpu
+model=$(find $outdir/ale/ppo -name "*_finish")
+python examples/ale/train_ppo_ale.py pong --demo --load $model --eval-n-runs 1 --outdir $outdir/temp --gpu $gpu
 
 # gym/dqn
 python examples/gym/train_dqn_gym.py --steps 100 --replay-start-size 50 --outdir $outdir/gym/dqn --gpu $gpu
@@ -56,3 +67,8 @@ python examples/gym/train_ddpg_gym.py --demo --load $model --eval-n-runs 1 --env
 python examples/gym/train_reinforce_gym.py --steps 100 --batchsize 1 --outdir $outdir/gym/reinforce --gpu $gpu
 model=$(find $outdir/gym/reinforce -name "*_finish")
 python examples/gym/train_reinforce_gym.py --demo --load $model --eval-n-runs 1 --outdir $outdir/temp --gpu $gpu
+
+# gym/ppo (specify non-mujoco env to test without mujoco)
+python examples/gym/train_ppo_gym.py --steps 100 --update-interval 50 --batchsize 16 --epochs 2 --outdir $outdir/gym/ppo --env Pendulum-v0 --gpu $gpu
+model=$(find $outdir/gym/ppo -name "*_finish")
+python examples/gym/train_ppo_gym.py --demo --load $model --eval-n-runs 1 --env Pendulum-v0 --outdir $outdir/temp --gpu $gpu
