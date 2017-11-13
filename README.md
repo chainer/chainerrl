@@ -52,6 +52,7 @@ Following algorithms have been implemented in ChainerRL:
 - DDPG (Deep Deterministic Poilcy Gradients) (including SVG(0))
 - PGT (Policy Gradient Theorem)
 - PCL (Path Consistency Learning)
+- PPO (Proximal Policy Optimization)
 
 Q-function based algorithms such as DQN can utilize a Normalized Advantage Function (NAF) to tackle continuous-action problems as well as DQN-like discrete output networks.
 
