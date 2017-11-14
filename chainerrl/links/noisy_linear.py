@@ -6,21 +6,27 @@ import chainer.links as L
 from chainerrl.initializers import VarianceScalingConstant
 
 
-class FactorizedNoisyLinear(L.Linear):
+class FactorizedNoisyLinear(chainer.Chain):
     """Linear layer in Factorized Noisy Network
 
     Args:
-        sigma0 (float): scale of initial value of noise-scaling parameters
+        in_size, out_size, nobias, initialW, initial_bias: args for L.Linear
+        sigma_scale (float): The hyperparameter sigma_0 in the original paper.
+            Scaling factor of the initial weights of noise-scaling parameters.
     """
 
-    def __init__(self, *args, **kwargs):
-        sigma0 = kwargs.pop('sigma0', 0.4)
-        super(FactorizedNoisyLinear, self).__init__(*args, **kwargs)
+    def __init__(self, in_size, out_size=None, nobias=False,
+                 initialW=None, initial_bias=None,
+                 sigma_scale=0.4):
+        super(FactorizedNoisyLinear, self).__init__()
+        self.nobias = nobias
         with self.init_scope():
-            self.sigma_W = chainer.Parameter(VarianceScalingConstant(sigma0))
-            if self.W.data is not None:
-                self._initialize_params_sigma(self.W.shape[1])
-            self.sigma_b = chainer.Parameter(Constant(sigma0), self.out_size)
+            self.mu = L.Linear(
+                in_size, out_size, nobias, initialW, initial_bias)
+            self.sigma = L.Linear(
+                in_size, out_size, nobias,
+                initialW=VarianceScalingConstant(sigma_scale),
+                initial_bias=Constant(sigma_scale))
 
     def _eps(self, shape, dtype):
         xp = self.xp
@@ -29,19 +35,23 @@ class FactorizedNoisyLinear(L.Linear):
         # apply the function f
         return xp.copysign(xp.sqrt(xp.abs(r)), r)
 
-    def _initialize_params_sigma(self, in_size):
-        self.sigma_W.initialize((self.out_size, in_size))
-
     def __call__(self, x):
-        in_size = x.size // x.shape[0]
-        if self.W.data is None:
-            self._initialize_params(in_size)
-        if self.sigma_W.data is None:
-            self._initialize_params_sigma(in_size)
+        if self.mu.W.data is None:
+            # initialize self.mu.W
+            self.mu(x[:0])
+        if self.sigma.W.data is None:
+            # initialize self.sigma.W
+            self.sigma(x[:0])
 
-        dtype = x.dtype
-        eps_x = self._eps(self.W.shape[1], dtype)
-        eps_y = self._eps(self.W.shape[0], dtype)
-        noise_W = self.xp.outer(eps_y, eps_x) * self.sigma_W
-        noise_b = eps_y * self.sigma_b
-        return F.linear(x, self.W + noise_W, self.b + noise_b)
+        # use info of sigma.W to avoid strange error messages
+        dtype = self.sigma.W.dtype
+        out_size, in_size = self.sigma.W.shape
+
+        eps_x = self._eps(in_size, dtype)
+        eps_y = self._eps(out_size, dtype)
+        W = self.mu.W + self.sigma.W * self.xp.outer(eps_y, eps_x)
+        if self.nobias:
+            return F.linear(x, W)
+        else:
+            b = self.mu.b + self.sigma.b * eps_y
+            return F.linear(x, W, b)
