@@ -19,15 +19,19 @@ class NoisyMLP(chainer.Chain):
         with self.init_scope():
             if hidden_sizes:
                 hidden_layers = []
-                hidden_layers.append(FactorizedNoisyLinear(in_size, hidden_sizes[0]))
+                hidden_layers.append(
+                    FactorizedNoisyLinear(in_size, hidden_sizes[0]))
                 for hin, hout in zip(hidden_sizes, hidden_sizes[1:]):
-                    hidden_layers.append(FactorizedNoisyLinear(hin, hout))
+                    hidden_layers.append(
+                        FactorizedNoisyLinear(hin, hout))
                 self.hidden_layers = chainer.ChainList(*hidden_layers)
-                self.output = FactorizedNoisyLinear(hidden_sizes[-1], out_size,
-                                                    initialW=LeCunNormal(last_wscale))
+                self.output = FactorizedNoisyLinear(
+                    hidden_sizes[-1], out_size,
+                    initialW=LeCunNormal(last_wscale))
             else:
-                self.output = FactorizedNoisyLinear(in_size, out_size,
-                                                    initialW=LeCunNormal(last_wscale))
+                self.output = FactorizedNoisyLinear(
+                    in_size, out_size,
+                    initialW=LeCunNormal(last_wscale))
 
     def __call__(self, x):
         h = x
