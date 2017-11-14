@@ -42,3 +42,10 @@ class TestFactorizedNoisyLinear(unittest.TestCase):
 
         self.assertGreater(d, target / 3.)
         self.assertLess(d, target * 3.)
+
+    def test_non_randomness(self):
+        # Noises should be the same in a batch
+        x0 = np.random.standard_normal((1, 6)).astype(np.float32)
+        x = np.broadcast_to(x0, (2, 6))
+        y = self.l(x).data
+        np.testing.assert_allclose(y[0], y[1], rtol=1e-4)
