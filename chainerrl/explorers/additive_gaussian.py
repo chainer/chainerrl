@@ -13,9 +13,9 @@ from chainerrl import explorer
 
 class AdditiveGaussian(explorer.Explorer):
     """Additive Gaussian noise to actions.
-    
+
     Each action must be numpy.ndarray.
-    
+
     Args:
         scale (float or array_like of floats): Scale parameter.
     """
