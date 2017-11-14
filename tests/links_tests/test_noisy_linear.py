@@ -32,13 +32,18 @@ class TestFactorizedNoisyLinear(unittest.TestCase):
         x = np.random.standard_normal((10, 6)).astype(np.float32)
         y1 = self.l(x).data
         y2 = self.l(x).data
-        d = np.mean(np.sqrt(np.mean(np.square(y1 - y2), axis=1)))
+        d = np.mean(np.square(y1 - y2))
 
-        # d should be approx to sigma_scale = 0.4.
-        # Note: This approximation is not exact.
-        target = 0.4
-        if not self.nobias:
-            target *= np.sqrt(2)
+        # The parameter name suggests that
+        # np.sqrt(d / 2) is approx to sigma_scale = 0.4
+        # In fact, (for each element _[i, j],) it holds:
+        # \E[(y2 - y1) ** 2] = 2 * \Var(y) = (4 / pi) * sigma_scale ** 2
+
+        target = (0.4 ** 2) * 2
+        if self.nobias:
+            target *= 2 / np.pi
+        else:
+            target *= 2 / np.pi + np.sqrt(2 / np.pi)
 
         self.assertGreater(d, target / 3.)
         self.assertLess(d, target * 3.)
