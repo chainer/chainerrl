@@ -11,9 +11,9 @@ import unittest
 import numpy as np
 
 import chainer
+import chainer.functions as F
 from chainer import testing
 from chainer.testing import attr
-import chainer.functions as F
 
 import chainerrl
 
