@@ -2,6 +2,7 @@ import chainer
 import chainer.functions as F
 from chainer.initializers import Constant
 import chainer.links as L
+import numpy
 
 from chainerrl.initializers import VarianceScalingConstant
 
@@ -27,6 +28,7 @@ class FactorizedNoisyLinear(chainer.Chain):
                 in_size, out_size, nobias,
                 initialW=VarianceScalingConstant(sigma_scale),
                 initial_bias=Constant(sigma_scale))
+        self.out_size = self.mu.out_size
 
     def _eps(self, shape, dtype):
         xp = self.xp
@@ -37,11 +39,9 @@ class FactorizedNoisyLinear(chainer.Chain):
 
     def __call__(self, x):
         if self.mu.W.data is None:
-            # initialize self.mu.W
-            self.mu(x[:0])
+            self.mu.W.initialize((self.out_size, numpy.prod(x.shape[1:])))
         if self.sigma.W.data is None:
-            # initialize self.sigma.W
-            self.sigma(x[:0])
+            self.sigma.W.initialize((self.out_size, numpy.prod(x.shape[1:])))
 
         # use info of sigma.W to avoid strange error messages
         dtype = self.sigma.W.dtype
