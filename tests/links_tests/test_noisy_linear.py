@@ -8,7 +8,6 @@ from chainerrl.links import noisy_linear
 
 
 @testing.parameterize(*testing.product({
-    'initialized': [False, True],
     'nobias': [False, True],
 }))
 class TestFactorizedNoisyLinear(unittest.TestCase):
@@ -22,6 +21,6 @@ class TestFactorizedNoisyLinear(unittest.TestCase):
         for l in [l_uninitialized_new, l_uninitialized_old, l_initialized]:
             x_data = np.arange(12).astype(np.float32).reshape((2, 6))
             x = chainer.Variable(x_data)
-            l(chainer.Variable(x_data))
+            l(x)
             l(x_data + 1)
             l(x_data.reshape((2, 3, 2)))
