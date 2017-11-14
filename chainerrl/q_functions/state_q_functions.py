@@ -225,6 +225,14 @@ class FCBNQuadraticStateQFunction(chainer.Chain, StateQFunction):
 
 class NoisyFCStateQFunctionWithDiscreteAction(
         SingleModelStateQFunctionWithDiscreteAction):
+    """State-input Q-function with discrete actions modeled as Noisy Network
+
+    Args:
+        n_dim_obs: number of dimensions of observation space
+        n_dim_action: number of dimensions of action space
+        n_hidden_channels: number of hidden channels
+        n_hidden_layers: number of hidden layers
+    """
 
     def __init__(self, ndim_obs, n_actions,
                  n_hidden_channels, n_hidden_layers):

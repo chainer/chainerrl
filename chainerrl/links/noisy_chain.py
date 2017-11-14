@@ -6,7 +6,10 @@ from chainerrl.links.noisy_linear import FactorizedNoisyLinear
 
 
 class NoisyMLP(chainer.Chain):
-    """Multi-Layer Perceptron"""
+    """Noisy Networks
+
+    See http://arxiv.org/abs/1706.10295
+    """
 
     def __init__(self, in_size, out_size, hidden_sizes, nonlinearity=F.relu,
                  last_wscale=1):
