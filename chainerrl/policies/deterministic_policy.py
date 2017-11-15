@@ -67,7 +67,10 @@ class FCDeterministicPolicy(ContinuousDeterministicPolicy):
             is set to True.
         bound_action (bool): If set to True, actions are bounded to
             [min_action, max_action] by tanh.
-        nonlinearity (callable): nonlinearity between layers.
+        nonlinearity (callable): Nonlinearity between layers. It must accept a
+            Variable as an argument and return a Variable with the same shape.
+            Nonlinearities with learnable parameters such as PReLU are not
+            supported.
         last_wscale (float): Scale of weight initialization of the last layer.
     """
 
@@ -117,7 +120,10 @@ class FCBNDeterministicPolicy(ContinuousDeterministicPolicy):
             [min_action, max_action] by tanh.
         normalize_input (bool): If set to True, Batch Normalization is applied
             to inputs as well as hidden activations.
-        nonlinearity (callable): nonlinearity between layers.
+        nonlinearity (callable): Nonlinearity between layers. It must accept a
+            Variable as an argument and return a Variable with the same shape.
+            Nonlinearities with learnable parameters such as PReLU are not
+            supported.
         last_wscale (float): Scale of weight initialization of the last layer.
     """
 
@@ -168,7 +174,10 @@ class FCLSTMDeterministicPolicy(ContinuousDeterministicPolicy):
             is set to True.
         bound_action (bool): If set to True, actions are bounded to
             [min_action, max_action] by tanh.
-        nonlinearity (callable): nonlinearity between layers.
+        nonlinearity (callable): Nonlinearity between layers. It must accept a
+            Variable as an argument and return a Variable with the same shape.
+            Nonlinearities with learnable parameters such as PReLU are not
+            supported.
         last_wscale (float): Scale of weight initialization of the last layer.
         """
 
