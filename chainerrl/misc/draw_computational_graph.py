@@ -53,7 +53,9 @@ def draw_computational_graph(outputs, filepath):
     g = chainer.computational_graph.build_computational_graph(variables)
     gv_filepath = filepath + '.gv'
     with open(gv_filepath, 'w') as f:
-        f.write(g.dump())
+        # future.builtins.str is required to make sure the content is unicode
+        # in both py2 and py3
+        f.write(str(g.dump()))
     if is_graphviz_available():
         png_filepath = filepath + '.png'
         subprocess.check_call(
