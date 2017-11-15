@@ -42,7 +42,10 @@ class FCSAQFunction(MLP, StateActionQFunction):
         n_dim_action (int): Number of dimensions of action space.
         n_hidden_channels (int): Number of hidden channels.
         n_hidden_layers (int): Number of hidden layers.
-        nonlinearity (callable): Nonlinearity between layers.
+        nonlinearity (callable): Nonlinearity between layers. It must accept a
+            Variable as an argument and return a Variable with the same shape.
+            Nonlinearities with learnable parameters such as PReLU are not
+            supported.
         last_wscale (float): Scale of weight initialization of the last layer.
     """
 
@@ -75,7 +78,10 @@ class FCLSTMSAQFunction(chainer.Chain, StateActionQFunction,
         n_dim_action (int): Number of dimensions of action space.
         n_hidden_channels (int): Number of hidden channels.
         n_hidden_layers (int): Number of hidden layers.
-        nonlinearity (callable): Nonlinearity between layers.
+        nonlinearity (callable): Nonlinearity between layers. It must accept a
+            Variable as an argument and return a Variable with the same shape.
+            Nonlinearities with learnable parameters such as PReLU are not
+            supported.
         last_wscale (float): Scale of weight initialization of the last layer.
     """
 
@@ -112,7 +118,10 @@ class FCBNSAQFunction(MLPBN, StateActionQFunction):
         n_hidden_layers (int): Number of hidden layers.
         normalize_input (bool): If set to True, Batch Normalization is applied
             to both observations and actions.
-        nonlinearity (callable): Nonlinearity between layers.
+        nonlinearity (callable): Nonlinearity between layers. It must accept a
+            Variable as an argument and return a Variable with the same shape.
+            Nonlinearities with learnable parameters such as PReLU are not
+            supported.
         last_wscale (float): Scale of weight initialization of the last layer.
     """
 
@@ -151,7 +160,10 @@ class FCBNLateActionSAQFunction(chainer.Chain, StateActionQFunction,
         n_hidden_channels (int): Number of hidden channels.
         n_hidden_layers (int): Number of hidden layers.
         normalize_input (bool): If set to True, Batch Normalization is applied
-        nonlinearity (callable): Nonlinearity between layers.
+        nonlinearity (callable): Nonlinearity between layers. It must accept a
+            Variable as an argument and return a Variable with the same shape.
+            Nonlinearities with learnable parameters such as PReLU are not
+            supported.
         last_wscale (float): Scale of weight initialization of the last layer.
 
     """
@@ -200,7 +212,10 @@ class FCLateActionSAQFunction(chainer.Chain, StateActionQFunction,
         n_dim_action (int): Number of dimensions of action space.
         n_hidden_channels (int): Number of hidden channels.
         n_hidden_layers (int): Number of hidden layers.
-        nonlinearity (callable): Nonlinearity between layers.
+        nonlinearity (callable): Nonlinearity between layers. It must accept a
+            Variable as an argument and return a Variable with the same shape.
+            Nonlinearities with learnable parameters such as PReLU are not
+            supported.
         last_wscale (float): Scale of weight initialization of the last layer.
     """
 
