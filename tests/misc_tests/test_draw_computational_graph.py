@@ -7,6 +7,7 @@ standard_library.install_aliases()
 
 import contextlib
 import os
+import shutil
 import tempfile
 import unittest
 
@@ -26,7 +27,7 @@ def tempdir():
     try:
         yield d
     finally:
-        os.rmdir(d)
+        shutil.rmtree(d)
 
 
 class TestDrawComputationalGraph(unittest.TestCase):
