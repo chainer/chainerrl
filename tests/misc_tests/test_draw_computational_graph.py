@@ -5,6 +5,7 @@ from __future__ import absolute_import
 from future import standard_library
 standard_library.install_aliases()
 
+import contextlib
 import os
 import tempfile
 import unittest
@@ -13,6 +14,19 @@ import chainer
 import numpy as np
 
 import chainerrl
+
+
+@contextlib.contextmanager
+def tempdir():
+    """Alternative to tempfile.TemporaryDirectory.
+
+    tempfile.TemporaryDirectory is not available in Python 2.x.
+    """
+    d = tempfile.mkdtemp()
+    try:
+        yield d
+    finally:
+        os.rmdir(d)
 
 
 class TestDrawComputationalGraph(unittest.TestCase):
@@ -78,7 +92,7 @@ class TestDrawComputationalGraph(unittest.TestCase):
     def test_draw_computational_graph(self):
         x = chainer.Variable(np.zeros(5))
         y = x ** 2 + chainer.Variable(np.ones(5))
-        with tempfile.TemporaryDirectory() as d:
+        with tempdir() as d:
             filepath = os.path.join(d, 'graph')
             chainerrl.misc.draw_computational_graph(y, filepath)
             self.assertTrue(os.path.exists(filepath + '.gv'))
