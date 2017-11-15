@@ -42,8 +42,8 @@ def draw_computational_graph(outputs, filepath):
     """Draw a computational graph and write to a given file.
 
     Args:
-        outputs (object): Output(s) of the computational graph. Each
-            item must be Variable, ActionValue, Distribution or list of them.
+        outputs (object): Output(s) of the computational graph. It must be
+            a Variable, an ActionValue, a Distribution or a list of them.
         filepath (str): Filepath to write a graph without file extention.
             A DOT file will be saved with ".gv" extension added.
             If Graphviz's dot command is available, a PNG file will also be
