@@ -29,7 +29,19 @@ class LinearBN(chainer.Chain):
 
 
 class MLPBN(chainer.Chain):
-    """Multi-Layer Perceptron with BatchNormalization."""
+    """Multi-Layer Perceptron with Batch Normalization.
+
+    Args:
+        in_size (int): Input size.
+        out_size (int): Output size.
+        hidden_sizes (list of ints): Sizes of hidden channels.
+        normalize_input (bool): If set to True, Batch Normalization is applied
+            to inputs.
+        normalize_output (bool): If set to True, Batch Normalization is applied
+            to outputs.
+        nonlinearity (callable): Nonlinearity between layers.
+        last_wscale (float): Scale of weight initialization of the last layer.
+        """
 
     def __init__(self, in_size, out_size, hidden_sizes, normalize_input=True,
                  normalize_output=False, nonlinearity=F.relu, last_wscale=1):
