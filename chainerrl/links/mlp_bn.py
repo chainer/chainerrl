@@ -39,7 +39,10 @@ class MLPBN(chainer.Chain):
             to inputs.
         normalize_output (bool): If set to True, Batch Normalization is applied
             to outputs.
-        nonlinearity (callable): Nonlinearity between layers.
+        nonlinearity (callable): Nonlinearity between layers. It must accept a
+            Variable as an argument and return a Variable with the same shape.
+            Nonlinearities with learnable parameters such as PReLU are not
+            supported.
         last_wscale (float): Scale of weight initialization of the last layer.
         """
 
