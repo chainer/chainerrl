@@ -70,7 +70,7 @@ class FCDeterministicPolicy(ContinuousDeterministicPolicy):
         nonlinearity (callable): Nonlinearity between layers. It must accept a
             Variable as an argument and return a Variable with the same shape.
             Nonlinearities with learnable parameters such as PReLU are not
-            supported.
+            supported. It is not used if n_hidden_layers is zero.
         last_wscale (float): Scale of weight initialization of the last layer.
     """
 
@@ -123,7 +123,7 @@ class FCBNDeterministicPolicy(ContinuousDeterministicPolicy):
         nonlinearity (callable): Nonlinearity between layers. It must accept a
             Variable as an argument and return a Variable with the same shape.
             Nonlinearities with learnable parameters such as PReLU are not
-            supported.
+            supported. It is not used if n_hidden_layers is zero.
         last_wscale (float): Scale of weight initialization of the last layer.
     """
 
