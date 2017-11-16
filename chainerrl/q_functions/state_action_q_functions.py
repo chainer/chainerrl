@@ -158,19 +158,20 @@ class FCBNLateActionSAQFunction(chainer.Chain, StateActionQFunction,
         n_dim_obs (int): Number of dimensions of observation space.
         n_dim_action (int): Number of dimensions of action space.
         n_hidden_channels (int): Number of hidden channels.
-        n_hidden_layers (int): Number of hidden layers.
+        n_hidden_layers (int): Number of hidden layers. It must be greater than
+            or equal to 1.
         normalize_input (bool): If set to True, Batch Normalization is applied
         nonlinearity (callable): Nonlinearity between layers. It must accept a
             Variable as an argument and return a Variable with the same shape.
             Nonlinearities with learnable parameters such as PReLU are not
             supported.
         last_wscale (float): Scale of weight initialization of the last layer.
-
     """
 
     def __init__(self, n_dim_obs, n_dim_action, n_hidden_channels,
                  n_hidden_layers, normalize_input=True,
                  nonlinearity=F.relu, last_wscale=1.):
+        assert n_hidden_layers >= 1
         self.n_input_channels = n_dim_obs + n_dim_action
         self.n_hidden_layers = n_hidden_layers
         self.n_hidden_channels = n_hidden_channels
@@ -211,7 +212,8 @@ class FCLateActionSAQFunction(chainer.Chain, StateActionQFunction,
         n_dim_obs (int): Number of dimensions of observation space.
         n_dim_action (int): Number of dimensions of action space.
         n_hidden_channels (int): Number of hidden channels.
-        n_hidden_layers (int): Number of hidden layers.
+        n_hidden_layers (int): Number of hidden layers. It must be greater than
+            or equal to 1.
         nonlinearity (callable): Nonlinearity between layers. It must accept a
             Variable as an argument and return a Variable with the same shape.
             Nonlinearities with learnable parameters such as PReLU are not
@@ -221,6 +223,7 @@ class FCLateActionSAQFunction(chainer.Chain, StateActionQFunction,
 
     def __init__(self, n_dim_obs, n_dim_action, n_hidden_channels,
                  n_hidden_layers, nonlinearity=F.relu, last_wscale=1.):
+        assert n_hidden_layers >= 1
         self.n_input_channels = n_dim_obs + n_dim_action
         self.n_hidden_layers = n_hidden_layers
         self.n_hidden_channels = n_hidden_channels
