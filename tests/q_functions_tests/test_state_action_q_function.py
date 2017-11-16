@@ -139,7 +139,7 @@ class TestFCBNSAQFunction(_TestSAQFunction):
     *testing.product({
         'n_dim_obs': [1, 5],
         'n_dim_action': [1, 3],
-        'n_hidden_layers': [0, 1, 2],
+        'n_hidden_layers': [1, 2],  # LateAction requires n_hidden_layers >=1
         'n_hidden_channels': [1, 2],
         'normalize_input': [True, False],
         'nonlinearity': ['relu', 'elu'],
@@ -173,7 +173,7 @@ class TestFCBNLateActionSAQFunction(_TestSAQFunction):
     *testing.product({
         'n_dim_obs': [1, 5],
         'n_dim_action': [1, 3],
-        'n_hidden_layers': [0, 1, 2],
+        'n_hidden_layers': [1, 2],  # LateAction requires n_hidden_layers >=1
         'n_hidden_channels': [1, 2],
         'nonlinearity': ['relu', 'elu'],
         'last_wscale': [1, 1e-3],
