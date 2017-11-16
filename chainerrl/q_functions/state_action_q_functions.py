@@ -180,6 +180,8 @@ class FCBNLateActionSAQFunction(chainer.Chain, StateActionQFunction,
 
         super().__init__()
         with self.init_scope():
+            # No need to pass nonlinearity to obs_mlp because it has no
+            # hidden layers
             self.obs_mlp = MLPBN(in_size=n_dim_obs, out_size=n_hidden_channels,
                                  hidden_sizes=[],
                                  normalize_input=normalize_input,
@@ -231,6 +233,8 @@ class FCLateActionSAQFunction(chainer.Chain, StateActionQFunction,
 
         super().__init__()
         with self.init_scope():
+            # No need to pass nonlinearity to obs_mlp because it has no
+            # hidden layers
             self.obs_mlp = MLP(in_size=n_dim_obs, out_size=n_hidden_channels,
                                hidden_sizes=[])
             self.mlp = MLP(in_size=n_hidden_channels + n_dim_action,
