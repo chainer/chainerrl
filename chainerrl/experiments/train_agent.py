@@ -108,7 +108,7 @@ def train_agent_with_evaluation(
         step_offset (int): Time step from which training starts.
         eval_explorer: Explorer used for evaluation.
         eval_max_episode_len (int or None): Maximum episode length of
-            evaluatio runs. If set to None, max_episode_len is used instead.
+            evaluation runs. If set to None, max_episode_len is used instead.
         eval_env: Environment used for evaluation.
         successful_score (float): Finish training if the mean score is greater
             or equal to this value if not None
