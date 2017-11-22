@@ -120,7 +120,7 @@ class ALE(env.Env):
         self.last_raw_screen = None
         assert rgb_img.shape[2:] == (3,)
         # RGB -> Luminance
-        img = np.dot(rgb_img, np.array([0.2126, 0.0722, 0.7152]))
+        img = np.dot(rgb_img, np.array([0.299, 0.587, 0.114]))
         img = img.astype(np.uint8)
         if img.shape == (250, 160):
             raise RuntimeError("This ROM is for PAL. Please use ROMs for NTSC")
