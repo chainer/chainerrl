@@ -128,6 +128,7 @@ class TestBiasCorrection(unittest.TestCase):
     def setUp(self):
         pass
 
+    @testing.attr.slow
     @condition.retry(3)
     def test_bias_correction(self):
 
