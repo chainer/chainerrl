@@ -206,7 +206,7 @@ class ALE(env.Env):
         self.last_raw_screen = self.ale.getScreenRGB()
 
         self.last_screens = collections.deque(
-            [np.zeros((84, 84), dtype=np.uint8)] * 3 +
+            [np.zeros((84, 84), dtype=np.uint8)] * (self.n_last_screens - 1) +
             [self.current_screen()],
             maxlen=self.n_last_screens)
 
