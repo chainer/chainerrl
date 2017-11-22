@@ -57,6 +57,8 @@ class ALE(env.Env):
                  frame_skip=4, treat_life_lost_as_terminal=True,
                  crop_or_scale='scale', max_start_nullops=30,
                  record_screen_dir=None):
+        assert crop_or_scale in ['crop', 'scale']
+        assert frame_skip >= 1
         self.n_last_screens = n_last_screens
         self.treat_life_lost_as_terminal = treat_life_lost_as_terminal
         self.crop_or_scale = crop_or_scale
