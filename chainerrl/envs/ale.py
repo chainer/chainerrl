@@ -116,10 +116,9 @@ class ALE(env.Env):
         rgb_img = np.maximum(self.ale.getScreenRGB(), self.last_raw_screen)
         # Make sure the last raw screen is used only once
         self.last_raw_screen = None
-        assert rgb_img.shape == (210, 160, 3)
+        assert rgb_img.shape[2:] == (3,)
         # RGB -> Luminance
-        img = rgb_img[:, :, 0] * 0.2126 + rgb_img[:, :, 1] * \
-            0.0722 + rgb_img[:, :, 2] * 0.7152
+        img = np.dot(rgb_img, np.array([0.2126, 0.0722, 0.7152]))
         img = img.astype(np.uint8)
         if img.shape == (250, 160):
             raise RuntimeError("This ROM is for PAL. Please use ROMs for NTSC")
