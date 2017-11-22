@@ -48,12 +48,14 @@ class _TestDeterministicPolicy(unittest.TestCase):
 @testing.parameterize(
     *testing.product({
         'n_input_channels': [1, 5],
-        'n_hidden_layers': [0, 1, 2],
-        'n_hidden_channels': [1, 2],
         'action_size': [1, 2],
         'bound_action': [True, False],
         'nonlinearity': ['relu', 'elu'],
-        'last_wscale': [1, 1e-3],
+        'model_kwargs': testing.product({
+            'n_hidden_layers': [0, 1, 2],
+            'n_hidden_channels': [1, 2],
+            'last_wscale': [1, 1e-3],
+        }),
     })
 )
 class TestFCDeterministicPolicy(_TestDeterministicPolicy):
@@ -64,14 +66,12 @@ class TestFCDeterministicPolicy(_TestDeterministicPolicy):
         max_action = np.full((self.action_size,), 0.01, dtype=np.float32)
         model = chainerrl.policies.FCDeterministicPolicy(
             n_input_channels=self.n_input_channels,
-            n_hidden_layers=self.n_hidden_layers,
-            n_hidden_channels=self.n_hidden_channels,
             action_size=self.action_size,
             bound_action=self.bound_action,
             min_action=min_action,
             max_action=max_action,
             nonlinearity=nonlinearity,
-            last_wscale=self.last_wscale,
+            **self.model_kwargs,
         )
         self._test_call_given_model(model, gpu)
 
@@ -86,13 +86,15 @@ class TestFCDeterministicPolicy(_TestDeterministicPolicy):
 @testing.parameterize(
     *testing.product({
         'n_input_channels': [1, 5],
-        'n_hidden_layers': [0, 1, 2],
-        'n_hidden_channels': [1, 2],
         'action_size': [1, 2],
         'bound_action': [True, False],
-        'normalize_input': [True, False],
         'nonlinearity': ['relu', 'elu'],
-        'last_wscale': [1, 1e-3],
+        'model_kwargs': testing.product({
+            'n_hidden_layers': [0, 1, 2],
+            'n_hidden_channels': [1, 2],
+            'normalize_input': [True, False],
+            'last_wscale': [1, 1e-3],
+        }),
     })
 )
 class TestFCBNDeterministicPolicy(_TestDeterministicPolicy):
@@ -103,15 +105,12 @@ class TestFCBNDeterministicPolicy(_TestDeterministicPolicy):
         max_action = np.full((self.action_size,), 0.01, dtype=np.float32)
         model = chainerrl.policies.FCBNDeterministicPolicy(
             n_input_channels=self.n_input_channels,
-            n_hidden_layers=self.n_hidden_layers,
-            n_hidden_channels=self.n_hidden_channels,
             action_size=self.action_size,
             bound_action=self.bound_action,
             min_action=min_action,
             max_action=max_action,
-            normalize_input=self.normalize_input,
             nonlinearity=nonlinearity,
-            last_wscale=self.last_wscale,
+            **self.model_kwargs,
         )
         self._test_call_given_model(model, gpu)
 
@@ -126,12 +125,14 @@ class TestFCBNDeterministicPolicy(_TestDeterministicPolicy):
 @testing.parameterize(
     *testing.product({
         'n_input_channels': [1, 5],
-        'n_hidden_layers': [0, 1, 2],
-        'n_hidden_channels': [1, 2],
         'action_size': [1, 2],
         'bound_action': [True, False],
         'nonlinearity': ['relu', 'elu'],
-        'last_wscale': [1, 1e-3],
+        'model_kwargs': testing.product({
+            'n_hidden_layers': [0, 1, 2],
+            'n_hidden_channels': [1, 2],
+            'last_wscale': [1, 1e-3],
+        }),
     })
 )
 class TestFCLSTMDeterministicPolicy(_TestDeterministicPolicy):
@@ -142,14 +143,12 @@ class TestFCLSTMDeterministicPolicy(_TestDeterministicPolicy):
         max_action = np.full((self.action_size,), 0.01, dtype=np.float32)
         model = chainerrl.policies.FCLSTMDeterministicPolicy(
             n_input_channels=self.n_input_channels,
-            n_hidden_layers=self.n_hidden_layers,
-            n_hidden_channels=self.n_hidden_channels,
             action_size=self.action_size,
             bound_action=self.bound_action,
             min_action=min_action,
             max_action=max_action,
             nonlinearity=nonlinearity,
-            last_wscale=self.last_wscale,
+            **self.model_kwargs,
         )
         self._test_call_given_model(model, gpu)
 
