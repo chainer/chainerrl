@@ -17,8 +17,8 @@ import numpy as np
 import chainerrl
 
 
-@testing.parameterize(
-    *testing.product({
+@testing.parameterize(*(
+    testing.product({
         'n_input_channels': [1, 5],
         'action_size': [1, 2],
         'bound_action': [True, False],
@@ -29,8 +29,8 @@ import chainerrl
             'n_hidden_channels': [1, 2],
             'last_wscale': [1, 1e-3],
         }),
-    }),
-    *testing.product({
+    }) +
+    testing.product({
         'n_input_channels': [1, 5],
         'action_size': [1, 2],
         'bound_action': [True, False],
@@ -42,8 +42,8 @@ import chainerrl
             'normalize_input': [True, False],
             'last_wscale': [1, 1e-3],
         }),
-    }),
-    *testing.product({
+    }) +
+    testing.product({
         'n_input_channels': [1, 5],
         'action_size': [1, 2],
         'bound_action': [True, False],
@@ -55,8 +55,12 @@ import chainerrl
             'last_wscale': [1, 1e-3],
         }),
     })
-)
+))
 class TestDeterministicPolicy(unittest.TestCase):
+
+    def _make_model(self, **kwargs):
+        kwargs.update(self.model_kwargs)
+        return self.model_class(**kwargs)
 
     def _test_call(self, gpu):
         # This method only check if a given model can receive random input
@@ -64,14 +68,13 @@ class TestDeterministicPolicy(unittest.TestCase):
         nonlinearity = getattr(F, self.nonlinearity)
         min_action = np.full((self.action_size,), -0.01, dtype=np.float32)
         max_action = np.full((self.action_size,), 0.01, dtype=np.float32)
-        model = self.model_class(
+        model = self._make_model(
             n_input_channels=self.n_input_channels,
             action_size=self.action_size,
             bound_action=self.bound_action,
             min_action=min_action,
             max_action=max_action,
             nonlinearity=nonlinearity,
-            **self.model_kwargs,
         )
 
         batch_size = 7
