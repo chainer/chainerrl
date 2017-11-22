@@ -164,10 +164,10 @@ class ALE(env.Env):
         assert not self.is_terminal
 
         rewards = []
-        for i in range(4):
+        for i in range(self.frame_skip):
 
-            # Last screeen must be stored before executing the 4th action
-            if i == 3:
+            # Last screeen must be stored before executing the last action
+            if i == self.frame_skip - 1:
                 self.last_raw_screen = self.ale.getScreenRGB()
 
             rewards.append(self.ale.act(self.legal_actions[action]))
