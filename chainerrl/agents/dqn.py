@@ -390,9 +390,8 @@ class DQN(agent.AttributeSavingMixin, agent.EpisodicActsMixin, agent.Agent):
 
         action = None
         while True:
-            try:
-                state = yield action
-            except GeneratorExit:
+            state = yield action
+            if state is None:
                 break
 
             action = self._compute_action(state)
@@ -439,17 +438,13 @@ class DQN(agent.AttributeSavingMixin, agent.EpisodicActsMixin, agent.Agent):
         last_state = None
         last_action = None
         while True:
-            try:
-                state, reward, halt = yield last_action
-            except GeneratorExit:
-                state, reward, halt = last_state, 0., True
-                is_state_terminal = True
-            else:
-                is_state_terminal = False
+            state, reward, halt = yield last_action
+            is_state_terminal = state is None
 
             if halt:
                 action = last_action
             else:
+                assert not is_state_terminal
                 action = self._compute_exploring_action(state)
                 self.t += 1
 
@@ -460,11 +455,13 @@ class DQN(agent.AttributeSavingMixin, agent.EpisodicActsMixin, agent.Agent):
             if last_state is not None:
                 assert last_action is not None
                 # Add a transition to the replay buffer
+                if is_state_terminal:
+                    state = last_state
                 self.replay_buffer.append(
                     state=last_state,
                     action=last_action,
                     reward=reward,
-                    next_state=state,
+                    next_state=last_state,
                     next_action=action,
                     is_state_terminal=is_state_terminal)
 
