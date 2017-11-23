@@ -384,17 +384,15 @@ class DQN(agent.AttributeSavingMixin, agent.EpisodicActsMixin, agent.Agent):
         else:
             model.to_cpu()
 
-    def act_episode(self):
+    def act_episode(self, state):
         if isinstance(self.model, Recurrent):
             self.model.reset_state()
 
-        action = None
         while True:
+            action = self._compute_action(state)
             state = yield action
             if state is None:
                 break
-
-            action = self._compute_action(state)
 
     def _compute_action(self, state):
         with chainer.using_config('train', False):
@@ -431,14 +429,15 @@ class DQN(agent.AttributeSavingMixin, agent.EpisodicActsMixin, agent.Agent):
 
         return action
 
-    def act_and_train_episode(self):
+    def act_and_train_episode(self, state):
         if isinstance(self.model, Recurrent):
             self.model.reset_state()
+
+        reward, halt = 0., False
 
         last_state = None
         last_action = None
         while True:
-            state, reward, halt = yield last_action
             is_state_terminal = state is None
 
             if halt:
@@ -474,6 +473,8 @@ class DQN(agent.AttributeSavingMixin, agent.EpisodicActsMixin, agent.Agent):
             self.replay_updater.update_if_necessary(self.t)
 
             self.logger.debug('t:%s r:%s a:%s', self.t, reward, action)
+
+            state, reward, halt = yield action
 
         self.replay_buffer.stop_current_episode()
 
