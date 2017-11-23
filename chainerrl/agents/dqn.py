@@ -461,7 +461,7 @@ class DQN(agent.AttributeSavingMixin, agent.EpisodicActsMixin, agent.Agent):
                     state=last_state,
                     action=last_action,
                     reward=reward,
-                    next_state=last_state,
+                    next_state=state,
                     next_action=action,
                     is_state_terminal=is_state_terminal)
 
