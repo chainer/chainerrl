@@ -103,8 +103,11 @@ class Agent(with_metaclass(ABCMeta, object)):
 class EpisodicActsMixin(object):
 
     @abstractmethod
-    def act_and_train_episode(self):
+    def act_and_train_episode(self, observation):
         """Select actions for training.
+
+        Arguments:
+            observation: The first observation
 
         Receives:
             (observation, reward, halt)
@@ -118,6 +121,9 @@ class EpisodicActsMixin(object):
     def act_episode(self):
         """Select actions for evaluation.
 
+        Arguments:
+            observation: The first observation
+
         Receives:
             observation
 
@@ -130,20 +136,21 @@ class EpisodicActsMixin(object):
         try:
             session = self._ep_train_session
         except AttributeError:
-            self._ep_train_session = self.act_and_train_episode()
-            session = self._ep_train_session
-            assert next(session) is None
-        # TODO(kataoka): namedtuple or OrderedDict
-        return session.send((obs, reward, False))
+            self._ep_train_session = self.act_and_train_episode(obs)
+            return next(self._ep_train_session)
+        else:
+            # TODO(kataoka): namedtuple or OrderedDict
+            return session.send((obs, reward, False))
 
     def act(self, obs):
         try:
             session = self._ep_session
         except AttributeError:
-            self._ep_session = self.act_episode()
+            self._ep_session = self.act_episode(obs)
             session = self._ep_session
-            assert next(session) is None
-        return session.send(obs)
+            return next(session)
+        else:
+            return session.send(obs)
 
     def stop_episode_and_train(self, obs, reward, done=False):
         try:
