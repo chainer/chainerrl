@@ -152,14 +152,14 @@ class EpisodicActsMixin(object):
             pass
         else:
             if done:
-                session.close()
+                obs = None
+
+            try:
+                session.send((obs, reward, True))
+            except StopIteration:
+                pass
             else:
-                try:
-                    session.send((obs, reward, True))
-                except StopIteration:
-                    pass
-                else:
-                    assert False
+                assert False
             del self._ep_train_session
 
     def stop_episode(self):
@@ -168,7 +168,12 @@ class EpisodicActsMixin(object):
         except AttributeError:
             pass
         else:
-            session.close()
+            try:
+                session.send(None)
+            except StopIteration:
+                pass
+            else:
+                assert False
             del self._ep_session
 
 
