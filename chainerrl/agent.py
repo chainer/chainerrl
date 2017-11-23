@@ -100,6 +100,78 @@ class Agent(with_metaclass(ABCMeta, object)):
         pass
 
 
+class EpisodicActsMixin(object):
+
+    @abstractmethod
+    def act_and_train_episode(self):
+        """Select actions for training.
+
+        Receives:
+            (observation, reward, halt)
+
+        Yields:
+            action
+        """
+        raise NotImplementedError()
+
+    @abstractmethod
+    def act_episode(self):
+        """Select actions for evaluation.
+
+        Receives:
+            observation
+
+        Yields:
+            action
+        """
+        raise NotImplementedError()
+
+    def act_and_train(self, obs, reward):
+        try:
+            session = self._ep_train_session
+        except AttributeError:
+            self._ep_train_session = self.act_and_train_episode()
+            session = self._ep_train_session
+            assert next(session) is None
+        # TODO(kataoka): namedtuple or OrderedDict
+        return session.send((obs, reward, False))
+
+    def act(self, obs):
+        try:
+            session = self._ep_session
+        except AttributeError:
+            self._ep_session = self.act_episode()
+            session = self._ep_session
+            assert next(session) is None
+        return session.send(obs)
+
+    def stop_episode_and_train(self, obs, reward, done=False):
+        try:
+            session = self._ep_train_session
+        except AttributeError:
+            pass
+        else:
+            if done:
+                session.close()
+            else:
+                try:
+                    session.send((obs, reward, True))
+                except StopIteration:
+                    pass
+                else:
+                    assert False
+            del self._ep_train_session
+
+    def stop_episode(self):
+        try:
+            session = self._ep_session
+        except AttributeError:
+            pass
+        else:
+            session.close()
+            del self._ep_session
+
+
 class AttributeSavingMixin(object):
     """Mixin that provides save and load functionalities."""
 
