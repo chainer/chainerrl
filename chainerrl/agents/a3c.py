@@ -159,14 +159,12 @@ class A3C(agent.AttributeSavingMixin, agent.EpisodicActsMixin,
     def update(self, state,
                past_action_log_prob,
                past_action_entropy,
-               past_states,
                past_rewards,
                past_values,
                ):
         t_length = len(past_action_log_prob)
         assert t_length \
             == len(past_action_entropy) \
-            == len(past_states) \
             == len(past_rewards) \
             == len(past_values)
 
@@ -251,12 +249,10 @@ class A3C(agent.AttributeSavingMixin, agent.EpisodicActsMixin,
         while not halt:
             past_action_log_prob = []
             past_action_entropy = []
-            past_states = []
             past_rewards = []
             past_values = []
 
             while len(past_rewards) < self.t_max and not halt:
-                past_states.append(state)
                 pout, vout = self.model.pi_and_v(state)
                 # Do not backprop through sampled actions
                 action = pout.sample().data
@@ -288,7 +284,6 @@ class A3C(agent.AttributeSavingMixin, agent.EpisodicActsMixin,
                 state,
                 past_action_log_prob,
                 past_action_entropy,
-                past_states,
                 past_rewards,
                 past_values,
             )
