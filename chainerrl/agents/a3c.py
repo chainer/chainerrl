@@ -156,14 +156,19 @@ class A3C(agent.AttributeSavingMixin, agent.EpisodicActsMixin,
     def shared_attributes(self):
         return ('shared_model', 'optimizer')
 
-    def update(self, state, t_start,
+    def update(self, state,
                past_action_log_prob,
                past_action_entropy,
                past_states,
                past_rewards,
                past_values,
                ):
-        assert t_start < self.t
+        t_length = len(past_action_log_prob)
+        assert t_length \
+            == len(past_action_entropy) \
+            == len(past_states) \
+            == len(past_rewards) \
+            == len(past_values)
 
         if state is None:
             R = 0
@@ -174,7 +179,7 @@ class A3C(agent.AttributeSavingMixin, agent.EpisodicActsMixin,
 
         pi_loss = 0
         v_loss = 0
-        for i in reversed(range(t_start, self.t)):
+        for i in reversed(range(t_length)):
             R *= self.gamma
             R += past_rewards[i]
             if self.use_average_reward:
@@ -204,14 +209,14 @@ class A3C(agent.AttributeSavingMixin, agent.EpisodicActsMixin,
 
         # Normalize the loss of sequences truncated by terminal states
         if self.keep_loss_scale_same and \
-                self.t - t_start < self.t_max:
-            factor = self.t_max / (self.t - t_start)
+                t_length < self.t_max:
+            factor = self.t_max / t_length
             pi_loss *= factor
             v_loss *= factor
 
         if self.normalize_grad_by_t_max:
-            pi_loss /= self.t - t_start
-            v_loss /= self.t - t_start
+            pi_loss /= t_length
+            v_loss /= t_length
 
         if self.process_idx == 0:
             logger.debug('pi_loss:%s v_loss:%s', pi_loss.data, v_loss.data)
@@ -244,21 +249,20 @@ class A3C(agent.AttributeSavingMixin, agent.EpisodicActsMixin,
         halt = False
 
         while not halt:
-            t_start = self.t
-            past_action_log_prob = {}
-            past_action_entropy = {}
-            past_states = {}
-            past_rewards = {}
-            past_values = {}
+            past_action_log_prob = []
+            past_action_entropy = []
+            past_states = []
+            past_rewards = []
+            past_values = []
 
-            while self.t - t_start < self.t_max and not halt:
-                past_states[self.t] = state
+            while len(past_rewards) < self.t_max and not halt:
+                past_states.append(state)
                 pout, vout = self.model.pi_and_v(state)
                 # Do not backprop through sampled actions
                 action = pout.sample().data
-                past_action_log_prob[self.t] = pout.log_prob(action)
-                past_action_entropy[self.t] = pout.entropy
-                past_values[self.t] = vout
+                past_action_log_prob.append(pout.log_prob(action))
+                past_action_entropy.append(pout.entropy)
+                past_values.append(vout)
                 action = action[0]
 
                 # Update stats
@@ -270,7 +274,7 @@ class A3C(agent.AttributeSavingMixin, agent.EpisodicActsMixin,
                     (float(pout.entropy.data[0]) - self.average_entropy))
 
                 state, reward, halt = yield action
-                past_rewards[self.t] = reward
+                past_rewards.append(reward)
                 self.t += 1
 
                 if self.process_idx == 0:
@@ -281,7 +285,7 @@ class A3C(agent.AttributeSavingMixin, agent.EpisodicActsMixin,
                     state = self.batch_states([state], np, self.phi)
 
             self.update(
-                state, t_start,
+                state,
                 past_action_log_prob,
                 past_action_entropy,
                 past_states,
