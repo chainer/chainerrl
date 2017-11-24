@@ -234,8 +234,6 @@ class A3C(agent.AttributeSavingMixin, agent.EpisodicActsMixin, agent.AsyncAgent)
             logger.debug('update')
 
         self.sync_parameters()
-        if isinstance(self.model, Recurrent):
-            self.model.unchain_backward()
 
     def act_and_train_episode(self, state):
         if isinstance(self.model, Recurrent):
@@ -288,6 +286,8 @@ class A3C(agent.AttributeSavingMixin, agent.EpisodicActsMixin, agent.AsyncAgent)
                 past_rewards,
                 past_values,
             )
+            if isinstance(self.model, Recurrent):
+                self.model.unchain_backward()
 
     def act_episode(self, state):
         # Use the process-local model for acting
