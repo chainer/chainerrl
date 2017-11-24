@@ -77,7 +77,8 @@ class A3CSharedModel(chainer.Chain, A3CModel, RecurrentChainMixin):
         return pout, vout
 
 
-class A3C(agent.AttributeSavingMixin, agent.EpisodicActsMixin, agent.AsyncAgent):
+class A3C(agent.AttributeSavingMixin, agent.EpisodicActsMixin,
+          agent.AsyncAgent):
     """A3C: Asynchronous Advantage Actor-Critic.
 
     See http://arxiv.org/abs/1602.01783
@@ -161,7 +162,7 @@ class A3C(agent.AttributeSavingMixin, agent.EpisodicActsMixin, agent.AsyncAgent)
                past_states,
                past_rewards,
                past_values,
-            ):
+               ):
         assert t_start < self.t
 
         if state is None:
@@ -253,7 +254,8 @@ class A3C(agent.AttributeSavingMixin, agent.EpisodicActsMixin, agent.AsyncAgent)
             while self.t - t_start < self.t_max and not halt:
                 past_states[self.t] = state
                 pout, vout = self.model.pi_and_v(state)
-                action = pout.sample().data  # Do not backprop through sampled actions
+                # Do not backprop through sampled actions
+                action = pout.sample().data
                 past_action_log_prob[self.t] = pout.log_prob(action)
                 past_action_entropy[self.t] = pout.entropy
                 past_values[self.t] = vout
