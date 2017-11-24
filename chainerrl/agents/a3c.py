@@ -77,7 +77,7 @@ class A3CSharedModel(chainer.Chain, A3CModel, RecurrentChainMixin):
         return pout, vout
 
 
-class A3C(agent.AttributeSavingMixin, agent.AsyncAgent):
+class A3C(agent.AttributeSavingMixin, agent.EpisodicActsMixin, agent.AsyncAgent):
     """A3C: Asynchronous Advantage Actor-Critic.
 
     See http://arxiv.org/abs/1602.01783
@@ -139,12 +139,6 @@ class A3C(agent.AttributeSavingMixin, agent.AsyncAgent):
         self.batch_states = batch_states
 
         self.t = 0
-        self.t_start = 0
-        self.past_action_log_prob = {}
-        self.past_action_entropy = {}
-        self.past_states = {}
-        self.past_rewards = {}
-        self.past_values = {}
         self.average_reward = 0
         # A3C won't use a explorer, but this arrtibute is referenced by run_dqn
         self.explorer = None
@@ -161,31 +155,37 @@ class A3C(agent.AttributeSavingMixin, agent.AsyncAgent):
     def shared_attributes(self):
         return ('shared_model', 'optimizer')
 
-    def update(self, statevar):
-        assert self.t_start < self.t
+    def update(self, state, t_start,
+               past_action_log_prob,
+               past_action_entropy,
+               past_states,
+               past_rewards,
+               past_values,
+            ):
+        assert t_start < self.t
 
-        if statevar is None:
+        if state is None:
             R = 0
         else:
             with state_kept(self.model):
-                _, vout = self.model.pi_and_v(statevar)
+                _, vout = self.model.pi_and_v(state)
             R = float(vout.data)
 
         pi_loss = 0
         v_loss = 0
-        for i in reversed(range(self.t_start, self.t)):
+        for i in reversed(range(t_start, self.t)):
             R *= self.gamma
-            R += self.past_rewards[i]
+            R += past_rewards[i]
             if self.use_average_reward:
                 R -= self.average_reward
-            v = self.past_values[i]
+            v = past_values[i]
             advantage = R - v
             if self.use_average_reward:
                 self.average_reward += self.average_reward_tau * \
                     float(advantage.data)
             # Accumulate gradients of policy
-            log_prob = self.past_action_log_prob[i]
-            entropy = self.past_action_entropy[i]
+            log_prob = past_action_log_prob[i]
+            entropy = past_action_entropy[i]
 
             # Log probability is increased proportionally to advantage
             pi_loss -= log_prob * float(advantage.data)
@@ -203,14 +203,14 @@ class A3C(agent.AttributeSavingMixin, agent.AsyncAgent):
 
         # Normalize the loss of sequences truncated by terminal states
         if self.keep_loss_scale_same and \
-                self.t - self.t_start < self.t_max:
-            factor = self.t_max / (self.t - self.t_start)
+                self.t - t_start < self.t_max:
+            factor = self.t_max / (self.t - t_start)
             pi_loss *= factor
             v_loss *= factor
 
         if self.normalize_grad_by_t_max:
-            pi_loss /= self.t - self.t_start
-            v_loss /= self.t - self.t_start
+            pi_loss /= self.t - t_start
+            v_loss /= self.t - t_start
 
         if self.process_idx == 0:
             logger.debug('pi_loss:%s v_loss:%s', pi_loss.data, v_loss.data)
@@ -237,67 +237,73 @@ class A3C(agent.AttributeSavingMixin, agent.AsyncAgent):
         if isinstance(self.model, Recurrent):
             self.model.unchain_backward()
 
-        self.past_action_log_prob = {}
-        self.past_action_entropy = {}
-        self.past_states = {}
-        self.past_rewards = {}
-        self.past_values = {}
+    def act_and_train_episode(self, state):
+        if isinstance(self.model, Recurrent):
+            self.model.reset_state()
 
-        self.t_start = self.t
+        state = self.batch_states([state], np, self.phi)
+        halt = False
 
-    def act_and_train(self, state, reward):
+        while not halt:
+            t_start = self.t
+            past_action_log_prob = {}
+            past_action_entropy = {}
+            past_states = {}
+            past_rewards = {}
+            past_values = {}
 
-        statevar = self.batch_states([state], np, self.phi)
+            while self.t - t_start < self.t_max and not halt:
+                past_states[self.t] = state
+                pout, vout = self.model.pi_and_v(state)
+                action = pout.sample().data  # Do not backprop through sampled actions
+                past_action_log_prob[self.t] = pout.log_prob(action)
+                past_action_entropy[self.t] = pout.entropy
+                past_values[self.t] = vout
+                action = action[0]
 
-        self.past_rewards[self.t - 1] = reward
+                # Update stats
+                self.average_value += (
+                    (1 - self.average_value_decay) *
+                    (float(vout.data[0]) - self.average_value))
+                self.average_entropy += (
+                    (1 - self.average_entropy_decay) *
+                    (float(pout.entropy.data[0]) - self.average_entropy))
 
-        if self.t - self.t_start == self.t_max:
-            self.update(statevar)
+                state, reward, halt = yield action
+                past_rewards[self.t] = reward
+                self.t += 1
 
-        self.past_states[self.t] = statevar
-        pout, vout = self.model.pi_and_v(statevar)
-        action = pout.sample().data  # Do not backprop through sampled actions
-        self.past_action_log_prob[self.t] = pout.log_prob(action)
-        self.past_action_entropy[self.t] = pout.entropy
-        self.past_values[self.t] = vout
-        self.t += 1
-        action = action[0]
-        if self.process_idx == 0:
-            logger.debug('t:%s r:%s a:%s pout:%s',
-                         self.t, reward, action, pout)
-        # Update stats
-        self.average_value += (
-            (1 - self.average_value_decay) *
-            (float(vout.data[0]) - self.average_value))
-        self.average_entropy += (
-            (1 - self.average_entropy_decay) *
-            (float(pout.entropy.data[0]) - self.average_entropy))
-        return action
+                if self.process_idx == 0:
+                    logger.debug('t:%s r:%s a:%s pout:%s',
+                                 self.t, reward, action, pout)
 
-    def act(self, obs):
+                if state is not None:
+                    state = self.batch_states([state], np, self.phi)
+
+            self.update(
+                state, t_start,
+                past_action_log_prob,
+                past_action_entropy,
+                past_states,
+                past_rewards,
+                past_values,
+            )
+
+    def act_episode(self, state):
         # Use the process-local model for acting
-        with chainer.no_backprop_mode():
-            statevar = self.batch_states([obs], np, self.phi)
-            pout, _ = self.model.pi_and_v(statevar)
-            if self.act_deterministically:
-                return pout.most_probable.data[0]
-            else:
-                return pout.sample().data[0]
-
-    def stop_episode_and_train(self, state, reward, done=False):
-        self.past_rewards[self.t - 1] = reward
-        if done:
-            self.update(None)
-        else:
-            statevar = self.batch_states([state], np, self.phi)
-            self.update(statevar)
 
         if isinstance(self.model, Recurrent):
             self.model.reset_state()
 
-    def stop_episode(self):
-        if isinstance(self.model, Recurrent):
-            self.model.reset_state()
+        while state is not None:
+            state = self.batch_states([state], np, self.phi)
+
+            with chainer.no_backprop_mode():
+                pout, _ = self.model.pi_and_v(state)
+                if self.act_deterministically:
+                    state = yield pout.most_probable.data[0]
+                else:
+                    state = yield pout.sample().data[0]
 
     def load(self, dirname):
         super().load(dirname)
