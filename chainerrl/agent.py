@@ -110,7 +110,7 @@ class EpisodicActsMixin(object):
             observation: The first observation
 
         Receives:
-            (observation, reward, halt)
+            (observation, reward, stop)
 
         Yields:
             action
@@ -139,7 +139,6 @@ class EpisodicActsMixin(object):
             self.__ep_train_session = self.act_and_train_episode(obs)
             return next(self.__ep_train_session)
         else:
-            # TODO(kataoka): namedtuple or OrderedDict
             return session.send((obs, reward, False))
 
     def act(self, obs):
