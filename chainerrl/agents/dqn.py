@@ -91,7 +91,7 @@ def compute_weighted_value_loss(y, t, weights,
     return loss
 
 
-class DQN(agent.AttributeSavingMixin, agent.EpisodicActsMixin, agent.Agent):
+class DQN(agent.AttributeSavingMixin, agent.ActStepMixin, agent.Agent):
     """Deep Q-Network algorithm.
 
     Args:
