@@ -100,7 +100,7 @@ class Agent(with_metaclass(ABCMeta, object)):
         pass
 
 
-class EpisodicActsMixin(object):
+class ActStepMixin(object):
 
     @abstractmethod
     def act_and_train_episode(self, observation):
@@ -110,7 +110,7 @@ class EpisodicActsMixin(object):
             observation: The first observation
 
         Receives:
-            (observation, reward, halt)
+            (observation, reward, stop)
 
         Yields:
             action
@@ -134,27 +134,26 @@ class EpisodicActsMixin(object):
 
     def act_and_train(self, obs, reward):
         try:
-            session = self._ep_train_session
+            session = self.__ep_train_session
         except AttributeError:
-            self._ep_train_session = self.act_and_train_episode(obs)
-            return next(self._ep_train_session)
+            self.__ep_train_session = self.act_and_train_episode(obs)
+            return next(self.__ep_train_session)
         else:
-            # TODO(kataoka): namedtuple or OrderedDict
             return session.send((obs, reward, False))
 
     def act(self, obs):
         try:
-            session = self._ep_session
+            session = self.__ep_session
         except AttributeError:
-            self._ep_session = self.act_episode(obs)
-            session = self._ep_session
+            self.__ep_session = self.act_episode(obs)
+            session = self.__ep_session
             return next(session)
         else:
             return session.send(obs)
 
     def stop_episode_and_train(self, obs, reward, done=False):
         try:
-            session = self._ep_train_session
+            session = self.__ep_train_session
         except AttributeError:
             pass
         else:
@@ -167,11 +166,11 @@ class EpisodicActsMixin(object):
                 pass
             else:
                 assert False
-            del self._ep_train_session
+            del self.__ep_train_session
 
     def stop_episode(self):
         try:
-            session = self._ep_session
+            session = self.__ep_session
         except AttributeError:
             pass
         else:
@@ -181,7 +180,7 @@ class EpisodicActsMixin(object):
                 pass
             else:
                 assert False
-            del self._ep_session
+            del self.__ep_session
 
 
 class AttributeSavingMixin(object):
