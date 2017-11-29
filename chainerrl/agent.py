@@ -100,7 +100,7 @@ class Agent(with_metaclass(ABCMeta, object)):
         pass
 
 
-class EpisodicActsMixin(object):
+class ActStepMixin(object):
 
     @abstractmethod
     def act_and_train_episode(self, observation):
