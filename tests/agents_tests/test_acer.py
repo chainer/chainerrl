@@ -25,9 +25,11 @@ from chainerrl.envs.abc import ABC
 from chainerrl.experiments.train_agent_async import train_agent_async
 from chainerrl.optimizers import rmsprop_async
 from chainerrl import policies
-from chainerrl import q_function, q_functions
+from chainerrl import q_function
+from chainerrl import q_functions
 from chainerrl.replay_buffer import EpisodicReplayBuffer
-from chainerrl import v_function, v_functions
+from chainerrl import v_function
+from chainerrl import v_functions
 
 
 def extract_gradients_as_single_vector(link):
@@ -360,12 +362,13 @@ class TestACER(unittest.TestCase):
 
     @testing.attr.slow
     def test_abc(self):
-        self._test_abc(self.t_max, self.use_lstm, discrete=self.discrete, use_bn=self.use_bn,
-                       episodic=self.episodic)
+        self._test_abc(self.t_max, self.use_lstm, discrete=self.discrete,
+                       use_bn=self.use_bn, episodic=self.episodic)
 
     def test_abc_fast(self):
-        self._test_abc(self.t_max, self.use_lstm, discrete=self.discrete, use_bn=self.use_bn,
-                       episodic=self.episodic, steps=10, require_success=False)
+        self._test_abc(self.t_max, self.use_lstm, discrete=self.discrete,
+                       use_bn=self.use_bn, episodic=self.episodic,
+                       steps=10, require_success=False)
 
     def _test_abc(self, t_max, use_lstm, discrete=True, use_bn=False,
                   episodic=True, steps=1000000, require_success=True):
