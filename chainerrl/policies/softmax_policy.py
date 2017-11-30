@@ -14,6 +14,7 @@ from chainer import functions as F
 
 from chainerrl import distribution
 from chainerrl.links.mlp import MLP
+from chainerrl.links.mlp_bn import MLPBN
 from chainerrl.policy import Policy
 
 
@@ -58,5 +59,32 @@ class FCSoftmaxPolicy(SoftmaxPolicy):
                       (n_hidden_channels,) * n_hidden_layers,
                       nonlinearity=nonlinearity,
                       last_wscale=last_wscale),
+            beta=self.beta,
+            min_prob=min_prob)
+
+
+class FCBNSoftmaxPolicy(SoftmaxPolicy):
+    """Softmax policy that consists of FC layers and rectifiers"""
+
+    def __init__(self, n_input_channels, n_actions,
+                 n_hidden_layers=0, n_hidden_channels=None,
+                 beta=1.0,
+                 normalize_input=True,
+                 nonlinearity=F.relu,
+                 last_wscale=1.0,
+                 min_prob=0.0):
+        self.n_input_channels = n_input_channels
+        self.n_actions = n_actions
+        self.n_hidden_layers = n_hidden_layers
+        self.n_hidden_channels = n_hidden_channels
+        self.beta = beta
+
+        super().__init__(
+            model=MLPBN(n_input_channels,
+                        n_actions,
+                        [n_hidden_channels] * n_hidden_layers,
+                        normalize_input=normalize_input,
+                        nonlinearity=nonlinearity,
+                        last_wscale=last_wscale),
             beta=self.beta,
             min_prob=min_prob)
