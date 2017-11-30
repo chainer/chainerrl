@@ -20,7 +20,6 @@ import numpy as np
 
 from chainerrl.misc.chainer_compat import matmul_v3
 
-
 class ActionValue(with_metaclass(ABCMeta, object)):
     """Struct that holds state-fixed Q-functions and its subproducts.
 
@@ -108,6 +107,68 @@ class DiscreteActionValue(ActionValue):
     @property
     def params(self):
         return (self.q_values,)
+
+
+class DistributionalDiscreteActionValue(ActionValue):
+    """distributional Q-function output for discrete action space.
+
+    Args:
+        q_dist (ndarray or chainer.Variable):
+            Array of Q distributions whose shape is (batchsize, n_actions, n_atoms)
+    """
+
+    def __init__(self, q_dist, z_values, q_values_formatter=lambda x: x):
+        assert isinstance(q_dist, chainer.Variable)
+        self.xp = cuda.get_array_module(q_dist.data)
+
+        self.z_values = z_values
+        self.q_values = np.sum(np.multiply(self.z_values, cuda.to_cpu(q_dist.data)), axis=2)
+        self.q_dist = q_dist
+        self.n_actions = q_dist.data.shape[1]
+        self.q_values_formatter = q_values_formatter
+
+    @cached_property
+    def greedy_actions(self):
+        return chainer.Variable(
+            self.q_values.argmax(axis=1).astype(np.int32))
+
+    @cached_property
+    def max(self):
+        with chainer.force_backprop_mode():
+            return chainer.Variable(self.q_values[self.xp.arange(self.q_values.shape[0]), self.greedy_actions.data])
+
+    @cached_property
+    def max_distribution(self):
+        with chainer.force_backprop_mode():
+            return self.q_dist[self.xp.arange(self.q_values.shape[0]), self.greedy_actions.data]
+
+    def sample_epsilon_greedy_actions(self, epsilon):
+        assert self.q_values.data.shape[0] == 1, \
+            "This method doesn't support batch computation"
+        if np.random.random() < epsilon:
+            return chainer.Variable(
+                self.xp.asarray([np.random.randint(0, self.n_actions)],
+                                dtype=np.int32))
+        else:
+            return self.greedy_actions
+
+    def evaluate_actions(self, actions):
+        return self.q_dist[self.xp.arange(self.q_values.shape[0]), actions]
+
+    def compute_advantage(self, actions):
+        return self.evaluate_actions(actions) - self.max
+
+    def compute_double_advantage(self, actions, argmax_actions):
+        return (self.evaluate_actions(actions) -
+                self.evaluate_actions(argmax_actions))
+
+    def compute_expectation(self, beta):
+        return F.sum(F.softmax(beta * self.q_values) * self.q_values, axis=1)
+
+    def __repr__(self):
+        return 'DistributionalDiscreteActionValue greedy_actions:{} q_values:{}'.format(
+            self.greedy_actions.data,
+            self.q_values_formatter(self.q_values.data))
 
 
 class QuadraticActionValue(ActionValue):

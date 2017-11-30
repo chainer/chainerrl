@@ -12,10 +12,11 @@ from chainer import functions as F
 from chainer import links as L
 import numpy as np
 
-from chainerrl.action_value import DiscreteActionValue
+from chainerrl.action_value import DiscreteActionValue, DistributionalDiscreteActionValue
 from chainerrl.action_value import QuadraticActionValue
 from chainerrl.functions.lower_triangular_matrix import lower_triangular_matrix
 from chainerrl.links.mlp import MLP
+from chainerrl.links.mlp_distribution import MLPDistribution
 from chainerrl.links.mlp_bn import MLPBN
 from chainerrl.misc.chainer_compat import matmul_v3
 from chainerrl.q_function import StateQFunction
@@ -67,6 +68,46 @@ class FCStateQFunctionWithDiscreteAction(
             hidden_sizes=[n_hidden_channels] * n_hidden_layers,
             nonlinearity=nonlinearity,
             last_wscale=last_wscale))
+
+
+class DistributionalSingleModelStateQFunctionWithDiscreteAction(
+        chainer.Chain, StateQFunction, RecurrentChainMixin):
+    """distributional Q-function with discrete actions.
+
+    Args:
+        model (chainer.Link):
+            Link that is callable and outputs action values.
+    """
+
+    def __init__(self, model, z_values):
+        super().__init__(model=model)
+        self.z_values = z_values
+
+    def __call__(self, x):
+        h = self.model(x)
+        return DistributionalDiscreteActionValue(h, self.z_values)
+
+
+class DistributionalFCStateQFunctionWithDiscreteAction(
+        DistributionalSingleModelStateQFunctionWithDiscreteAction):
+    """distributional Fully-connected state-input Q-function with discrete actions.
+
+    Args:
+        n_dim_obs: number of dimensions of observation space
+        n_dim_action: number of dimensions of action space
+        n_atoms: number of atoms of value distribution
+        n_hidden_channels: number of hidden channels
+        n_hidden_layers: number of hidden layers
+    """
+
+    def __init__(self, ndim_obs, n_actions, n_atoms, z_values, n_hidden_channels,
+                 n_hidden_layers, nonlinearity=F.relu,
+                 last_wscale=1.0):
+        super().__init__(model=MLPDistribution(
+            in_size=ndim_obs, n_atoms=n_atoms, out_size=n_actions,
+            hidden_sizes=[n_hidden_channels] * n_hidden_layers,
+            nonlinearity=nonlinearity,
+            last_wscale=last_wscale), z_values=z_values)
 
 
 class FCLSTMStateQFunction(chainer.Chain, StateQFunction, RecurrentChainMixin):
