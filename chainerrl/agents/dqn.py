@@ -22,16 +22,6 @@ from chainerrl.replay_buffer import batch_experiences
 from chainerrl.replay_buffer import ReplayUpdater
 
 
-def _to_device(obj, gpu):
-    if isinstance(obj, tuple):
-        return tuple(_to_device(x, gpu) for x in obj)
-    else:
-        if gpu >= 0:
-            return cuda.to_gpu(obj, gpu)
-        else:
-            return cuda.to_cpu(obj)
-
-
 def compute_value_loss(y, t, clip_delta=True, batch_accumulator='mean'):
     """Compute a loss for value prediction problem.
 
@@ -379,12 +369,6 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
             q_values = list(cuda.to_cpu(
                 self.model(batch_x).q_values))
             return q_values
-
-    def _to_my_device(self, model):
-        if self.gpu >= 0:
-            model.to_gpu(self.gpu)
-        else:
-            model.to_cpu()
 
     def act(self, state):
         with chainer.using_config('train', False):
