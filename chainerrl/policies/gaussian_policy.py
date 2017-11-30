@@ -127,6 +127,71 @@ class FCGaussianPolicy(chainer.ChainList, GaussianPolicy):
         return distribution.GaussianDistribution(mean, var=var)
 
 
+class FCGaussianPolicyWithStateIndependentCovariance(
+        chainer.Chain, GaussianPolicy):
+    """Gaussian policy that consists of FC layers with parametrized covariance.
+
+    This model has one output layers: the mean layer.
+    The mean of the Gaussian is computed in the same way as FCGaussianPolicy.
+
+    Args:
+        n_input_channels (int): Number of input channels.
+        action_size (int): Number of dimensions of the action space.
+        n_hidden_layers (int): Number of hidden layers.
+        n_hidden_channels (int): Number of hidden channels.
+        min_action (ndarray): Minimum action. Used only when bound_mean=True.
+        max_action (ndarray): Maximum action. Used only when bound_mean=True.
+        var_type (str): Type of parameterization of variance. It must be
+            'spherical' or 'diagonal'.
+        nonlinearity (callable): Nonlinearity placed between layers.
+        mean_wscale (float): Scale of weight initialization of the mean layer.
+    """
+
+    def __init__(self, n_input_channels, action_size,
+                 n_hidden_layers=0, n_hidden_channels=None,
+                 min_action=None, max_action=None, bound_mean=False,
+                 var_type='spherical',
+                 nonlinearity=F.relu, mean_wscale=1):
+
+        self.n_input_channels = n_input_channels
+        self.action_size = action_size
+        self.n_hidden_layers = n_hidden_layers
+        self.n_hidden_channels = n_hidden_channels
+        self.min_action = min_action
+        self.max_action = max_action
+        self.bound_mean = bound_mean
+        self.nonlinearity = nonlinearity
+        var_size = {'spherical': 1, 'diagonal': action_size}[var_type]
+
+        layers = []
+        layers.append(L.Linear(n_input_channels, n_hidden_channels))
+        for _ in range(n_hidden_layers - 1):
+            layers.append(self.nonlinearity)
+            layers.append(L.Linear(n_hidden_channels, n_hidden_channels))
+        layers.append(self.nonlinearity)
+        # The last layer is used to compute the mean
+        layers.append(
+            L.Linear(n_hidden_channels, action_size,
+                     initialW=LeCunNormal(mean_wscale)))
+
+        if self.bound_mean:
+            layers.append(lambda x: bound_by_tanh(
+                x, self.min_action, self.max_action))
+
+        super().__init__()
+        with self.init_scope():
+            self.hidden_layers = links.Sequence(*layers)
+            self.var_param = chainer.Parameter(
+                initializer=0.0, shape=(var_size,))
+
+    def __call__(self, x):
+        mean = self.hidden_layers(x)
+        var = F.broadcast_to(
+            F.softplus(self.var_param),
+            mean.shape)
+        return distribution.GaussianDistribution(mean, var)
+
+
 class FCGaussianPolicyWithFixedCovariance(links.Sequence, GaussianPolicy):
     """Gaussian policy that consists of FC layers with fixed covariance.
 
@@ -164,14 +229,23 @@ class FCGaussianPolicyWithFixedCovariance(links.Sequence, GaussianPolicy):
         else:
             self.var = var
         layers = []
-        layers.append(L.Linear(n_input_channels, n_hidden_channels))
-        for _ in range(n_hidden_layers - 1):
+        if n_hidden_layers > 0:
+            # Input to hidden
+            layers.append(L.Linear(n_input_channels, n_hidden_channels))
             layers.append(self.nonlinearity)
-            layers.append(L.Linear(n_hidden_channels, n_hidden_channels))
-        # The last layer is used to compute the mean
-        layers.append(
-            L.Linear(n_hidden_channels, action_size,
-                     initialW=LeCunNormal(mean_wscale)))
+            for _ in range(n_hidden_layers - 1):
+                # Hidden to hidden
+                layers.append(L.Linear(n_hidden_channels, n_hidden_channels))
+                layers.append(self.nonlinearity)
+            # The last layer is used to compute the mean
+            layers.append(
+                L.Linear(n_hidden_channels, action_size,
+                         initialW=LeCunNormal(mean_wscale)))
+        else:
+            # There's only one layer for computing the mean
+            layers.append(
+                L.Linear(n_input_channels, action_size,
+                         initialW=LeCunNormal(mean_wscale)))
 
         if self.bound_mean:
             layers.append(lambda x: bound_by_tanh(

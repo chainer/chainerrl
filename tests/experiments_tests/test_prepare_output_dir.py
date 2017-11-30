@@ -62,6 +62,12 @@ class TestPrepareOutputDir(unittest.TestCase):
 
             if self.git:
                 subprocess.call(['git', 'init'])
+                with open('not_utf-8.txt', 'wb') as f:
+                    f.write(b'\x80')
+                subprocess.call(['git', 'add', 'not_utf-8.txt'])
+                subprocess.call(['git', 'commit', '-m' 'commit1'])
+                with open('not_utf-8.txt', 'wb') as f:
+                    f.write(b'\x81')
 
             dirname = chainerrl.experiments.prepare_output_dir(
                 args,

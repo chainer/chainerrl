@@ -17,7 +17,7 @@ from chainerrl.functions.invert_gradients import invert_gradients
 
 
 @testing.parameterize(*testing.product({
-    'shape': [(1, 1), (2, 3), (2, 3, 4), (2, 3, 4, 5)],
+    'shape': [(), (1, 1), (2, 3), (2, 3, 4), (2, 3, 4, 5)],
     'dtype': [numpy.float32],
 }))
 class TestInvertGradients(unittest.TestCase):

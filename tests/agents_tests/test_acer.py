@@ -16,6 +16,7 @@ import chainer
 from chainer import functions as F
 from chainer import links as L
 from chainer import testing
+from chainer.testing import condition
 import numpy as np
 
 import chainerrl
@@ -127,7 +128,8 @@ class TestBiasCorrection(unittest.TestCase):
     def setUp(self):
         pass
 
-    @chainer.testing.condition.retry(3)
+    @testing.attr.slow
+    @condition.retry(3)
     def test_bias_correction(self):
 
         if self.distrib_type == 'Gaussian':
