@@ -672,7 +672,7 @@ class ACER(agent.AttributeSavingMixin, agent.AsyncAgent):
 
     def act(self, obs):
         # Use the process-local model for acting
-        with chainer.no_backprop_mode():
+        with chainer.no_backprop_mode(), chainer.using_config('train', False):
             statevar = np.expand_dims(self.phi(obs), 0)
             action_distrib, _, _ = self.model(statevar)
             if self.act_deterministically:
