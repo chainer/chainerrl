@@ -27,6 +27,14 @@ from chainerrl import policies
         'use_lstm': [True, False],
         'batchsize': [1, 10],
         'backward_separately': [True, False],
+        'use_bn': [False]
+    }) +
+    testing.product({
+        'discrete': [True, False],
+        'use_lstm': [False],
+        'batchsize': [5],
+        'backward_separately': [True, False],
+        'use_bn': [True]
     })
 ))
 class TestREINFORCE(unittest.TestCase):
@@ -46,14 +54,14 @@ class TestREINFORCE(unittest.TestCase):
 
     def test_abc_fast_cpu(self):
         self._test_abc(self.use_lstm, discrete=self.discrete,
-                       steps=10, require_success=False)
+                       use_bn=self.use_bn, steps=10, require_success=False)
 
     @testing.attr.gpu
     def test_abc_fast_gpu(self):
         self._test_abc(self.use_lstm, discrete=self.discrete,
                        steps=10, require_success=False, gpu=0)
 
-    def _test_abc(self, use_lstm, discrete=True, steps=1000000,
+    def _test_abc(self, use_lstm, discrete=True, use_bn=False, steps=1000000,
                   require_success=True, gpu=-1):
 
         def make_env(process_idx, test):
@@ -72,7 +80,24 @@ class TestREINFORCE(unittest.TestCase):
         n_hidden_channels = 20
         n_hidden_layers = 1
         nonlinearity = F.leaky_relu
-        if use_lstm:
+        if use_bn:
+            if discrete:
+                model = policies.FCBNSoftmaxPolicy(
+                    obs_space.low.size, action_space.n,
+                    n_hidden_channels=n_hidden_channels,
+                    n_hidden_layers=n_hidden_layers,
+                    nonlinearity=nonlinearity)
+            else:
+                model = policies.FCGaussianPolicy(  # todo
+                    obs_space.low.size, action_space.low.size,
+                    n_hidden_channels=n_hidden_channels,
+                    n_hidden_layers=n_hidden_layers,
+                    bound_mean=True,
+                    min_action=action_space.low,
+                    max_action=action_space.high,
+                    nonlinearity=nonlinearity,
+                )
+        elif use_lstm:
             if discrete:
                 model = chainerrl.links.Sequence(
                     L.LSTM(obs_space.low.size, n_hidden_channels,
