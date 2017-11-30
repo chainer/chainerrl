@@ -35,12 +35,12 @@ _gdis = chainerrl.distribution.GaussianDistribution(
     {'obj': [], 'expected': []},
     {'obj': (), 'expected': []},
     {'obj': _v, 'expected': [_v]},
-    {'obj': _dav, 'expected': [_dav.greedy_actions, _dav.max]},
-    {'obj': _qav, 'expected': [_qav.greedy_actions, _qav.max]},
+    {'obj': _dav, 'expected': list(_dav.params)},
+    {'obj': _qav, 'expected': list(_qav.params)},
     {'obj': _sdis, 'expected': list(_sdis.params)},
     {'obj': _gdis, 'expected': list(_gdis.params)},
-    {'obj': [_v, _dav, _sdis], 'expected': [
-        _v, _dav.greedy_actions, _dav.max] + list(_sdis.params)},
+    {'obj': [_v, _dav, _sdis],
+        'expected': [_v] + list(_dav.params) + list(_sdis.params)},
 )
 class TestCollectVariables(unittest.TestCase):
 

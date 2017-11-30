@@ -24,7 +24,7 @@ def collect_variables(obj):
     if isinstance(obj, chainer.Variable):
         return [obj]
     elif isinstance(obj, chainerrl.action_value.ActionValue):
-        return [obj.greedy_actions, obj.max]
+        return list(obj.params)
     elif isinstance(obj, chainerrl.distribution.Distribution):
         return list(obj.params)
     elif isinstance(obj, (list, tuple)):
