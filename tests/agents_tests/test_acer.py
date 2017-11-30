@@ -401,7 +401,7 @@ class TestACER(unittest.TestCase):
                         n_hidden_layers=n_hidden_layers,
                         nonlinearity=nonlinearity,
                         min_prob=1e-1),
-                    q=q_functions.FCStateQFunctionWithDiscreteAction(  # todo
+                    q=q_functions.FCStateQFunctionWithDiscreteAction(
                         obs_space.low.size, action_space.n,
                         n_hidden_channels=n_hidden_channels,
                         n_hidden_layers=n_hidden_layers,
@@ -409,7 +409,7 @@ class TestACER(unittest.TestCase):
                 )
             else:
                 model = acer.ACERSDNSeparateModel(
-                    pi=policies.FCGaussianPolicy(  # todo
+                    pi=policies.FCGaussianPolicy(
                         obs_space.low.size, action_space.low.size,
                         n_hidden_channels=n_hidden_channels,
                         n_hidden_layers=n_hidden_layers,

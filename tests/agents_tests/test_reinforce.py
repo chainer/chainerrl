@@ -30,7 +30,7 @@ from chainerrl import policies
         'use_bn': [False]
     }) +
     testing.product({
-        'discrete': [True, False],
+        'discrete': [True],
         'use_lstm': [False],
         'batchsize': [5],
         'backward_separately': [True, False],
@@ -81,22 +81,11 @@ class TestREINFORCE(unittest.TestCase):
         n_hidden_layers = 1
         nonlinearity = F.leaky_relu
         if use_bn:
-            if discrete:
-                model = policies.FCBNSoftmaxPolicy(
-                    obs_space.low.size, action_space.n,
-                    n_hidden_channels=n_hidden_channels,
-                    n_hidden_layers=n_hidden_layers,
-                    nonlinearity=nonlinearity)
-            else:
-                model = policies.FCGaussianPolicy(  # todo
-                    obs_space.low.size, action_space.low.size,
-                    n_hidden_channels=n_hidden_channels,
-                    n_hidden_layers=n_hidden_layers,
-                    bound_mean=True,
-                    min_action=action_space.low,
-                    max_action=action_space.high,
-                    nonlinearity=nonlinearity,
-                )
+            model = policies.FCBNSoftmaxPolicy(
+                obs_space.low.size, action_space.n,
+                n_hidden_channels=n_hidden_channels,
+                n_hidden_layers=n_hidden_layers,
+                nonlinearity=nonlinearity)
         elif use_lstm:
             if discrete:
                 model = chainerrl.links.Sequence(

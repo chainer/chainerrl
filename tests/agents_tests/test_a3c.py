@@ -102,7 +102,7 @@ class TestA3C(unittest.TestCase):
                 )
             else:
                 model = a3c.A3CSeparateModel(
-                    pi=policies.FCGaussianPolicy(  # todo:
+                    pi=policies.FCGaussianPolicy(
                         obs_space.low.size, action_space.low.size,
                         n_hidden_channels=n_hidden_channels,
                         n_hidden_layers=2,
