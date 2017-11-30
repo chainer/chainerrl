@@ -16,6 +16,10 @@ from chainerrl.q_function import StateQFunction
 
 
 class DuelingDQN(chainer.Chain, StateQFunction):
+    """Dueling Q-Network
+
+    See: http://arxiv.org/abs/1511.06581
+    """
 
     def __init__(self, n_actions, n_input_channels=4,
                  activation=F.relu, bias=0.1):
