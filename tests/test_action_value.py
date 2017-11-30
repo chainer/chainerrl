@@ -59,3 +59,40 @@ class TestDiscreteActionValue(unittest.TestCase):
                 v = self.q_values[b, greedy_actions[b]]
                 adv = q - v
                 self.assertAlmostEqual(ret.data[b], adv)
+
+
+class TestQuadraticActionValue(unittest.TestCase):
+    def test_unbounded(self):
+        n_batch = 7
+        ndim_action = 3
+        mu = np.random.randn(n_batch, ndim_action).astype(np.float32)
+        mat = np.broadcast_to(
+            np.eye(ndim_action, dtype=np.float32)[None],
+            (n_batch, ndim_action, ndim_action))
+        v = np.random.randn(n_batch).astype(np.float32)
+        q_out = action_value.QuadraticActionValue(mu, mat, v)
+        np.testing.assert_almost_equal(q_out.max.data, v)
+
+    def test_bounded(self):
+        n_batch = 20
+        ndim_action = 3
+        mu = np.random.randn(n_batch, ndim_action).astype(np.float32)
+        mat = np.broadcast_to(
+            np.eye(ndim_action, dtype=np.float32)[None],
+            (n_batch, ndim_action, ndim_action))
+        v = np.random.randn(n_batch).astype(np.float32)
+        min_action, max_action = -1.3, 1.3
+        q_out = action_value.QuadraticActionValue(
+            mu, mat, v, min_action, max_action)
+        v_out = q_out.max.data
+
+        mu_is_allowed = (min_action < mu) * (mu < max_action)
+        mu_is_allowed = np.all(mu_is_allowed, axis=1)
+
+        # If mu[i] is an valid action, v_out[i] should be v[i]
+        np.testing.assert_almost_equal(v_out[mu_is_allowed], v[mu_is_allowed])
+
+        # Otherwise, v_out[i] should be less than v[i]
+        np.testing.assert_array_less(
+            v_out[~mu_is_allowed],
+            v[~mu_is_allowed] + 1e-4)
