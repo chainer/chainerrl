@@ -14,13 +14,13 @@ def is_return_code_zero(args):
 
     All the messages to stdout or stderr are suppressed.
     """
-    FNULL = open(os.devnull, 'w')
-    try:
-        subprocess.check_call(args, stdout=FNULL, stderr=FNULL)
-    except subprocess.CalledProcessError:
-        # The given command returned an error
-        return False
-    except OSError:
-        # The given command was not found
-        return False
-    return True
+    with open(os.devnull, 'wb') as FNULL:
+        try:
+            subprocess.check_call(args, stdout=FNULL, stderr=FNULL)
+        except subprocess.CalledProcessError:
+            # The given command returned an error
+            return False
+        except OSError:
+            # The given command was not found
+            return False
+        return True
