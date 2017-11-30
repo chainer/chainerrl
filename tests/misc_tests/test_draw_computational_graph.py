@@ -12,6 +12,7 @@ import tempfile
 import unittest
 
 import chainer
+from chainer import testing
 import numpy as np
 
 import chainerrl
@@ -30,65 +31,68 @@ def tempdir():
         shutil.rmtree(d)
 
 
-class TestDrawComputationalGraph(unittest.TestCase):
+_v = chainer.Variable(np.zeros(5))
+_dav = chainerrl.action_value.DiscreteActionValue(
+    chainer.Variable(np.zeros((5, 5))))
+_qav = chainerrl.action_value.QuadraticActionValue(
+    chainer.Variable(np.zeros((5, 5), dtype=np.float32)),
+    chainer.Variable(np.ones((5, 5, 5), dtype=np.float32)),
+    chainer.Variable(np.zeros((5, 1), dtype=np.float32)),
+)
+_sdis = chainerrl.distribution.SoftmaxDistribution(
+    chainer.Variable(np.zeros((5, 5))))
+_gdis = chainerrl.distribution.GaussianDistribution(
+    chainer.Variable(np.zeros((5, 5), dtype=np.float32)),
+    chainer.Variable(np.ones((5, 5), dtype=np.float32)))
+
+
+@testing.parameterize(
+    {'obj': [], 'expected': []},
+    {'obj': (), 'expected': []},
+    {'obj': _v, 'expected': [_v]},
+    {'obj': _dav, 'expected': [_dav.greedy_actions, _dav.max]},
+    {'obj': _qav, 'expected': [_qav.greedy_actions, _qav.max]},
+    {'obj': _sdis, 'expected': list(_sdis.params)},
+    {'obj': _gdis, 'expected': list(_gdis.params)},
+    {'obj': [_v, _dav, _sdis], 'expected': [
+        _v, _dav.greedy_actions, _dav.max] + list(_sdis.params)},
+)
+class TestCollectVariables(unittest.TestCase):
+
+    def _assert_eq_var_list(self, a, b):
+        # Equality between two Variable lists
+        self.assertEqual(len(a), len(b))
+        self.assertTrue(isinstance(a, list))
+        self.assertTrue(isinstance(b, list))
+        for item in a:
+            self.assertTrue(isinstance(item, chainer.Variable))
+        for item in b:
+            self.assertTrue(isinstance(item, chainer.Variable))
+        for va, vb in zip(a, b):
+            self.assertEqual(id(va), id(vb))
 
     def test_collect_variables(self):
-        # Empty list
-        vs = chainerrl.misc.collect_variables([])
-        self.assertEqual(vs, [])
+        vs = chainerrl.misc.collect_variables(self.obj)
+        self._assert_eq_var_list(vs, self.expected)
 
-        vs = chainerrl.misc.collect_variables([[]])
-        self.assertEqual(vs, [])
+        # Wrap by a list
+        vs = chainerrl.misc.collect_variables([self.obj])
+        self._assert_eq_var_list(vs, self.expected)
 
-        # Empty tuple
-        vs = chainerrl.misc.collect_variables(())
-        self.assertEqual(vs, [])
+        # Wrap by two lists
+        vs = chainerrl.misc.collect_variables([[self.obj]])
+        self._assert_eq_var_list(vs, self.expected)
 
-        vs = chainerrl.misc.collect_variables(((),))
-        self.assertEqual(vs, [])
+        # Wrap by a tuple
+        vs = chainerrl.misc.collect_variables((self.obj,))
+        self._assert_eq_var_list(vs, self.expected)
 
-        # Variable
-        v = chainer.Variable(np.zeros(5))
+        # Wrap by a two tuples
+        vs = chainerrl.misc.collect_variables(((self.obj,),))
+        self._assert_eq_var_list(vs, self.expected)
 
-        vs = chainerrl.misc.collect_variables(v)
-        self.assertEqual(vs, [v])
 
-        vs = chainerrl.misc.collect_variables([v])
-        self.assertEqual(vs, [v])
-
-        vs = chainerrl.misc.collect_variables([[v]])
-        self.assertEqual(vs, [v])
-
-        # ActionValue
-        av = chainerrl.action_value.DiscreteActionValue(
-            chainer.Variable(np.zeros((5, 5))))
-
-        vs = chainerrl.misc.collect_variables(av)
-        self.assertEqual(vs, [av.greedy_actions, av.max])
-
-        vs = chainerrl.misc.collect_variables([av])
-        self.assertEqual(vs, [av.greedy_actions, av.max])
-
-        vs = chainerrl.misc.collect_variables([[av]])
-        self.assertEqual(vs, [av.greedy_actions, av.max])
-
-        # Distribution
-        dis = chainerrl.distribution.SoftmaxDistribution(
-            chainer.Variable(np.zeros((5, 5))))
-
-        vs = chainerrl.misc.collect_variables(dis)
-        self.assertEqual(vs, list(dis.params))
-
-        vs = chainerrl.misc.collect_variables([dis])
-        self.assertEqual(vs, list(dis.params))
-
-        vs = chainerrl.misc.collect_variables([[dis]])
-        self.assertEqual(vs, list(dis.params))
-
-        # All
-        vs = chainerrl.misc.collect_variables([v, av, dis])
-        self.assertEqual(vs, [v, av.greedy_actions, av.max]
-                         + list(dis.params))
+class TestDrawComputationalGraph(unittest.TestCase):
 
     def test_draw_computational_graph(self):
         x = chainer.Variable(np.zeros(5))
