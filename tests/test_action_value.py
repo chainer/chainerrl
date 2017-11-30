@@ -86,13 +86,16 @@ class TestQuadraticActionValue(unittest.TestCase):
             mu, mat, v, min_action, max_action)
         v_out = q_out.max.data
 
-        mu_is_allowed = (min_action < mu) * (mu < max_action)
-        mu_is_allowed = np.all(mu_is_allowed, axis=1)
-
         # If mu[i] is an valid action, v_out[i] should be v[i]
+        mu_is_allowed = np.all(
+            (min_action < mu) * (mu < max_action),
+            axis=1)
         np.testing.assert_almost_equal(v_out[mu_is_allowed], v[mu_is_allowed])
 
         # Otherwise, v_out[i] should be less than v[i]
+        mu_is_not_allowed = ~np.all(
+            (min_action - 1e-2 < mu) * (mu < max_action + 1e-2),
+            axis=1)
         np.testing.assert_array_less(
-            v_out[~mu_is_allowed],
-            v[~mu_is_allowed] + 1e-4)
+            v_out[mu_is_not_allowed],
+            v[mu_is_not_allowed])
