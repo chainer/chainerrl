@@ -25,9 +25,9 @@ from chainerrl.envs.abc import ABC
 from chainerrl.experiments.train_agent_async import train_agent_async
 from chainerrl.optimizers import rmsprop_async
 from chainerrl import policies
-from chainerrl import q_function
+from chainerrl import q_function, q_functions
 from chainerrl.replay_buffer import EpisodicReplayBuffer
-from chainerrl import v_function
+from chainerrl import v_function, v_functions
 
 
 def extract_gradients_as_single_vector(link):
@@ -329,6 +329,7 @@ class TestEfficientTRPO(unittest.TestCase):
         'n_times_replay': [0, 2],
         'disable_online_update': [True, False],
         'use_trust_region': [True, False],
+        'use_bn': [False]
     }) +
     testing.product({
         'discrete': [True, False],
@@ -338,6 +339,17 @@ class TestEfficientTRPO(unittest.TestCase):
         'n_times_replay': [0, 2],
         'disable_online_update': [True, False],
         'use_trust_region': [True, False],
+        'use_bn': [False]
+    }) +
+    testing.product({
+        'discrete': [True, False],
+        't_max': [1],
+        'use_lstm': [False],
+        'episodic': [False],
+        'n_times_replay': [0],
+        'disable_online_update': [False],
+        'use_trust_region': [False],
+        'use_bn': [True]
     })
 ))
 class TestACER(unittest.TestCase):
@@ -348,15 +360,15 @@ class TestACER(unittest.TestCase):
 
     @testing.attr.slow
     def test_abc(self):
-        self._test_abc(self.t_max, self.use_lstm, discrete=self.discrete,
+        self._test_abc(self.t_max, self.use_lstm, discrete=self.discrete, use_bn=self.use_bn,
                        episodic=self.episodic)
 
     def test_abc_fast(self):
-        self._test_abc(self.t_max, self.use_lstm, discrete=self.discrete,
+        self._test_abc(self.t_max, self.use_lstm, discrete=self.discrete, use_bn=self.use_bn,
                        episodic=self.episodic, steps=10, require_success=False)
 
-    def _test_abc(self, t_max, use_lstm, discrete=True, episodic=True,
-                  steps=1000000, require_success=True):
+    def _test_abc(self, t_max, use_lstm, discrete=True, use_bn=False,
+                  episodic=True, steps=1000000, require_success=True):
 
         nproc = 8
 
@@ -377,7 +389,45 @@ class TestACER(unittest.TestCase):
         n_hidden_layers = 1
         nonlinearity = F.leaky_relu
         replay_buffer = EpisodicReplayBuffer(10 ** 4)
-        if use_lstm:
+        if use_bn:
+            if discrete:
+                model = acer.ACERSeparateModel(
+                    pi=policies.FCBNSoftmaxPolicy(
+                        obs_space.low.size, action_space.n,
+                        n_hidden_channels=n_hidden_channels,
+                        n_hidden_layers=n_hidden_layers,
+                        nonlinearity=nonlinearity,
+                        min_prob=1e-1),
+                    q=q_functions.FCStateQFunctionWithDiscreteAction(  # todo
+                        obs_space.low.size, action_space.n,
+                        n_hidden_channels=n_hidden_channels,
+                        n_hidden_layers=n_hidden_layers,
+                        nonlinearity=nonlinearity),
+                )
+            else:
+                model = acer.ACERSDNSeparateModel(
+                    pi=policies.FCGaussianPolicy(  # todo
+                        obs_space.low.size, action_space.low.size,
+                        n_hidden_channels=n_hidden_channels,
+                        n_hidden_layers=n_hidden_layers,
+                        bound_mean=True,
+                        min_action=action_space.low,
+                        max_action=action_space.high,
+                        nonlinearity=nonlinearity,
+                        min_var=1e-1),
+                    v=v_functions.FCBNVFunction(
+                        obs_space.low.size,
+                        n_hidden_channels=n_hidden_channels,
+                        n_hidden_layers=n_hidden_layers,
+                        nonlinearity=nonlinearity),
+                    adv=q_functions.FCBNSAQFunction(
+                        obs_space.low.size, action_space.low.size,
+                        n_hidden_channels=n_hidden_channels,
+                        n_hidden_layers=n_hidden_layers,
+                        nonlinearity=nonlinearity),
+                )
+
+        elif use_lstm:
             if discrete:
                 model = acer.ACERSharedModel(
                     shared=L.LSTM(obs_space.low.size, n_hidden_channels),
