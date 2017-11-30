@@ -41,6 +41,15 @@ class ActionValue(with_metaclass(ABCMeta, object)):
         """Evaluate Q(s,a) with a = given actions."""
         raise NotImplementedError()
 
+    @abstractproperty
+    def params(self):
+        """Learnable parameters of this action value.
+
+        Returns:
+            tuple of chainer.Variable
+        """
+        raise NotImplementedError()
+
 
 class DiscreteActionValue(ActionValue):
     """Q-function output for discrete action space.
@@ -94,6 +103,10 @@ class DiscreteActionValue(ActionValue):
         return 'DiscreteActionValue greedy_actions:{} q_values:{}'.format(
             self.greedy_actions.data,
             self.q_values_formatter(self.q_values.data))
+
+    @property
+    def params(self):
+        return (self.q_values,)
 
 
 class QuadraticActionValue(ActionValue):
@@ -164,6 +177,10 @@ class QuadraticActionValue(ActionValue):
         return 'QuadraticActionValue greedy_actions:{} v:{}'.format(
             self.greedy_actions.data, self.v.data)
 
+    @property
+    def params(self):
+        return (self.mu, self.mat, self.v)
+
 
 class SingleActionValue(ActionValue):
     """ActionValue that can evaluate only a single action."""
@@ -194,3 +211,9 @@ class SingleActionValue(ActionValue):
 
     def __repr__(self):
         return 'SingleActionValue'
+
+    @property
+    def params(self):
+        # SingleActionValue has no learnable parameters until it is evaluated
+        # on some action.
+        return ()

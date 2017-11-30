@@ -59,3 +59,7 @@ class TestDiscreteActionValue(unittest.TestCase):
                 v = self.q_values[b, greedy_actions[b]]
                 adv = q - v
                 self.assertAlmostEqual(ret.data[b], adv)
+
+    def test_params(self):
+        self.assertEqual(len(self.qout.params), 1)
+        self.assertEqual(id(self.qout.params[0]), id(self.qout.q_values))
