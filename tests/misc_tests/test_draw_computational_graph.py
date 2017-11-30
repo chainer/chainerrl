@@ -18,19 +18,6 @@ import numpy as np
 import chainerrl
 
 
-@contextlib.contextmanager
-def tempdir():
-    """Alternative to tempfile.TemporaryDirectory.
-
-    tempfile.TemporaryDirectory is not available in Python 2.x.
-    """
-    d = tempfile.mkdtemp()
-    try:
-        yield d
-    finally:
-        shutil.rmtree(d)
-
-
 _v = chainer.Variable(np.zeros(5))
 _dav = chainerrl.action_value.DiscreteActionValue(
     chainer.Variable(np.zeros((5, 5))))
@@ -97,11 +84,11 @@ class TestDrawComputationalGraph(unittest.TestCase):
     def test_draw_computational_graph(self):
         x = chainer.Variable(np.zeros(5))
         y = x ** 2 + chainer.Variable(np.ones(5))
-        with tempdir() as d:
-            filepath = os.path.join(d, 'graph')
-            chainerrl.misc.draw_computational_graph(y, filepath)
-            self.assertTrue(os.path.exists(filepath + '.gv'))
-            if chainerrl.misc.is_graphviz_available():
-                self.assertTrue(os.path.exists(filepath + '.png'))
-            else:
-                self.assertFalse(os.path.exists(filepath + '.png'))
+        dirname = tempfile.mkdtemp()
+        filepath = os.path.join(dirname, 'graph')
+        chainerrl.misc.draw_computational_graph(y, filepath)
+        self.assertTrue(os.path.exists(filepath + '.gv'))
+        if chainerrl.misc.is_graphviz_available():
+            self.assertTrue(os.path.exists(filepath + '.png'))
+        else:
+            self.assertFalse(os.path.exists(filepath + '.png'))
