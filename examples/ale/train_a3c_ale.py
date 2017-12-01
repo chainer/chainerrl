@@ -10,7 +10,9 @@ import os
 
 import chainer
 from chainer import links as L
+import numpy as np
 
+import chainerrl
 from chainerrl.agents import a3c
 from chainerrl.envs import ale
 from chainerrl import experiments
@@ -99,6 +101,17 @@ def main():
         model = A3CLSTM(n_actions)
     else:
         model = A3CFF(n_actions)
+
+    # Draw the computational graph and save it in the output directory.
+    fake_obs = chainer.Variable(
+        np.zeros((4, 84, 84), dtype=np.float32)[None],
+        name='observation')
+    with chainerrl.recurrent.state_reset(model):
+        # The state of the model is reset again after drawing the graph
+        chainerrl.misc.draw_computational_graph(
+            [model(fake_obs)],
+            os.path.join(args.outdir, 'model'))
+
     opt = rmsprop_async.RMSpropAsync(lr=7e-4, eps=1e-1, alpha=0.99)
     opt.setup(model)
     opt.add_hook(chainer.optimizer.GradientClipping(40))
