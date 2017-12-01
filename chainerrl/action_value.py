@@ -120,8 +120,14 @@ class QuadraticActionValue(ActionValue):
         self.mu = mu
         self.mat = mat
         self.v = v
-        self.min_action = self.xp.asarray(min_action, dtype=np.float32)
-        self.max_action = self.xp.asarray(max_action, dtype=np.float32)
+        if min_action is None:
+            self.min_action = None
+        else:
+            self.min_action = self.xp.asarray(min_action, dtype=np.float32)
+        if max_action is None:
+            self.max_action = None
+        else:
+            self.max_action = self.xp.asarray(max_action, dtype=np.float32)
 
         self.batch_size = self.mu.data.shape[0]
 
