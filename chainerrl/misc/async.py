@@ -7,6 +7,7 @@ from future import standard_library
 standard_library.install_aliases()
 
 import multiprocessing as mp
+import warnings
 
 import chainer
 import numpy as np
@@ -132,6 +133,10 @@ def run_async(n_process, run_func):
 
     for p in processes:
         p.join()
+        if p.exitcode < 0:
+            warnings.warn(
+                "Process {}'s exit code was not zero but {}".format(
+                    p.pid, p.exitcode))
 
 
 def as_shared_objects(obj):
