@@ -70,8 +70,16 @@ class TestQuadraticActionValue(unittest.TestCase):
             np.eye(ndim_action, dtype=np.float32)[None],
             (n_batch, ndim_action, ndim_action))
         v = np.random.randn(n_batch).astype(np.float32)
-        q_out = action_value.QuadraticActionValue(mu, mat, v)
-        np.testing.assert_almost_equal(q_out.max.data, v)
+        q_out = action_value.QuadraticActionValue(
+            chainer.Variable(mu),
+            chainer.Variable(mat),
+            chainer.Variable(v))
+
+        v_out = q_out.max
+        self.assertIsInstance(v_out, chainer.Variable)
+        v_out = v_out.data
+
+        np.testing.assert_almost_equal(v_out, v)
 
     def test_bounded(self):
         n_batch = 20
@@ -83,8 +91,14 @@ class TestQuadraticActionValue(unittest.TestCase):
         v = np.random.randn(n_batch).astype(np.float32)
         min_action, max_action = -1.3, 1.3
         q_out = action_value.QuadraticActionValue(
-            mu, mat, v, min_action, max_action)
-        v_out = q_out.max.data
+            chainer.Variable(mu),
+            chainer.Variable(mat),
+            chainer.Variable(v),
+            min_action, max_action)
+
+        v_out = q_out.max
+        self.assertIsInstance(v_out, chainer.Variable)
+        v_out = v_out.data
 
         # If mu[i] is an valid action, v_out[i] should be v[i]
         mu_is_allowed = np.all(
