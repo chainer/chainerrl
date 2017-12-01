@@ -6,12 +6,14 @@ from builtins import *  # NOQA
 from future import standard_library
 standard_library.install_aliases()
 import argparse
+import os
 
 from chainer import functions as F
 from chainer import links as L
 from chainer import optimizers
 import numpy as np
 
+import chainerrl
 from chainerrl.action_value import DiscreteActionValue
 from chainerrl import agents
 from chainerrl.envs import ale
@@ -108,6 +110,11 @@ def main():
     n_actions = env.number_of_actions
     activation = parse_activation(args.activation)
     q_func = parse_arch(args.arch, n_actions, activation)
+
+    # Draw the computational graph and save it in the output directory.
+    chainerrl.misc.draw_computational_graph(
+        [q_func(np.zeros((4, 84, 84), dtype=np.float32)[None])],
+        os.path.join(args.outdir, 'model'))
 
     # Use the same hyper parameters as the Nature paper's
     opt = optimizers.RMSpropGraves(
