@@ -9,6 +9,8 @@ standard_library.install_aliases()
 import unittest
 
 import chainer
+import chainer.functions as F
+from chainer import testing
 import numpy as np
 
 from chainerrl import action_value
@@ -117,3 +119,67 @@ class TestQuadraticActionValue(unittest.TestCase):
         np.testing.assert_array_less(
             v_out[mu_is_not_allowed],
             v[mu_is_not_allowed])
+
+
+@testing.parameterize(*testing.product({
+    'batch_size': [1, 3],
+    'action_size': [1, 2],
+    'has_maximizer': [True, False],
+}))
+class TestSingleActionValue(unittest.TestCase):
+
+    def setUp(self):
+
+        def evaluator(actions):
+            # negative square norm of actions
+            return -F.sum(actions ** 2, axis=1)
+
+        self.evaluator = evaluator
+
+        if self.has_maximizer:
+            def maximizer():
+                return chainer.Variable(np.zeros(
+                    (self.batch_size, self.action_size), dtype=np.float32))
+        else:
+            maximizer = None
+        self.maximizer = maximizer
+        self.av = action_value.SingleActionValue(
+            evaluator=evaluator, maximizer=maximizer)
+
+    def test_max(self):
+        if not self.has_maximizer:
+            return
+        self.assertIsInstance(self.av.max, chainer.Variable)
+        np.testing.assert_almost_equal(
+            self.av.max.data,
+            self.evaluator(self.maximizer()).data)
+
+    def test_greedy_actions(self):
+        if not self.has_maximizer:
+            return
+        self.assertIsInstance(self.av.greedy_actions, chainer.Variable)
+        np.testing.assert_equal(self.av.greedy_actions.data,
+                                self.maximizer().data)
+
+    def test_evaluate_actions(self):
+        sample_actions = np.random.randn(
+            self.batch_size, self.action_size).astype(np.float32)
+        ret = self.av.evaluate_actions(sample_actions)
+        self.assertIsInstance(ret, chainer.Variable)
+        np.testing.assert_equal(ret.data, self.evaluator(sample_actions).data)
+
+    def test_compute_advantage(self):
+        if not self.has_maximizer:
+            return
+        sample_actions = np.random.randn(
+            self.batch_size, self.action_size).astype(np.float32)
+        ret = self.av.compute_advantage(sample_actions)
+        self.assertIsInstance(ret, chainer.Variable)
+        np.testing.assert_equal(
+            ret.data,
+            (self.evaluator(sample_actions).data
+                - self.evaluator(self.maximizer()).data))
+
+    def test_params(self):
+        # no params
+        self.assertEqual(len(self.av.params), 0)
