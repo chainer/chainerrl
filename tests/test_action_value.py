@@ -63,3 +63,57 @@ class TestDiscreteActionValue(unittest.TestCase):
     def test_params(self):
         self.assertEqual(len(self.qout.params), 1)
         self.assertEqual(id(self.qout.params[0]), id(self.qout.q_values))
+
+
+class TestQuadraticActionValue(unittest.TestCase):
+    def test_max_unbounded(self):
+        n_batch = 7
+        ndim_action = 3
+        mu = np.random.randn(n_batch, ndim_action).astype(np.float32)
+        mat = np.broadcast_to(
+            np.eye(ndim_action, dtype=np.float32)[None],
+            (n_batch, ndim_action, ndim_action))
+        v = np.random.randn(n_batch).astype(np.float32)
+        q_out = action_value.QuadraticActionValue(
+            chainer.Variable(mu),
+            chainer.Variable(mat),
+            chainer.Variable(v))
+
+        v_out = q_out.max
+        self.assertIsInstance(v_out, chainer.Variable)
+        v_out = v_out.data
+
+        np.testing.assert_almost_equal(v_out, v)
+
+    def test_max_bounded(self):
+        n_batch = 20
+        ndim_action = 3
+        mu = np.random.randn(n_batch, ndim_action).astype(np.float32)
+        mat = np.broadcast_to(
+            np.eye(ndim_action, dtype=np.float32)[None],
+            (n_batch, ndim_action, ndim_action))
+        v = np.random.randn(n_batch).astype(np.float32)
+        min_action, max_action = -1.3, 1.3
+        q_out = action_value.QuadraticActionValue(
+            chainer.Variable(mu),
+            chainer.Variable(mat),
+            chainer.Variable(v),
+            min_action, max_action)
+
+        v_out = q_out.max
+        self.assertIsInstance(v_out, chainer.Variable)
+        v_out = v_out.data
+
+        # If mu[i] is an valid action, v_out[i] should be v[i]
+        mu_is_allowed = np.all(
+            (min_action < mu) * (mu < max_action),
+            axis=1)
+        np.testing.assert_almost_equal(v_out[mu_is_allowed], v[mu_is_allowed])
+
+        # Otherwise, v_out[i] should be less than v[i]
+        mu_is_not_allowed = ~np.all(
+            (min_action - 1e-2 < mu) * (mu < max_action + 1e-2),
+            axis=1)
+        np.testing.assert_array_less(
+            v_out[mu_is_not_allowed],
+            v[mu_is_not_allowed])
