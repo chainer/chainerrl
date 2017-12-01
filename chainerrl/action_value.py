@@ -10,6 +10,7 @@ standard_library.install_aliases()
 from abc import ABCMeta
 from abc import abstractmethod
 from abc import abstractproperty
+import warnings
 
 from cached_property import cached_property
 import chainer
@@ -220,6 +221,9 @@ class SingleActionValue(ActionValue):
 
     @property
     def params(self):
-        # SingleActionValue has no learnable parameters until it is evaluated
-        # on some action.
+        warnings.warn(
+            'SingleActionValue has no learnable parameters until it'
+            ' is evaluated on some action. If you want to draw a computation'
+            ' graph that outputs SingleActionValue, use the variable returned'
+            ' by its method such as evaluate_actions instead.')
         return ()
