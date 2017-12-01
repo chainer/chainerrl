@@ -39,7 +39,7 @@ class Recurrent(with_metaclass(ABCMeta, object)):
 
     @abstractmethod
     def get_state(self):
-        """Get a state of this model.
+        """Get the current state of this model.
 
         Returns:
             Any object that represents a state of this model.
@@ -48,7 +48,7 @@ class Recurrent(with_metaclass(ABCMeta, object)):
 
     @abstractmethod
     def set_state(self, state):
-        """Overwrite this model's state with a given state.
+        """Overwrite the state of this model with a given state.
 
         Args:
             state (object): Any object that represents a state of this model.
@@ -57,7 +57,7 @@ class Recurrent(with_metaclass(ABCMeta, object)):
 
     @abstractmethod
     def reset_state(self):
-        """Reset this model's state to the initial state.
+        """Reset the state of this model to the initial state.
 
         For typical RL models, this method is expected to be called before
         every episode.
