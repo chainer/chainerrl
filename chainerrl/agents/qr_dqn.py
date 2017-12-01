@@ -6,12 +6,85 @@ from builtins import *  # NOQA
 from future import standard_library
 standard_library.install_aliases()
 
+import functools
+
 import chainer
 from chainer import cuda
 import chainer.functions as F
 
+import chainerrl
 from chainerrl.agents.dqn import DQN
 from chainerrl.functions import quantile_loss
+
+
+# Definitions here are for discrete actions
+class _SingleModelStateQuantileQFunction(
+        chainer.Chain, chainerrl.q_function.StateQFunction):
+
+    def __init__(self, model):
+        super().__init__()
+        with self.init_scope():
+            self.model = model
+
+    def __call__(self, x):
+        h = self.model(x)
+        return _ActionQuantile(h)
+
+
+class _ActionQuantile(chainerrl.action_value.DiscreteActionValue):
+
+    def __init__(self, q_quantiles, q_values_formatter=lambda x: x):
+        assert isinstance(q_quantiles, chainer.Variable)
+        assert q_quantiles.ndim == 3
+        self.xp = cuda.get_array_module(q_quantiles.data)
+        self.q_quantiles = q_quantiles
+        self.n_actions = q_quantiles.data.shape[1]
+        self.n_diracs = q_quantiles.data.shape[2]
+        self.q_values_formatter = q_values_formatter
+
+    @property
+    def q_values(self):
+        return F.mean(self.q_quantiles, axis=2)
+
+    def evaluate_actions(self, actions):
+        if isinstance(actions, chainer.Variable):
+            actions = actions.data
+
+        # print(self.xp.arange(actions.size))
+        # print(actions)
+        return self.q_quantiles[
+            self.xp.arange(actions.size),
+            actions
+        ]
+
+
+class FCQuantileQFunction(_SingleModelStateQuantileQFunction):
+    def __init__(
+            self,
+            obs_size, n_actions, n_diracs,
+            n_hidden_channels,
+            n_hidden_layers,
+    ):
+        super().__init__(
+            model=chainerrl.links.Sequence(
+                chainerrl.links.MLP(
+                    obs_size, n_actions * n_diracs,
+                    hidden_sizes=[n_hidden_channels] * n_hidden_layers,
+                ),
+                functools.partial(
+                    F.reshape,
+                    shape=(-1, n_actions, n_diracs)
+                )
+            )
+        )
+    """
+        self.n_actions = n_actions
+        self.n_diracs = n_diracs
+
+    def __call__(self, x):
+        y = self.model(x).reshape(-1, self.n_actions, self.n_diracs)
+        return _ActionQuantile(y)
+    """
 
 
 class QRDQN(DQN):
@@ -23,15 +96,14 @@ class QRDQN(DQN):
         assert y.shape[0] == t.shape[0]
 
         # broadcast to (batch, t_n_dirac, y_n_dirac)
-        y, t = F.broadcast(y[:,None,:], t[:,:,None])
+        y, t = F.broadcast(y[:, None, :], t[:, :, None])
 
-        # 
         tau_hat = (xp.arange(n_diracs).astype(y.dtype) + 0.5) / n_diracs
         tau_hat = F.broadcast_to(tau_hat, y.shape)
 
         loss = quantile_loss(y, t, tau_hat)
         loss = F.mean(loss, axis=(1, 2))
-        
+
         if errors_out is not None:
             errors_out[:] = list(cuda.to_cpu(loss.data))
 
@@ -39,7 +111,7 @@ class QRDQN(DQN):
         return loss
 
     def _compute_y_and_t(self, exp_batch, gamma):
-        batch_size = exp_batch['reward'].shape[0]
+        # batch_size = exp_batch['reward'].shape[0]
 
         # Compute Q-values for current states
         batch_state = exp_batch['state']
@@ -67,7 +139,7 @@ class QRDQN(DQN):
         batch_terminal = exp_batch['is_state_terminal']
 
         shape = next_v.shape
-        batch_rewards = F.broadcast_to(batch_rewards[:, None], next_v.shape)
-        batch_terminal = F.broadcast_to(batch_terminal[:, None], next_v.shape)
+        batch_rewards = F.broadcast_to(batch_rewards[:, None], shape)
+        batch_terminal = F.broadcast_to(batch_terminal[:, None], shape)
 
         return batch_rewards + self.gamma * (1.0 - batch_terminal) * next_v

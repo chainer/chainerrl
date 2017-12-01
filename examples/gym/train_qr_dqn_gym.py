@@ -28,70 +28,12 @@ from gym import spaces
 import gym.wrappers
 import numpy as np
 
+from chainerrl.agents.qr_dqn import FCQuantileQFunction
 from chainerrl.agents.qr_dqn import QRDQN
 from chainerrl import experiments
 from chainerrl import explorers
 from chainerrl import misc
-from chainerrl import q_functions
 from chainerrl import replay_buffer
-
-
-import chainer
-import chainer.functions as F
-from chainer import cuda
-import chainerrl
-
-
-class QuantileQFunction(chainer.Chain, chainerrl.q_function.StateQFunction):
-    def __init__(
-            self,
-            obs_size, n_actions, n_diracs,
-            n_hidden_channels,
-            n_hidden_layers,
-            ):
-        self.n_actions = n_actions
-        self.n_diracs = n_diracs
-        super().__init__()
-        with self.init_scope():
-            self.model = chainerrl.links.MLP(
-                obs_size, n_actions * n_diracs,
-                hidden_sizes=[n_hidden_channels] * n_hidden_layers,
-            )
-
-    def __call__(self, x):
-        y = self.model(x).reshape(-1, self.n_actions, self.n_diracs)
-        return ActionQuantile(y)
-
-
-# class ActionQuantile(chainerrl.action_value.ActionValue):
-class ActionQuantile(chainerrl.action_value.DiscreteActionValue):
-
-    def __init__(self, q_quantiles, q_values_formatter=lambda x: x):
-        assert isinstance(q_quantiles, chainer.Variable)
-        self.xp = cuda.get_array_module(q_quantiles.data)
-        self.q_quantiles = q_quantiles
-        self.n_actions = q_quantiles.data.shape[1]
-        self.n_diracs = q_quantiles.data.shape[2]
-        self.q_values_formatter = q_values_formatter
-
-    @property
-    def q_values(self):
-        return F.mean(self.q_quantiles, axis=2)
-
-    def evaluate_actions(self, actions):
-        if isinstance(actions, chainer.Variable):
-            actions = actions.data
-
-        # print(self.xp.arange(actions.size))
-        # print(actions)
-        return self.q_quantiles[
-            self.xp.arange(actions.size),
-            actions
-        ]
-
-    # @property
-    # def greedy_actions(self):
-
 
 
 def main():
@@ -159,28 +101,16 @@ def main():
     obs_size = env.observation_space.low.size
     action_space = env.action_space
 
-    if isinstance(action_space, spaces.Box):
-        assert False
-        action_size = action_space.low.size
-        # Use NAF to apply DQN to continuous action spaces
-        q_func = q_functions.FCQuadraticStateQFunction(
-            obs_size, action_size,
-            n_hidden_channels=args.n_hidden_channels,
-            n_hidden_layers=args.n_hidden_layers,
-            action_space=action_space)
-        # Use the Ornstein-Uhlenbeck process for exploration
-        ou_sigma = (action_space.high - action_space.low) * 0.2
-        explorer = explorers.AdditiveOU(sigma=ou_sigma)
-    else:
-        n_actions = action_space.n
-        q_func = QuantileQFunction(
-            obs_size, n_actions, n_diracs=8,
-            n_hidden_channels=args.n_hidden_channels,
-            n_hidden_layers=args.n_hidden_layers)
-        # Use epsilon-greedy for exploration
-        explorer = explorers.LinearDecayEpsilonGreedy(
-            args.start_epsilon, args.end_epsilon, args.final_exploration_steps,
-            action_space.sample)
+    assert isinstance(action_space, spaces.Discrete)
+    n_actions = action_space.n
+    q_func = FCQuantileQFunction(
+        obs_size, n_actions, n_diracs=8,
+        n_hidden_channels=args.n_hidden_channels,
+        n_hidden_layers=args.n_hidden_layers)
+    # Use epsilon-greedy for exploration
+    explorer = explorers.LinearDecayEpsilonGreedy(
+        args.start_epsilon, args.end_epsilon, args.final_exploration_steps,
+        action_space.sample)
 
     opt = optimizers.Adam()
     opt.setup(q_func)
@@ -210,14 +140,15 @@ def main():
     def phi(obs):
         return obs.astype(np.float32)
 
-    agent = QRDQN(q_func, opt, rbuf, gpu=args.gpu, gamma=args.gamma,
-                explorer=explorer, replay_start_size=args.replay_start_size,
-                target_update_interval=args.target_update_interval,
-                update_interval=args.update_interval,
-                phi=phi, minibatch_size=args.minibatch_size,
-                target_update_method=args.target_update_method,
-                soft_update_tau=args.soft_update_tau,
-                episodic_update=args.episodic_replay, episodic_update_len=16)
+    agent = QRDQN(
+        q_func, opt, rbuf, gpu=args.gpu, gamma=args.gamma,
+        explorer=explorer, replay_start_size=args.replay_start_size,
+        target_update_interval=args.target_update_interval,
+        update_interval=args.update_interval,
+        phi=phi, minibatch_size=args.minibatch_size,
+        target_update_method=args.target_update_method,
+        soft_update_tau=args.soft_update_tau,
+        episodic_update=args.episodic_replay, episodic_update_len=16)
 
     if args.load:
         agent.load(args.load)

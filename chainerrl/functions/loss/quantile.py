@@ -10,8 +10,10 @@ def quantile_loss(y, t, tau, reduce='no'):
         e * (tau - 1.)
     )
 
+
 def quantile_huber_loss_Aravkin(y, t, tau, delta=1.):
-    """
+    """Quantile Huber loss a la Aravkin+
+
     1402.4624
     """
     assert False
@@ -24,10 +26,12 @@ def quantile_huber_loss_Aravkin(y, t, tau, delta=1.):
         e * (tau - 1.) - delta * (tau - 1.)**2 / 2
     )
 
+
 def quantile_huber_loss_Dabney(y, t, tau, delta=1.):
-    """
+    """Quantile Huber loss a la Dabney+
+
     1710.10044
     """
 
-    # TODO
+    # TODO(kataoka)
     assert False
