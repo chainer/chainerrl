@@ -19,6 +19,7 @@ from future import standard_library
 standard_library.install_aliases()
 
 import argparse
+import os
 import sys
 
 from chainer import optimizers
@@ -28,6 +29,7 @@ from gym import spaces
 import gym.wrappers
 import numpy as np
 
+import chainerrl
 from chainerrl.agents.dqn import DQN
 from chainerrl import experiments
 from chainerrl import explorers
@@ -98,7 +100,8 @@ def main():
     env = make_env(for_eval=False)
     timestep_limit = env.spec.tags.get(
         'wrapper_config.TimeLimit.max_episode_steps')
-    obs_size = env.observation_space.low.size
+    obs_space = env.observation_space
+    obs_size = obs_space.low.size
     action_space = env.action_space
 
     if isinstance(action_space, spaces.Box):
@@ -122,6 +125,11 @@ def main():
         explorer = explorers.LinearDecayEpsilonGreedy(
             args.start_epsilon, args.end_epsilon, args.final_exploration_steps,
             action_space.sample)
+
+    # Draw the computational graph and save it in the output directory.
+    chainerrl.misc.draw_computational_graph(
+        [q_func(np.zeros_like(obs_space.low, dtype=np.float32)[None])],
+        os.path.join(args.outdir, 'model'))
 
     opt = optimizers.Adam()
     opt.setup(q_func)
