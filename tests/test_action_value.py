@@ -60,6 +60,10 @@ class TestDiscreteActionValue(unittest.TestCase):
                 adv = q - v
                 self.assertAlmostEqual(ret.data[b], adv)
 
+    def test_params(self):
+        self.assertEqual(len(self.qout.params), 1)
+        self.assertEqual(id(self.qout.params[0]), id(self.qout.q_values))
+
 
 class TestQuadraticActionValue(unittest.TestCase):
     def test_max_unbounded(self):
