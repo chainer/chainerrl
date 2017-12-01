@@ -62,7 +62,7 @@ class TestDiscreteActionValue(unittest.TestCase):
 
 
 class TestQuadraticActionValue(unittest.TestCase):
-    def test_unbounded(self):
+    def test_max_unbounded(self):
         n_batch = 7
         ndim_action = 3
         mu = np.random.randn(n_batch, ndim_action).astype(np.float32)
@@ -81,7 +81,7 @@ class TestQuadraticActionValue(unittest.TestCase):
 
         np.testing.assert_almost_equal(v_out, v)
 
-    def test_bounded(self):
+    def test_max_bounded(self):
         n_batch = 20
         ndim_action = 3
         mu = np.random.randn(n_batch, ndim_action).astype(np.float32)
