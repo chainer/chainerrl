@@ -176,16 +176,22 @@ def state_kept(link):
 
     This will just ignore non-Recurrent links.
 
-    .. admonition:: Example
        .. code-block:: python
+
           # Suppose the link is in a state A
+          assert link.get_state() is A
+
           with state_kept(link):
               # The link is still in a state A
-              y1 = link(x1)
+              assert link.get_state() is A
+
               # After evaluating the link, it may be in a different state
-              y2 = link(x2)
+              y1 = link(x1)
+              assert link.get_state() is not A
+
           # After escaping from the context, the link is in a state A again
           # because of the context manager
+          assert link.get_state() is A
     """
     if isinstance(link, Recurrent):
         link.push_and_keep_state()
@@ -200,19 +206,27 @@ def state_reset(link):
     """Reset the state while keeping the previous state of a given link.
 
     This is a context manager that saves saves the current state of the link
-    and reset it before entering the context, and then restores the saved state
-    after escaping the context.
+    and reset it to the initial state before entering the context, and then
+    restores the saved state after escaping the context.
 
     This will just ignore non-Recurrent links.
 
-    .. admonition:: Example
        .. code-block:: python
-          # Suppose the link is in a state A
-          with state_kept(link):
-              # The link's state has been reset
+
+          # Suppose the link is in a non-initial state A
+          assert link.get_state() is A
+
+          with state_reset(link):
+              # The link's state has been reset to the initial state
+              assert link.get_state() is InitialState
+
+              # After evaluating the link, it may be in a different state
               y1 = link(x1)
+              assert link.get_state() is not InitialState
+
           # After escaping from the context, the link is in a state A again
           # because of the context manager
+          assert link.get_state() is A
     """
     if isinstance(link, Recurrent):
         link.push_state()
