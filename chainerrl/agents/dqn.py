@@ -295,7 +295,6 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
             self.replay_buffer.update_errors(errors_out)
 
     def _compute_target_values(self, exp_batch, gamma):
-
         batch_next_state = exp_batch['next_state']
 
         target_next_qout = self.target_model(batch_next_state)
@@ -335,7 +334,6 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
         Returns:
           loss
         """
-
         y, t = self._compute_y_and_t(exp_batch, gamma)
 
         if errors_out is not None:

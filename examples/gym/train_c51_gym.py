@@ -28,6 +28,8 @@ from gym import spaces
 import gym.wrappers
 import numpy as np
 
+import cupy
+
 from chainerrl.agents.c51 import C51
 from chainerrl import experiments
 from chainerrl import explorers
@@ -105,7 +107,7 @@ def main():
     v_max = 10
     v_min = -10
     delta_z = (v_max - v_min) / float(n_atoms - 1)
-    z_values = np.array([v_min + i * delta_z for i in range(n_atoms)])
+    z_values = cupy.array([v_min + i * delta_z for i in range(n_atoms)], dtype=cupy.float32)
 
     n_actions = action_space.n
     q_func = q_functions.DistributionalFCStateQFunctionWithDiscreteAction(

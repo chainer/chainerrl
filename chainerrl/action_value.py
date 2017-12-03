@@ -16,6 +16,7 @@ from cached_property import cached_property
 import chainer
 from chainer import cuda
 from chainer import functions as F
+
 import numpy as np
 
 from chainerrl.misc.chainer_compat import matmul_v3
@@ -122,7 +123,7 @@ class DistributionalDiscreteActionValue(ActionValue):
         self.xp = cuda.get_array_module(q_dist.data)
 
         self.z_values = z_values
-        self.q_values = np.sum(np.multiply(self.z_values, cuda.to_cpu(q_dist.data)), axis=2)
+        self.q_values = F.sum(F.scale(q_dist, self.z_values, axis=2), axis=2)
         self.q_dist = q_dist
         self.n_actions = q_dist.data.shape[1]
         self.q_values_formatter = q_values_formatter
@@ -130,12 +131,12 @@ class DistributionalDiscreteActionValue(ActionValue):
     @cached_property
     def greedy_actions(self):
         return chainer.Variable(
-            self.q_values.argmax(axis=1).astype(np.int32))
+            self.q_values.data.argmax(axis=1).astype(np.int32))
 
     @cached_property
     def max(self):
         with chainer.force_backprop_mode():
-            return chainer.Variable(self.q_values[self.xp.arange(self.q_values.shape[0]), self.greedy_actions.data])
+            return self.q_values[self.xp.arange(self.q_values.shape[0]), self.greedy_actions.data]
 
     @cached_property
     def max_distribution(self):
@@ -167,8 +168,7 @@ class DistributionalDiscreteActionValue(ActionValue):
 
     def __repr__(self):
         return 'DistributionalDiscreteActionValue greedy_actions:{} q_values:{}'.format(
-            self.greedy_actions.data,
-            self.q_values_formatter(self.q_values.data))
+            self.greedy_actions.data, self.q_values)
 
 
 class QuadraticActionValue(ActionValue):
