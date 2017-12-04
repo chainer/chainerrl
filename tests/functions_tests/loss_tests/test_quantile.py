@@ -65,3 +65,61 @@ class TestQuantileHuberLossDabney(unittest.TestCase):
     def test_backward_gpu(self):
         self.check_backward(cuda.to_gpu(self.x), cuda.to_gpu(self.t),
                             cuda.to_gpu(self.tau), cuda.to_gpu(self.gy))
+
+
+@testing.parameterize(
+    {'delta': 0.1},
+    {'delta': 1},
+    {'delta': 10},
+)
+class TestQuantileHuberLossAravkin(unittest.TestCase):
+
+    def setUp(self):
+        self.shape = (4, 10)
+        self.x = np.random.standard_normal(self.shape).astype(np.float32)
+        self.t = np.random.standard_normal(self.shape).astype(np.float32)
+        self.tau = np.random.uniform(0, 1, self.shape).astype(np.float32)
+        self.gy = np.random.standard_normal(self.shape).astype(np.float32)
+
+        self.check_backward_options = {'atol': 1e-2, 'rtol': 1e-2}
+
+    def check_forward(self, x_data, t_data, tau_data):
+        x = chainer.Variable(x_data)
+        t = chainer.Variable(t_data)
+        tau = chainer.Variable(tau_data)
+        loss = functions.quantile_huber_loss_Aravkin(x, t, tau, self.delta)
+        self.assertEqual(loss.data.dtype, np.float32)
+        loss_value = cuda.to_cpu(loss.data)
+
+        e = x_data - t_data
+        loss_expect = np.where(
+            e > self.delta * (1 - tau_data),
+            (1 - tau_data) * e - 0.5 * self.delta * (1 - tau_data) ** 2,
+            np.where(
+                e < - self.delta * tau_data,
+                - tau_data * e - 0.5 * self.delta * tau_data ** 2,
+                0.5 * e ** 2 / self.delta))
+        
+        testing.assert_allclose(loss_value, loss_expect)
+
+    def test_forward_cpu(self):
+        self.check_forward(self.x, self.t, self.tau)
+
+    @attr.gpu
+    def test_forward_gpu(self):
+        self.check_forward(cuda.to_gpu(self.x), cuda.to_gpu(self.t),
+                           cuda.to_gpu(self.tau))
+
+    def check_backward(self, x_data, t_data, tau_data, y_grad):
+        gradient_check.check_backward(
+            functions.QuantileHuberLossAravkin(self.delta),
+            (x_data, t_data, tau_data), y_grad, eps=1e-2,
+            **self.check_backward_options)
+
+    def test_backward_cpu(self):
+        self.check_backward(self.x, self.t, self.tau, self.gy)
+
+    @attr.gpu
+    def test_backward_gpu(self):
+        self.check_backward(cuda.to_gpu(self.x), cuda.to_gpu(self.t),
+                            cuda.to_gpu(self.tau), cuda.to_gpu(self.gy))
