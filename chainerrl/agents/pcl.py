@@ -46,8 +46,9 @@ class PCL(agent.AttributeSavingMixin, agent.AsyncAgent):
     Args:
         model (chainer.Link): Model to train. It must be a callable that
             accepts a batch of observations as input and return two values:
-                - action distributions (Distribution)
-                - state values (chainer.Variable)
+
+            - action distributions (Distribution)
+            - state values (chainer.Variable)
         optimizer (chainer.Optimizer): optimizer used to train the model
         t_max (int or None): The model is updated after every t_max local
             steps. If set None, the model is updated after every episode.
