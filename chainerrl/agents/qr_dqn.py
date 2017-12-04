@@ -14,7 +14,8 @@ import chainer.functions as F
 
 import chainerrl
 from chainerrl.agents.dqn import DQN
-from chainerrl.functions import quantile_loss
+from chainerrl.functions import quantile_huber_loss_Dabney
+# from chainerrl.functions import quantile_loss
 
 
 # Definitions here are for discrete actions
@@ -50,8 +51,6 @@ class _ActionQuantile(chainerrl.action_value.DiscreteActionValue):
         if isinstance(actions, chainer.Variable):
             actions = actions.data
 
-        # print(self.xp.arange(actions.size))
-        # print(actions)
         return self.q_quantiles[
             self.xp.arange(actions.size),
             actions
@@ -77,17 +76,14 @@ class FCQuantileQFunction(_SingleModelStateQuantileQFunction):
                 )
             )
         )
-    """
-        self.n_actions = n_actions
-        self.n_diracs = n_diracs
-
-    def __call__(self, x):
-        y = self.model(x).reshape(-1, self.n_actions, self.n_diracs)
-        return _ActionQuantile(y)
-    """
 
 
 class QRDQN(DQN):
+    """Quantile Regression DQN
+
+    See: https://arxiv.org/abs/1710.10044
+    """
+
     def _compute_loss(self, exp_batch, gamma, errors_out=None):
         xp = self.xp
 
@@ -101,7 +97,8 @@ class QRDQN(DQN):
         tau_hat = (xp.arange(n_diracs).astype(y.dtype) + 0.5) / n_diracs
         tau_hat = F.broadcast_to(tau_hat, y.shape)
 
-        loss = quantile_loss(y, t, tau_hat)
+        # loss = quantile_loss(y, t, tau_hat)
+        loss = quantile_huber_loss_Dabney(y, t, tau_hat)
         loss = F.mean(loss, axis=(1, 2))
 
         if errors_out is not None:

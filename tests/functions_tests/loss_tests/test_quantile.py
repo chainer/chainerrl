@@ -9,8 +9,6 @@ from chainer.testing import attr
 import numpy as np
 
 from chainerrl import functions
-# .loss.quantile import quantile_huber_loss_Dabney
-# from chainerrl.functions.loss.quantile import quantile_huber_loss_Dabney
 
 
 @testing.parameterize(
@@ -28,8 +26,6 @@ class TestQuantileHuberLossDabney(unittest.TestCase):
         self.gy = np.random.standard_normal(self.shape).astype(np.float32)
 
         self.check_backward_options = {'atol': 1e-2, 'rtol': 1e-2}
-                                       # 'no_grads': [False, False, True]}
-                                       # 'no_grads': [True, True, False]}
 
     def check_forward(self, x_data, t_data, tau_data):
         x = chainer.Variable(x_data)
@@ -99,7 +95,7 @@ class TestQuantileHuberLossAravkin(unittest.TestCase):
                 e < - self.delta * tau_data,
                 - tau_data * e - 0.5 * self.delta * tau_data ** 2,
                 0.5 * e ** 2 / self.delta))
-        
+
         testing.assert_allclose(loss_value, loss_expect)
 
     def test_forward_cpu(self):

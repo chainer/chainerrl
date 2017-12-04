@@ -1,14 +1,9 @@
-"""An example of training DQN against OpenAI Gym Envs.
+"""An example of training QRDQN against OpenAI Gym Envs.
 
-This script is an example of training a DQN agent against OpenAI Gym envs.
-Both discrete and continuous action spaces are supported. For continuous action
-spaces, A NAF (Normalized Advantage Function) is used to approximate Q-values.
+This script is an example of training a QRDQN agent against OpenAI Gym envs.
 
 To solve CartPole-v0, run:
     python train_dqn_gym.py --env CartPole-v0
-
-To solve Pendulum-v0, run:
-    python train_dqn_gym.py --env Pendulum-v0
 """
 from __future__ import print_function
 from __future__ import unicode_literals

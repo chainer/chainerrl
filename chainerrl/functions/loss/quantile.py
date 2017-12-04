@@ -92,8 +92,9 @@ class QuantileHuberLossAravkin(function.Function):
         xp = cuda.get_array_module(*inputs)
         _, _, tau = inputs
 
-        gd = xp.where(self.diff > self.ub, tau * self.delta,
-                      xp.where(self.diff < self.lb, (tau - 1) * self.delta, self.diff))
+        gd = xp.where(
+            self.diff > self.ub, tau * self.delta,
+            xp.where(self.diff < self.lb, (tau - 1) * self.delta, self.diff))
         gd /= self.delta
         gy_ = gy[0]
         gd = gy_ * gd
@@ -112,14 +113,3 @@ def quantile_huber_loss_Aravkin(y, t, tau, delta=1.):
     See: https://arxiv.org/abs/1402.4624
     """
     return QuantileHuberLossAravkin(delta)(y, t, tau)
-"""
-    assert False
-    e = t - y
-    # if e in the interval [- delta * tau, delta * (1 - tau)]
-    e ** 2 / (2 * delta)
-    # else
-    F.maximum(
-        e * tau - delta * tau**2 / 2,
-        e * (tau - 1.) - delta * (tau - 1.)**2 / 2
-    )
-"""
