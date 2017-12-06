@@ -154,7 +154,8 @@ class DistributionalDiscreteActionValue(ActionValue):
             return self.greedy_actions
 
     def evaluate_actions(self, actions):
-        return self.q_dist[self.xp.arange(self.q_values.shape[0]), actions]
+        return self.q_dist[self.xp.arange(self.q_dist.shape[0]), actions]
+        #return self.q_dist[self.xp.arange(self.q_values.shape[0]), actions]
 
     def compute_advantage(self, actions):
         return self.evaluate_actions(actions) - self.max

@@ -9,6 +9,7 @@ standard_library.install_aliases()
 import chainer
 from chainer import functions as F
 from chainer import links as L
+from chainer import cuda
 
 from chainerrl.initializers import LeCunNormal
 
@@ -32,16 +33,29 @@ class MLPDistribution(chainer.Chain):
                 for hin, hout in zip(hidden_sizes, hidden_sizes[1:]):
                     hidden_layers.append(L.Linear(hin, hout))
                 self.hidden_layers = chainer.ChainList(*hidden_layers)
-                self.output = L.Linear(hidden_sizes[-1], out_size * n_atoms,
-                                       initialW=LeCunNormal(last_wscale))
+                self.outputs = chainer.ChainList(*[L.Linear(hidden_sizes[-1], n_atoms,
+                                       initialW=LeCunNormal(last_wscale)) for _ in range(out_size)])
             else:
-                self.output = L.Linear(in_size, out_size * n_atoms,
-                                       initialW=LeCunNormal(last_wscale))
+                self.outputs = chainer.ChainList(*[L.Linear(in_size, out_size, n_atoms,
+                                       initialW=LeCunNormal(last_wscale)) for _ in range(out_size)])
 
     def __call__(self, x):
-        h = x
+        h = x# / 255.0
+        #print("input:", h)
         if self.hidden_sizes:
-            for l in self.hidden_layers:
+            for i, l in enumerate(self.hidden_layers):
                 h = self.nonlinearity(l(h))
-        h = F.reshape(self.output(h), (-1, self.out_size, self.n_atoms))
-        return F.softmax(h, axis=2)
+                #print("hidden:", h)
+
+        outs = []
+        for output in self.outputs:
+            #print("preout hidden:", h)
+            a = F.softmax(output(h), axis=1)
+            #print("out:", a)
+            outs.append(a)
+
+        h = F.stack(outs, axis=1)
+
+        #print("model out:", h.shape)
+
+        return h

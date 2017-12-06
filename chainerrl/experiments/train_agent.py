@@ -53,6 +53,9 @@ def train_agent(agent, env, steps, outdir, max_episode_len=None,
             action = agent.act_and_train(obs, r)
             # o_{t+1}, r_{t+1}
             obs, r, done, info = env.step(action)
+
+            env.render()
+            
             t += 1
             episode_r += r
             episode_len += 1

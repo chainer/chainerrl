@@ -44,33 +44,33 @@ def main():
 
     parser = argparse.ArgumentParser()
     parser.add_argument('--outdir', type=str, default='dqn_out')
-    parser.add_argument('--env', type=str, default='PongDeterministic-v4')
+    parser.add_argument('--env', type=str, default='CartPole-v1')
     parser.add_argument('--seed', type=int, default=None)
     parser.add_argument('--gpu', type=int, default=0)
     parser.add_argument('--final-exploration-steps',
-                        type=int, default=10 ** 4)
+                        type=int, default=1000) #**4
     parser.add_argument('--start-epsilon', type=float, default=1.0)
-    parser.add_argument('--end-epsilon', type=float, default=0.1)
+    parser.add_argument('--end-epsilon', type=float, default=0.1)#0.1
     parser.add_argument('--demo', action='store_true', default=False)
     parser.add_argument('--load', type=str, default=None)
-    parser.add_argument('--steps', type=int, default=10 ** 5)
+    parser.add_argument('--steps', type=int, default=10 ** 8)
     parser.add_argument('--prioritized-replay', action='store_true')
     parser.add_argument('--episodic-replay', action='store_true')
-    parser.add_argument('--replay-start-size', type=int, default=1000)
-    parser.add_argument('--target-update-interval', type=int, default=10 ** 2)
+    parser.add_argument('--replay-start-size', type=int, default=50)#1000
+    parser.add_argument('--target-update-interval', type=int, default=100)
     parser.add_argument('--target-update-method', type=str, default='hard')
     parser.add_argument('--soft-update-tau', type=float, default=1e-2)
     parser.add_argument('--update-interval', type=int, default=1)
     parser.add_argument('--eval-n-runs', type=int, default=100)
-    parser.add_argument('--eval-interval', type=int, default=10 ** 4)
-    parser.add_argument('--n-hidden-channels', type=int, default=100)
-    parser.add_argument('--n-hidden-layers', type=int, default=2)
-    parser.add_argument('--gamma', type=float, default=0.99)
+    parser.add_argument('--eval-interval', type=int, default=1000)# 10 ** 4)
+    parser.add_argument('--n-hidden-channels', type=int, default=12)
+    parser.add_argument('--n-hidden-layers', type=int, default=3)
+    parser.add_argument('--gamma', type=float, default=0.95)
     parser.add_argument('--minibatch-size', type=int, default=None)
     parser.add_argument('--render-train', action='store_true')
     parser.add_argument('--render-eval', action='store_true')
     parser.add_argument('--monitor', action='store_true')
-    parser.add_argument('--reward-scale-factor', type=float, default=1e-3)
+    parser.add_argument('--reward-scale-factor', type=float, default=1.0) #1e-3
     args = parser.parse_args()
 
     args.outdir = experiments.prepare_output_dir(
@@ -104,8 +104,8 @@ def main():
     action_space = env.action_space
 
     n_atoms = 51
-    v_max = 10
-    v_min = -10
+    v_max = 500
+    v_min = 0
     delta_z = (v_max - v_min) / float(n_atoms - 1)
     z_values = cupy.array([v_min + i * delta_z for i in range(n_atoms)], dtype=cupy.float32)
 
@@ -119,10 +119,10 @@ def main():
         args.start_epsilon, args.end_epsilon, args.final_exploration_steps,
         action_space.sample)
 
-    opt = optimizers.Adam()
+    opt = optimizers.Adam(1e-3)
     opt.setup(q_func)
 
-    rbuf_capacity = 5 * 10 ** 5
+    rbuf_capacity = 50000#5 * 10 ** 5
     if args.episodic_replay:
         if args.minibatch_size is None:
             args.minibatch_size = 4
