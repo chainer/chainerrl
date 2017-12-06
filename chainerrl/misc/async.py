@@ -131,12 +131,12 @@ def run_async(n_process, run_func):
     for p in processes:
         p.start()
 
-    for p in processes:
+    for process_idx, p in enumerate(processes):
         p.join()
         if p.exitcode < 0:
             warnings.warn(
-                "Process {}'s exit code was not zero but {}".format(
-                    p.pid, p.exitcode))
+                "Process #{} (pid={}) exited with nonzero status {}".format(
+                    process_idx, p.pid, p.exitcode))
 
 
 def as_shared_objects(obj):
