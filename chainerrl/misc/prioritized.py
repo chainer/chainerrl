@@ -14,34 +14,34 @@ class PrioritizedBuffer (object):
 
     def __init__(self, capacity=None, wait_priority_after_sampling=True):
         self.capacity = capacity
-        self.data = []
-        self.priority_tree = SumTree()
-        self.data_inf = []
+        self._data = []
+        self._priority_tree = SumTree()
+        self._data_inf = []
         self.wait_priority_after_sampling = wait_priority_after_sampling
         self._sampled_indices = None
 
     def __len__(self):
-        return len(self.data) + len(self.data_inf)
+        return len(self._data) + len(self._data_inf)
 
     def append(self, value, priority=None):
         if self.capacity is not None and len(self) == self.capacity:
             self.pop()
         if priority is not None:
             # Append with a given priority
-            i = len(self.data)
-            self.data.append(value)
-            self.priority_tree[i] = priority
+            i = len(self._data)
+            self._data.append(value)
+            self._priority_tree[i] = priority
         else:
             # Append with the highest priority
-            self.data_inf.append(value)
+            self._data_inf.append(value)
 
     def _pop_random_data_inf(self):
-        assert self.data_inf
-        n = len(self.data_inf)
+        assert self._data_inf
+        n = len(self._data_inf)
         i = random.randrange(n)
-        ret = self.data_inf[i]
-        self.data_inf[i] = self.data_inf[n - 1]
-        self.data_inf.pop()
+        ret = self._data_inf[i]
+        self._data_inf[i] = self._data_inf[n - 1]
+        self._data_inf.pop()
         return ret
 
     def pop(self):
@@ -54,28 +54,28 @@ class PrioritizedBuffer (object):
                 self._sampled_indices is not None:
             raise RuntimeError(
                 'pop is called before the last priority is set')
-        n = len(self.data)
+        n = len(self._data)
         if n == 0:
             return self._pop_random_data_inf()
         i = random.randrange(0, n)
         # remove i-th
-        self.priority_tree[i] = self.priority_tree[n - 1]
-        del self.priority_tree[n - 1]
-        ret = self.data[i]
-        self.data[i] = self.data[n - 1]
-        del self.data[n - 1]
+        self._priority_tree[i] = self._priority_tree[n - 1]
+        del self._priority_tree[n - 1]
+        ret = self._data[i]
+        self._data[i] = self._data[n - 1]
+        del self._data[n - 1]
         return ret
 
     def _prioritized_sample_indices_and_probabilities(self, n):
         assert 0 <= n <= len(self)
-        indices, probabilities = self.priority_tree.prioritized_sample(
-            max(0, n - len(self.data_inf)),
+        indices, probabilities = self._priority_tree.prioritized_sample(
+            max(0, n - len(self._data_inf)),
             remove=self.wait_priority_after_sampling)
         while len(indices) < n:
-            i = len(self.data)
+            i = len(self._data)
             e = self._pop_random_data_inf()
-            self.data.append(e)
-            del self.priority_tree[i]
+            self._data.append(e)
+            del self._priority_tree[i]
             indices.append(i)
             probabilities.append(None)
         return indices, probabilities
@@ -117,7 +117,7 @@ class PrioritizedBuffer (object):
                 'sample is called twice before the last priority is set')
         indices, probabilities = self._sample_indices_and_probabilities(
             n, uniform_ratio=uniform_ratio)
-        sampled = [self.data[i] for i in indices]
+        sampled = [self._data[i] for i in indices]
         self._sampled_indices = indices
         self.flag_wait_priority = True
         return sampled, probabilities
@@ -129,18 +129,18 @@ class PrioritizedBuffer (object):
         assert all([p > 0.0 for p in priority])
         assert len(self._sampled_indices) == len(priority)
         for i, p in zip(self._sampled_indices, priority):
-            self.priority_tree[i] = p
+            self._priority_tree[i] = p
         self._sampled_indices = None
 
     def _uniform_sample_indices_and_probabilities(self, n):
-        indices = random.sample(range(len(self.data)),
-                                max(0, n - len(self.data_inf)))
+        indices = random.sample(range(len(self._data)),
+                                max(0, n - len(self._data_inf)))
         probabilities = [1 / len(self)] * len(indices)
         while len(indices) < n:
-            i = len(self.data)
+            i = len(self._data)
             e = self._pop_random_data_inf()
-            self.data.append(e)
-            del self.priority_tree[i]
+            self._data.append(e)
+            del self._priority_tree[i]
             indices.append(i)
             probabilities.append(None)
         return indices, probabilities
