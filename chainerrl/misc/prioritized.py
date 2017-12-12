@@ -18,7 +18,7 @@ class PrioritizedBuffer (object):
         self.priority_tree = SumTree()
         self.data_inf = []
         self.wait_priority_after_sampling = wait_priority_after_sampling
-        self.flag_wait_priority = False
+        self._sampled_indices = None
 
     def __len__(self):
         return len(self.data) + len(self.data_inf)
@@ -50,8 +50,10 @@ class PrioritizedBuffer (object):
         Not prioritized.
         """
         assert len(self) > 0
-        assert (not self.wait_priority_after_sampling or
-                not self.flag_wait_priority)
+        if self.wait_priority_after_sampling and \
+                self._sampled_indices is not None:
+            raise RuntimeError(
+                'pop is called before the last priority is set')
         n = len(self.data)
         if n == 0:
             return self._pop_random_data_inf()
@@ -109,24 +111,26 @@ class PrioritizedBuffer (object):
             sampled data (list)
             probabitilies (list)
         """
-        assert (not self.wait_priority_after_sampling or
-                not self.flag_wait_priority)
+        if self.wait_priority_after_sampling and \
+                self._sampled_indices is not None:
+            raise RuntimeError(
+                'sample is called twice before the last priority is set')
         indices, probabilities = self._sample_indices_and_probabilities(
             n, uniform_ratio=uniform_ratio)
         sampled = [self.data[i] for i in indices]
-        self.sampled_indices = indices
+        self._sampled_indices = indices
         self.flag_wait_priority = True
         return sampled, probabilities
 
     def set_last_priority(self, priority):
-        assert (not self.wait_priority_after_sampling or
-                self.flag_wait_priority)
+        if self.wait_priority_after_sampling and \
+                self._sampled_indices is None:
+            raise RuntimeError('priority is set twice or before first sample')
         assert all([p > 0.0 for p in priority])
-        assert len(self.sampled_indices) == len(priority)
-        for i, p in zip(self.sampled_indices, priority):
+        assert len(self._sampled_indices) == len(priority)
+        for i, p in zip(self._sampled_indices, priority):
             self.priority_tree[i] = p
-        self.flag_wait_priority = False
-        self.sampled_indices = []
+        self._sampled_indices = None
 
     def _uniform_sample_indices_and_probabilities(self, n):
         indices = random.sample(range(len(self.data)),
