@@ -11,6 +11,7 @@ import timeit
 import unittest
 
 from chainer import testing
+from chainer.testing import condition
 import numpy as np
 from scipy import stats
 
@@ -42,7 +43,7 @@ class TestSampleNK(unittest.TestCase):
             self.assertEqual(len(t), self.k)
 
     @testing.attr.slow
-    @testing.condition.repeat_with_success_at_least(3, 2)
+    @condition.repeat_with_success_at_least(3, 2)
     def test_slow(self):
         self.samples = [_sample_n_k(self.n, self.k) for _ in range(100000)]
         self.subtest_total_counts()
