@@ -44,7 +44,7 @@ class TestConjugateGradient(unittest.TestCase):
             return A.dot(vec)
 
         x = chainerrl.misc.conjugate_gradient(A_product_func, b)
-
+        self.assertTrue(chainer.cuda.get_array_module(x), xp)
         xp.testing.assert_allclose(x, inv_A.dot(b))
 
     @condition.retry(3)
