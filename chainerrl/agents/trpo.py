@@ -375,7 +375,7 @@ You're using Chainer v{}. TRPO requires Chainer v3.0.0 or newer.""".format(chain
 
         dId = float(step_direction.dot(
             fisher_vector_product_func(step_direction)))
-        scale = (2.0 * self.max_kl * (1. / (dId + 1e-8))) ** 0.5
+        scale = (2.0 * self.max_kl / (dId + 1e-8)) ** 0.5
         return scale * step_direction
 
     def _line_search(self, full_step, states, actions, advs,
