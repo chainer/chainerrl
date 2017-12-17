@@ -66,6 +66,58 @@ class TestChainerGradWithZero(unittest.TestCase):
         np.testing.assert_allclose(grads[2].data, 0)
 
 
+class OldStyleIdentity(chainer.Function):
+
+    """Old-style identity function."""
+
+    def check_type_forward(self, in_types):
+        pass
+
+    def forward(self, xs):
+        self.retain_inputs(())
+        return xs
+
+    def backward(self, xs, gys):
+        return gys
+
+
+def old_style_identity(*args):
+    return OldStyleIdentity()(*args)
+
+
+class TestFindOldStyleFunction(unittest.TestCase):
+
+    def setUp(self):
+        if not _is_double_backprop_supported:
+            self.skipTest(
+                'Chainer v{} does not support double backprop.'.format(
+                    chainer.__version__))
+
+    def test(self):
+        a = chainer.Variable(np.random.rand(1).astype(np.float32))
+        b = chainer.Variable(np.random.rand(1).astype(np.float32))
+
+        # No old-style function
+        y = 2 * a + b
+        old_style_funcs = trpo._find_old_style_function([y])
+        self.assertEqual(old_style_funcs, [])
+
+        # One old-style function
+        y = 2 * old_style_identity(a) + b
+        old_style_funcs = trpo._find_old_style_function([y])
+        self.assertEqual(len(old_style_funcs), 1)
+        self.assertTrue(all(isinstance(f, OldStyleIdentity)
+                            for f in old_style_funcs))
+
+        # Three old-style functions
+        y = (2 * old_style_identity(old_style_identity(a))
+             + old_style_identity(b))
+        old_style_funcs = trpo._find_old_style_function([y])
+        self.assertEqual(len(old_style_funcs), 3)
+        self.assertTrue(all(isinstance(f, OldStyleIdentity)
+                            for f in old_style_funcs))
+
+
 def compute_hessian_vector_product(y, params, vec):
     grads = trpo._chainer_grad_with_zero(
         [y], params, enable_double_backprop=True)
@@ -95,20 +147,36 @@ class TestHessianVectorProduct(unittest.TestCase):
                 'Chainer v{} does not support double backprop.'.format(
                     chainer.__version__))
 
-    def test(self):
+    def _generate_params_and_first_order_output(self):
         a = chainer.Variable(np.random.rand(3).astype(np.float32))
         b = chainer.Variable(np.random.rand(1).astype(np.float32))
         params = [a, b]
-
-        # First order, so its Hessian will be zero
         y = F.sum(a, keepdims=True) * 3 + b
+        return params, y
+
+    def _generate_params_and_second_order_output(self):
+        a = chainer.Variable(np.random.rand(3).astype(np.float32))
+        b = chainer.Variable(np.random.rand(1).astype(np.float32))
+        params = [a, b]
+        y = F.sum(a, keepdims=True) * 3 * b
+        return params, y
+
+    def test_first_order(self):
+        # First order, so its Hessian will be zero
+        params, y = self._generate_params_and_first_order_output()
+
+        old_style_funcs = trpo._find_old_style_function([y])
+        if old_style_funcs:
+            self.skipTest("""\
+Chainer v{} does not support double backprop of these functions: {}.""".format(
+                chainer.__version__, old_style_funcs))
 
         def test_hessian_vector_product_zero(vec):
             hvp = compute_hessian_vector_product(y, params, vec)
             hessian = compute_hessian(y, params)
             self.assertEqual(np.count_nonzero(hvp), 0)
             self.assertEqual(np.count_nonzero(hessian), 0)
-            np.testing.assert_allclose(hvp, hessian.dot(vec))
+            np.testing.assert_allclose(hvp, hessian.dot(vec), atol=1e-3)
 
         # Test with two different random vectors, reusing y
         test_hessian_vector_product_zero(
@@ -116,15 +184,22 @@ class TestHessianVectorProduct(unittest.TestCase):
         test_hessian_vector_product_zero(
             np.random.rand(4).astype(np.float32))
 
+    def test_second_order(self):
         # Second order, so its Hessian will be non-zero
-        y = F.sum(a, keepdims=True) * b
+        params, y = self._generate_params_and_second_order_output()
+
+        old_style_funcs = trpo._find_old_style_function([y])
+        if old_style_funcs:
+            self.skipTest("""\
+Chainer v{} does not support double backprop of these functions: {}.""".format(
+                chainer.__version__, old_style_funcs))
 
         def test_hessian_vector_product_nonzero(vec):
             hvp = compute_hessian_vector_product(y, params, vec)
             hessian = compute_hessian(y, params)
             self.assertGreater(np.count_nonzero(hvp), 0)
             self.assertGreater(np.count_nonzero(hessian), 0)
-            np.testing.assert_allclose(hvp, hessian.dot(vec))
+            np.testing.assert_allclose(hvp, hessian.dot(vec), atol=1e-3)
 
         # Test with two different random vectors, reusing y
         test_hessian_vector_product_nonzero(
@@ -278,6 +353,16 @@ class TestTRPO(unittest.TestCase):
                 mean_wscale=0.01,
                 var_type='diagonal',
             )
+
+        # Check if KL div supports double-backprop
+        fake_obs = np.zeros_like(env.observation_space.low, dtype=np.float32)
+        action_distrib = pi(fake_obs[None])
+        kl = action_distrib.kl(action_distrib)
+        old_style_funcs = trpo._find_old_style_function([kl])
+        if old_style_funcs:
+            self.skipTest("""\
+Chainer v{} does not support double backprop of these functions: {}.""".format(
+                chainer.__version__, old_style_funcs))
 
         return pi, v
 

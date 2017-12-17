@@ -91,6 +91,21 @@ def _mean_or_nan(xs):
     return np.mean(xs) if xs else np.nan
 
 
+def _find_old_style_function(outputs):
+    """Find old-style functions in the computational graph."""
+    found = []
+    for v in outputs:
+        assert isinstance(v, (chainer.Variable, chainer.variable.VariableNode))
+        if v.creator is None:
+            continue
+        if isinstance(v.creator, chainer.Function):
+            found.append(v.creator)
+        else:
+            assert isinstance(v.creator, chainer.FunctionNode)
+        found.extend(_find_old_style_function(v.creator.inputs))
+    return found
+
+
 class TRPO(agent.AttributeSavingMixin, agent.Agent):
     """Trust Region Policy Optimization.
 
@@ -352,6 +367,17 @@ You're using Chainer v{}. TRPO requires Chainer v3.0.0 or newer.""".format(chain
         """Compute a step of policy parameters with a KL constraint."""
         policy_params = _get_ordered_params(self.policy)
         kl = F.mean(action_distrib_old.kl(action_distrib))
+
+        # Check if kl computation fully supports double backprop
+        old_style_funcs = _find_old_style_function([kl])
+        if old_style_funcs:
+            raise RuntimeError("""\
+Old-style functions (chainer.Function) are used to compute KL divergence.
+Since TRPO requires second-order derivative of KL divergence, its computation
+should be done with new-style functions (chainer.FunctionNode) only.
+
+Found old-style functions: {}""".format(old_style_funcs))
+
         kl_grads = _chainer_grad_with_zero([kl], policy_params,
                                            enable_double_backprop=True)
         flat_kl_grads = _flatten_and_concat_variables(kl_grads)
