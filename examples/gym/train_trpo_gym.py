@@ -162,6 +162,7 @@ TRPO only supports gym.spaces.Box or gym.spaces.Discrete action spaces.""")  # N
         gamma=0.99,
         lambd=0.98,
         vf_epochs=5,
+        entropy_coef=0,
     )
 
     if args.load:
