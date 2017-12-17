@@ -270,13 +270,13 @@ class TestTRPO(unittest.TestCase):
         else:
             n_dim_actions = env.action_space.low.size
 
-            pi = policies.FCGaussianPolicy(
+            pi = policies.FCGaussianPolicyWithStateIndependentCovariance(
                 n_dim_obs, n_dim_actions,
                 n_hidden_layers=1,
                 n_hidden_channels=n_hidden_channels,
                 nonlinearity=F.tanh,
                 mean_wscale=0.01,
-                var_wscale=0,
+                var_type='diagonal',
             )
 
         return pi, v
