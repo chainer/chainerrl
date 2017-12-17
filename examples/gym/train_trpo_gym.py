@@ -3,7 +3,7 @@
 This script is an example of training a TRPO agent against OpenAI Gym envs.
 Both discrete and continuous action spaces are supported.
 
-Chainer v3.0.0 or newer is required.
+Chainer v3.1.0 or newer is required.
 
 To solve CartPole-v0, run:
     python train_trpo_gym.py --env CartPole-v0 --steps 100000
