@@ -130,6 +130,12 @@ class TRPO(agent.AttributeSavingMixin, agent.Agent):
             Recurrent models are not supported.
         vf (ValueFunction): Value function. Recurrent models are not supported.
         vf_optimizer (chainer.Optimizer): Optimizer for the value function.
+        obs_normalizer (chainerrl.links.EmpiricalNormalization or None):
+            If set to chainerrl.links.EmpiricalNormalization, it is used to
+            normalize observations based on the empirical mean and standard
+            deviation of observations. These statistics are updated after
+            computing advantages and target values and before updating the
+            policy and the value function.
         gamma (float): Discount factor [0, 1]
         lambd (float): Lambda-return factor [0, 1]
         phi (callable): Feature extractor function
@@ -143,6 +149,8 @@ class TRPO(agent.AttributeSavingMixin, agent.Agent):
         standardize_advantages (bool): Use standardized advantages on updates
         line_search_max_backtrack (int): Maximum number of backtracking in line
             search to tune step sizes of policy updates.
+        conjugate_gradient_max_iter (int): Maximum number of iterations in
+            the conjugate gradient method.
         conjugate_gradient_damping (float): Damping factor used in the
             conjugate gradient method.
         act_deterministically (bool): If set to True, choose most probable
@@ -167,13 +175,13 @@ class TRPO(agent.AttributeSavingMixin, agent.Agent):
             It's updated after the policy is updated.
     """
 
-    saved_attributes = ['policy', 'vf', 'vf_optimizer']
+    saved_attributes = ['policy', 'vf', 'vf_optimizer', 'obs_normalizer']
 
     def __init__(self,
                  policy,
                  vf,
                  vf_optimizer,
-                 gpu=None,
+                 obs_normalizer=None,
                  gamma=0.99,
                  lambd=0.95,
                  phi=lambda x: x,
@@ -184,6 +192,7 @@ class TRPO(agent.AttributeSavingMixin, agent.Agent):
                  vf_batch_size=64,
                  standardize_advantages=True,
                  line_search_max_backtrack=10,
+                 conjugate_gradient_max_iter=10,
                  conjugate_gradient_damping=1e-2,
                  act_deterministically=False,
                  value_stats_window=1000,
@@ -200,6 +209,7 @@ You're using Chainer v{}. TRPO requires Chainer v3.0.0 or newer.""".format(chain
         self.policy = policy
         self.vf = vf
         self.vf_optimizer = vf_optimizer
+        self.obs_normalizer = obs_normalizer
         self.gamma = gamma
         self.lambd = lambd
         self.phi = phi
@@ -210,6 +220,7 @@ You're using Chainer v{}. TRPO requires Chainer v3.0.0 or newer.""".format(chain
         self.vf_batch_size = vf_batch_size
         self.standardize_advantages = standardize_advantages
         self.line_search_max_backtrack = line_search_max_backtrack
+        self.conjugate_gradient_max_iter = conjugate_gradient_max_iter
         self.conjugate_gradient_damping = conjugate_gradient_damping
         self.act_deterministically = act_deterministically
         self.logger = logger
@@ -247,6 +258,9 @@ You're using Chainer v{}. TRPO requires Chainer v3.0.0 or newer.""".format(chain
         states = batch_states([b['state'] for b in dataset], xp, self.phi)
         next_states = batch_states([b['next_state']
                                     for b in dataset], xp, self.phi)
+        if self.obs_normalizer:
+            states = self.obs_normalizer(states, update=False)
+            next_states = self.obs_normalizer(next_states, update=False)
         with chainer.using_config('train', False), chainer.no_backprop_mode():
             vs_pred = chainer.cuda.to_cpu(self.vf(states).data.ravel())
             next_vs_pred = chainer.cuda.to_cpu(
@@ -284,8 +298,16 @@ You're using Chainer v{}. TRPO requires Chainer v3.0.0 or newer.""".format(chain
     def _update(self, dataset):
         """Update both the policy and the value function."""
 
+        if self.obs_normalizer:
+            self._update_obs_normalizer(dataset)
         self._update_policy(dataset)
         self._update_vf(dataset)
+
+    def _update_obs_normalizer(self, dataset):
+        assert self.obs_normalizer
+        states = batch_states(
+            [b['state'] for b in dataset], self.obs_normalizer.xp, self.phi)
+        self.obs_normalizer.experience(states)
 
     def _update_vf(self, dataset):
         """Update the value function using a given dataset.
@@ -305,6 +327,8 @@ You're using Chainer v{}. TRPO requires Chainer v3.0.0 or newer.""".format(chain
         while dataset_iter.epoch < self.vf_epochs:
             batch = dataset_iter.__next__()
             states = batch_states([b['state'] for b in batch], xp, self.phi)
+            if self.obs_normalizer:
+                states = self.obs_normalizer(states, update=False)
             vs_teacher = xp.array(
                 [b['v_teacher'] for b in batch], dtype=xp.float32)
             vs_pred = self.vf(states)
@@ -332,6 +356,8 @@ You're using Chainer v{}. TRPO requires Chainer v3.0.0 or newer.""".format(chain
         # Use full-batch
         xp = self.policy.xp
         states = batch_states([b['state'] for b in dataset], xp, self.phi)
+        if self.obs_normalizer:
+            states = self.obs_normalizer(states, update=False)
         actions = xp.array([b['action'] for b in dataset])
         advs = xp.array([b['adv'] for b in dataset], dtype=np.float32)
         if self.standardize_advantages:
@@ -389,7 +415,9 @@ Found old-style functions: {}""".format(old_style_funcs))
         gain_grads = _chainer_grad_with_zero([gain], policy_params)
         flat_gain_grads = _flatten_and_concat_ndarrays(gain_grads)
         step_direction = chainerrl.misc.conjugate_gradient(
-            fisher_vector_product_func, flat_gain_grads)
+            fisher_vector_product_func, flat_gain_grads,
+            max_iter=self.conjugate_gradient_max_iter,
+        )
 
         # We want a step size that satisfies KL(old|new) < max_kl.
         # Let d = alpha * step_direction be the actual parameter updates.
@@ -471,6 +499,9 @@ Line search coundn't find a good step size. The policy was not updated.""")  # N
         xp = self.xp
         b_state = batch_states([state], xp, self.phi)
 
+        if self.obs_normalizer:
+            b_state = self.obs_normalizer(b_state, update=False)
+
         # action_distrib will be recomputed when computing gradients
         with chainer.using_config('train', False), chainer.no_backprop_mode():
             action_distrib = self.policy(b_state)
@@ -498,6 +529,8 @@ Line search coundn't find a good step size. The policy was not updated.""")  # N
     def act(self, state):
         xp = self.xp
         b_state = batch_states([state], xp, self.phi)
+        if self.obs_normalizer:
+            b_state = self.obs_normalizer(b_state, update=False)
         with chainer.using_config('train', False), chainer.no_backprop_mode():
             action_distrib = self.policy(b_state)
             if self.act_deterministically:

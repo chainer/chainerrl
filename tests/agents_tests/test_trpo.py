@@ -215,6 +215,7 @@ Chainer v{} does not support double backprop of these functions: {}.""".format(
         'lambd': [0.0, 0.5, 1.0],
         'entropy_coef': [0.0, 1e-5],
         'standardize_advantages': [False, True],
+        'standardize_obs': [False, True],
     })
 ))
 class TestTRPO(unittest.TestCase):
@@ -305,10 +306,19 @@ class TestTRPO(unittest.TestCase):
         vf_opt = optimizers.Adam()
         vf_opt.setup(vf)
 
+        if self.standardize_obs:
+            obs_normalizer = chainerrl.links.EmpiricalNormalization(
+                env.observation_space.low.size)
+            if gpu >= 0:
+                obs_normalizer.to_gpu(gpu)
+        else:
+            obs_normalizer = None
+
         agent = chainerrl.agents.TRPO(
             policy=policy,
             vf=vf,
             vf_optimizer=vf_opt,
+            obs_normalizer=obs_normalizer,
             gamma=0.5,
             lambd=self.lambd,
             entropy_coef=self.entropy_coef,
