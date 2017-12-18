@@ -557,6 +557,8 @@ Line search coundn't find a good step size. The policy was not updated.""")  # N
         self._flush_last_episode()
         self.stop_episode()
 
+        self._update_if_dataset_is_ready()
+
     def stop_episode(self):
         pass
 
