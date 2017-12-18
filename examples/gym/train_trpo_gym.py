@@ -97,6 +97,10 @@ other observation spaces, use a custom phi function that convert an observation
 to numpy.ndarray of numpy.float32.""")  # NOQA
         return
 
+    # Normalize observations based on their empirical mean and variance
+    obs_normalizer = chainerrl.links.EmpiricalNormalization(
+        obs_space.low.size)
+
     if isinstance(action_space, gym.spaces.Box):
         # Use a Gaussian policy for continuous action spaces
         policy = \
@@ -139,6 +143,7 @@ TRPO only supports gym.spaces.Box or gym.spaces.Discrete action spaces.""")  # N
         chainer.cuda.get_device_from_id(args.gpu).use()
         policy.to_gpu(args.gpu)
         vf.to_gpu(args.gpu)
+        obs_normalizer.to_gpu(args.gpu)
 
     # TRPO's policy is optimized via CG and line search, so it doesn't require
     # a chainer.Optimizer. Only the value function needs it.
@@ -154,15 +159,18 @@ TRPO only supports gym.spaces.Box or gym.spaces.Discrete action spaces.""")  # N
     chainerrl.misc.draw_computational_graph(
         [vf(fake_obs)], os.path.join(args.outdir, 'vf'))
 
+    # Hyperparameters in http://arxiv.org/abs/1709.06560
     agent = chainerrl.agents.TRPO(
         policy=policy,
         vf=vf,
         vf_optimizer=vf_opt,
+        obs_normalizer=obs_normalizer,
         phi=lambda x: x.astype(np.float32, copy=False),
-        update_interval=1024,
+        update_interval=5000,
+        conjugate_gradient_max_iter=20,
         conjugate_gradient_damping=1e-1,
-        gamma=0.99,
-        lambd=0.98,
+        gamma=0.995,
+        lambd=0.97,
         vf_epochs=5,
         entropy_coef=0,
     )
