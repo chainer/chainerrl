@@ -112,9 +112,12 @@ class AttributeSavingMixin(object):
         """Save internal states."""
         makedirs(dirname, exist_ok=True)
         for attr in self.saved_attributes:
+            attr_value = getattr(self, attr)
+            if attr_value is None:
+                continue
             serializers.save_npz(
                 os.path.join(dirname, '{}.npz'.format(attr)),
-                getattr(self, attr))
+                attr_value)
 
     def load(self, dirname):
         """Load internal states."""
@@ -124,9 +127,12 @@ class AttributeSavingMixin(object):
             In Chainer v2, a (stateful) optimizer cannot be loaded from
             an npz saved before the first update.
             """
+            attr_value = getattr(self, attr)
+            if attr_value is None:
+                continue
             load_npz_no_strict(
                 os.path.join(dirname, '{}.npz'.format(attr)),
-                getattr(self, attr))
+                attr_value)
 
 
 class AsyncAgent(with_metaclass(ABCMeta, Agent)):
