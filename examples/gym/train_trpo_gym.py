@@ -58,6 +58,8 @@ def main():
     parser.add_argument('--load', type=str, default='',
                         help='Directory path to load a saved agent data from'
                              ' if it is a non-empty string.')
+    parser.add_argument('--trpo-update-interval', type=int, default=5000,
+                        help='Interval steps of TRPO iterations.')
     parser.add_argument('--logger-level', type=int, default=logging.INFO,
                         help='Level of the root logger.')
     parser.add_argument('--monitor', action='store_true',
@@ -166,7 +168,7 @@ TRPO only supports gym.spaces.Box or gym.spaces.Discrete action spaces.""")  # N
         vf_optimizer=vf_opt,
         obs_normalizer=obs_normalizer,
         phi=lambda x: x.astype(np.float32, copy=False),
-        update_interval=5000,
+        update_interval=args.trpo_update_interval,
         conjugate_gradient_max_iter=20,
         conjugate_gradient_damping=1e-1,
         gamma=0.995,
