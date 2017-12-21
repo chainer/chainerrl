@@ -37,5 +37,5 @@ def set_random_seed(seed, gpus=()):
         if gpu >= 0:
             with chainer.cuda.get_device_from_id(gpu):
                 chainer.cuda.cupy.random.seed(seed)
-    # chainer.functions.n_step_rnn depends on CHAINER_SEED
+    # chainer.functions.n_step_rnn directly depends on CHAINER_SEED
     os.environ['CHAINER_SEED'] = str(seed)
