@@ -7,6 +7,7 @@ from future import standard_library
 standard_library.install_aliases()
 
 import multiprocessing as mp
+import warnings
 
 import chainer
 import numpy as np
@@ -130,8 +131,12 @@ def run_async(n_process, run_func):
     for p in processes:
         p.start()
 
-    for p in processes:
+    for process_idx, p in enumerate(processes):
         p.join()
+        if p.exitcode < 0:
+            warnings.warn(
+                "Process #{} (pid={}) exited with nonzero status {}".format(
+                    process_idx, p.pid, p.exitcode))
 
 
 def as_shared_objects(obj):

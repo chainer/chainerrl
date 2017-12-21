@@ -7,7 +7,11 @@ from future import standard_library
 standard_library.install_aliases()
 
 import multiprocessing as mp
+import os
+import signal
+import sys
 import unittest
+import warnings
 
 import chainer
 import chainer.links as L
@@ -188,3 +192,21 @@ class TestAsync(unittest.TestCase):
                     counter.value += 1
         async.run_async(4, run_func)
         self.assertEqual(counter.value, 4000)
+
+    def test_run_async_exit_code(self):
+
+        def run_with_exit_code_0(process_idx):
+            sys.exit(0)
+
+        def run_with_exit_code_11(process_idx):
+            os.kill(os.getpid(), signal.SIGSEGV)
+
+        with warnings.catch_warnings(record=True) as w:
+            async.run_async(4, run_with_exit_code_0)
+            # There should be no warnings
+            assert len(w) == 0
+
+        with warnings.catch_warnings(record=True) as w:
+            async.run_async(4, run_with_exit_code_11)
+            # There should be 4 warnings
+            assert len(w) == 4

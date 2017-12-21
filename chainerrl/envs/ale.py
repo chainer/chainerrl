@@ -57,6 +57,8 @@ class ALE(env.Env):
                  frame_skip=4, treat_life_lost_as_terminal=True,
                  crop_or_scale='scale', max_start_nullops=30,
                  record_screen_dir=None):
+        assert crop_or_scale in ['crop', 'scale']
+        assert frame_skip >= 1
         self.n_last_screens = n_last_screens
         self.treat_life_lost_as_terminal = treat_life_lost_as_terminal
         self.crop_or_scale = crop_or_scale
@@ -116,10 +118,9 @@ class ALE(env.Env):
         rgb_img = np.maximum(self.ale.getScreenRGB(), self.last_raw_screen)
         # Make sure the last raw screen is used only once
         self.last_raw_screen = None
-        assert rgb_img.shape == (210, 160, 3)
+        assert rgb_img.shape[2:] == (3,)
         # RGB -> Luminance
-        img = rgb_img[:, :, 0] * 0.2126 + rgb_img[:, :, 1] * \
-            0.0722 + rgb_img[:, :, 2] * 0.7152
+        img = np.dot(rgb_img, np.array([0.299, 0.587, 0.114]))
         img = img.astype(np.uint8)
         if img.shape == (250, 160):
             raise RuntimeError("This ROM is for PAL. Please use ROMs for NTSC")
@@ -164,10 +165,10 @@ class ALE(env.Env):
         assert not self.is_terminal
 
         rewards = []
-        for i in range(4):
+        for i in range(self.frame_skip):
 
-            # Last screeen must be stored before executing the 4th action
-            if i == 3:
+            # Last screeen must be stored before executing the last action
+            if i == self.frame_skip - 1:
                 self.last_raw_screen = self.ale.getScreenRGB()
 
             rewards.append(self.ale.act(self.legal_actions[action]))
@@ -205,7 +206,7 @@ class ALE(env.Env):
         self.last_raw_screen = self.ale.getScreenRGB()
 
         self.last_screens = collections.deque(
-            [np.zeros((84, 84), dtype=np.uint8)] * 3 +
+            [np.zeros((84, 84), dtype=np.uint8)] * (self.n_last_screens - 1) +
             [self.current_screen()],
             maxlen=self.n_last_screens)
 

@@ -13,27 +13,12 @@ import subprocess
 import sys
 import tempfile
 
-
-def is_return_code_zero(args):
-    """Return true iff the given command's return code is zero.
-
-    All the messages to stdout or stderr are suppressed.
-    """
-    FNULL = open(os.devnull, 'w')
-    try:
-        subprocess.check_call(args, stdout=FNULL, stderr=FNULL)
-    except subprocess.CalledProcessError:
-        # The given command returned an error
-        return False
-    except OSError:
-        # The given command was not found
-        return False
-    return True
+import chainerrl
 
 
 def is_under_git_control():
     """Return true iff the current directory is under git control."""
-    return is_return_code_zero(['git', 'rev-parse'])
+    return chainerrl.misc.is_return_code_zero(['git', 'rev-parse'])
 
 
 def prepare_output_dir(args, user_specified_dir=None, argv=None,
@@ -97,19 +82,19 @@ def prepare_output_dir(args, user_specified_dir=None, argv=None,
 
     if is_under_git_control():
         # Save `git rev-parse HEAD` (SHA of the current commit)
-        with open(os.path.join(outdir, 'git-head.txt'), 'w') as f:
-            f.write(subprocess.getoutput('git rev-parse HEAD'))
+        with open(os.path.join(outdir, 'git-head.txt'), 'wb') as f:
+            f.write(subprocess.check_output('git rev-parse HEAD'.split()))
 
         # Save `git status`
-        with open(os.path.join(outdir, 'git-status.txt'), 'w') as f:
-            f.write(subprocess.getoutput('git status'))
+        with open(os.path.join(outdir, 'git-status.txt'), 'wb') as f:
+            f.write(subprocess.check_output('git status'.split()))
 
         # Save `git log`
-        with open(os.path.join(outdir, 'git-log.txt'), 'w') as f:
-            f.write(subprocess.getoutput('git log'))
+        with open(os.path.join(outdir, 'git-log.txt'), 'wb') as f:
+            f.write(subprocess.check_output('git log'.split()))
 
         # Save `git diff`
-        with open(os.path.join(outdir, 'git-diff.txt'), 'w') as f:
-            f.write(subprocess.getoutput('git diff'))
+        with open(os.path.join(outdir, 'git-diff.txt'), 'wb') as f:
+            f.write(subprocess.check_output('git diff'.split()))
 
     return outdir
