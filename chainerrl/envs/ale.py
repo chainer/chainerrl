@@ -51,7 +51,33 @@ except Exception:
 
 
 class ALE(env.Env):
-    """Arcade Learning Environment."""
+    """The Arcade Learning Environment with popular settings.
+
+    This mimics the environments used by the DQN paper from DeepMind,
+    https://www.nature.com/articles/nature14236.
+
+    Args:
+        game (str): Name of a game. You can get the complete list of supported
+            games by calling atari_py.list_games().
+        seed (int or None): If set to an int, it is used as a random seed for
+            the ALE. It must be in [0, 2 ** 16). If set to None, numpy's random
+            state is used to select a random seed for the ALE.
+        use_sdl (bool): If set to True, use SDL to show a window to render
+            states. This option might not work for the ALE in atari_py.
+        n_last_screens (int): Number of last screens to observe every step.
+        frame_skip (int): Number of frames for which the same action is
+            repeated. For example, if it is set to 4, one step for the agent
+            corresponds to four frames in the ALE.
+        crop_or_scale (str): How screens are resized. If set to 'crop', screens
+            are cropped as in https://arxiv.org/abs/1312.5602. If set to
+            'scale', screens are scaled as in
+            https://www.nature.com/articles/nature14236.
+        max_start_nullops (int): Maximum number of random null actions sent to
+            the ALE to randomize initial states.
+        record_screen_dir (str): If set to a str, screens are saved as images
+            to the directory specified by it. If set to None, screens are not
+            saved.
+    """
 
     def __init__(self, game, seed=None, use_sdl=False, n_last_screens=4,
                  frame_skip=4, treat_life_lost_as_terminal=True,
@@ -73,11 +99,11 @@ class ALE(env.Env):
 
         ale = atari_py.ALEInterface()
         if seed is not None:
-            assert seed >= 0 and seed < 2 ** 16, \
-                "ALE's random seed must be represented by unsigned int"
+            assert seed >= 0 and seed < 2 ** 31, \
+                "ALE's random seed must be in [0, 2 ** 31)."
         else:
             # Use numpy's random state
-            seed = np.random.randint(0, 2 ** 16)
+            seed = np.random.randint(0, 2 ** 31)
         ale.setInt(b'random_seed', seed)
         ale.setFloat(b'repeat_action_probability', 0.0)
         ale.setBool(b'color_averaging', False)
