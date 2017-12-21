@@ -50,7 +50,7 @@ class TestSampleNK(unittest.TestCase):
         self.subtest_order_counts()
 
     def subtest_total_counts(self):
-        if self.k == self.n:
+        if self.k in [0, self.n]:
             return
 
         cnt = np.zeros(self.n)
