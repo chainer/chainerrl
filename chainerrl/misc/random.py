@@ -16,7 +16,7 @@ def sample_n_k(n, k):
         raise ValueError("Sample larger than population or is negative")
     if k == 0:
         return np.empty((0,), dtype=np.int64)
-    if 3 * k >= n:
+    elif 3 * k >= n:
         return np.random.choice(n, k, replace=False)
     else:
         result = np.random.choice(n, 2 * k)
