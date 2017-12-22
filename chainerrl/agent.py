@@ -112,21 +112,33 @@ class AttributeSavingMixin(object):
         """Save internal states."""
         makedirs(dirname, exist_ok=True)
         for attr in self.saved_attributes:
-            serializers.save_npz(
-                os.path.join(dirname, '{}.npz'.format(attr)),
-                getattr(self, attr))
+            assert hasattr(self, attr)
+            attr_value = getattr(self, attr)
+            if isinstance(attr_value, AttributeSavingMixin):
+                assert attr_value is not self, "Avoid an infinite loop"
+                attr_value.save(os.path.join(dirname, attr))
+            else:
+                serializers.save_npz(
+                    os.path.join(dirname, '{}.npz'.format(attr)),
+                    getattr(self, attr))
 
     def load(self, dirname):
         """Load internal states."""
         for attr in self.saved_attributes:
-            """Fix Chainer Issue #2772
+            assert hasattr(self, attr)
+            attr_value = getattr(self, attr)
+            if isinstance(attr_value, AttributeSavingMixin):
+                assert attr_value is not self, "Avoid an infinite loop"
+                attr_value.load(os.path.join(dirname, attr))
+            else:
+                """Fix Chainer Issue #2772
 
-            In Chainer v2, a (stateful) optimizer cannot be loaded from
-            an npz saved before the first update.
-            """
-            load_npz_no_strict(
-                os.path.join(dirname, '{}.npz'.format(attr)),
-                getattr(self, attr))
+                In Chainer v2, a (stateful) optimizer cannot be loaded from
+                an npz saved before the first update.
+                """
+                load_npz_no_strict(
+                    os.path.join(dirname, '{}.npz'.format(attr)),
+                    getattr(self, attr))
 
 
 class AsyncAgent(with_metaclass(ABCMeta, Agent)):
