@@ -14,12 +14,12 @@ install:
       pip install "chainer<3.0.0"
     else
       pip install "chainer>=3.0.0rc1"
+      pip install pytest-cov
     fi
   - pip install -r requirements.txt --only-binary=numpy,scipy
   - pip install jupyter
   - pip install atari_py>=0.1.1
   - pip install hacking
-  - pip install pytest-cov
   - pip install coveralls
   - python setup.py develop
 before_script:
@@ -31,7 +31,12 @@ script:
   - flake8 chainerrl
   - flake8 tests
   - flake8 examples
-  - pytest -m "not gpu and not slow" -x tests --cov=chainerrl
+  - |
+    if [ $CHAINER_VERSION -eq 2 ]; then
+      nosetests -a '!gpu,!slow' -x tests --with-coverage --cover-package chainerrl
+    else
+      pytest -m "not gpu and not slow" -x tests --cov=chainerrl
+    fi
   - ./test_examples.sh -1
   - if [[ $TRAVIS_PYTHON_VERSION == 3.5.1 ]]; then jupyter nbconvert --to notebook --execute examples/quickstart/quickstart.ipynb --ExecutePreprocessor.timeout=600; fi
 after_success:
