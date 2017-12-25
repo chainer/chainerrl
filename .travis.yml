@@ -30,7 +30,7 @@ script:
   - flake8 chainerrl
   - flake8 tests
   - flake8 examples
-  - nosetests -a '!gpu,!slow' -x tests --with-coverage --cover-package chainerrl
+  - pytest -m "not gpu and not slow" -x tests --cov=chainerrl
   - ./test_examples.sh -1
   - if [[ $TRAVIS_PYTHON_VERSION == 3.5.1 ]]; then jupyter nbconvert --to notebook --execute examples/quickstart/quickstart.ipynb --ExecutePreprocessor.timeout=600; fi
 after_success:

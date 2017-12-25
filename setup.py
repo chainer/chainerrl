@@ -13,7 +13,8 @@ install_requires = [
 ]
 
 test_requires = [
-    'nose',
+    'pytest',
+    'pytest-cov',
 ]
 
 if sys.version_info < (3, 2):
