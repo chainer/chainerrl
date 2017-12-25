@@ -14,7 +14,6 @@ install_requires = [
 
 test_requires = [
     'pytest',
-    'pytest-cov',
 ]
 
 if sys.version_info < (3, 2):
