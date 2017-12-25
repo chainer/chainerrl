@@ -6,13 +6,11 @@ from builtins import *  # NOQA
 from future import standard_library
 standard_library.install_aliases()
 
+import basetest_dqn_like as base
 from chainerrl.agents.pal import PAL
-from test_dqn_like import _TestDQNOnContinuousABC
-from test_dqn_like import _TestDQNOnDiscreteABC
-from test_dqn_like import _TestDQNOnDiscretePOABC
 
 
-class TestPALOnDiscreteABC(_TestDQNOnDiscreteABC):
+class TestPALOnDiscreteABC(base._TestDQNOnDiscreteABC):
 
     def make_dqn_agent(self, env, q_func, opt, explorer, rbuf, gpu):
         return PAL(
@@ -20,7 +18,7 @@ class TestPALOnDiscreteABC(_TestDQNOnDiscreteABC):
             replay_start_size=100, target_update_interval=100)
 
 
-class TestPALOnContinuousABC(_TestDQNOnContinuousABC):
+class TestPALOnContinuousABC(base._TestDQNOnContinuousABC):
 
     def make_dqn_agent(self, env, q_func, opt, explorer, rbuf, gpu):
         return PAL(
@@ -28,7 +26,7 @@ class TestPALOnContinuousABC(_TestDQNOnContinuousABC):
             replay_start_size=100, target_update_interval=100)
 
 
-class TestPALOnDiscretePOABC(_TestDQNOnDiscretePOABC):
+class TestPALOnDiscretePOABC(base._TestDQNOnDiscretePOABC):
 
     def make_dqn_agent(self, env, q_func, opt, explorer, rbuf, gpu):
         return PAL(

@@ -10,14 +10,13 @@ from chainer import testing
 import gym
 gym.undo_logger_setup()
 
+import basetest_agents as base
 from chainerrl import agents
 from chainerrl import explorers
 from chainerrl import policies
 from chainerrl import q_functions
 from chainerrl import replay_buffer
 from chainerrl import v_function
-
-import basetest_agents
 
 
 def create_stochastic_policy_for_env(env):
@@ -87,7 +86,7 @@ def create_v_function_for_env(env):
     'partially_observable': [False],
     'episodic': [False],
 }))
-class TestA3C(basetest_agents._TestAgentInterface):
+class TestA3C(base._TestAgentInterface):
 
     def create_agent(self, env):
         model = agents.a3c.A3CSeparateModel(
@@ -103,7 +102,7 @@ class TestA3C(basetest_agents._TestAgentInterface):
     'partially_observable': [False],
     'episodic': [False],
 }))
-class TestACER(basetest_agents._TestAgentInterface):
+class TestACER(base._TestAgentInterface):
 
     def create_agent(self, env):
         model = agents.acer.ACERSeparateModel(
@@ -121,7 +120,7 @@ class TestACER(basetest_agents._TestAgentInterface):
     'partially_observable': [False],
     'episodic': [False],
 }))
-class TestDQN(basetest_agents._TestAgentInterface):
+class TestDQN(base._TestAgentInterface):
 
     def create_agent(self, env):
         model = create_state_q_function_for_env(env)
@@ -138,7 +137,7 @@ class TestDQN(basetest_agents._TestAgentInterface):
     'partially_observable': [False],
     'episodic': [False],
 }))
-class TestDoubleDQN(basetest_agents._TestAgentInterface):
+class TestDoubleDQN(base._TestAgentInterface):
 
     def create_agent(self, env):
         model = create_state_q_function_for_env(env)
@@ -156,7 +155,7 @@ class TestDoubleDQN(basetest_agents._TestAgentInterface):
     'partially_observable': [False],
     'episodic': [False],
 }))
-class TestNSQ(basetest_agents._TestAgentInterface):
+class TestNSQ(base._TestAgentInterface):
 
     def create_agent(self, env):
         model = create_state_q_function_for_env(env)
@@ -178,7 +177,7 @@ class TestNSQ(basetest_agents._TestAgentInterface):
     'partially_observable': [False],
     'episodic': [False],
 }))
-class TestDDPG(basetest_agents._TestAgentInterface):
+class TestDDPG(base._TestAgentInterface):
 
     def create_agent(self, env):
         model = agents.ddpg.DDPGModel(
@@ -199,7 +198,7 @@ class TestDDPG(basetest_agents._TestAgentInterface):
     'partially_observable': [False],
     'episodic': [False],
 }))
-class TestPGT(basetest_agents._TestAgentInterface):
+class TestPGT(base._TestAgentInterface):
 
     def create_agent(self, env):
         model = agents.ddpg.DDPGModel(
