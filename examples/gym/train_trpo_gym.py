@@ -41,7 +41,7 @@ def main():
     parser.add_argument('--env', type=str, default='Hopper-v1',
                         help='Gym Env ID')
     parser.add_argument('--seed', type=int, default=0,
-                        help='Random seed')
+                        help='Random seed [0, 2 ** 32)')
     parser.add_argument('--outdir', type=str, default='results',
                         help='Directory path to save output files.'
                              ' If it does not exist, it will be created.')
@@ -70,14 +70,14 @@ def main():
     logging.basicConfig(level=args.logger_level)
 
     # Set random seed
-    chainerrl.misc.set_random_seed(args.seed)
+    chainerrl.misc.set_random_seed(args.seed, gpus=(args.gpu,))
 
     args.outdir = chainerrl.experiments.prepare_output_dir(args, args.outdir)
 
     def make_env(test):
         env = gym.make(args.env)
-        if args.seed is not None:
-            env.seed(args.seed)
+        env_seed = 2 ** 32 - args.seed if test else args.seed
+        env.seed(env_seed)
         if args.monitor:
             env = gym.wrappers.Monitor(env, args.outdir)
         if args.render:
