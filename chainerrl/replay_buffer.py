@@ -153,6 +153,9 @@ class ReplayBuffer(AbstractReplayBuffer):
     def load(self, filename):
         with open(filename, 'rb') as f:
             self.memory = pickle.load(f)
+        if not isinstance(self.memory, RandomAccessQueue):
+            self.memory = RandomAccessQueue(
+                self.memory, maxlen=self.memory.maxlen)
 
     def stop_current_episode(self):
         pass
@@ -281,7 +284,18 @@ class EpisodicReplayBuffer(AbstractEpisodicReplayBuffer):
 
     def load(self, filename):
         with open(filename, 'rb') as f:
-            self.memory, self.episodic_memory = pickle.load(f)
+            memory = pickle.load(f)
+        if isinstance(memory, tuple):
+            self.memory, self.episodic_memory = memory
+        else:
+            self.memory = RandomAccessQueue(memory)
+            self.episodic_memory = RandomAccessQueue()
+            episode = []
+            for item in self.memory:
+                episode.append(item)
+                if item['is_state_terminal']:
+                    self.episodic_memory.append(episode)
+                    episode = []
 
     def stop_current_episode(self):
         if self.current_episode:
