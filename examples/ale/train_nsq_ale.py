@@ -127,5 +127,6 @@ def main():
             eval_explorer=explorer,
             global_step_hooks=[lr_decay_hook])
 
+
 if __name__ == '__main__':
     main()
