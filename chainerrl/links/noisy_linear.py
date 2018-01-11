@@ -22,12 +22,12 @@ class FactorizedNoisyLinear(chainer.Chain):
         self.nobias = not ('b' in [name for name, _ in mu_link.namedparams()])
 
         W_data = mu_link.W.data
-        self.in_size = None if W_data is None else W_data.shape[1]
+        in_size = None if W_data is None else W_data.shape[1]
 
         with self.init_scope():
             self.mu = mu_link
             self.sigma = L.Linear(
-                in_size=self.in_size, out_size=self.out_size, nobias=self.nobias,
+                in_size=in_size, out_size=self.out_size, nobias=self.nobias,
                 initialW=VarianceScalingConstant(sigma_scale),
                 initial_bias=Constant(sigma_scale))
 

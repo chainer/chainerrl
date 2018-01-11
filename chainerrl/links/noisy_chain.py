@@ -1,7 +1,6 @@
 import chainer
 from chainer.links import Linear
 
-from chainerrl.initializers import LeCunNormal
 from chainerrl.links.noisy_linear import FactorizedNoisyLinear
 
 
