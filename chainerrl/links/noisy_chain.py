@@ -1,44 +1,41 @@
 import chainer
-import chainer.functions as F
+from chainer.links import Linear
 
 from chainerrl.initializers import LeCunNormal
 from chainerrl.links.noisy_linear import FactorizedNoisyLinear
 
 
-class NoisyMLP(chainer.Chain):
-    """Noisy Networks
+def to_factorized_noisy(link):
+    _map_links(_func_to_factorized_noisy, link)
 
-    See http://arxiv.org/abs/1706.10295
-    """
 
-    def __init__(self, in_size, out_size, hidden_sizes, nonlinearity=F.relu,
-                 last_wscale=1):
-        self.in_size = in_size
-        self.out_size = out_size
-        self.hidden_sizes = hidden_sizes
-        self.nonlinearity = nonlinearity
+def _func_to_factorized_noisy(link):
+    if isinstance(link, Linear):
+        return FactorizedNoisyLinear(link)
+    else:
+        return link
 
-        super().__init__()
-        with self.init_scope():
-            if hidden_sizes:
-                hidden_layers = []
-                hidden_layers.append(
-                    FactorizedNoisyLinear(in_size, hidden_sizes[0]))
-                for hin, hout in zip(hidden_sizes, hidden_sizes[1:]):
-                    hidden_layers.append(
-                        FactorizedNoisyLinear(hin, hout))
-                self.hidden_layers = chainer.ChainList(*hidden_layers)
-                self.output = FactorizedNoisyLinear(
-                    hidden_sizes[-1], out_size,
-                    initialW=LeCunNormal(last_wscale))
+
+def _map_links(func, link):
+    if isinstance(link, chainer.Chain):
+        children_names = link._children.copy()
+        for name in children_names:
+            child = getattr(link, name)
+            new_child = func(child)
+            if new_child is child:
+                _map_links(func, child)
             else:
-                self.output = FactorizedNoisyLinear(
-                    in_size, out_size,
-                    initialW=LeCunNormal(last_wscale))
-
-    def __call__(self, x):
-        h = x
-        if self.hidden_sizes:
-            for l in self.hidden_layers:
-                h = self.nonlinearity(l(h))
-        return self.output(h)
+                delattr(link, name)
+                with link.init_scope():
+                    setattr(link, name, func(child))
+    elif isinstance(link, chainer.ChainList):
+        children = link._children
+        for i in range(len(children)):
+            child = children[i]
+            new_child = func(child)
+            if new_child is child:
+                _map_links(func, child)
+            else:
+                # mimic ChainList.add_link
+                children[i] = func(child)
+                children[i].name = str(i)

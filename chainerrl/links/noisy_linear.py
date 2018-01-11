@@ -11,24 +11,25 @@ class FactorizedNoisyLinear(chainer.Chain):
     """Linear layer in Factorized Noisy Network
 
     Args:
-        in_size, out_size, nobias, initialW, initial_bias: args for L.Linear
+        mu_link (L.Linear): Linear link that computes mean of output.
         sigma_scale (float): The hyperparameter sigma_0 in the original paper.
             Scaling factor of the initial weights of noise-scaling parameters.
     """
 
-    def __init__(self, in_size, out_size=None, nobias=False,
-                 initialW=None, initial_bias=None,
-                 sigma_scale=0.4):
+    def __init__(self, mu_link, sigma_scale=0.4):
         super(FactorizedNoisyLinear, self).__init__()
-        self.nobias = nobias
+        self.out_size = mu_link.out_size
+        self.nobias = not ('b' in [name for name, _ in mu_link.namedparams()])
+
+        W_data = mu_link.W.data
+        self.in_size = None if W_data is None else W_data.shape[1]
+
         with self.init_scope():
-            self.mu = L.Linear(
-                in_size, out_size, nobias, initialW, initial_bias)
+            self.mu = mu_link
             self.sigma = L.Linear(
-                in_size, out_size, nobias,
+                in_size=self.in_size, out_size=self.out_size, nobias=self.nobias,
                 initialW=VarianceScalingConstant(sigma_scale),
                 initial_bias=Constant(sigma_scale))
-        self.out_size = self.mu.out_size
 
     def _eps(self, shape, dtype):
         xp = self.xp

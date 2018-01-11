@@ -18,8 +18,8 @@ from chainerrl.links import noisy_linear
 }))
 class TestFactorizedNoisyLinear(unittest.TestCase):
     def setUp(self):
-        self.l = noisy_linear.FactorizedNoisyLinear(
-            *self.size_args, nobias=self.nobias)
+        mu = chainer.links.Linear(*self.size_args, nobias=self.nobias)
+        self.l = noisy_linear.FactorizedNoisyLinear(mu)
 
     def test_calls(self):
         x_data = np.arange(12).astype(np.float32).reshape((2, 6))

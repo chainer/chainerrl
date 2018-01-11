@@ -17,7 +17,6 @@ from chainerrl.action_value import QuadraticActionValue
 from chainerrl.functions.lower_triangular_matrix import lower_triangular_matrix
 from chainerrl.links.mlp import MLP
 from chainerrl.links.mlp_bn import MLPBN
-from chainerrl.links.noisy_chain import NoisyMLP
 from chainerrl.misc.chainer_compat import matmul_v3
 from chainerrl.q_function import StateQFunction
 from chainerrl.recurrent import RecurrentChainMixin
@@ -221,21 +220,3 @@ class FCBNQuadraticStateQFunction(chainer.Chain, StateQFunction):
         return QuadraticActionValue(
             mu, mat, v, min_action=self.action_space.low,
             max_action=self.action_space.high)
-
-
-class NoisyFCStateQFunctionWithDiscreteAction(
-        SingleModelStateQFunctionWithDiscreteAction):
-    """State-input Q-function with discrete actions modeled as Noisy Network
-
-    Args:
-        n_dim_obs: number of dimensions of observation space
-        n_dim_action: number of dimensions of action space
-        n_hidden_channels: number of hidden channels
-        n_hidden_layers: number of hidden layers
-    """
-
-    def __init__(self, ndim_obs, n_actions,
-                 n_hidden_channels, n_hidden_layers):
-        super().__init__(model=NoisyMLP(
-            ndim_obs, n_actions, [n_hidden_channels] * n_hidden_layers,
-            ))
