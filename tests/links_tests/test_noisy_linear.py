@@ -2,6 +2,7 @@ import unittest
 
 import chainer
 from chainer import testing
+from chainer.testing import condition
 import numpy as np
 
 from chainerrl.links import noisy_linear
@@ -27,7 +28,7 @@ class TestFactorizedNoisyLinear(unittest.TestCase):
         self.l(x_data + 1)
         self.l(x_data.reshape((2, 3, 2)))
 
-    @testing.condition.retry(3)
+    @condition.retry(3)
     def test_randomness(self):
         x = np.random.standard_normal((10, 6)).astype(np.float32)
         y1 = self.l(x).data
