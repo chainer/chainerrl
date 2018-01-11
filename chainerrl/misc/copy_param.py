@@ -15,7 +15,7 @@ def copy_param(target_link, source_link):
     for param_name, param in source_link.namedparams():
         if target_params[param_name].data is None:
             raise TypeError(
-                'target_params of {} is None. Maybe the model params are '
+                'target_link parameter {} is None. Maybe the model params are '
                 'not initialized.'.format(param_name))
         target_params[param_name].data[:] = param.data
 
@@ -34,7 +34,7 @@ def soft_copy_param(target_link, source_link, tau):
     for param_name, param in source_link.namedparams():
         if target_params[param_name].data is None:
             raise TypeError(
-                'target_params of {} is None. Maybe the model params are '
+                'target_link parameter {} is None. Maybe the model params are '
                 'not initialized.'.format(param_name))
         target_params[param_name].data[:] *= (1 - tau)
         target_params[param_name].data[:] += tau * param.data
