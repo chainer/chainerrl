@@ -5,6 +5,10 @@ from chainerrl.links.noisy_linear import FactorizedNoisyLinear
 
 
 def to_factorized_noisy(link):
+    """Add noisiness to components of given link
+
+    Currently this function supports L.Linear (with and without bias)
+    """
     _map_links(_func_to_factorized_noisy, link)
 
 
