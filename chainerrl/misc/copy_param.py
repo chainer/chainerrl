@@ -16,8 +16,8 @@ def copy_param(target_link, source_link):
         if target_params[param_name].data is None:
             raise TypeError(
                 'target_link parameter {} is None. Maybe the model params are '
-                'not initialized.\nPlease try to forward dummy input beforehand'
-                ' to determine parameter shape of the model.'.format(
+                'not initialized.\nPlease try to forward dummy input '
+                'beforehand to determine parameter shape of the model.'.format(
                     param_name))
         target_params[param_name].data[:] = param.data
 
@@ -37,8 +37,8 @@ def soft_copy_param(target_link, source_link, tau):
         if target_params[param_name].data is None:
             raise TypeError(
                 'target_link parameter {} is None. Maybe the model params are '
-                'not initialized.\nPlease try to forward dummy input beforehand'
-                ' to determine parameter shape of the model.'.format(
+                'not initialized.\nPlease try to forward dummy input '
+                'beforehand to determine parameter shape of the model.'.format(
                     param_name))
         target_params[param_name].data[:] *= (1 - tau)
         target_params[param_name].data[:] += tau * param.data
