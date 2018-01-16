@@ -13,6 +13,12 @@ def copy_param(target_link, source_link):
     """Copy parameters of a link to another link."""
     target_params = dict(target_link.namedparams())
     for param_name, param in source_link.namedparams():
+        if target_params[param_name].data is None:
+            raise TypeError(
+                'target_link parameter {} is None. Maybe the model params are '
+                'not initialized.\nPlease try to forward dummy input '
+                'beforehand to determine parameter shape of the model.'.format(
+                    param_name))
         target_params[param_name].data[:] = param.data
 
     # Copy Batch Normalization's statistics
@@ -28,6 +34,12 @@ def soft_copy_param(target_link, source_link, tau):
     """Soft-copy parameters of a link to another link."""
     target_params = dict(target_link.namedparams())
     for param_name, param in source_link.namedparams():
+        if target_params[param_name].data is None:
+            raise TypeError(
+                'target_link parameter {} is None. Maybe the model params are '
+                'not initialized.\nPlease try to forward dummy input '
+                'beforehand to determine parameter shape of the model.'.format(
+                    param_name))
         target_params[param_name].data[:] *= (1 - tau)
         target_params[param_name].data[:] += tau * param.data
 
