@@ -15,13 +15,15 @@ import numpy as np
 from chainerrl import replay_buffer
 
 
+@testing.parameterize(*testing.product(
+    {
+        'capacity': [100, None],
+    }
+))
 class TestReplayBuffer(unittest.TestCase):
 
     def test_append_and_sample(self):
-        for capacity in [100, None]:
-            self.subtest_append_and_sample(capacity)
-
-    def subtest_append_and_sample(self, capacity):
+        capacity = self.capacity
         rbuf = replay_buffer.ReplayBuffer(capacity)
 
         self.assertEqual(len(rbuf), 0)
@@ -50,10 +52,7 @@ class TestReplayBuffer(unittest.TestCase):
             self.assertEqual(s2[1], trans1)
 
     def test_save_and_load(self):
-        for capacity in [100, None]:
-            self.subtest_append_and_sample(capacity)
-
-    def subtest_save_and_load(self, capacity):
+        capacity = self.capacity
 
         tempdir = tempfile.mkdtemp()
 
@@ -96,13 +95,15 @@ class TestReplayBuffer(unittest.TestCase):
             self.assertEqual(s2[1], trans1)
 
 
+@testing.parameterize(*testing.product(
+    {
+        'capacity': [100, None],
+    }
+))
 class TestEpisodicReplayBuffer(unittest.TestCase):
 
     def test_append_and_sample(self):
-        for capacity in [100, None]:
-            self.subtest_append_and_sample(capacity)
-
-    def subtest_append_and_sample(self, capacity):
+        capacity = self.capacity
         rbuf = replay_buffer.EpisodicReplayBuffer(capacity)
 
         for n in [10, 15, 5] * 3:
@@ -132,10 +133,7 @@ class TestEpisodicReplayBuffer(unittest.TestCase):
                     self.assertEqual(t0['next_action'], t1['action'])
 
     def test_save_and_load(self):
-        for capacity in [100, None]:
-            self.subtest_save_and_load(capacity)
-
-    def subtest_save_and_load(self, capacity):
+        capacity = self.capacity
 
         tempdir = tempfile.mkdtemp()
 
@@ -195,13 +193,15 @@ class TestEpisodicReplayBuffer(unittest.TestCase):
         self.assertEqual(rbuf.n_episodes, 2)
 
 
+@testing.parameterize(*testing.product(
+    {
+        'capacity': [100, None],
+    }
+))
 class TestPrioritizedReplayBuffer(unittest.TestCase):
 
     def test_append_and_sample(self):
-        for capacity in [100, None]:
-            self.subtest_append_and_sample(capacity)
-
-    def subtest_append_and_sample(self, capacity):
+        capacity = self.capacity
         rbuf = replay_buffer.PrioritizedReplayBuffer(capacity)
 
         self.assertEqual(len(rbuf), 0)
@@ -245,7 +245,10 @@ class TestPrioritizedReplayBuffer(unittest.TestCase):
         self.assertAlmostEqual(s4[0]['weight'], s4[1]['weight'])
 
     def test_capacity(self):
-        capacity = 10
+        capacity = self.capacity
+        if capacity is None:
+            return
+
         rbuf = replay_buffer.PrioritizedReplayBuffer(capacity)
         # Fill the buffer
         for _ in range(capacity):
@@ -263,7 +266,7 @@ class TestPrioritizedReplayBuffer(unittest.TestCase):
 
     @unittest.expectedFailure
     def test_fail_noupdate(self):
-        rbuf = replay_buffer.PrioritizedReplayBuffer(100)
+        rbuf = replay_buffer.PrioritizedReplayBuffer(self.capacity)
         trans1 = dict(state=0, action=1, reward=2, next_state=3,
                       next_action=4, is_state_terminal=True)
         rbuf.append(**trans1)
@@ -271,7 +274,7 @@ class TestPrioritizedReplayBuffer(unittest.TestCase):
         rbuf.sample(1)  # This line must fail.
 
     def test_fail_noupdate_sub(self):
-        rbuf = replay_buffer.PrioritizedReplayBuffer(100)
+        rbuf = replay_buffer.PrioritizedReplayBuffer(self.capacity)
         trans1 = dict(state=0, action=1, reward=2, next_state=3,
                       next_action=4, is_state_terminal=True)
         rbuf.append(**trans1)
@@ -279,10 +282,7 @@ class TestPrioritizedReplayBuffer(unittest.TestCase):
         # This must not fail.
 
     def test_save_and_load(self):
-        for capacity in [100, None]:
-            self.subtest_append_and_sample(capacity)
-
-    def subtest_save_and_load(self, capacity):
+        capacity = self.capacity
 
         tempdir = tempfile.mkdtemp()
 
