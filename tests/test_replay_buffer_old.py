@@ -171,15 +171,17 @@ class EpisodicReplayBufferV0_2(object):
 class TestEpisodicReplayBufferCompat(unittest.TestCase):
 
     def test_save_and_load_v0_2(self):
-        capacity = self.capacity
+        capacity = 10
 
         tempdir = tempfile.mkdtemp()
 
         rbuf = EpisodicReplayBufferV0_2(capacity)
 
+        # Give clear terminals of episodes for the test because v0.2 buffer
+        # didn't save episodic_memory.
         transs = [dict(state=n, action=n+10, reward=n+20,
                        next_state=n+1, next_action=n+11,
-                       is_state_terminal=False)
+                       is_state_terminal=n in [1, 4])
                   for n in range(5)]
 
         # Add two episodes
@@ -192,8 +194,7 @@ class TestEpisodicReplayBufferCompat(unittest.TestCase):
         rbuf.append(**transs[4])
         rbuf.stop_current_episode()
 
-        self.assertEqual(len(rbuf), 5)
-        self.assertEqual(rbuf.n_episodes, 2)
+        self.assertEqual(len(rbuf), 2)  # len(rbuf) was rbuf.n_episodes
 
         # Save
         filename = os.path.join(tempdir, 'rbuf.pkl')
