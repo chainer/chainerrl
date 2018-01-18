@@ -15,7 +15,6 @@ import chainer.functions as F
 import chainerrl
 from chainerrl.agents.dqn import DQN
 from chainerrl.functions import quantile_huber_loss_Dabney
-# from chainerrl.functions import quantile_loss
 
 
 # Definitions here are for discrete actions
@@ -81,6 +80,14 @@ class FCQuantileQFunction(_SingleModelStateQuantileQFunction):
 class QRDQN(DQN):
     """Quantile Regression DQN
 
+    Args:
+        q_function (Chain): Quantile Q-function
+            The output of q_function should be ActionValue and
+            its evaluate_actions should return an array of quantiles
+            of shape (minibatch_size, n) where the quantiles are represented
+            as sums of n dirac distributions.
+        args of DQN
+
     See: https://arxiv.org/abs/1710.10044
     """
 
@@ -108,8 +115,6 @@ class QRDQN(DQN):
         return loss
 
     def _compute_y_and_t(self, exp_batch, gamma):
-        # batch_size = exp_batch['reward'].shape[0]
-
         # Compute Q-values for current states
         batch_state = exp_batch['state']
 

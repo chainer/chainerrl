@@ -35,7 +35,6 @@ class QuantileHuberLossDabney(function.Function):
         self.mask = l1 > self.delta
 
         sign = xp.sign(self.diff)
-        # self.coeff = xp.where(self.diff > 0, tau, 1 - tau)
         self.coeff = 0.5 + sign * (tau - 0.5)
 
         l2 = xp.square(self.diff)
