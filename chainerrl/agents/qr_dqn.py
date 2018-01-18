@@ -15,6 +15,7 @@ import chainer.functions as F
 import chainerrl
 from chainerrl.agents.dqn import DQN
 from chainerrl.functions import quantile_huber_loss_Dabney
+from chainerrl.functions import quantile_loss
 
 
 # Definitions here are for discrete actions
@@ -86,6 +87,8 @@ class QRDQN(DQN):
             its evaluate_actions should return an array of quantiles
             of shape (minibatch_size, n) where the quantiles are represented
             as sums of n dirac distributions.
+        clip_delta (bool): Use Huber quantile loss (QR-DQN-1 on the paper)
+            if set True.
         args of DQN
 
     See: https://arxiv.org/abs/1710.10044
@@ -104,8 +107,10 @@ class QRDQN(DQN):
         tau_hat = (xp.arange(n_diracs).astype(y.dtype) + 0.5) / n_diracs
         tau_hat = F.broadcast_to(tau_hat, y.shape)
 
-        # loss = quantile_loss(y, t, tau_hat)
-        loss = quantile_huber_loss_Dabney(y, t, tau_hat)
+        if self.clip_delta:
+            loss = quantile_loss(y, t, tau_hat)
+        else:
+            loss = quantile_huber_loss_Dabney(y, t, tau_hat)
         loss = F.mean(loss, axis=(1, 2))
 
         if errors_out is not None:
