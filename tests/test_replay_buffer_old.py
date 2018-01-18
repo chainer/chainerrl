@@ -69,6 +69,7 @@ class ReplayBufferV0_2(object):
     def append(self, state, action, reward, next_state=None, next_action=None,
                is_state_terminal=False):
         """Append a transition to this replay buffer
+
         Args:
             state: s_t
             action: a_t
@@ -113,6 +114,7 @@ class EpisodicReplayBufferV0_2(object):
     def append(self, state, action, reward, next_state=None, next_action=None,
                is_state_terminal=False, **kwargs):
         """Append a transition to this replay buffer
+
         Args:
             state: s_t
             action: a_t
@@ -165,7 +167,6 @@ class EpisodicReplayBufferV0_2(object):
                 for _ in range(len(discarded_episode)):
                     self.memory.popleft()
         assert not self.current_episode
-
 
 
 class TestEpisodicReplayBufferCompat(unittest.TestCase):
