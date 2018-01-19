@@ -21,6 +21,7 @@ from chainerrl.experiments.train_agent_async import train_agent_async
 from chainerrl.optimizers import rmsprop_async
 from chainerrl import policies
 from chainerrl import v_function
+from chainerrl import v_functions
 
 
 @testing.parameterize(*(
@@ -28,12 +29,20 @@ from chainerrl import v_function
         't_max': [1, 2],
         'use_lstm': [False],
         'episodic': [True, False],
+        'use_bn': [False]
     }) +
     testing.product({
         't_max': [5],
         'use_lstm': [True, False],
         'episodic': [True, False],
-    })
+        'use_bn': [False]
+    }) +
+    [{
+        't_max': 1,
+        'use_lstm': False,
+        'episodic': False,
+        'use_bn': True
+    }]
 ))
 class TestA3C(unittest.TestCase):
 
@@ -46,8 +55,8 @@ class TestA3C(unittest.TestCase):
         self._test_abc(self.t_max, self.use_lstm, episodic=self.episodic)
 
     def test_abc_discrete_fast(self):
-        self._test_abc(self.t_max, self.use_lstm, episodic=self.episodic,
-                       steps=10, require_success=False)
+        self._test_abc(self.t_max, self.use_lstm, use_bn=self.use_bn,
+                       episodic=self.episodic, steps=10, require_success=False)
 
     @testing.attr.slow
     def test_abc_gaussian(self):
@@ -57,11 +66,11 @@ class TestA3C(unittest.TestCase):
 
     def test_abc_gaussian_fast(self):
         self._test_abc(self.t_max, self.use_lstm,
-                       discrete=False, episodic=self.episodic,
-                       steps=10, require_success=False)
+                       discrete=False, use_bn=self.use_bn,
+                       episodic=self.episodic, steps=10, require_success=False)
 
-    def _test_abc(self, t_max, use_lstm, discrete=True, episodic=True,
-                  steps=1000000, require_success=True):
+    def _test_abc(self, t_max, use_lstm, discrete=True, use_bn=False,
+                  episodic=True, steps=1000000, require_success=True):
 
         nproc = 8
 
@@ -79,7 +88,35 @@ class TestA3C(unittest.TestCase):
             return x
 
         n_hidden_channels = 20
-        if use_lstm:
+        if use_bn:
+            if discrete:
+                model = a3c.A3CSeparateModel(
+                    pi=policies.FCBNSoftmaxPolicy(
+                        obs_space.low.size, action_space.n,
+                        n_hidden_channels=n_hidden_channels,
+                        n_hidden_layers=2,
+                        min_prob=1e-1),
+                    v=v_functions.FCBNVFunction(
+                        obs_space.low.size,
+                        n_hidden_channels=n_hidden_channels,
+                        n_hidden_layers=2),
+                )
+            else:
+                model = a3c.A3CSeparateModel(
+                    pi=policies.FCGaussianPolicy(
+                        obs_space.low.size, action_space.low.size,
+                        n_hidden_channels=n_hidden_channels,
+                        n_hidden_layers=2,
+                        bound_mean=True,
+                        min_action=action_space.low,
+                        max_action=action_space.high,
+                        min_var=0.1),
+                    v=v_functions.FCBNVFunction(
+                        obs_space.low.size,
+                        n_hidden_channels=n_hidden_channels,
+                        n_hidden_layers=2),
+                )
+        elif use_lstm:
             if discrete:
                 model = a3c.A3CSharedModel(
                     shared=L.LSTM(obs_space.low.size, n_hidden_channels),

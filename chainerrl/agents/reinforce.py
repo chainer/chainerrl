@@ -76,8 +76,9 @@ class REINFORCE(agent.AttributeSavingMixin, agent.Agent):
     def act_and_train(self, obs, reward):
 
         batch_obs = self.batch_states([obs], self.xp, self.phi)
-        action_distrib = self.model(batch_obs)
-        batch_action = action_distrib.sample().data  # Do not backprop
+        with chainer.no_backprop_mode(), chainer.using_config('train', False):
+            action_distrib = self.model(batch_obs)
+            batch_action = action_distrib.sample().data  # Do not backprop
         action = chainer.cuda.to_cpu(batch_action)[0]
 
         # Save values used to compute losses
@@ -100,7 +101,7 @@ class REINFORCE(agent.AttributeSavingMixin, agent.Agent):
         return action
 
     def act(self, obs):
-        with chainer.no_backprop_mode():
+        with chainer.no_backprop_mode(), chainer.using_config('train', False):
             batch_obs = self.batch_states([obs], self.xp, self.phi)
             action_distrib = self.model(batch_obs)
             if self.act_deterministically:

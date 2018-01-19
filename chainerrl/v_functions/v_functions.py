@@ -10,6 +10,7 @@ import chainer
 from chainer import functions as F
 
 from chainerrl.links.mlp import MLP
+from chainerrl.links.mlp_bn import MLPBN
 from chainerrl.recurrent import RecurrentChainMixin
 from chainerrl.v_function import VFunction
 
@@ -34,7 +35,8 @@ class SingleModelVFunction(
 class FCVFunction(SingleModelVFunction):
 
     def __init__(self, n_input_channels, n_hidden_layers=0,
-                 n_hidden_channels=None, nonlinearity=F.relu,
+                 n_hidden_channels=None,
+                 nonlinearity=F.relu,
                  last_wscale=1):
         self.n_input_channels = n_input_channels
         self.n_hidden_layers = n_hidden_layers
@@ -45,4 +47,24 @@ class FCVFunction(SingleModelVFunction):
                       [self.n_hidden_channels] * self.n_hidden_layers,
                       nonlinearity=nonlinearity,
                       last_wscale=last_wscale),
+        )
+
+
+class FCBNVFunction(SingleModelVFunction):
+
+    def __init__(self, n_input_channels, n_hidden_layers=0,
+                 n_hidden_channels=None,
+                 normalize_input=True,
+                 nonlinearity=F.relu,
+                 last_wscale=1):
+        self.n_input_channels = n_input_channels
+        self.n_hidden_layers = n_hidden_layers
+        self.n_hidden_channels = n_hidden_channels
+
+        super().__init__(
+            model=MLPBN(self.n_input_channels, 1,
+                        [self.n_hidden_channels] * self.n_hidden_layers,
+                        normalize_input=normalize_input,
+                        nonlinearity=nonlinearity,
+                        last_wscale=last_wscale),
         )

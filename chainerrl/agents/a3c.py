@@ -276,7 +276,7 @@ class A3C(agent.AttributeSavingMixin, agent.AsyncAgent):
 
     def act(self, obs):
         # Use the process-local model for acting
-        with chainer.no_backprop_mode():
+        with chainer.no_backprop_mode(), chainer.using_config('train', False):
             statevar = self.batch_states([obs], np, self.phi)
             pout, _ = self.model.pi_and_v(statevar)
             if self.act_deterministically:
