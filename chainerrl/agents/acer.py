@@ -214,13 +214,13 @@ def compute_loss_with_kl_constraint(distrib, another_distrib, original_loss,
     """
     # Compute g: a direction to minimize the original loss
     with backprop_truncated(*distrib.params):
-        original_loss.backward()
+        F.squeeze(original_loss).backward()
     g = [p.grad[0] for p in distrib.params]
     for p in distrib.params:
         p.cleargrad()
 
     # Compute k: a direction to increase KL div.
-    kl = another_distrib.kl(distrib)
+    kl = F.squeeze(another_distrib.kl(distrib))
     with backprop_truncated(*distrib.params):
         (-kl).backward()
     k = [p.grad[0] for p in distrib.params]
@@ -238,8 +238,8 @@ def compute_loss_with_kl_constraint(distrib, another_distrib, original_loss,
     z = [gp - k_factor * kp for kp, gp in zip(k, g)]
     loss = 0
     for p, zp in zip(distrib.params, z):
-        loss += F.sum(p * zp, axis=1)
-    return loss, float(kl.data)
+        loss += F.sum(p * zp)
+    return F.reshape(loss, original_loss.shape), float(kl.data)
 
 
 class ACER(agent.AttributeSavingMixin, agent.AsyncAgent):
@@ -516,7 +516,7 @@ class ACER(agent.AttributeSavingMixin, agent.AsyncAgent):
 
         # Compute gradients using thread-specific model
         self.model.zerograds()
-        total_loss.backward()
+        F.squeeze(total_loss).backward()
         # Copy the gradients to the globally shared model
         self.shared_model.zerograds()
         copy_param.copy_grad(

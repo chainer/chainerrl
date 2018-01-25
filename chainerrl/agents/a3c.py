@@ -215,7 +215,7 @@ class A3C(agent.AttributeSavingMixin, agent.AsyncAgent):
         if self.process_idx == 0:
             logger.debug('pi_loss:%s v_loss:%s', pi_loss.data, v_loss.data)
 
-        total_loss = pi_loss + F.reshape(v_loss, pi_loss.data.shape)
+        total_loss = F.squeeze(pi_loss) + F.squeeze(v_loss)
 
         # Compute gradients using thread-specific model
         self.model.zerograds()
