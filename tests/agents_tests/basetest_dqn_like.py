@@ -14,7 +14,7 @@ from chainerrl.explorers.epsilon_greedy import LinearDecayEpsilonGreedy
 from chainerrl import q_functions
 from chainerrl import replay_buffer
 
-from test_training import _TestTraining
+from basetest_training import _TestTraining
 
 
 class _TestDQNLike(_TestTraining):
