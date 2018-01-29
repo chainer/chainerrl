@@ -86,6 +86,9 @@ class TestAttributeSavingMixin(unittest.TestCase):
         parent = Parent()
         parent.child = parent
         dirname = tempfile.mkdtemp()
+
+        # The assertion in ChainerRL should fail on save().
+        # Otherwise it seems to raise OSError: [Errno 63] File name too long
         with self.assertRaises(AssertionError):
             parent.save(dirname)
 
@@ -95,5 +98,8 @@ class TestAttributeSavingMixin(unittest.TestCase):
         parent1.child = parent2
         parent2.child = parent1
         dirname = tempfile.mkdtemp()
+
+        # The assertion in ChainerRL should fail on save().
+        # Otherwise it seems to raise OSError: [Errno 63] File name too long
         with self.assertRaises(AssertionError):
             parent1.save(dirname)
