@@ -40,6 +40,15 @@ class Child(chainerrl.agent.AttributeSavingMixin, object):
         self.link = create_simple_link()
 
 
+class Parent2(chainerrl.agent.AttributeSavingMixin, object):
+
+    saved_attributes = ['child_a', 'child_b']
+
+    def __init__(self, child_a, child_b):
+        self.child_a = child_a
+        self.child_b = child_b
+
+
 class TestAttributeSavingMixin(unittest.TestCase):
 
     def test_save_load(self):
@@ -61,3 +70,30 @@ class TestAttributeSavingMixin(unittest.TestCase):
         parent.load(dirname)
         self.assertEqual(int(parent.link.param.data), 1)
         self.assertEqual(int(parent.child.link.param.data), 2)
+
+    def test_save_load_2(self):
+        parent = Parent()
+        parent2 = Parent2(parent.child, parent)
+        # Save
+        dirname = tempfile.mkdtemp()
+        parent2.save(dirname)
+        # Load
+        parent = Parent()
+        parent2 = Parent2(parent.child, parent)
+        parent2.load(dirname)
+
+    def test_loop1(self):
+        parent = Parent()
+        parent.child = parent
+        dirname = tempfile.mkdtemp()
+        with self.assertRaises(AssertionError):
+            parent.save(dirname)
+
+    def test_loop2(self):
+        parent1 = Parent()
+        parent2 = Parent()
+        parent1.child = parent2
+        parent2.child = parent1
+        dirname = tempfile.mkdtemp()
+        with self.assertRaises(AssertionError):
+            parent1.save(dirname)
