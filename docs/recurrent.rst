@@ -11,6 +11,6 @@ Recurrent model interface
 Utilities
 =========
 
-.. autoclass:: chainerrl.recurrent.state_kept
+.. autofunction:: chainerrl.recurrent.state_kept
 
-.. autoclass:: chainerrl.recurrent.state_reset
+.. autofunction:: chainerrl.recurrent.state_reset
