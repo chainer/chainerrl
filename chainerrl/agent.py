@@ -110,25 +110,40 @@ class AttributeSavingMixin(object):
 
     def save(self, dirname):
         """Save internal states."""
+        self.__save(dirname, [])
+
+    def __save(self, dirname, ancestors):
         makedirs(dirname, exist_ok=True)
+        ancestors.append(self)
         for attr in self.saved_attributes:
             assert hasattr(self, attr)
             attr_value = getattr(self, attr)
             if isinstance(attr_value, AttributeSavingMixin):
-                assert attr_value is not self, "Avoid an infinite loop"
-                attr_value.save(os.path.join(dirname, attr))
+                assert not any(
+                    attr_value is ancestor
+                    for ancestor in ancestors
+                ), "Avoid an infinite loop"
+                attr_value.__save(os.path.join(dirname, attr), ancestors)
             else:
                 serializers.save_npz(
                     os.path.join(dirname, '{}.npz'.format(attr)),
                     getattr(self, attr))
+        ancestors.pop()
 
     def load(self, dirname):
         """Load internal states."""
+        self.__load(dirname, [])
+
+    def __load(self, dirname, ancestors):
+        ancestors.append(self)
         for attr in self.saved_attributes:
             assert hasattr(self, attr)
             attr_value = getattr(self, attr)
             if isinstance(attr_value, AttributeSavingMixin):
-                assert attr_value is not self, "Avoid an infinite loop"
+                assert not any(
+                    attr_value is ancestor
+                    for ancestor in ancestors
+                ), "Avoid an infinite loop"
                 attr_value.load(os.path.join(dirname, attr))
             else:
                 """Fix Chainer Issue #2772
@@ -139,6 +154,7 @@ class AttributeSavingMixin(object):
                 load_npz_no_strict(
                     os.path.join(dirname, '{}.npz'.format(attr)),
                     getattr(self, attr))
+        ancestors.pop()
 
 
 class AsyncAgent(with_metaclass(ABCMeta, Agent)):

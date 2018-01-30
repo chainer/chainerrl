@@ -6,13 +6,11 @@ from future import standard_library
 from builtins import *  # NOQA
 standard_library.install_aliases()
 
+import basetest_dqn_like as base
 from chainerrl.agents import SARSA
-from test_dqn_like import _TestDQNOnContinuousABC
-from test_dqn_like import _TestDQNOnDiscreteABC
-from test_dqn_like import _TestDQNOnDiscretePOABC
 
 
-class TestSARSAOnDiscreteABC(_TestDQNOnDiscreteABC):
+class TestSARSAOnDiscreteABC(base._TestDQNOnDiscreteABC):
 
     def make_dqn_agent(self, env, q_func, opt, explorer, rbuf, gpu):
         return SARSA(
@@ -20,7 +18,7 @@ class TestSARSAOnDiscreteABC(_TestDQNOnDiscreteABC):
             replay_start_size=100, target_update_interval=100)
 
 
-class TestSARSAOnContinuousABC(_TestDQNOnContinuousABC):
+class TestSARSAOnContinuousABC(base._TestDQNOnContinuousABC):
 
     def make_dqn_agent(self, env, q_func, opt, explorer, rbuf, gpu):
         return SARSA(
@@ -28,7 +26,7 @@ class TestSARSAOnContinuousABC(_TestDQNOnContinuousABC):
             replay_start_size=100, target_update_interval=100)
 
 
-class TestSARSAOnDiscretePOABC(_TestDQNOnDiscretePOABC):
+class TestSARSAOnDiscretePOABC(base._TestDQNOnDiscretePOABC):
 
     def make_dqn_agent(self, env, q_func, opt, explorer, rbuf, gpu):
         return SARSA(

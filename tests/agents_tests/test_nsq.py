@@ -10,6 +10,7 @@ import logging
 import os
 import tempfile
 import unittest
+import warnings
 
 from chainer import testing
 import numpy as np
@@ -98,14 +99,16 @@ class TestNSQ(unittest.TestCase):
                            gamma=0.9, i_target=100,
                            explorer=explorer)
 
-        agent = train_agent_async(
-            outdir=self.outdir, processes=nproc, make_env=make_env,
-            make_agent=make_agent, steps=steps,
-            max_episode_len=5,
-            eval_interval=500,
-            eval_n_runs=5,
-            successful_score=1,
-        )
+        with warnings.catch_warnings(record=True) as warns:
+            agent = train_agent_async(
+                outdir=self.outdir, processes=nproc, make_env=make_env,
+                make_agent=make_agent, steps=steps,
+                max_episode_len=5,
+                eval_interval=500,
+                eval_n_runs=5,
+                successful_score=1,
+            )
+            assert len(warns) == 0, warns[0]
 
         # The agent returned by train_agent_async is not guaranteed to be
         # successful because parameters could be modified by other processes
