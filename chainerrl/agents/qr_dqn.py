@@ -87,12 +87,20 @@ class QRDQN(DQN):
             its evaluate_actions should return an array of quantiles
             of shape (minibatch_size, n) where the quantiles are represented
             as sums of n dirac distributions.
-        clip_delta (bool): Use Huber quantile loss (QR-DQN-1 on the paper)
-            if set True.
+        lossfun (str): 'l1' or 'huber' (QR-DQN-0 or QR-DQN-1 on the paper)
         args of DQN
 
     See: https://arxiv.org/abs/1710.10044
     """
+
+    def __init__(self, *args, **kwargs):
+        lossfun = kwargs.pop('lossfun', 'l1')
+        assert lossfun in ['l1', 'huber']
+        self._lossfun = {
+            'l1': quantile_loss,
+            'huber': quantile_huber_loss_Dabney,
+        }[lossfun]
+        super().__init__(*args, **kwargs)
 
     def _compute_loss(self, exp_batch, gamma, errors_out=None):
         xp = self.xp
@@ -107,10 +115,7 @@ class QRDQN(DQN):
         tau_hat = (xp.arange(n_diracs).astype(y.dtype) + 0.5) / n_diracs
         tau_hat = F.broadcast_to(tau_hat, y.shape)
 
-        if self.clip_delta:
-            loss = quantile_loss(y, t, tau_hat)
-        else:
-            loss = quantile_huber_loss_Dabney(y, t, tau_hat)
+        loss = self._lossfun(y, t, tau_hat)
         loss = F.mean(loss, axis=(1, 2))
 
         if errors_out is not None:
