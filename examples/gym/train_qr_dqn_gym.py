@@ -99,7 +99,7 @@ def main():
     assert isinstance(action_space, spaces.Discrete)
     n_actions = action_space.n
     q_func = FCQuantileQFunction(
-        obs_size, n_actions, n_diracs=8,
+        obs_size, n_actions, n_diracs=6,
         n_hidden_channels=args.n_hidden_channels,
         n_hidden_layers=args.n_hidden_layers)
     # Use epsilon-greedy for exploration

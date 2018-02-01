@@ -34,14 +34,13 @@ class _SingleModelStateQuantileQFunction(
 
 class _ActionQuantile(chainerrl.action_value.DiscreteActionValue):
 
-    def __init__(self, q_quantiles, q_values_formatter=lambda x: x):
+    def __init__(self, q_quantiles):
         assert isinstance(q_quantiles, chainer.Variable)
         assert q_quantiles.ndim == 3
         self.xp = cuda.get_array_module(q_quantiles.data)
         self.q_quantiles = q_quantiles
         self.n_actions = q_quantiles.data.shape[1]
         self.n_diracs = q_quantiles.data.shape[2]
-        self.q_values_formatter = q_values_formatter
 
     @property
     def q_values(self):
@@ -55,6 +54,11 @@ class _ActionQuantile(chainerrl.action_value.DiscreteActionValue):
             self.xp.arange(actions.size),
             actions
         ]
+
+    def __repr__(self):
+        return '_ActionQuantile greedy_actions:{} q_quantiles:\n{}'.format(
+            self.greedy_actions.data,
+            self.q_quantiles.data)
 
 
 class FCQuantileQFunction(_SingleModelStateQuantileQFunction):
