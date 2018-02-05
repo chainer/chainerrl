@@ -6,35 +6,12 @@ from builtins import *  # NOQA
 from future import standard_library
 standard_library.install_aliases()
 
-import unittest
-
-import chainer
 import chainer.functions as F
 from chainer import testing
 from chainer.testing import attr
-import numpy as np
 
+import basetest_state_action_q_function as base
 import chainerrl
-
-
-class _TestSAQFunction(unittest.TestCase):
-
-    def _test_call_given_model(self, model, gpu):
-        # This method only check if a given model can receive random input
-        # data and return output data with the correct interface.
-        batch_size = 7
-        obs = np.random.rand(batch_size, self.n_dim_obs).astype(np.float32)
-        action = np.random.rand(
-            batch_size, self.n_dim_action).astype(np.float32)
-        if gpu >= 0:
-            model.to_gpu(gpu)
-            obs = chainer.cuda.to_gpu(obs)
-            action = chainer.cuda.to_gpu(action)
-        y = model(obs, action)
-        self.assertTrue(isinstance(y, chainer.Variable))
-        self.assertEqual(y.shape, (batch_size, 1))
-        self.assertEqual(chainer.cuda.get_array_module(y),
-                         chainer.cuda.get_array_module(obs))
 
 
 @testing.parameterize(
@@ -47,7 +24,7 @@ class _TestSAQFunction(unittest.TestCase):
         'last_wscale': [1, 1e-3],
     })
 )
-class TestFCSAQFunction(_TestSAQFunction):
+class TestFCSAQFunction(base._TestSAQFunction):
 
     def _test_call(self, gpu):
         nonlinearity = getattr(F, self.nonlinearity)
@@ -79,7 +56,7 @@ class TestFCSAQFunction(_TestSAQFunction):
         'last_wscale': [1, 1e-3],
     })
 )
-class TestFCLSTMSAQFunction(_TestSAQFunction):
+class TestFCLSTMSAQFunction(base._TestSAQFunction):
 
     def _test_call(self, gpu):
         nonlinearity = getattr(F, self.nonlinearity)
@@ -112,7 +89,7 @@ class TestFCLSTMSAQFunction(_TestSAQFunction):
         'last_wscale': [1, 1e-3],
     })
 )
-class TestFCBNSAQFunction(_TestSAQFunction):
+class TestFCBNSAQFunction(base._TestSAQFunction):
 
     def _test_call(self, gpu):
         nonlinearity = getattr(F, self.nonlinearity)
@@ -146,7 +123,7 @@ class TestFCBNSAQFunction(_TestSAQFunction):
         'last_wscale': [1, 1e-3],
     })
 )
-class TestFCBNLateActionSAQFunction(_TestSAQFunction):
+class TestFCBNLateActionSAQFunction(base._TestSAQFunction):
 
     def _test_call(self, gpu):
         nonlinearity = getattr(F, self.nonlinearity)
@@ -179,7 +156,7 @@ class TestFCBNLateActionSAQFunction(_TestSAQFunction):
         'last_wscale': [1, 1e-3],
     })
 )
-class TestFCLateActionSAQFunction(_TestSAQFunction):
+class TestFCLateActionSAQFunction(base._TestSAQFunction):
 
     def _test_call(self, gpu):
         nonlinearity = getattr(F, self.nonlinearity)

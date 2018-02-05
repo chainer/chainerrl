@@ -110,23 +110,51 @@ class AttributeSavingMixin(object):
 
     def save(self, dirname):
         """Save internal states."""
+        self.__save(dirname, [])
+
+    def __save(self, dirname, ancestors):
         makedirs(dirname, exist_ok=True)
+        ancestors.append(self)
         for attr in self.saved_attributes:
-            serializers.save_npz(
-                os.path.join(dirname, '{}.npz'.format(attr)),
-                getattr(self, attr))
+            assert hasattr(self, attr)
+            attr_value = getattr(self, attr)
+            if isinstance(attr_value, AttributeSavingMixin):
+                assert not any(
+                    attr_value is ancestor
+                    for ancestor in ancestors
+                ), "Avoid an infinite loop"
+                attr_value.__save(os.path.join(dirname, attr), ancestors)
+            else:
+                serializers.save_npz(
+                    os.path.join(dirname, '{}.npz'.format(attr)),
+                    getattr(self, attr))
+        ancestors.pop()
 
     def load(self, dirname):
         """Load internal states."""
-        for attr in self.saved_attributes:
-            """Fix Chainer Issue #2772
+        self.__load(dirname, [])
 
-            In Chainer v2, a (stateful) optimizer cannot be loaded from
-            an npz saved before the first update.
-            """
-            load_npz_no_strict(
-                os.path.join(dirname, '{}.npz'.format(attr)),
-                getattr(self, attr))
+    def __load(self, dirname, ancestors):
+        ancestors.append(self)
+        for attr in self.saved_attributes:
+            assert hasattr(self, attr)
+            attr_value = getattr(self, attr)
+            if isinstance(attr_value, AttributeSavingMixin):
+                assert not any(
+                    attr_value is ancestor
+                    for ancestor in ancestors
+                ), "Avoid an infinite loop"
+                attr_value.load(os.path.join(dirname, attr))
+            else:
+                """Fix Chainer Issue #2772
+
+                In Chainer v2, a (stateful) optimizer cannot be loaded from
+                an npz saved before the first update.
+                """
+                load_npz_no_strict(
+                    os.path.join(dirname, '{}.npz'.format(attr)),
+                    getattr(self, attr))
+        ancestors.pop()
 
 
 class AsyncAgent(with_metaclass(ABCMeta, Agent)):

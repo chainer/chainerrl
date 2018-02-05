@@ -5,13 +5,11 @@ from __future__ import absolute_import
 from future import standard_library
 standard_library.install_aliases()
 
+import basetest_dqn_like as base
 from chainerrl.agents.residual_dqn import ResidualDQN
-from test_dqn_like import _TestDQNOnContinuousABC
-from test_dqn_like import _TestDQNOnDiscreteABC
-from test_dqn_like import _TestDQNOnDiscretePOABC
 
 
-class TestResidualDQNOnDiscreteABC(_TestDQNOnDiscreteABC):
+class TestResidualDQNOnDiscreteABC(base._TestDQNOnDiscreteABC):
 
     def make_dqn_agent(self, env, q_func, opt, explorer, rbuf, gpu):
         return ResidualDQN(
@@ -20,7 +18,7 @@ class TestResidualDQNOnDiscreteABC(_TestDQNOnDiscreteABC):
             grad_scale=1e-1)
 
 
-class TestResidualDQNOnContinuousABC(_TestDQNOnContinuousABC):
+class TestResidualDQNOnContinuousABC(base._TestDQNOnContinuousABC):
 
     def make_dqn_agent(self, env, q_func, opt, explorer, rbuf, gpu):
         return ResidualDQN(
@@ -29,7 +27,7 @@ class TestResidualDQNOnContinuousABC(_TestDQNOnContinuousABC):
             grad_scale=1e-1)
 
 
-class TestResidualDQNOnDiscretePOABC(_TestDQNOnDiscretePOABC):
+class TestResidualDQNOnDiscretePOABC(base._TestDQNOnDiscretePOABC):
 
     def make_dqn_agent(self, env, q_func, opt, explorer, rbuf, gpu):
         return ResidualDQN(

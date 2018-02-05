@@ -3,7 +3,8 @@ chainer>=2.0.0
 fastcache; python_version<'3.2'
 funcsigs; python_version<'3.5'
 future
-gym>=0.7.3
+gym>=0.7.3,!=0.9.6; python_version<'3.0'
+gym>=0.7.3; python_version>='3.0'
 numpy>=1.10.4
 pillow
 scipy

@@ -37,8 +37,9 @@ class InvertGradients(function.Function):
         # In chainer, update will be like x.data -= lr * x.grad,
         # which means negative gradients will increase values.
         increasing = (gy < 0).astype(gy.dtype)
-        gx = gy * ((self.range_max - x) / self.range_width * increasing +
-                   (x - self.range_min) / self.range_width * (1 - increasing))
+        gx = gy.copy()
+        gx *= ((self.range_max - x) / self.range_width * increasing +
+               (x - self.range_min) / self.range_width * (1 - increasing))
         return gx,
 
 
