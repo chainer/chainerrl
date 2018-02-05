@@ -159,3 +159,62 @@ class QRDQN(DQN):
         batch_terminal = F.broadcast_to(batch_terminal[:, None], shape)
 
         return batch_rewards + self.gamma * (1.0 - batch_terminal) * next_v
+
+    def act(self, state):
+        with chainer.using_config('train', False):
+            with chainer.no_backprop_mode():
+                action_value = self.model(
+                    self.batch_states([state], self.xp, self.phi))
+                q = float(action_value.max.data)
+                action = cuda.to_cpu(action_value.greedy_actions.data)[0]
+
+        # Update stats
+        self.average_q *= self.average_q_decay
+        self.average_q += (1 - self.average_q_decay) * q
+
+        self.logger.debug('t:%s q:%s action_value:%s', self.t, q, action_value)
+        return action
+
+    def act_and_train(self, state, reward):
+
+        with chainer.using_config('train', False):
+            with chainer.no_backprop_mode():
+                action_value = self.model(
+                    self.batch_states([state], self.xp, self.phi))
+                q = float(action_value.max.data)
+                greedy_action = cuda.to_cpu(action_value.greedy_actions.data)[
+                    0]
+
+        # Update stats
+        self.average_q *= self.average_q_decay
+        self.average_q += (1 - self.average_q_decay) * q
+
+        self.logger.debug('t:%s q:%s action_value:%s', self.t, q, action_value)
+
+        action = self.explorer.select_action(
+            self.t, lambda: greedy_action, action_value=action_value)
+        self.t += 1
+
+        # Update the target network
+        if self.t % self.target_update_interval == 0:
+            self.sync_target_network()
+
+        if self.last_state is not None:
+            assert self.last_action is not None
+            # Add a transition to the replay buffer
+            self.replay_buffer.append(
+                state=self.last_state,
+                action=self.last_action,
+                reward=reward,
+                next_state=state,
+                next_action=action,
+                is_state_terminal=False)
+
+        self.last_state = state
+        self.last_action = action
+
+        self.replay_updater.update_if_necessary(self.t)
+
+        self.logger.debug('t:%s r:%s a:%s', self.t, reward, action)
+
+        return self.last_action
