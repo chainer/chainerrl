@@ -2,11 +2,15 @@ from setuptools import find_packages
 from setuptools import setup
 import sys
 
+gym_require = 'gym>=0.7.3'
+if sys.version_info < (3, 0):
+    gym_require += ',!=0.9.6'
+
 install_requires = [
     'cached-property',
     'chainer>=2.0.0',
     'future',
-    'gym>=0.7.3',
+    gym_require,
     'numpy>=1.10.4',
     'pillow',
     'scipy',
