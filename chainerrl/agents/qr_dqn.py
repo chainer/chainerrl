@@ -60,6 +60,16 @@ class _ActionQuantile(chainerrl.action_value.DiscreteActionValue):
             self.greedy_actions.data,
             self.q_quantiles.data)
 
+    @property
+    def std_greedy(self):
+        quantiles = self.evaluate_actions(self.greedy_actions)
+        mean = F.mean(quantiles, axis=1, keepdims=True)
+        std = F.sqrt(F.mean(
+            F.square(
+                quantiles - F.broadcast_to(mean, quantiles.shape)),
+            axis=1))
+        return std
+
 
 class FCQuantileQFunction(_SingleModelStateQuantileQFunction):
     def __init__(
@@ -105,6 +115,12 @@ class QRDQN(DQN):
             'huber': quantile_huber_loss_Dabney,
         }[lossfun]
         super().__init__(*args, **kwargs)
+        self.average_qstd = 0
+
+    def get_statistics(self):
+        return super().get_statistics() + [
+            ('average_qstd', self.average_qstd),
+        ]
 
     def _compute_loss(self, exp_batch, gamma, errors_out=None):
         xp = self.xp
@@ -172,6 +188,10 @@ class QRDQN(DQN):
         self.average_q *= self.average_q_decay
         self.average_q += (1 - self.average_q_decay) * q
 
+        self.average_qstd *= self.average_q_decay
+        self.average_qstd += (1 - self.average_q_decay) * cuda.to_cpu(
+            action_value.std_greedy.data)[0]
+
         self.logger.debug('t:%s q:%s action_value:%s', self.t, q, action_value)
         return action
 
@@ -188,6 +208,10 @@ class QRDQN(DQN):
         # Update stats
         self.average_q *= self.average_q_decay
         self.average_q += (1 - self.average_q_decay) * q
+
+        self.average_qstd *= self.average_q_decay
+        self.average_qstd += (1 - self.average_q_decay) * cuda.to_cpu(
+            action_value.std_greedy.data)[0]
 
         self.logger.debug('t:%s q:%s action_value:%s', self.t, q, action_value)
 
