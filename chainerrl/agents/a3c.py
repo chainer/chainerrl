@@ -245,9 +245,9 @@ class A3C(agent.AttributeSavingMixin, agent.AsyncAgent):
 
         self.t_start = self.t
 
-    def act_and_train(self, state, reward):
+    def act_and_train(self, obs, reward):
 
-        statevar = self.batch_states([state], np, self.phi)
+        statevar = self.batch_states([obs], np, self.phi)
 
         self.past_rewards[self.t - 1] = reward
 
