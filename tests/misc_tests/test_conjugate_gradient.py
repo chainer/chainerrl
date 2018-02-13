@@ -14,16 +14,6 @@ import numpy as np
 import chainerrl
 
 
-def inv_mat(mat):
-    # Always use numpy.linalg.inv because cupy v1 doesn't support it
-    xp = chainer.cuda.get_array_module(mat)
-    if xp is np:
-        return np.linalg.inv(mat)
-    else:
-        return chainer.cuda.to_gpu(
-            np.linalg.inv(chainer.cuda.to_cpu(mat)))
-
-
 @testing.parameterize(
     *testing.product({
         'n': [1, 5],
@@ -36,8 +26,8 @@ class TestConjugateGradient(unittest.TestCase):
         # A must be symmetric and positive-definite
         random_mat = xp.random.normal(size=(self.n, self.n)).astype(self.dtype)
         A = random_mat.dot(random_mat.T)
-        inv_A = inv_mat(A)
-        b = xp.random.normal(size=(self.n,)).astype(self.dtype)
+        x_ans = xp.random.normal(size=self.n).astype(self.dtype)
+        b = A.dot(x_ans)
 
         def A_product_func(vec):
             self.assertEqual(xp, chainer.cuda.get_array_module(vec))
@@ -47,7 +37,7 @@ class TestConjugateGradient(unittest.TestCase):
         x = chainerrl.misc.conjugate_gradient(A_product_func, b)
         self.assertEqual(x.dtype, self.dtype)
         self.assertTrue(chainer.cuda.get_array_module(x), xp)
-        xp.testing.assert_allclose(x, inv_A.dot(b), rtol=1e-5)
+        xp.testing.assert_allclose(x, x_ans, rtol=1e-3)
 
     @condition.retry(3)
     def test_cpu(self):
