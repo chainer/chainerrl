@@ -17,6 +17,7 @@ from builtins import *  # NOQA
 from future import standard_library
 standard_library.install_aliases()
 import argparse
+import os
 
 import chainer
 from chainer import functions as F
@@ -94,6 +95,10 @@ class A3CLSTMGaussian(chainer.ChainList, a3c.A3CModel, RecurrentChainMixin):
 
 
 def main():
+
+    # Prevent numpy from using multiple threads
+    os.environ['OMP_NUM_THREADS'] = '1'
+
     import logging
 
     parser = argparse.ArgumentParser()
