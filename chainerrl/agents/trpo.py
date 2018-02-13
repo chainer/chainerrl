@@ -323,7 +323,6 @@ You're using Chainer v{}. TRPO requires Chainer v3.0.0 or newer.""".format(chain
         dataset_iter = chainer.iterators.SerialIterator(
             dataset, self.vf_batch_size)
 
-        dataset_iter.reset()
         while dataset_iter.epoch < self.vf_epochs:
             batch = dataset_iter.__next__()
             states = batch_states([b['state'] for b in batch], xp, self.phi)
