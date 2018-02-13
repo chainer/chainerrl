@@ -108,7 +108,9 @@ class ALE(env.Env):
 
         self.action_space = spaces.Discrete(len(self.legal_actions))
         one_screen_observation_space = spaces.Box(
-            low=0, high=255, shape=(84, 84))
+            low=0, high=255,
+            shape=(84, 84), dtype=np.uint8,
+        )
         self.observation_space = spaces.Tuple(
             [one_screen_observation_space] * n_last_screens)
 
