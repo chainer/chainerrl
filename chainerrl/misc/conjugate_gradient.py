@@ -31,12 +31,12 @@ def conjugate_gradient(A_product_func, b, tol=1e-10, max_iter=10):
     r0 = b - A_product_func(x)
     p = r0
     for i in range(max_iter):
-        a = xp.dot(r0.T, r0) / xp.dot(A_product_func(p).T, p)
+        a = xp.dot(r0, r0) / xp.dot(A_product_func(p), p)
         x = x + p * a
         r1 = r0 - A_product_func(p) * a
         if xp.linalg.norm(r1) < tol:
             return x
-        b = xp.dot(r1.T, r1) / xp.dot(r0.T, r0)
+        b = xp.dot(r1, r1) / xp.dot(r0, r0)
         p = r1 + b * p
         r0 = r1
     return x
