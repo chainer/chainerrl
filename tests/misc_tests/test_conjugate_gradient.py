@@ -27,16 +27,17 @@ def inv_mat(mat):
 @testing.parameterize(
     *testing.product({
         'n': [1, 5],
+        'dtype': [np.float64, np.float32],
     })
 )
 class TestConjugateGradient(unittest.TestCase):
 
     def _test(self, xp):
         # A must be symmetric and positive-definite
-        random_mat = xp.random.normal(size=(self.n, self.n))
+        random_mat = xp.random.normal(size=(self.n, self.n)).astype(self.dtype)
         A = random_mat.dot(random_mat.T)
         inv_A = inv_mat(A)
-        b = xp.random.normal(size=(self.n,))
+        b = xp.random.normal(size=(self.n,)).astype(self.dtype)
 
         def A_product_func(vec):
             self.assertEqual(xp, chainer.cuda.get_array_module(vec))
@@ -44,8 +45,9 @@ class TestConjugateGradient(unittest.TestCase):
             return A.dot(vec)
 
         x = chainerrl.misc.conjugate_gradient(A_product_func, b)
+        self.assertEqual(x.dtype, self.dtype)
         self.assertTrue(chainer.cuda.get_array_module(x), xp)
-        xp.testing.assert_allclose(x, inv_A.dot(b))
+        xp.testing.assert_allclose(x, inv_A.dot(b), rtol=1e-5)
 
     @condition.retry(3)
     def test_cpu(self):
