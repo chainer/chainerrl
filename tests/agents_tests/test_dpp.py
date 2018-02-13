@@ -8,12 +8,10 @@ standard_library.install_aliases()
 
 from chainer import testing
 
+import basetest_dqn_like as base
 from chainerrl.agents.dpp import DPP
 from chainerrl.agents.dpp import DPPGreedy
 from chainerrl.agents.dpp import DPPL
-from test_dqn_like import _TestDQNOnContinuousABC
-from test_dqn_like import _TestDQNOnDiscreteABC
-# from test_dqn_like import _TestDQNOnDiscretePOABC
 
 
 def parse_dpp_agent(dpp_type):
@@ -27,7 +25,7 @@ def parse_dpp_agent(dpp_type):
         'dpp_type': ['DPP', 'DPPL', 'DPPGreedy'],
     })
 )
-class TestDPPOnDiscreteABC(_TestDQNOnDiscreteABC):
+class TestDPPOnDiscreteABC(base._TestDQNOnDiscreteABC):
 
     def make_dqn_agent(self, env, q_func, opt, explorer, rbuf, gpu):
         agent_class = parse_dpp_agent(self.dpp_type)
@@ -42,7 +40,7 @@ class TestDPPOnDiscreteABC(_TestDQNOnDiscreteABC):
         'dpp_type': ['DPPGreedy'],
     })
 )
-class TestDPPOnContinuousABC(_TestDQNOnContinuousABC):
+class TestDPPOnContinuousABC(base._TestDQNOnContinuousABC):
 
     def make_dqn_agent(self, env, q_func, opt, explorer, rbuf, gpu):
         agent_class = parse_dpp_agent(self.dpp_type)
@@ -59,7 +57,7 @@ class TestDPPOnContinuousABC(_TestDQNOnContinuousABC):
 #         'dpp_type': ['DPP', 'DPPL', 'DPPGreedy'],
 #     }),
 # )
-# class TestDPPOnDiscretePOABC(_TestDQNOnDiscretePOABC):
+# class TestDPPOnDiscretePOABC(base._TestDQNOnDiscretePOABC):
 #
 #     def make_dqn_agent(self, env, q_func, opt, explorer, rbuf, gpu):
 #         agent_class = parse_dpp_agent(self.dpp_type)

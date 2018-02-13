@@ -10,6 +10,7 @@ import logging
 import os
 import tempfile
 import unittest
+import warnings
 
 from chainer import functions as F
 from chainer import links as L
@@ -62,7 +63,7 @@ class TestPCL(unittest.TestCase):
     def test_abc_gaussian(self):
         self._test_abc(self.t_max, self.use_lstm,
                        discrete=False, episodic=self.episodic,
-                       steps=1000000)
+                       steps=100000)
 
     def test_abc_gaussian_fast(self):
         self._test_abc(self.t_max, self.use_lstm,
@@ -70,7 +71,7 @@ class TestPCL(unittest.TestCase):
                        steps=10, require_success=False)
 
     def _test_abc(self, t_max, use_lstm, discrete=True, episodic=True,
-                  steps=1000000, require_success=True):
+                  steps=100000, require_success=True):
 
         nproc = 8
 
@@ -100,7 +101,6 @@ class TestPCL(unittest.TestCase):
                         n_hidden_layers=n_hidden_layers,
                         nonlinearity=nonlinearity,
                         last_wscale=1e-2,
-                        min_prob=1e-1,
                     ),
                     v=v_function.FCVFunction(
                         n_hidden_channels,
@@ -142,7 +142,6 @@ class TestPCL(unittest.TestCase):
                         n_hidden_layers=n_hidden_layers,
                         nonlinearity=nonlinearity,
                         last_wscale=1e-2,
-                        min_prob=1e-1,
                     ),
                     v=v_function.FCVFunction(
                         obs_space.low.size,
@@ -193,13 +192,15 @@ class TestPCL(unittest.TestCase):
                         act_deterministically=True)
 
         if self.train_async:
-            chainerrl.experiments.train_agent_async(
-                outdir=self.outdir, processes=nproc, make_env=make_env,
-                agent=agent, steps=steps,
-                max_episode_len=2,
-                eval_interval=200,
-                eval_n_runs=5,
-                successful_score=1)
+            with warnings.catch_warnings(record=True) as warns:
+                chainerrl.experiments.train_agent_async(
+                    outdir=self.outdir, processes=nproc, make_env=make_env,
+                    agent=agent, steps=steps,
+                    max_episode_len=2,
+                    eval_interval=200,
+                    eval_n_runs=5,
+                    successful_score=1)
+                assert len(warns) == 0, warns[0]
             # The agent returned by train_agent_async is not guaranteed to be
             # successful because parameters could be modified by other
             # processes after success. Thus here the successful model is loaded
@@ -215,7 +216,7 @@ class TestPCL(unittest.TestCase):
                 outdir=self.outdir,
                 steps=steps,
                 max_episode_len=2,
-                eval_interval=500,
+                eval_interval=200,
                 eval_n_runs=5,
                 successful_score=1)
 
