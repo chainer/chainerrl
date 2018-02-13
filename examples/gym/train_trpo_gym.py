@@ -114,7 +114,7 @@ to numpy.ndarray of numpy.float32.""")  # NOQA
                 mean_wscale=0.01,
                 nonlinearity=F.tanh,
                 var_type='diagonal',
-                var_func=lambda x: F.exp(x) ** 2,  # Parameterize log std
+                var_func=lambda x: F.exp(2 * x),  # Parameterize log std
                 var_param_init=0,  # log std = 0 => std = 1
             )
     elif isinstance(action_space, gym.spaces.Discrete):
