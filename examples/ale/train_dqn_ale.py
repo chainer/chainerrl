@@ -69,7 +69,8 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('rom', type=str)
     parser.add_argument('--outdir', type=str, default=None)
-    parser.add_argument('--seed', type=int, default=None)
+    parser.add_argument('--seed', type=int, default=0,
+                        help='Random seed [0, 2 ** 31)')
     parser.add_argument('--gpu', type=int, default=0)
     parser.add_argument('--demo', action='store_true', default=False)
     parser.add_argument('--load', type=str, default=None)
@@ -94,18 +95,23 @@ def main():
                         choices=['DQN', 'DoubleDQN', 'PAL'])
     args = parser.parse_args()
 
-    if args.seed is not None:
-        misc.set_random_seed(args.seed)
+    # Set a random seed used in ChainerRL.
+    misc.set_random_seed(args.seed, gpus=(args.gpu,))
+
+    # Set different random seeds for train and test envs.
+    train_seed = args.seed
+    test_seed = 2 ** 31 - 1 - args.seed
 
     args.outdir = experiments.prepare_output_dir(args, args.outdir)
     print('Output files are saved in {}'.format(args.outdir))
 
     # In training, life loss is considered as terminal states
-    env = ale.ALE(args.rom, use_sdl=args.use_sdl)
+    env = ale.ALE(args.rom, use_sdl=args.use_sdl, seed=train_seed)
     misc.env_modifiers.make_reward_clipped(env, -1, 1)
     # In testing, an episode is terminated  when all lives are lost
     eval_env = ale.ALE(args.rom, use_sdl=args.use_sdl,
-                       treat_life_lost_as_terminal=False)
+                       treat_life_lost_as_terminal=False,
+                       seed=test_seed)
 
     n_actions = env.number_of_actions
     activation = parse_activation(args.activation)
@@ -156,6 +162,7 @@ def main():
             eval_n_runs=args.eval_n_runs, eval_interval=args.eval_interval,
             outdir=args.outdir, eval_explorer=eval_explorer,
             eval_env=eval_env)
+
 
 if __name__ == '__main__':
     main()
