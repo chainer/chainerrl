@@ -50,8 +50,8 @@ class PCL(agent.AttributeSavingMixin, agent.AsyncAgent):
             - action distributions (Distribution)
             - state values (chainer.Variable)
         optimizer (chainer.Optimizer): optimizer used to train the model
-        t_max (int or None): The model is updated after every t_max local
-            steps. If set None, the model is updated after every episode.
+        t_max (int): The model is updated after every t_max local
+            steps. Default to 1.
         gamma (float): Discount factor [0,1]
         tau (float): Weight coefficient for the entropy regularizaiton term.
         phi (callable): Feature extractor function
@@ -64,6 +64,10 @@ class PCL(agent.AttributeSavingMixin, agent.AsyncAgent):
             (batchsize x t_max).
         disable_online_update (bool): If set true, disable online on-policy
             update and rely only on experience replay.
+        max_len_replay (int or None): Maximum length of trajectories sampled
+            from the replay buffer. If set to None, there is not limit on it.
+            Refer to the behavior of AbstractEpisodicReplayBuffer for
+            more details.
         n_times_replay (int): Number of times experience replay is repeated per
             one time of online update.
         replay_start_size (int): Experience replay is disabled if the number of
@@ -95,7 +99,7 @@ class PCL(agent.AttributeSavingMixin, agent.AsyncAgent):
 
     def __init__(self, model, optimizer,
                  replay_buffer=None,
-                 t_max=None,
+                 t_max=1,
                  gamma=0.99,
                  tau=1e-2,
                  phi=lambda x: x,
@@ -104,6 +108,7 @@ class PCL(agent.AttributeSavingMixin, agent.AsyncAgent):
                  rollout_len=10,
                  batchsize=1,
                  disable_online_update=False,
+                 max_len_replay=None,
                  n_times_replay=1,
                  replay_start_size=10 ** 2,
                  normalize_loss_by_steps=True,
@@ -148,6 +153,7 @@ class PCL(agent.AttributeSavingMixin, agent.AsyncAgent):
         self.normalize_loss_by_steps = normalize_loss_by_steps
         self.act_deterministically = act_deterministically
         self.disable_online_update = disable_online_update
+        self.max_len_replay = max_len_replay
         self.n_times_replay = n_times_replay
         self.replay_start_size = replay_start_size
         self.average_loss_decay = average_loss_decay
@@ -281,7 +287,7 @@ class PCL(agent.AttributeSavingMixin, agent.AsyncAgent):
             self.logger.debug('update_from_replay')
 
         episodes = self.replay_buffer.sample_episodes(
-            self.batchsize, max_len=self.t_max)
+            self.batchsize, max_len=self.max_len_replay)
         if isinstance(episodes, tuple):
             # Prioritized replay
             episodes, weights = episodes

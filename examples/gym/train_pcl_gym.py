@@ -47,9 +47,10 @@ def main():
     parser.add_argument('--rollout-len', type=int, default=10)
     parser.add_argument('--n-hidden-channels', type=int, default=100)
     parser.add_argument('--n-hidden-layers', type=int, default=2)
+    parser.add_argument('--max-len-replay', type=int, default=None)
     parser.add_argument('--n-times-replay', type=int, default=1)
     parser.add_argument('--replay-start-size', type=int, default=10000)
-    parser.add_argument('--t-max', type=int, default=None)
+    parser.add_argument('--t-max', type=int, default=1)
     parser.add_argument('--tau', type=float, default=1e-2)
     parser.add_argument('--profile', action='store_true')
     parser.add_argument('--steps', type=int, default=8 * 10 ** 7)
@@ -160,6 +161,7 @@ def main():
         tau=args.tau,
         phi=lambda x: x.astype(np.float32, copy=False),
         rollout_len=args.rollout_len,
+        max_len_replay=args.max_len_replay,
         n_times_replay=args.n_times_replay,
         replay_start_size=args.replay_start_size,
         batchsize=args.batchsize,

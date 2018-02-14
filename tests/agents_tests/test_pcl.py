@@ -28,6 +28,7 @@ from chainerrl import v_function
 @testing.parameterize(*(
     testing.product({
         't_max': [1],
+        'max_len_replay': [10],
         'use_lstm': [False],
         'episodic': [True],  # PCL doesn't work well with continuing envs
         'disable_online_update': [True, False],
@@ -36,7 +37,8 @@ from chainerrl import v_function
         'batchsize': [1, 5],
     }) +
     testing.product({
-        't_max': [None],
+        't_max': [1],
+        'max_len_replay': [None],
         'use_lstm': [True, False],
         'episodic': [True],
         'disable_online_update': [True, False],
@@ -53,25 +55,27 @@ class TestPCL(unittest.TestCase):
 
     @testing.attr.slow
     def test_abc_discrete(self):
-        self._test_abc(self.t_max, self.use_lstm, episodic=self.episodic)
+        self._test_abc(self.t_max, self.max_len_replay, self.use_lstm,
+                       episodic=self.episodic)
 
     def test_abc_discrete_fast(self):
-        self._test_abc(self.t_max, self.use_lstm, episodic=self.episodic,
-                       steps=10, require_success=False)
+        self._test_abc(self.t_max, self.max_len_replay, self.use_lstm,
+                       episodic=self.episodic, steps=10,
+                       require_success=False)
 
     @testing.attr.slow
     def test_abc_gaussian(self):
-        self._test_abc(self.t_max, self.use_lstm,
+        self._test_abc(self.t_max, self.max_len_replay, self.use_lstm,
                        discrete=False, episodic=self.episodic,
                        steps=100000)
 
     def test_abc_gaussian_fast(self):
-        self._test_abc(self.t_max, self.use_lstm,
+        self._test_abc(self.t_max, self.max_len_replay, self.use_lstm,
                        discrete=False, episodic=self.episodic,
                        steps=10, require_success=False)
 
-    def _test_abc(self, t_max, use_lstm, discrete=True, episodic=True,
-                  steps=100000, require_success=True):
+    def _test_abc(self, t_max, max_len_replay, use_lstm, discrete=True,
+                  episodic=True, steps=100000, require_success=True):
 
         nproc = 8
 
@@ -185,6 +189,7 @@ class TestPCL(unittest.TestCase):
                         gamma=gamma,
                         tau=tau,
                         phi=phi,
+                        max_len_replay=max_len_replay,
                         n_times_replay=1,
                         batchsize=self.batchsize,
                         train_async=self.train_async,
