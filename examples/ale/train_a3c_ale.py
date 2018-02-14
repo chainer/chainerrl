@@ -8,6 +8,9 @@ standard_library.install_aliases()
 import argparse
 import os
 
+# Prevent numpy from using multiple threads
+os.environ['OMP_NUM_THREADS'] = '1'
+
 import chainer
 from chainer import links as L
 import numpy as np
@@ -59,9 +62,6 @@ class A3CLSTM(chainer.ChainList, a3c.A3CModel, RecurrentChainMixin):
 
 
 def main():
-
-    # Prevent numpy from using multiple threads
-    os.environ['OMP_NUM_THREADS'] = '1'
 
     import logging
     logging.basicConfig(level=logging.DEBUG)
