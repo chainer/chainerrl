@@ -60,7 +60,7 @@ class ALE(env.Env):
         game (str): Name of a game. You can get the complete list of supported
             games by calling atari_py.list_games().
         seed (int or None): If set to an int, it is used as a random seed for
-            the ALE. It must be in [0, 2 ** 16). If set to None, numpy's random
+            the ALE. It must be in [0, 2 ** 31). If set to None, numpy's random
             state is used to select a random seed for the ALE.
         use_sdl (bool): If set to True, use SDL to show a window to render
             states. This option might not work for the ALE in atari_py.
