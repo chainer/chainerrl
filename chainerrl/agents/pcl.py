@@ -3,6 +3,7 @@ from __future__ import print_function
 from __future__ import unicode_literals
 from __future__ import absolute_import
 from builtins import *  # NOQA
+
 from future import standard_library
 standard_library.install_aliases()
 
@@ -19,9 +20,7 @@ from chainerrl.misc import async
 from chainerrl.misc.batch_states import batch_states
 from chainerrl.misc import copy_param
 from chainerrl.recurrent import Recurrent
-from chainerrl.recurrent import state_kept
 from chainerrl.recurrent import state_reset
-from chainerrl.replay_buffer import batch_experiences
 
 
 def asfloat(x):
@@ -50,8 +49,6 @@ class PCL(agent.AttributeSavingMixin, agent.AsyncAgent):
             - action distributions (Distribution)
             - state values (chainer.Variable)
         optimizer (chainer.Optimizer): optimizer used to train the model
-        update_interval (int): The model is updated after every update_interval
-            local steps
         gamma (float): Discount factor [0,1]
         tau (float): Weight coefficient for the entropy regularizaiton term.
         phi (callable): Feature extractor function
@@ -87,8 +84,6 @@ class PCL(agent.AttributeSavingMixin, agent.AsyncAgent):
         logger (None or Logger): Logger to be used
         batch_states (callable): Method which makes a batch of observations.
             default is `chainerrl.misc.batch_states.batch_states`
-        backprop_future_values (bool): If set True, value gradients are
-            computed not only wrt V(s_t) but also V(s_{t+d}).
         train_async (bool): If set True, use a process-local model to compute
             gradients and update the globally shared model.
     """
@@ -99,7 +94,6 @@ class PCL(agent.AttributeSavingMixin, agent.AsyncAgent):
 
     def __init__(self, model, optimizer,
                  replay_buffer=None,
-                 update_interval=1,
                  gamma=0.99,
                  tau=1e-2,
                  phi=lambda x: x,
@@ -119,7 +113,6 @@ class PCL(agent.AttributeSavingMixin, agent.AsyncAgent):
                  explorer=None,
                  logger=None,
                  batch_states=batch_states,
-                 backprop_future_values=True,
                  train_async=False):
 
         if train_async:
@@ -136,19 +129,12 @@ class PCL(agent.AttributeSavingMixin, agent.AsyncAgent):
         self.optimizer = optimizer
 
         self.replay_buffer = replay_buffer
-        self.update_interval = update_interval
         self.gamma = gamma
         self.tau = tau
         self.phi = phi
         self.pi_loss_coef = pi_loss_coef
         self.v_loss_coef = v_loss_coef
         self.rollout_len = rollout_len
-        if not self.xp.isscalar(batchsize):
-            batchsize = self.xp.int32(batchsize)
-            """Fix Chainer Issue #2807
-
-            batchsize should (look to) be scalar.
-            """
         self.batchsize = batchsize
         self.normalize_loss_by_steps = normalize_loss_by_steps
         self.act_deterministically = act_deterministically
@@ -161,12 +147,10 @@ class PCL(agent.AttributeSavingMixin, agent.AsyncAgent):
         self.average_entropy_decay = average_entropy_decay
         self.logger = logger if logger else getLogger(__name__)
         self.batch_states = batch_states
-        self.backprop_future_values = backprop_future_values
         self.train_async = train_async
 
         self.t = 0
-        self.last_state = None
-        self.last_action = None
+        self.t_local = 0
         self.explorer = explorer
         self.online_batch_losses = []
 
@@ -178,83 +162,147 @@ class PCL(agent.AttributeSavingMixin, agent.AsyncAgent):
         self.init_history_data_for_online_update()
 
     def init_history_data_for_online_update(self):
-        self.past_actions = {}
-        self.past_rewards = {}
-        self.past_values = {}
-        self.past_action_distrib = {}
-        self.t_start = self.t
+        # Use list to store the current episode
+        self.past_transitions = []
+        self.t_local = 0
 
     def sync_parameters(self):
         copy_param.copy_param(target_link=self.model,
                               source_link=self.shared_model)
 
-    def compute_loss(self, t_start, t_stop, rewards, values,
-                     next_values, log_probs):
+    def _compute_path_consistency(self, v, last_v, rewards, log_probs):
+        """Compute squared soft consistency error on a sub-trajectory"""
 
-        seq_len = t_stop - t_start
-        assert len(rewards) == seq_len
-        assert len(values) == seq_len
-        assert len(next_values) == seq_len
-        assert len(log_probs) == seq_len
+        # Get the length of the sub-trajectory
+        d = len(rewards)
+        assert 1 <= d <= self.rollout_len
+        assert len(log_probs) == d
 
-        pi_losses = []
-        v_losses = []
-        for t in range(t_start, t_stop):
-            d = min(t_stop - t, self.rollout_len)
-            # Discounted sum of immediate rewards
-            R_seq = sum(self.gamma ** i * rewards[t + i] for i in range(d))
-            # Discounted sum of log likelihoods
-            G = chainerrl.functions.weighted_sum_arrays(
-                xs=[log_probs[t + i] for i in range(d)],
-                weights=[self.gamma ** i for i in range(d)])
-            G = F.expand_dims(G, -1)
-            last_v = next_values[t + d - 1]
-            if not self.backprop_future_values:
-                last_v = chainer.Variable(last_v.data)
+        # Discounted sum of immediate rewards
+        R_seq = sum(self.gamma ** i * rewards[i] for i in range(d))
 
-            # C_pi only backprop through pi
-            C_pi = (- values[t].data +
-                    self.gamma ** d * last_v.data +
-                    R_seq -
-                    self.tau * G)
+        # Discounted sum of log likelihoods
+        G = chainerrl.functions.weighted_sum_arrays(
+            xs=log_probs,
+            weights=[self.gamma ** i for i in range(d)])
+        G = F.expand_dims(G, -1)
 
-            # C_v only backprop through v
-            C_v = (- values[t] +
-                   self.gamma ** d * last_v +
-                   R_seq -
-                   self.tau * G.data)
+        # C_pi only backprop through pi
+        C_pi = (- v.data +
+                self.gamma ** d * last_v.data +
+                R_seq -
+                self.tau * G)
 
-            pi_losses.append(C_pi ** 2)
-            v_losses.append(C_v ** 2)
+        # C_v only backprop through v
+        C_v = (- v +
+               self.gamma ** d * last_v +
+               R_seq -
+               self.tau * G.data)
 
-        pi_loss = chainerrl.functions.sum_arrays(pi_losses) / 2
-        v_loss = chainerrl.functions.sum_arrays(v_losses) / 2
+        pi_loss = C_pi ** 2 / 2
+        v_loss = C_v ** 2 / 2
 
-        # Re-scale pi loss so that it is independent from tau
-        pi_loss /= self.tau
-
+        # Since we want to apply different learning rate, the computation of
+        # C_pi and C_v must be done separately even though they are
+        # numerically equal
         pi_loss *= self.pi_loss_coef
         v_loss *= self.v_loss_coef
 
-        if self.normalize_loss_by_steps:
-            pi_loss /= seq_len
-            v_loss /= seq_len
+        return pi_loss + v_loss
+
+    def compute_loss(self, transitions, weight=1):
+        """Compute squared soft consistency error on the given trajectory
+
+        If the trajectory length, T, is larger than d (self.rollout_len),
+        sub-trajectories will be used.
+
+        The gradient is computed and accumulated on the fly.
+
+        Args:
+            transitions: sequence of transitions (dict)
+            weight: scalar
+
+        Returns:
+            loss over the trajectory as a scalar value
+        """
+
+        seq_len = len(transitions)
+        assert seq_len >= 2
+
+        v_values = []
+        rewards = [elem['reward'] for elem in transitions]
+        logs_probs = []
+
+        # Process the trajectory in batches to accelerate
+        for i in range((seq_len + self.batchsize - 1) // self.batchsize):
+            # Get current batch size
+            batchsize = min(seq_len, self.batchsize * (i + 1)) - self.batchsize * i
+
+            # Process the list of state for computation
+            experiences = transitions[self.batchsize * i:
+                                      self.batchsize * i + batchsize]
+            batch = {
+                'state': batch_states(
+                    [elem['state'] for elem in experiences], self.xp, self.phi),
+                'action': self.xp.asarray([elem['action'] for elem in experiences]),
+            }
+
+            # Compute pi and v
+            action_distrib, v = self.model(batch['state'])
+
+            # Use the action to get its own log-probability
+            logs_prob = action_distrib.log_prob(batch['action'])
+
+            # Save the individual result (use slice and not one single index)
+            for j in range(batchsize):
+                v_values.append(v[j: j + 1])
+                logs_probs.append(logs_prob[j: j + 1])
+
+        # Moving window
+        losses = []
+        for i in range(seq_len - 1):
+            d = min(seq_len - i - 1, self.rollout_len)
+
+            # Compute loss on a sub-trajectory
+            loss = self._compute_path_consistency(v_values[i],
+                                                  v_values[i + d],
+                                                  rewards[i: i + d],
+                                                  logs_probs[i: i + d])
+            loss *= weight
+
+            if self.normalize_loss_by_steps:
+                loss /= d
+
+            # Compute gradient immediately
+            loss.backward()
+
+            # Save the value for logging purpose
+            losses.append(loss.data)
+
+        # Accumulate the loss
+        loss = chainerrl.functions.sum_arrays(losses)
+        loss.unchain()
 
         if self.process_idx == 0:
-            self.logger.debug('pi_loss:%s v_loss:%s',
-                              pi_loss.data, v_loss.data)
+            self.logger.debug('c_loss:%s', loss.data)
 
-        return pi_loss + F.reshape(v_loss, pi_loss.data.shape)
+        return loss
 
     def update(self, loss):
+        """Optimize the model
+
+        This function calls the optimizer, but all the gradients should
+        be already computed in other methods. This function also manages
+        optimization over multiple processes.
+
+        Args:
+            loss as a Variable for logging purpose
+        """
 
         self.average_loss += (
             (1 - self.average_loss_decay) *
             (asfloat(loss) - self.average_loss))
 
-        # Compute gradients using thread-specific model
-        self.model.zerograds()
-        loss.backward()
         if self.train_async:
             # Copy the gradients to the globally shared model
             self.shared_model.zerograds()
@@ -273,141 +321,73 @@ class PCL(agent.AttributeSavingMixin, agent.AsyncAgent):
             self.model.unchain_backward()
 
     def update_from_replay(self):
-
         if self.replay_buffer is None:
             return
 
         if len(self.replay_buffer) < self.replay_start_size:
             return
 
-        if self.replay_buffer.n_episodes < self.batchsize:
+        if self.replay_buffer.n_episodes == 0:
             return
 
         if self.process_idx == 0:
             self.logger.debug('update_from_replay')
 
-        episodes = self.replay_buffer.sample_episodes(
-            self.batchsize, max_len=self.t_max)
-        if isinstance(episodes, tuple):
-            # Prioritized replay
-            episodes, weights = episodes
-        else:
-            weights = [1] * len(episodes)
-        sorted_episodes = list(reversed(sorted(episodes, key=len)))
-        max_epi_len = len(sorted_episodes[0])
+        # Clear the gradients in the model
+        self.model.zerograds()
 
         with state_reset(self.model):
-            # Batch computation of multiple episodes
-            rewards = {}
-            values = {}
-            next_values = {}
-            log_probs = {}
-            next_action_distrib = None
-            next_v = None
-            for t in range(max_epi_len):
-                transitions = []
-                for ep in sorted_episodes:
-                    if len(ep) <= t:
-                        break
-                    transitions.append(ep[t])
-                batch = batch_experiences(transitions,
-                                          xp=self.xp,
-                                          phi=self.phi,
-                                          batch_states=self.batch_states)
-                batchsize = batch['action'].shape[0]
-                if next_action_distrib is not None:
-                    action_distrib = next_action_distrib[0:batchsize]
-                    v = next_v[0:batchsize]
-                else:
-                    action_distrib, v = self.model(batch['state'])
-                next_action_distrib, next_v = self.model(batch['next_state'])
-                values[t] = v
-                next_values[t] = next_v * \
-                    (1 - batch['is_state_terminal'].reshape(next_v.shape))
-                rewards[t] = chainer.cuda.to_cpu(batch['reward'])
-                log_probs[t] = action_distrib.log_prob(batch['action'])
-            # Loss is computed one by one episode
+            # Sample one trajectory at a time
+            episodes = self.replay_buffer.sample_episodes(
+                1, max_len=self.t_max)
+            if isinstance(episodes, tuple):
+                # Prioritized replay
+                episodes, weights = episodes
+            else:
+                weights = [1] * len(episodes)
+
             losses = []
-            for i, ep in enumerate(sorted_episodes):
-                e_values = {}
-                e_next_values = {}
-                e_rewards = {}
-                e_log_probs = {}
-                for t in range(len(ep)):
-                    assert values[t].shape[0] > i
-                    assert next_values[t].shape[0] > i
-                    assert rewards[t].shape[0] > i
-                    assert log_probs[t].shape[0] > i
-                    e_values[t] = values[t][i:i + 1]
-                    e_next_values[t] = next_values[t][i:i + 1]
-                    e_rewards[t] = float(rewards[t][i:i + 1])
-                    e_log_probs[t] = log_probs[t][i:i + 1]
-                losses.append(self.compute_loss(
-                    t_start=0,
-                    t_stop=len(ep),
-                    rewards=e_rewards,
-                    values=e_values,
-                    next_values=e_next_values,
-                    log_probs=e_log_probs))
-            loss = chainerrl.functions.weighted_sum_arrays(
-                losses, weights) / self.batchsize
+            for i in range(len(episodes)):
+                # Compute loss on a sampled trajectory
+                loss = self.compute_loss(episodes[i], weights[i])
+                losses.append(loss)
+
+            self.update(chainerrl.functions.sum_arrays(losses))
+
+    def update_on_policy(self):
+        self.model.zerograds()
+
+        # Compute the loss on the current episode
+        with state_reset(self.model):
+            loss = self.compute_loss(self.past_transitions)
             self.update(loss)
 
-    def update_on_policy(self, statevar):
-        assert self.t_start < self.t
-
-        if not self.disable_online_update:
-            next_values = {}
-            for t in range(self.t_start + 1, self.t):
-                next_values[t - 1] = self.past_values[t]
-            if statevar is None:
-                next_values[self.t - 1] = chainer.Variable(
-                    self.xp.zeros_like(self.past_values[self.t - 1].data))
-            else:
-                with state_kept(self.model):
-                    _, v = self.model(statevar)
-                next_values[self.t - 1] = v
-            log_probs = {t: self.past_action_distrib[t].log_prob(
-                self.xp.asarray(self.xp.expand_dims(a, 0)))
-                for t, a in self.past_actions.items()}
-            self.online_batch_losses.append(self.compute_loss(
-                t_start=self.t_start, t_stop=self.t,
-                rewards=self.past_rewards,
-                values=self.past_values,
-                next_values=next_values,
-                log_probs=log_probs))
-            if len(self.online_batch_losses) == self.batchsize:
-                loss = chainerrl.functions.sum_arrays(
-                    self.online_batch_losses) / self.batchsize
-                self.update(loss)
-                self.online_batch_losses = []
-
-        self.init_history_data_for_online_update()
-
     def act_and_train(self, obs, reward):
-
         statevar = self.batch_states([obs], self.xp, self.phi)
 
-        if self.last_state is not None:
-            self.past_rewards[self.t - 1] = reward
-
-        if self.t - self.t_start == self.update_interval:
-            self.update_on_policy(statevar)
-            if len(self.online_batch_losses) == 0:
-                for _ in range(self.n_times_replay):
-                    self.update_from_replay()
+        if len(self.past_transitions) > 0:
+            self.past_transitions[-1]['reward'] = reward
 
         action_distrib, v = self.model(statevar)
         action = chainer.cuda.to_cpu(action_distrib.sample().data)[0]
         if self.explorer is not None:
             action = self.explorer.select_action(self.t, lambda: action)
 
-        # Save values for a later update
-        self.past_values[self.t] = v
-        self.past_actions[self.t] = action
-        self.past_action_distrib[self.t] = action_distrib
+        if len(self.past_transitions) > 0:
+            # Add a transition to the replay buffer
+            self.replay_buffer.append(
+                state=self.past_transitions[-1]['state'],
+                action=self.past_transitions[-1]['action'],
+                reward=reward,
+                is_state_terminal=False
+            )
 
+        # Save values for a later update
+        self.past_transitions.append(dict(state=obs, action=action))
+
+        # Increment global steps and local per episode steps
         self.t += 1
+        self.t_local += 1
 
         if self.process_idx == 0:
             self.logger.debug(
@@ -420,24 +400,6 @@ class PCL(agent.AttributeSavingMixin, agent.AsyncAgent):
         self.average_entropy += (
             (1 - self.average_entropy_decay) *
             (float(action_distrib.entropy.data[0]) - self.average_entropy))
-
-        if self.last_state is not None:
-            assert self.last_action is not None
-            assert self.last_action_distrib is not None
-            # Add a transition to the replay buffer
-            self.replay_buffer.append(
-                state=self.last_state,
-                action=self.last_action,
-                reward=reward,
-                next_state=obs,
-                next_action=action,
-                is_state_terminal=False,
-                mu=self.last_action_distrib,
-            )
-
-        self.last_state = obs
-        self.last_action = action
-        self.last_action_distrib = action_distrib.copy()
 
         return action
 
@@ -453,36 +415,30 @@ class PCL(agent.AttributeSavingMixin, agent.AsyncAgent):
                 return chainer.cuda.to_cpu(action_distrib.sample().data)[0]
 
     def stop_episode_and_train(self, state, reward, done=False):
-        assert self.last_state is not None
-        assert self.last_action is not None
+        assert len(self.past_transitions) > 0
 
-        self.past_rewards[self.t - 1] = reward
-        if done:
-            self.update_on_policy(None)
-        else:
-            statevar = self.batch_states([state], self.xp, self.phi)
-            self.update_on_policy(statevar)
-        if len(self.online_batch_losses) == 0:
-            for _ in range(self.n_times_replay):
-                self.update_from_replay()
+        self.past_transitions[-1]['reward'] = reward
 
-        if isinstance(self.model, Recurrent):
-            self.model.reset_state()
+        # The number of transitions should match the length of episode
+        assert len(self.past_transitions) == self.t_local
+
+        if not self.disable_online_update:
+            self.update_on_policy()
+
+        for _ in range(self.n_times_replay):
+            self.update_from_replay()
 
         # Add a transition to the replay buffer
         self.replay_buffer.append(
-            state=self.last_state,
-            action=self.last_action,
+            state=self.past_transitions[-1]['state'],
+            action=self.past_transitions[-1]['action'],
             reward=reward,
-            next_state=state,
-            next_action=self.last_action,
-            is_state_terminal=done,
-            mu=self.last_action_distrib)
+            is_state_terminal=done)
         self.replay_buffer.stop_current_episode()
 
-        self.last_state = None
-        self.last_action = None
-        self.last_action_distrib = None
+        # Clean up
+        self.init_history_data_for_online_update()
+        self.stop_episode()
 
     def stop_episode(self):
         if isinstance(self.model, Recurrent):
