@@ -10,6 +10,9 @@ import argparse
 import os
 import random
 
+# This prevents numpy from using multiple threads
+os.environ['OMP_NUM_THREADS'] = '1'
+
 from chainer import links as L
 
 from chainerrl.action_value import DiscreteActionValue
@@ -26,9 +29,6 @@ from dqn_phi import dqn_phi
 
 
 def main():
-
-    # This prevents numpy from using multiple threads
-    os.environ['OMP_NUM_THREADS'] = '1'
 
     import logging
     # logging.basicConfig(level=logging.DEBUG)

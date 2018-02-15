@@ -6,6 +6,10 @@ from builtins import *  # NOQA
 from future import standard_library
 standard_library.install_aliases()
 import argparse
+import os
+
+# This prevents numpy from using multiple threads
+os.environ['OMP_NUM_THREADS'] = '1'
 
 import chainer
 from chainer import functions as F
