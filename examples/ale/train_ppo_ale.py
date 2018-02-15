@@ -77,10 +77,6 @@ def main():
     # Set a random seed used in ChainerRL.
     misc.set_random_seed(args.seed, gpus=(args.gpu,))
 
-    # Set different random seeds for train and test envs.
-    train_seed = args.seed
-    test_seed = 2 ** 31 - 1 - args.seed
-
     args.outdir = experiments.prepare_output_dir(args, args.outdir)
     print('Output files are saved in {}'.format(args.outdir))
 
@@ -106,7 +102,7 @@ def main():
 
     def make_env(test):
         # Use different random seeds for train and test envs
-        env_seed = test_seed if test else train_seed
+        env_seed = 2 ** 31 - 1 - args.seed if test else args.seed
         env = ale.ALE(args.rom, use_sdl=args.use_sdl,
                       treat_life_lost_as_terminal=not test,
                       seed=env_seed)
