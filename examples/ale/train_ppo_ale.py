@@ -48,7 +48,8 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('rom', type=str)
     parser.add_argument('--gpu', type=int, default=0)
-    parser.add_argument('--seed', type=int, default=None)
+    parser.add_argument('--seed', type=int, default=0,
+                        help='Random seed [0, 2 ** 31)')
     parser.add_argument('--outdir', type=str, default=None)
     parser.add_argument('--use-sdl', action='store_true')
     parser.add_argument('--max-episode-len', type=int, default=10000)
@@ -73,11 +74,14 @@ def main():
     parser.set_defaults(use_sdl=False)
     args = parser.parse_args()
 
-    if args.seed is not None:
-        misc.set_random_seed(args.seed)
+    # Set a random seed used in ChainerRL.
+    misc.set_random_seed(args.seed, gpus=(args.gpu,))
+
+    # Set different random seeds for train and test envs.
+    train_seed = args.seed
+    test_seed = 2 ** 31 - 1 - args.seed
 
     args.outdir = experiments.prepare_output_dir(args, args.outdir)
-
     print('Output files are saved in {}'.format(args.outdir))
 
     n_actions = ale.ALE(args.rom).number_of_actions
@@ -101,8 +105,11 @@ def main():
         agent.load(args.load)
 
     def make_env(test):
+        # Use different random seeds for train and test envs
+        env_seed = test_seed if test else train_seed
         env = ale.ALE(args.rom, use_sdl=args.use_sdl,
-                      treat_life_lost_as_terminal=not test)
+                      treat_life_lost_as_terminal=not test,
+                      seed=env_seed)
         if not test:
             misc.env_modifiers.make_reward_clipped(env, -1, 1)
         return env
