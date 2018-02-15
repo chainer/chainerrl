@@ -176,7 +176,7 @@ class PCL(agent.AttributeSavingMixin, agent.AsyncAgent):
         # Get the length of the sub-trajectory
         d = len(rewards)
         assert 1 <= d <= self.rollout_len
-        assert len(log_probs) == d
+        assert len(log_probs) == len(rewards)
 
         # Discounted sum of immediate rewards
         R_seq = sum(self.gamma ** i * rewards[i] for i in range(d))
@@ -210,41 +210,40 @@ class PCL(agent.AttributeSavingMixin, agent.AsyncAgent):
 
         return pi_loss + v_loss
 
-    def compute_loss(self, transitions, weight=1):
+    def compute_loss(self, episode, weight=1):
         """Compute squared soft consistency error on the given trajectory
 
-        If the trajectory length, T, is larger than d (self.rollout_len),
+        If the episode's length, T, is larger than d (self.rollout_len),
         sub-trajectories will be used.
 
         The gradient is computed and accumulated on the fly.
 
         Args:
-            transitions: sequence of transitions (dict)
+            episode: sequence of transitions (dict)
             weight: scalar
 
         Returns:
             loss over the trajectory as a scalar value
         """
-
-        seq_len = len(transitions)
+        seq_len = len(episode)
         assert seq_len >= 2
 
-        v_values = []
-        rewards = [elem['reward'] for elem in transitions]
+        values = []
+        rewards = [elem['reward'] for elem in episode]
         logs_probs = []
 
         # Process the trajectory in batches to accelerate
         for i in range((seq_len + self.batchsize - 1) // self.batchsize):
             # Get current batch size
-            batchsize = min(seq_len, self.batchsize * (i + 1)) - self.batchsize * i
+            batchsize = min(seq_len - self.batchsize * i, self.batchsize)
 
             # Process the list of state for computation
-            experiences = transitions[self.batchsize * i:
-                                      self.batchsize * i + batchsize]
+            transitions = episode[self.batchsize * i:
+                                  self.batchsize * i + batchsize]
             batch = {
                 'state': batch_states(
-                    [elem['state'] for elem in experiences], self.xp, self.phi),
-                'action': self.xp.asarray([elem['action'] for elem in experiences]),
+                    [elem['state'] for elem in transitions], self.xp, self.phi),
+                'action': self.xp.asarray([elem['action'] for elem in transitions]),
             }
 
             # Compute pi and v
@@ -255,8 +254,10 @@ class PCL(agent.AttributeSavingMixin, agent.AsyncAgent):
 
             # Save the individual result (use slice and not one single index)
             for j in range(batchsize):
-                v_values.append(v[j: j + 1])
+                values.append(v[j: j + 1])
                 logs_probs.append(logs_prob[j: j + 1])
+
+        assert len(values) == len(logs_probs) == len(rewards) == seq_len
 
         # Moving window
         losses = []
@@ -264,8 +265,8 @@ class PCL(agent.AttributeSavingMixin, agent.AsyncAgent):
             d = min(seq_len - i - 1, self.rollout_len)
 
             # Compute loss on a sub-trajectory
-            loss = self._compute_path_consistency(v_values[i],
-                                                  v_values[i + d],
+            loss = self._compute_path_consistency(values[i],
+                                                  values[i + d],
                                                   rewards[i: i + d],
                                                   logs_probs[i: i + d])
             loss *= weight
@@ -281,12 +282,11 @@ class PCL(agent.AttributeSavingMixin, agent.AsyncAgent):
 
         # Accumulate the loss
         loss = chainerrl.functions.sum_arrays(losses)
-        loss.unchain()
 
         if self.process_idx == 0:
-            self.logger.debug('c_loss:%s', loss.data)
+            self.logger.debug('loss:%s', loss.data)
 
-        return loss
+        return loss.data
 
     def update(self, loss):
         """Optimize the model
@@ -296,7 +296,7 @@ class PCL(agent.AttributeSavingMixin, agent.AsyncAgent):
         optimization over multiple processes.
 
         Args:
-            loss as a Variable for logging purpose
+            loss as a array for logging purpose
         """
 
         self.average_loss += (
