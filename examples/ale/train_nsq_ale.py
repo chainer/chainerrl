@@ -8,6 +8,7 @@ standard_library.install_aliases()
 
 import argparse
 import os
+import random
 
 # This prevents numpy from using multiple threads
 os.environ['OMP_NUM_THREADS'] = '1'
@@ -31,7 +32,7 @@ from dqn_phi import dqn_phi
 def main():
 
     import logging
-    # logging.basicConfig(level=logging.DEBUG)
+    logging.basicConfig(level=logging.DEBUG)
 
     parser = argparse.ArgumentParser()
     parser.add_argument('processes', type=int)
