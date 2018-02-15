@@ -52,3 +52,36 @@ class TestSetRandomSeed(unittest.TestCase):
     @attr.gpu
     def test_cupy_random(self):
         self._test_xp_random(chainer.cuda.cupy, gpus=(0,))
+
+
+class TestSampleFromSpace(unittest.TestCase):
+
+    def test_discrete(self):
+        from gym import spaces
+        space = spaces.Discrete(10000)
+        np.random.seed(0)
+        a = chainerrl.misc.sample_from_space(space)
+        np.random.seed(0)
+        b = chainerrl.misc.sample_from_space(space)
+        self.assertTrue(space.contains(a))
+        self.assertTrue(space.contains(b))
+        self.assertEqual(a, b)
+
+    def test_box(self):
+        from gym import spaces
+        space = spaces.Box(low=-1, high=1, shape=10)
+        np.random.seed(0)
+        a0 = chainerrl.misc.sample_from_space(space)
+        np.random.seed(1)
+        a1 = chainerrl.misc.sample_from_space(space)
+        np.random.seed(0)
+        b0 = chainerrl.misc.sample_from_space(space)
+        np.random.seed(1)
+        b1 = chainerrl.misc.sample_from_space(space)
+        self.assertTrue(space.contains(a0))
+        self.assertTrue(space.contains(b0))
+        self.assertTrue(space.contains(a1))
+        self.assertTrue(space.contains(b1))
+        self.assertTrue((a0 == b0).all())
+        self.assertTrue((a1 == b1).all())
+        self.assertTrue((a0 != a1).all())

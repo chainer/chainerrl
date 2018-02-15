@@ -4,4 +4,5 @@ from chainerrl.misc.draw_computational_graph import draw_computational_graph  # 
 from chainerrl.misc.draw_computational_graph import is_graphviz_available  # NOQA
 from chainerrl.misc import env_modifiers  # NOQA
 from chainerrl.misc.is_return_code_zero import is_return_code_zero  # NOQA
+from chainerrl.misc.random_seed import sample_from_space  # NOQA
 from chainerrl.misc.random_seed import set_random_seed  # NOQA
