@@ -133,12 +133,6 @@ def main():
     def phi(obs):
         return obs.astype(np.float32)
 
-    def random_action():
-        a = action_space.sample()
-        if isinstance(a, np.ndarray):
-            a = a.astype(np.float32)
-        return a
-
     ou_sigma = (action_space.high - action_space.low) * 0.2
     explorer = explorers.AdditiveOU(sigma=ou_sigma)
     agent = DDPG(model, opt_a, opt_c, rbuf, gamma=args.gamma,

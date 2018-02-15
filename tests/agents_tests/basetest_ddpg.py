@@ -9,6 +9,7 @@ standard_library.install_aliases()
 from chainer import optimizers
 import numpy as np
 
+import chainerrl
 from chainerrl.agents.ddpg import DDPGModel
 from chainerrl.envs.abc import ABC
 from chainerrl.explorers.epsilon_greedy import LinearDecayEpsilonGreedy
@@ -46,7 +47,7 @@ class _TestDDPGOnABC(_TestTraining):
 
     def make_explorer(self, env):
         def random_action_func():
-            a = env.action_space.sample()
+            a = chainerrl.misc.sample_from_space(env.action_space)
             if isinstance(a, np.ndarray):
                 return a.astype(np.float32)
             else:
