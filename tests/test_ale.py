@@ -85,3 +85,7 @@ class TestALE(unittest.TestCase):
             self.assertGreater(total_r, -22)
             self.assertLess(total_r, -15)
             env.initialize()
+
+    def test_seed(self):
+        ale.ALE('breakout', seed=0)
+        ale.ALE('breakout', seed=2 ** 31 - 1)
