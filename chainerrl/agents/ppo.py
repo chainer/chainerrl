@@ -221,13 +221,13 @@ class PPO(agent.AttributeSavingMixin, agent.Agent):
                     [b['v_teacher'] for b in batch], dtype=xp.float32),
                 )
 
-    def act_and_train(self, state, reward):
+    def act_and_train(self, obs, reward):
         if hasattr(self.model, 'obs_filter'):
             xp = self.xp
-            b_state = batch_states([state], xp, self.phi)
+            b_state = batch_states([obs], xp, self.phi)
             self.model.obs_filter.experience(b_state)
 
-        action, v = self._act(state)
+        action, v = self._act(obs)
 
         # Update stats
         self.average_v += (
@@ -240,18 +240,18 @@ class PPO(agent.AttributeSavingMixin, agent.Agent):
                 'action': self.last_action,
                 'reward': reward,
                 'v_pred': self.last_v,
-                'next_state': state,
+                'next_state': obs,
                 'next_v_pred': v,
                 'nonterminal': 1.0})
-        self.last_state = state
+        self.last_state = obs
         self.last_action = action
         self.last_v = v
 
         self._train()
         return action
 
-    def act(self, state):
-        action, v = self._act(state)
+    def act(self, obs):
+        action, v = self._act(obs)
 
         # Update stats
         self.average_v += (

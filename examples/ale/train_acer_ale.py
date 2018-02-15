@@ -8,6 +8,9 @@ standard_library.install_aliases()
 import argparse
 import os
 
+# Prevent numpy from using multiple threads
+os.environ['OMP_NUM_THREADS'] = '1'
+
 import chainer
 from chainer import links as L
 
@@ -26,9 +29,6 @@ from dqn_phi import dqn_phi
 
 
 def main():
-
-    # Prevent numpy from using multiple threads
-    os.environ['OMP_NUM_THREADS'] = '1'
 
     import logging
     logging.basicConfig(level=logging.DEBUG)

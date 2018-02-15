@@ -166,11 +166,14 @@ class SoftmaxDistribution(CategoricalDistribution):
     Args:
         logits (ndarray or chainer.Variable): Logits for softmax
             distribution.
+        beta (float): inverse of the temperature parameter of softmax
+            distribution
+        min_prob (float): minimum probability across all labels
     """
 
     def __init__(self, logits, beta=1.0, min_prob=0.0):
         self.logits = logits
-        self.beta = 1.0
+        self.beta = beta
         self.min_prob = min_prob
         self.n = logits.shape[1]
         assert self.min_prob * self.n <= 1.0
@@ -198,14 +201,16 @@ class SoftmaxDistribution(CategoricalDistribution):
 
     def copy(self):
         return SoftmaxDistribution(_unwrap_variable(self.logits).copy(),
-                                   beta=self.beta)
+                                   beta=self.beta, min_prob=self.min_prob)
 
     def __repr__(self):
-        return 'SoftmaxDistribution(beta={}) logits:{} probs:{} entropy:{}'.format(  # NOQA
-            self.beta, self.logits.data, self.all_prob.data, self.entropy.data)
+        return 'SoftmaxDistribution(beta={}, min_prob={}) logits:{} probs:{} entropy:{}'.format(  # NOQA
+            self.beta, self.min_prob, self.logits.data,
+            self.all_prob.data, self.entropy.data)
 
     def __getitem__(self, i):
-        return SoftmaxDistribution(self.logits[i], beta=self.beta)
+        return SoftmaxDistribution(self.logits[i],
+                                   beta=self.beta, min_prob=self.min_prob)
 
 
 class MellowmaxDistribution(CategoricalDistribution):
