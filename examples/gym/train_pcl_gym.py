@@ -45,7 +45,8 @@ def main():
     parser.add_argument('--processes', type=int, default=8)
     parser.add_argument('--gpu', type=int, default=0)
     parser.add_argument('--env', type=str, default='CartPole-v0')
-    parser.add_argument('--seed', type=int, default=None)
+    parser.add_argument('--seed', type=int, default=0,
+                        help='Random seed [0, 2 ** 32)')
     parser.add_argument('--outdir', type=str, default=None)
     parser.add_argument('--batchsize', type=int, default=10)
     parser.add_argument('--rollout-len', type=int, default=10)
@@ -79,13 +80,29 @@ def main():
 
     logging.basicConfig(level=args.logger_level)
 
-    if args.seed is not None:
-        misc.set_random_seed(args.seed)
+    # Set a random seed used in ChainerRL.
+    # If you use async training (--train-async), the results will be no longer
+    # deterministic even with the same random seed.
+    misc.set_random_seed(args.seed, gpus=(args.gpu,))
+
+    if args.train_async:
+        # Set different random seeds for different subprocesses.
+        # If seed=0 and processes=4, subprocess seeds are [0, 1, 2, 3].
+        # If seed=1 and processes=4, subprocess seeds are [4, 5, 6, 7].
+        process_seeds = np.arange(args.processes) + args.seed * args.processes
+        assert process_seeds.max() < 2 ** 32
 
     args.outdir = experiments.prepare_output_dir(args, args.outdir)
 
     def make_env(process_idx, test):
         env = gym.make(args.env)
+        # Use different random seeds for train and test envs
+        if args.train_async:
+            process_seed = int(process_seeds[process_idx])
+            env_seed = 2 ** 32 - 1 - process_seed if test else process_seed
+        else:
+            env_seed = 2 ** 32 - 1 - args.seed if test else args.seed
+        env.seed(env_seed)
         if args.monitor and process_idx == 0:
             env = gym.wrappers.Monitor(env, args.outdir)
         # Scale rewards observed by agents
