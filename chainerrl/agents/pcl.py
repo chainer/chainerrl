@@ -242,8 +242,10 @@ class PCL(agent.AttributeSavingMixin, agent.AsyncAgent):
                                   self.batchsize * i + batchsize]
             batch = {
                 'state': batch_states(
-                    [elem['state'] for elem in transitions], self.xp, self.phi),
-                'action': self.xp.asarray([elem['action'] for elem in transitions]),
+                    [elem['state'] for elem in transitions],
+                    self.xp, self.phi),
+                'action': self.xp.asarray([elem['action']
+                                           for elem in transitions]),
             }
 
             # Compute pi and v

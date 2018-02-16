@@ -42,8 +42,8 @@ class PCLUnifiedVFunction(chainerrl.v_functions.SingleModelVFunction):
 
     def __call__(self, x):
         h = self.model(x)
-        s = F.expand_dims(F.sum(F.exp(h / self.tau), axis=1), axis=1)
-        vout = self.tau * F.log(s)
+        s = F.expand_dims(F.logsumexp(h / self.tau, axis=1), axis=1)
+        vout = self.tau * s
         return vout
 
 
@@ -73,7 +73,7 @@ def main():
     parser.add_argument('--rollout-len', type=int, default=10)
     parser.add_argument('--n-hidden-channels', type=int, default=100)
     parser.add_argument('--n-hidden-layers', type=int, default=2)
-    parser.add_argument('--n-times-replay', type=int, default=1)
+    parser.add_argument('--n-times-replay', type=int, default=4)
     parser.add_argument('--replay-start-size', type=int, default=1000)
     parser.add_argument('--t-max', type=int, default=None)
     parser.add_argument('--tau', type=float, default=1e-2)
