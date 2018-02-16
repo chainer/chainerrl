@@ -26,7 +26,8 @@ import gym.wrappers
 import numpy as np
 
 import chainerrl
-from chainerrl import experiments, distribution
+from chainerrl import distribution
+from chainerrl import experiments
 from chainerrl import misc
 from chainerrl.optimizers import rmsprop_async
 
