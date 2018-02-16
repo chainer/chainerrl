@@ -12,6 +12,7 @@ from logging import getLogger
 
 import chainer
 from chainer import functions as F
+from chainer import Variable
 
 import chainerrl
 from chainerrl import agent
@@ -226,7 +227,7 @@ class PCL(agent.AttributeSavingMixin, agent.AsyncAgent):
             loss over the trajectory as a scalar value
         """
         seq_len = len(episode)
-        assert seq_len >= 2
+        assert seq_len >= 1
 
         values = []
         rewards = [elem['reward'] for elem in episode]
@@ -263,15 +264,21 @@ class PCL(agent.AttributeSavingMixin, agent.AsyncAgent):
 
         # Moving window
         losses = []
-        for i in range(seq_len - 1):
-            d = min(seq_len - i - 1, self.rollout_len)
+        for i in range(seq_len):
+            d = min(seq_len - i, self.rollout_len)
+
+            v = values[i]
+            last_v = values[i + d] if i + d < seq_len \
+                else Variable(self.xp.array([[0]], dtype=self.xp.float32))
 
             # Compute loss on a sub-trajectory
-            loss = self._compute_path_consistency(values[i],
-                                                  values[i + d],
+            loss = self._compute_path_consistency(v,
+                                                  last_v,
                                                   rewards[i: i + d],
                                                   logs_probs[i: i + d])
-            loss *= weight
+
+            # Normalize with the length of the episode
+            loss *= weight / seq_len
 
             if self.normalize_loss_by_steps:
                 loss /= d
