@@ -4,6 +4,7 @@ from __future__ import division
 from __future__ import absolute_import
 from builtins import *  # NOQA
 from future import standard_library
+
 standard_library.install_aliases()
 
 import logging
@@ -26,22 +27,24 @@ from chainerrl import v_function
 
 
 @testing.parameterize(*(
-    testing.product({
-        't_max': [10],
-        'use_lstm': [False],
-        'episodic': [True],  # PCL doesn't work well with continuing envs
-        'disable_online_update': [True, False],
-        'train_async': [True, False],
-        'batchsize': [1, 5],
-    }) +
-    testing.product({
-        't_max': [None],
-        'use_lstm': [True, False],
-        'episodic': [True],
-        'disable_online_update': [True, False],
-        'train_async': [True, False],
-        'batchsize': [1, 5],
-    })
+        testing.product({
+            't_max': [2],  # PCL demands episodes of length >= 2
+            'use_lstm': [False],
+            'episodic': [True],  # PCL doesn't work well with continuing envs
+            'disable_online_update': [True, False],
+            'backprop_future_values': [True],
+            'train_async': [True, False],
+            'batchsize': [1, 5],
+        }) +
+        testing.product({
+            't_max': [None],
+            'use_lstm': [True, False],
+            'episodic': [True],
+            'disable_online_update': [True, False],
+            'backprop_future_values': [True],
+            'train_async': [True, False],
+            'batchsize': [1, 5],
+        })
 ))
 class TestPCL(unittest.TestCase):
 
@@ -59,13 +62,14 @@ class TestPCL(unittest.TestCase):
 
     @testing.attr.slow
     def test_abc_gaussian(self):
-        self._test_abc(self.t_max, self.use_lstm, discrete=False,
-                       episodic=self.episodic, steps=100000)
+        self._test_abc(self.t_max, self.use_lstm,
+                       discrete=False, episodic=self.episodic,
+                       steps=100000)
 
     def test_abc_gaussian_fast(self):
-        self._test_abc(self.t_max, self.use_lstm, discrete=False,
-                       episodic=self.episodic, steps=10,
-                       require_success=False)
+        self._test_abc(self.t_max, self.use_lstm,
+                       discrete=False, episodic=self.episodic,
+                       steps=10, require_success=False)
 
     def _test_abc(self, t_max, use_lstm, discrete=True, episodic=True,
                   steps=100000, require_success=True):
@@ -170,7 +174,7 @@ class TestPCL(unittest.TestCase):
                         last_wscale=1e-2,
                     ),
                 )
-        eps = 1e-8
+        eps = 1e-8 if self.backprop_future_values else 1e-1
         opt = rmsprop_async.RMSpropAsync(lr=5e-4, eps=eps, alpha=0.99)
         opt.setup(model)
         gamma = 0.5
@@ -185,6 +189,7 @@ class TestPCL(unittest.TestCase):
                         n_times_replay=1,
                         batchsize=self.batchsize,
                         train_async=self.train_async,
+                        backprop_future_values=self.backprop_future_values,
                         act_deterministically=True)
 
         if self.train_async:

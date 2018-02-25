@@ -15,12 +15,14 @@ from __future__ import unicode_literals
 from __future__ import absolute_import
 from builtins import *  # NOQA
 from future import standard_library
+
 standard_library.install_aliases()
 import argparse
 
 import chainer
 from chainer import functions as F
 import gym
+
 gym.undo_logger_setup()
 import gym.wrappers
 import numpy as np
@@ -72,10 +74,10 @@ def main():
     parser.add_argument('--outdir', type=str, default=None)
     parser.add_argument('--batchsize', type=int, default=10)
     parser.add_argument('--rollout-len', type=int, default=10)
-    parser.add_argument('--n-hidden-channels', type=int, default=64)
+    parser.add_argument('--n-hidden-channels', type=int, default=32)
     parser.add_argument('--n-hidden-layers', type=int, default=2)
     parser.add_argument('--n-times-replay', type=int, default=1)
-    parser.add_argument('--replay-start-size', type=int, default=2000)
+    parser.add_argument('--replay-start-size', type=int, default=1000)
     parser.add_argument('--t-max', type=int, default=None)
     parser.add_argument('--tau', type=float, default=1e-2)
     parser.add_argument('--profile', action='store_true')
@@ -84,7 +86,7 @@ def main():
     parser.add_argument('--eval-n-runs', type=int, default=10)
     parser.add_argument('--reward-scale-factor', type=float, default=1e-2)
     parser.add_argument('--render', action='store_true', default=False)
-    parser.add_argument('--lr', type=float, default=5e-3)
+    parser.add_argument('--lr', type=float, default=7e-3)
     parser.add_argument('--demo', action='store_true', default=False)
     parser.add_argument('--load', type=str, default='')
     parser.add_argument('--logger-level', type=int, default=logging.DEBUG)
@@ -95,6 +97,8 @@ def main():
                         default=False)
     parser.add_argument('--disable-online-update', action='store_true',
                         default=False)
+    parser.add_argument('--backprop-future-values', action='store_true',
+                        default=True)
     parser.add_argument('--no-backprop-future-values', action='store_false',
                         dest='backprop_future_values')
     args = parser.parse_args()
@@ -192,16 +196,16 @@ def main():
 
     agent = chainerrl.agents.PCL(
         model, opt, replay_buffer=replay_buffer,
-        gamma=0.99,
+        t_max=args.t_max, gamma=0.99,
         tau=args.tau,
         phi=lambda x: x.astype(np.float32, copy=False),
         rollout_len=args.rollout_len,
-        t_max=args.t_max,
         n_times_replay=args.n_times_replay,
         replay_start_size=args.replay_start_size,
         batchsize=args.batchsize,
         train_async=args.train_async,
-        disable_online_update=args.disable_online_update
+        disable_online_update=args.disable_online_update,
+        backprop_future_values=args.backprop_future_values,
     )
     if args.load:
         agent.load(args.load)

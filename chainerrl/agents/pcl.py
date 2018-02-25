@@ -3,7 +3,6 @@ from __future__ import print_function
 from __future__ import unicode_literals
 from __future__ import absolute_import
 from builtins import *  # NOQA
-
 from future import standard_library
 standard_library.install_aliases()
 
@@ -12,7 +11,6 @@ from logging import getLogger
 
 import chainer
 from chainer import functions as F
-from chainer import Variable
 
 import chainerrl
 from chainerrl import agent
@@ -50,6 +48,10 @@ class PCL(agent.AttributeSavingMixin, agent.AsyncAgent):
             - action distributions (Distribution)
             - state values (chainer.Variable)
         optimizer (chainer.Optimizer): optimizer used to train the model
+        t_max (int > 1 or None): Maximum length of trajectories sampled from
+            the replay buffer. If set to None, there is not limit on it,
+            complete trajectories / episodes will be sampled. Refer to the
+            behavior of AbstractEpisodicReplayBuffer for more details.
         gamma (float): Discount factor [0,1]
         tau (float): Weight coefficient for the entropy regularizaiton term.
         phi (callable): Feature extractor function
@@ -63,10 +65,6 @@ class PCL(agent.AttributeSavingMixin, agent.AsyncAgent):
             (batchsize x t_max).
         disable_online_update (bool): If set true, disable online on-policy
             update and rely only on experience replay.
-        t_max (int or None): Maximum length of trajectories sampled from the
-            replay buffer. If set to None, there is not limit on it,
-            complete trajectories / episodes will be sampled. Refer to the
-            behavior of AbstractEpisodicReplayBuffer for more details.
         n_times_replay (int): Number of times experience replay is repeated per
             one time of online update.
         replay_start_size (int): Experience replay is disabled if the number of
@@ -86,6 +84,8 @@ class PCL(agent.AttributeSavingMixin, agent.AsyncAgent):
         logger (None or Logger): Logger to be used
         batch_states (callable): Method which makes a batch of observations.
             default is `chainerrl.misc.batch_states.batch_states`
+        backprop_future_values (bool): If set True, value gradients are
+            computed not only wrt V(s_t) but also V(s_{t+d}).
         train_async (bool): If set True, use a process-local model to compute
             gradients and update the globally shared model.
     """
@@ -96,6 +96,7 @@ class PCL(agent.AttributeSavingMixin, agent.AsyncAgent):
 
     def __init__(self, model, optimizer,
                  replay_buffer=None,
+                 t_max=None,
                  gamma=0.99,
                  tau=1e-2,
                  phi=lambda x: x,
@@ -104,7 +105,6 @@ class PCL(agent.AttributeSavingMixin, agent.AsyncAgent):
                  rollout_len=10,
                  batchsize=1,
                  disable_online_update=False,
-                 t_max=None,
                  n_times_replay=1,
                  replay_start_size=10 ** 2,
                  normalize_loss_by_steps=True,
@@ -115,6 +115,7 @@ class PCL(agent.AttributeSavingMixin, agent.AsyncAgent):
                  explorer=None,
                  logger=None,
                  batch_states=batch_states,
+                 backprop_future_values=True,
                  train_async=False):
 
         if train_async:
@@ -131,17 +132,25 @@ class PCL(agent.AttributeSavingMixin, agent.AsyncAgent):
         self.optimizer = optimizer
 
         self.replay_buffer = replay_buffer
+        if t_max is not None:
+            assert t_max > 1, "t_max should be > 1, found %d" % t_max
+        self.t_max = t_max
         self.gamma = gamma
         self.tau = tau
         self.phi = phi
         self.pi_loss_coef = pi_loss_coef
         self.v_loss_coef = v_loss_coef
         self.rollout_len = rollout_len
+        if not self.xp.isscalar(batchsize):
+            batchsize = self.xp.int32(batchsize)
+            """Fix Chainer Issue #2807
+
+            batchsize should (look to) be scalar.
+            """
         self.batchsize = batchsize
         self.normalize_loss_by_steps = normalize_loss_by_steps
         self.act_deterministically = act_deterministically
         self.disable_online_update = disable_online_update
-        self.t_max = t_max
         self.n_times_replay = n_times_replay
         self.replay_start_size = replay_start_size
         self.average_loss_decay = average_loss_decay
@@ -149,6 +158,7 @@ class PCL(agent.AttributeSavingMixin, agent.AsyncAgent):
         self.average_entropy_decay = average_entropy_decay
         self.logger = logger if logger else getLogger(__name__)
         self.batch_states = batch_states
+        self.backprop_future_values = backprop_future_values
         self.train_async = train_async
 
         self.t = 0
@@ -202,6 +212,9 @@ class PCL(agent.AttributeSavingMixin, agent.AsyncAgent):
             weights=[self.gamma ** i for i in range(d)])
         G = F.expand_dims(G, -1)
 
+        if not self.backprop_future_values:
+            last_v = chainer.Variable(last_v.data)
+
         # Adapt the computation to different length of trajectories
         coef = self.xp.asarray([self.gamma ** t_max for t_max in ts_max])
 
@@ -236,6 +249,88 @@ class PCL(agent.AttributeSavingMixin, agent.AsyncAgent):
 
         The gradient is computed and accumulated on the fly.
 
+        ############ Illustration of algorithm #############
+
+        Given 2 (self.batchsize == 2) episodes of different length:
+
+             0 1 2 3 4 5 6 7 8 9 (index, i)
+        e_0  o o o o o o o o _ _ (o for transition, _ is fictive)
+        e_1  o o o o o o _ _ _ _
+
+        self.rollout_len == 4
+        max_len == 7
+
+        The algorithm will compute path consistency for all sub-trajectories
+        of length self.rollout_len plus some shorter sub-trajectories at the
+        head and the tail of the batch.
+
+            i == 0: not enough transitions to compute the loss
+
+                 0
+            e_0  o
+            e_1  o
+
+            i == 1: compute loss with rollout_length = [1, 1]
+            v is at position 0
+            v_last is at 1 (rollout_length can be smaller than
+                self.rollout_len) rewards and log_probs are at 0
+
+                 0 1
+            e_0  o o
+            e_1  o o
+
+            i == 4: compute loss with rollout_length = [4, 4]
+            v is still at position 0
+            v_last is at 4 (rollout_len == 4)
+            rewards and log_probs are at 0, 1, 2, 3
+
+                 0 1 2 3 4
+            e_0  o o o o o
+            e_1  o o o o o
+
+            i == 5: compute loss with rollout_length = [4, 4]
+            v is now at position 1
+            v_last is at 5
+            rewards and log_probs are at 1, 2, 3, 4
+
+                 0 1 2 3 4 5
+            e_0  x o o o o o (x means removed from the list like vs)
+            e_1  x o o o o o
+
+            i == 6: compute loss with rollout_length = [4, 3]
+            v_last is at 6 (the last state is replicate for the second
+                episode)
+            rewards and log_probs are at 2, 3, 4, 5: at position 5, the
+                reward and log_prob will be set to 0 as they all exceed
+                the length of the episode. By setting them to 0, they
+                will not contribute to the path consistency computation
+            rollout_length: the second one only has a rollout length of
+                3, because the length has been reached. This will tell
+                the _compute_path_consistency how to compute the reduction
+                coefficient for v_last
+
+                 0 1 2 3 4 5 6
+            e_0  x x o o o o o (x means removed from the list like vs)
+            e_1  x x o o o o _
+
+            i == 8: compute loss with rollout_length = [3, 1]
+
+                 0 1 2 3 4 5 6 7 8
+            e_0  x x x x o o o o _
+            e_1  x x x x o o _ _ _ (removed, nb_episodes == 1)
+
+            i == 9: compute loss with rollout_length = [2]
+            The second episode now has too less transitions, no loss
+                will be computed on that episode. In order to save computation,
+                the batch size is reduced.
+
+                 0 1 2 3 4 5 6 7 8 9
+            e_0  x x x x x o o o _ _
+            e_1  x x x x x o _ _ _ _ (removed, nb_episodes == 1 at this round)
+
+
+        ####################################################
+
         :param episodes: list of list of length
         :param weights: list of weights
         :return: single value array
@@ -250,7 +345,12 @@ class PCL(agent.AttributeSavingMixin, agent.AsyncAgent):
                    for j in range(nb_episodes)]
 
         # Check the length of shortest episode
-        assert 2 <= len(episodes[-1])
+        while nb_episodes > 0 and len(episodes[-1]) < 2:
+            nb_episodes -= 1
+            episodes = episodes[:-1]
+        # If no episode satisfies the constraints, do not update the model
+        if nb_episodes == 0:
+            return self.xp.asarray([0], dtype=self.xp.float32)
 
         # Save one more item
         vs = []
@@ -296,6 +396,7 @@ class PCL(agent.AttributeSavingMixin, agent.AsyncAgent):
 
             # Use the action to get its own log-probability
             log_prob = action_distrib.log_prob(action)
+            # Use zero is the length of episode is exceeded
             log_prob = F.where(self.xp.asarray([
                 i < len(episode) - 1 for episode in episodes
             ]), log_prob, self.xp.zeros_like(log_prob).astype(self.xp.float32))
@@ -338,7 +439,7 @@ class PCL(agent.AttributeSavingMixin, agent.AsyncAgent):
                 if self.normalize_loss_by_steps:
                     # Normalize with the rollout length
                     w = self.xp.asarray([weights[j] / rollout_length[j]
-                                               for j in range(nb_episodes)])
+                                         for j in range(nb_episodes)])
                 else:
                     w = self.xp.asarray(weights[:nb_episodes])
 
@@ -370,8 +471,8 @@ class PCL(agent.AttributeSavingMixin, agent.AsyncAgent):
         """
 
         self.average_loss += (
-            (1 - self.average_loss_decay) *
-            (asfloat(loss) - self.average_loss))
+                (1 - self.average_loss_decay) *
+                (asfloat(loss) - self.average_loss))
 
         if self.train_async:
             # Copy the gradients to the globally shared model
@@ -462,11 +563,11 @@ class PCL(agent.AttributeSavingMixin, agent.AsyncAgent):
                 self.t, reward, action, action_distrib, float(v.data))
         # Update stats
         self.average_value += (
-            (1 - self.average_value_decay) *
-            (float(v.data[0]) - self.average_value))
+                (1 - self.average_value_decay) *
+                (float(v.data[0]) - self.average_value))
         self.average_entropy += (
-            (1 - self.average_entropy_decay) *
-            (float(action_distrib.entropy.data[0]) - self.average_entropy))
+                (1 - self.average_entropy_decay) *
+                (float(action_distrib.entropy.data[0]) - self.average_entropy))
 
         return action
 
