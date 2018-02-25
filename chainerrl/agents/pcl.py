@@ -331,9 +331,11 @@ class PCL(agent.AttributeSavingMixin, agent.AsyncAgent):
 
         ####################################################
 
-        :param episodes: list of list of length
-        :param weights: list of weights
-        :return: single value array
+        Args:
+            episodes: list of list of length
+            weights: list of weights
+        Returns:
+            single value array
         """
 
         episodes = list(reversed(sorted(episodes, key=len)))
