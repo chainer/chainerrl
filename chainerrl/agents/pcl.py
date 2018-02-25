@@ -3,6 +3,7 @@ from __future__ import print_function
 from __future__ import unicode_literals
 from __future__ import absolute_import
 from builtins import *  # NOQA
+from collections import deque
 
 from future import standard_library
 standard_library.install_aliases()
@@ -56,7 +57,8 @@ class PCL(agent.AttributeSavingMixin, agent.AsyncAgent):
         pi_loss_coef (float): Weight coefficient for the loss of the policy
         v_loss_coef (float): Weight coefficient for the loss of the value
             function
-        rollout_len (int): Number of rollout steps
+        rollout_len (int): Number of rollout steps (for computing path
+            consistency)
         batchsize (int): Number of episodes or sub-trajectories used for an
             update. The total number of transitions used will be
             (batchsize x t_max).
@@ -171,8 +173,18 @@ class PCL(agent.AttributeSavingMixin, agent.AsyncAgent):
         copy_param.copy_param(target_link=self.model,
                               source_link=self.shared_model)
 
-    def _compute_path_consistency(self, v, last_v, rewards, log_probs):
-        """Compute squared soft consistency error on a sub-trajectory"""
+    def _compute_path_consistency(self, v, last_v, rewards, log_probs, ts_max):
+        """Compute squared soft consistency error on a sub-trajectory
+
+        Args:
+            v: Variable
+            last_v: Variable
+            rewards: list of arrays or Variables (single-element or vector)
+            log_probs: list of Variables (single-element or vector)
+            ts_max: list of integers indicating the length of episode(s)
+        Returns:
+            loss: Variable
+        """
 
         # Get the length of the sub-trajectory
         d = len(rewards)
@@ -180,7 +192,10 @@ class PCL(agent.AttributeSavingMixin, agent.AsyncAgent):
         assert len(log_probs) == len(rewards)
 
         # Discounted sum of immediate rewards
-        R_seq = sum(self.gamma ** i * rewards[i] for i in range(d))
+        R_seq = chainerrl.functions.weighted_sum_arrays(
+            xs=rewards,
+            weights=[self.gamma ** i for i in range(d)])
+        R_seq = F.expand_dims(R_seq, -1)
 
         # Discounted sum of log likelihoods
         G = chainerrl.functions.weighted_sum_arrays(
@@ -188,15 +203,18 @@ class PCL(agent.AttributeSavingMixin, agent.AsyncAgent):
             weights=[self.gamma ** i for i in range(d)])
         G = F.expand_dims(G, -1)
 
+        # Adapt the computation to different length of trajectories
+        coef = self.xp.asarray([self.gamma ** t_max for t_max in ts_max])
+
         # C_pi only backprop through pi
         C_pi = (- v.data +
-                self.gamma ** d * last_v.data +
+                coef * last_v.data +
                 R_seq -
                 self.tau * G)
 
         # C_v only backprop through v
         C_v = (- v +
-               self.gamma ** d * last_v +
+               coef * last_v +
                R_seq -
                self.tau * G.data)
 
@@ -211,7 +229,7 @@ class PCL(agent.AttributeSavingMixin, agent.AsyncAgent):
 
         return pi_loss + v_loss
 
-    def compute_loss(self, episode, weight=1):
+    def compute_loss_single_episode(self, episode, weight=1):
         """Compute squared soft consistency error on the given trajectory
 
         If the episode's length, T, is larger than d (self.rollout_len),
@@ -230,7 +248,8 @@ class PCL(agent.AttributeSavingMixin, agent.AsyncAgent):
         assert seq_len >= 1
 
         values = []
-        rewards = [elem['reward'] for elem in episode]
+        rewards = [self.xp.asarray([elem['reward']], dtype=self.xp.float32)
+                   for elem in episode]
         logs_probs = []
 
         # Process the trajectory in batches to accelerate
@@ -275,7 +294,8 @@ class PCL(agent.AttributeSavingMixin, agent.AsyncAgent):
             loss = self._compute_path_consistency(v,
                                                   last_v,
                                                   rewards[i: i + d],
-                                                  logs_probs[i: i + d])
+                                                  logs_probs[i: i + d],
+                                                  [d])
 
             # Normalize with the length of the episode
             loss *= weight / seq_len
@@ -291,6 +311,79 @@ class PCL(agent.AttributeSavingMixin, agent.AsyncAgent):
 
         # Accumulate the loss
         loss = chainerrl.functions.sum_arrays(losses)
+
+        if self.process_idx == 0:
+            self.logger.debug('loss:%s', loss.data)
+
+        return loss.data
+
+    def compute_loss_batch_episodes(self, episodes, weights):
+        """Compute gradients on a list of episodes
+
+        :param episodes: list of list of length
+        :param weights: list of weights
+        :return: single value array
+        """
+
+        nb_episodes = len(episodes)
+
+        # Check the length of each episode
+        for episode in episodes:
+            assert 1 <= len(episode) <= self.rollout_len
+
+        first_v = None
+        rewards = []
+        log_probs = []
+
+        for i in range(self.rollout_len):
+            state = batch_states(
+                [episode[i]['state'] if i < len(episodes)
+                 else episode[-1]['state'] for episode in episodes],
+                self.xp, self.phi)
+            action = self.xp.asarray(
+                [episode[i]['action'] if i < len(episode)
+                 else 0 for episode in episodes]).astype(self.xp.int8)
+            # Compute pi and v
+            action_distrib, v = self.model(state)
+
+            # Use the action to get its own log-probability
+            log_prob = action_distrib.log_prob(action)
+
+            log_probs.append(log_prob)
+
+            # The size of reward decide the length of trajectory
+            rewards.append(self.xp.asarray(
+                [episode[i]['reward'] if i < len(episode)
+                 else 0 for episode in episodes], dtype=self.xp.float32))
+
+            if i == 0:
+                first_v = v
+
+        last_state = batch_states(
+            [episode[-1]['state'] for episode in episodes],
+            self.xp, self.phi)
+        _, last_v = self.model(last_state)
+
+        loss = self._compute_path_consistency(first_v,
+                                              last_v,
+                                              rewards,
+                                              log_probs,
+                                              [len(e) for e in episodes])
+
+        # Normalize with the length of the episode
+        if self.normalize_loss_by_steps:
+            weights = self.xp.asarray([weights[i] / len(episodes[i])
+                                       for i in range(nb_episodes)])
+        else:
+            weights = self.xp.asarray(weights)
+
+        loss *= weights
+
+        if self.normalize_loss_by_steps:
+            loss /= self.rollout_len
+
+        # Compute gradient immediately
+        loss.backward()
 
         if self.process_idx == 0:
             self.logger.debug('loss:%s', loss.data)
@@ -355,20 +448,17 @@ class PCL(agent.AttributeSavingMixin, agent.AsyncAgent):
             else:
                 weights = [1] * len(episodes)
 
-            losses = []
-            for i in range(len(episodes)):
-                # Compute loss on a sampled trajectory
-                loss = self.compute_loss(episodes[i], weights[i])
-                losses.append(loss)
+            # Compute loss on sampled trajectories
+            loss = self.compute_loss_batch_episodes(episodes, weights)
 
-            self.update(chainerrl.functions.sum_arrays(losses))
+            self.update(loss)
 
     def update_on_policy(self):
         self.model.zerograds()
 
         # Compute the loss on the current episode
         with state_reset(self.model):
-            loss = self.compute_loss(self.past_transitions)
+            loss = self.compute_loss_single_episode(self.past_transitions)
             self.update(loss)
 
     def act_and_train(self, obs, reward):
