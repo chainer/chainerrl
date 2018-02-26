@@ -425,10 +425,10 @@ class PCL(agent.AttributeSavingMixin, agent.AsyncAgent):
                 # For debug and understanding of the algorithm
                 for j in range(nb_episodes):
                     assert rollout_length[j] == \
-                           min(i,
-                               self.rollout_len,
-                               len(episodes[j]) - 1 - (i - self.rollout_len),
-                               len(episodes[j]) - 1)
+                        min(i,
+                            self.rollout_len,
+                            len(episodes[j]) - 1 - (i - self.rollout_len),
+                            len(episodes[j]) - 1)
 
                 loss = self._compute_path_consistency(
                     vs[0],
@@ -473,8 +473,8 @@ class PCL(agent.AttributeSavingMixin, agent.AsyncAgent):
         """
 
         self.average_loss += (
-                (1 - self.average_loss_decay) *
-                (asfloat(loss) - self.average_loss))
+            (1 - self.average_loss_decay) *
+            (asfloat(loss) - self.average_loss))
 
         if self.train_async:
             # Copy the gradients to the globally shared model
@@ -565,11 +565,11 @@ class PCL(agent.AttributeSavingMixin, agent.AsyncAgent):
                 self.t, reward, action, action_distrib, float(v.data))
         # Update stats
         self.average_value += (
-                (1 - self.average_value_decay) *
-                (float(v.data[0]) - self.average_value))
+            (1 - self.average_value_decay) *
+            (float(v.data[0]) - self.average_value))
         self.average_entropy += (
-                (1 - self.average_entropy_decay) *
-                (float(action_distrib.entropy.data[0]) - self.average_entropy))
+            (1 - self.average_entropy_decay) *
+            (float(action_distrib.entropy.data[0]) - self.average_entropy))
 
         return action
 
