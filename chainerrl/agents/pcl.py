@@ -258,7 +258,7 @@ class PCL(agent.AttributeSavingMixin, agent.AsyncAgent):
         e_1  o o o o o o _ _ _ _
 
         self.rollout_len == 4
-        max_len == 7
+        max_len == 8
 
         The algorithm will compute path consistency for all sub-trajectories
         of length self.rollout_len plus some shorter sub-trajectories at the
@@ -294,7 +294,7 @@ class PCL(agent.AttributeSavingMixin, agent.AsyncAgent):
             rewards and log_probs are at 1, 2, 3, 4
 
                  0 1 2 3 4 5
-            e_0  x o o o o o (x means removed from the list like vs)
+            e_0  x o o o o o (x means removed from lists like vs)
             e_1  x o o o o o
 
             i == 6: compute loss with rollout_length = [4, 3]
@@ -302,7 +302,8 @@ class PCL(agent.AttributeSavingMixin, agent.AsyncAgent):
                 episode)
             rewards and log_probs are at 2, 3, 4, 5: at position 5, the
                 reward and log_prob will be set to 0 as they all exceed
-                the length of the episode. By setting them to 0, they
+                the length of the episode. There should be no reward
+                for the terminal state and beyond. By setting them to 0, they
                 will not contribute to the path consistency computation
             rollout_length: the second one only has a rollout length of
                 3, because the length has been reached. This will tell
@@ -317,7 +318,7 @@ class PCL(agent.AttributeSavingMixin, agent.AsyncAgent):
 
                  0 1 2 3 4 5 6 7 8
             e_0  x x x x o o o o _
-            e_1  x x x x o o _ _ _ (removed, nb_episodes == 1)
+            e_1  x x x x o o _ _ _
 
             i == 9: compute loss with rollout_length = [2]
             The second episode now has too less transitions, no loss
