@@ -27,24 +27,24 @@ from chainerrl import v_function
 
 
 @testing.parameterize(*(
-        testing.product({
-            't_max': [2],  # PCL demands episodes of length >= 2
-            'use_lstm': [False],
-            'episodic': [True],  # PCL doesn't work well with continuing envs
-            'disable_online_update': [True, False],
-            'backprop_future_values': [True],
-            'train_async': [True, False],
-            'batchsize': [1, 5],
-        }) +
-        testing.product({
-            't_max': [None],
-            'use_lstm': [True, False],
-            'episodic': [True],
-            'disable_online_update': [True, False],
-            'backprop_future_values': [True],
-            'train_async': [True, False],
-            'batchsize': [1, 5],
-        })
+    testing.product({
+        't_max': [2],  # PCL demands episodes of length >= 2
+        'use_lstm': [False],
+        'episodic': [True],  # PCL doesn't work well with continuing envs
+        'disable_online_update': [True, False],
+        'backprop_future_values': [True],
+        'train_async': [True, False],
+        'batchsize': [1, 5],
+    }) +
+    testing.product({
+        't_max': [None],
+        'use_lstm': [True, False],
+        'episodic': [True],
+        'disable_online_update': [True, False],
+        'backprop_future_values': [True],
+        'train_async': [True, False],
+        'batchsize': [1, 5],
+    })
 ))
 class TestPCL(unittest.TestCase):
 
