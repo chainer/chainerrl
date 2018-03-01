@@ -33,6 +33,7 @@ import chainerrl
 from chainerrl.agents.dqn import DQN
 from chainerrl import experiments
 from chainerrl import explorers
+from chainerrl import links
 from chainerrl import misc
 from chainerrl import q_functions
 from chainerrl import replay_buffer
@@ -52,6 +53,7 @@ def main():
                         type=int, default=10 ** 4)
     parser.add_argument('--start-epsilon', type=float, default=1.0)
     parser.add_argument('--end-epsilon', type=float, default=0.1)
+    parser.add_argument('--noisy-net-sigma', type=float, default=None)
     parser.add_argument('--demo', action='store_true', default=False)
     parser.add_argument('--load', type=str, default=None)
     parser.add_argument('--steps', type=int, default=10 ** 5)
@@ -129,6 +131,11 @@ def main():
         explorer = explorers.LinearDecayEpsilonGreedy(
             args.start_epsilon, args.end_epsilon, args.final_exploration_steps,
             action_space.sample)
+
+    if args.noisy_net_sigma is not None:
+        links.to_factorized_noisy(q_func)
+        # Turn off explorer
+        explorer = explorers.Greedy()
 
     # Draw the computational graph and save it in the output directory.
     chainerrl.misc.draw_computational_graph(
