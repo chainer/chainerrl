@@ -1,3 +1,8 @@
+"""Noisy Networks
+
+See http://arxiv.org/abs/1706.10295
+"""
+
 import chainer
 from chainer.links import Linear
 
