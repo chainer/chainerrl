@@ -261,23 +261,6 @@ class TestPrioritizedReplayBuffer(unittest.TestCase):
         # The size should not change
         self.assertEqual(len(rbuf), capacity)
 
-    @unittest.expectedFailure
-    def test_fail_noupdate(self):
-        rbuf = replay_buffer.PrioritizedReplayBuffer(100)
-        trans1 = dict(state=0, action=1, reward=2, next_state=3,
-                      next_action=4, is_state_terminal=True)
-        rbuf.append(**trans1)
-        rbuf.sample(1)
-        rbuf.sample(1)  # This line must fail.
-
-    def test_fail_noupdate_sub(self):
-        rbuf = replay_buffer.PrioritizedReplayBuffer(100)
-        trans1 = dict(state=0, action=1, reward=2, next_state=3,
-                      next_action=4, is_state_terminal=True)
-        rbuf.append(**trans1)
-        rbuf.sample(1)
-        # This must not fail.
-
     def test_save_and_load(self):
         for capacity in [100, None]:
             self.subtest_append_and_sample(capacity)
@@ -399,3 +382,30 @@ class TestPrioritizedEpisodicReplayBuffer(unittest.TestCase):
                 for t0, t1 in zip(ep, ep[1:]):
                     self.assertEqual(t0['next_state'], t1['state'])
                     self.assertEqual(t0['next_action'], t1['action'])
+
+
+class TestReplayBufferFail(unittest.TestCase):
+
+    def setUp(self):
+        self.rbuf = replay_buffer.PrioritizedReplayBuffer(100)
+        self.trans1 = dict(state=0, action=1, reward=2, next_state=3,
+                           next_action=4, is_state_terminal=True)
+        self.rbuf.append(**self.trans1)
+
+    def _sample1(self):
+        self.rbuf.sample(1)
+
+    def _set1(self):
+        self.rbuf.update_errors([1.0])
+
+    def test_fail_noupdate(self):
+        self._sample1()
+        self.assertRaises(AssertionError, self._sample1)
+
+    def test_fail_update_first(self):
+        self.assertRaises(AssertionError, self._set1)
+
+    def test_fail_doubleupdate(self):
+        self._sample1()
+        self._set1()
+        self.assertRaises(AssertionError, self._set1)

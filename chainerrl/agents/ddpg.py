@@ -166,11 +166,11 @@ class DDPG(AttributeSavingMixin, Agent):
         Preconditions:
           target_q_function must have seen up to s_t and a_t.
           target_policy must have seen up to s_t.
-          q_function must have seen up to s_{t-1}.
+          q_function must have seen up to s_{t-1} and a_{t-1}.
         Postconditions:
           target_q_function must have seen up to s_{t+1} and a_{t+1}.
           target_policy must have seen up to s_{t+1}.
-          q_function must have seen up to s_t.
+          q_function must have seen up to s_t and a_t.
         """
 
         batch_next_state = batch['next_state']
@@ -219,7 +219,7 @@ class DDPG(AttributeSavingMixin, Agent):
         Preconditions:
           q_function must have seen up to s_{t-1} and s_{t-1}.
           policy must have seen up to s_{t-1}.
-        Preconditions:
+        Postconditions:
           q_function must have seen up to s_t and s_t.
           policy must have seen up to s_t.
         """
@@ -299,11 +299,11 @@ class DDPG(AttributeSavingMixin, Agent):
                 actor_loss += self.compute_actor_loss(batch)
             self.actor_optimizer.update(lambda: actor_loss / max_epi_len)
 
-    def act_and_train(self, state, reward):
+    def act_and_train(self, obs, reward):
 
         self.logger.debug('t:%s r:%s', self.t, reward)
 
-        greedy_action = self.act(state)
+        greedy_action = self.act(obs)
         action = self.explorer.select_action(self.t, lambda: greedy_action)
         self.t += 1
 
@@ -318,21 +318,21 @@ class DDPG(AttributeSavingMixin, Agent):
                 state=self.last_state,
                 action=self.last_action,
                 reward=reward,
-                next_state=state,
+                next_state=obs,
                 next_action=action,
                 is_state_terminal=False)
 
-        self.last_state = state
+        self.last_state = obs
         self.last_action = action
 
         self.replay_updater.update_if_necessary(self.t)
 
         return self.last_action
 
-    def act(self, state):
+    def act(self, obs):
 
         with chainer.using_config('train', False):
-            s = self.batch_states([state], self.xp, self.phi)
+            s = self.batch_states([obs], self.xp, self.phi)
             action = self.policy(s).sample()
             # Q is not needed here, but log it just for information
             q = self.q_function(s, action)

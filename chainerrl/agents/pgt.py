@@ -204,11 +204,11 @@ class PGT(AttributeSavingMixin, Agent):
         self.critic_optimizer.update(compute_critic_loss)
         self.actor_optimizer.update(compute_actor_loss)
 
-    def act_and_train(self, state, reward):
+    def act_and_train(self, obs, reward):
 
         self.logger.debug('t:%s r:%s', self.t, reward)
 
-        greedy_action = self.act(state)
+        greedy_action = self.act(obs)
         action = self.explorer.select_action(self.t, lambda: greedy_action)
         self.t += 1
 
@@ -223,21 +223,21 @@ class PGT(AttributeSavingMixin, Agent):
                 state=self.last_state,
                 action=self.last_action,
                 reward=reward,
-                next_state=state,
+                next_state=obs,
                 next_action=action,
                 is_state_terminal=False)
 
-        self.last_state = state
+        self.last_state = obs
         self.last_action = action
 
         self.replay_updater.update_if_necessary(self.t)
 
         return self.last_action
 
-    def act(self, state):
+    def act(self, obs):
 
         with chainer.using_config('train', False):
-            s = self.batch_states([state], self.xp, self.phi)
+            s = self.batch_states([obs], self.xp, self.phi)
             if self.act_deterministically:
                 action = self.policy(s).most_probable
             else:

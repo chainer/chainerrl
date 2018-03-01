@@ -10,6 +10,7 @@ import unittest
 
 import chainer
 from chainer import testing
+from chainer.testing import condition
 import numpy as np
 import scipy.stats
 
@@ -38,11 +39,11 @@ class TestSampleDiscreteActions(unittest.TestCase):
         np.testing.assert_allclose(
             counter / 1000, chainer.cuda.to_cpu(batch_probs), atol=0.05)
 
-    @testing.condition.retry(3)
+    @condition.retry(3)
     def test_cpu(self):
         self._test(-1)
 
-    @testing.condition.retry(3)
+    @condition.retry(3)
     @testing.attr.gpu
     def test_gpu(self):
         self._test(0)

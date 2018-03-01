@@ -4,18 +4,14 @@ from __future__ import division
 from __future__ import absolute_import
 from future import standard_library
 standard_library.install_aliases()
-import os
-import tempfile
-import unittest
 
 from chainer import optimizers
 from chainer import testing
 import gym
 gym.undo_logger_setup()
 
+import basetest_agents as base
 from chainerrl import agents
-from chainerrl.envs.abc import ABC
-from chainerrl.experiments.train_agent import train_agent
 from chainerrl import explorers
 from chainerrl import policies
 from chainerrl import q_functions
@@ -85,51 +81,12 @@ def create_v_function_for_env(env):
     return v_function.FCVFunction(ndim_obs)
 
 
-class _TestAgentInterface(unittest.TestCase):
-
-    def setUp(self):
-        self.env = ABC(discrete=self.discrete,
-                       partially_observable=self.partially_observable,
-                       episodic=self.episodic)
-
-    def create_agent(self, env):
-        raise NotImplementedError()
-
-    def test_save_load(self):
-        a = self.create_agent(self.env)
-        dirname = tempfile.mkdtemp()
-        a.save(dirname)
-        self.assertTrue(os.path.exists(dirname))
-        b = self.create_agent(self.env)
-        b.load(dirname)
-
-    def test_run_episode(self):
-        agent = self.create_agent(self.env)
-        done = False
-        obs = self.env.reset()
-        t = 0
-        while t < 10 and not done:
-            a = agent.act(obs)
-            obs, r, done, info = self.env.step(a)
-            t += 1
-
-    @testing.attr.slow
-    def test_train(self):
-        agent = self.create_agent(self.env)
-        train_agent(
-            agent=agent,
-            env=self.env,
-            steps=2000,
-            outdir=tempfile.mkdtemp(),
-            max_episode_len=10)
-
-
 @testing.parameterize(*testing.product({
     'discrete': [True, False],
     'partially_observable': [False],
     'episodic': [False],
 }))
-class TestA3C(_TestAgentInterface):
+class TestA3C(base._TestAgentInterface):
 
     def create_agent(self, env):
         model = agents.a3c.A3CSeparateModel(
@@ -145,7 +102,7 @@ class TestA3C(_TestAgentInterface):
     'partially_observable': [False],
     'episodic': [False],
 }))
-class TestACER(_TestAgentInterface):
+class TestACER(base._TestAgentInterface):
 
     def create_agent(self, env):
         model = agents.acer.ACERSeparateModel(
@@ -163,7 +120,7 @@ class TestACER(_TestAgentInterface):
     'partially_observable': [False],
     'episodic': [False],
 }))
-class TestDQN(_TestAgentInterface):
+class TestDQN(base._TestAgentInterface):
 
     def create_agent(self, env):
         model = create_state_q_function_for_env(env)
@@ -180,7 +137,7 @@ class TestDQN(_TestAgentInterface):
     'partially_observable': [False],
     'episodic': [False],
 }))
-class TestDoubleDQN(_TestAgentInterface):
+class TestDoubleDQN(base._TestAgentInterface):
 
     def create_agent(self, env):
         model = create_state_q_function_for_env(env)
@@ -198,7 +155,7 @@ class TestDoubleDQN(_TestAgentInterface):
     'partially_observable': [False],
     'episodic': [False],
 }))
-class TestNSQ(_TestAgentInterface):
+class TestNSQ(base._TestAgentInterface):
 
     def create_agent(self, env):
         model = create_state_q_function_for_env(env)
@@ -220,7 +177,7 @@ class TestNSQ(_TestAgentInterface):
     'partially_observable': [False],
     'episodic': [False],
 }))
-class TestDDPG(_TestAgentInterface):
+class TestDDPG(base._TestAgentInterface):
 
     def create_agent(self, env):
         model = agents.ddpg.DDPGModel(
@@ -241,7 +198,7 @@ class TestDDPG(_TestAgentInterface):
     'partially_observable': [False],
     'episodic': [False],
 }))
-class TestPGT(_TestAgentInterface):
+class TestPGT(base._TestAgentInterface):
 
     def create_agent(self, env):
         model = agents.ddpg.DDPGModel(
