@@ -35,7 +35,7 @@ def _map_links(func, link):
             else:
                 delattr(link, name)
                 with link.init_scope():
-                    setattr(link, name, func(child))
+                    setattr(link, name, new_child)
     elif isinstance(link, chainer.ChainList):
         children = link._children
         for i in range(len(children)):
@@ -45,5 +45,5 @@ def _map_links(func, link):
                 _map_links(func, child)
             else:
                 # mimic ChainList.add_link
-                children[i] = func(child)
+                children[i] = new_child
                 children[i].name = str(i)
