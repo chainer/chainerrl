@@ -32,7 +32,8 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--outdir', type=str, default='out')
     parser.add_argument('--env', type=str, default='Humanoid-v1')
-    parser.add_argument('--seed', type=int, default=None)
+    parser.add_argument('--seed', type=int, default=0,
+                        help='Random seed [0, 2 ** 32)')
     parser.add_argument('--gpu', type=int, default=0)
     parser.add_argument('--final-exploration-steps',
                         type=int, default=10 ** 6)
@@ -65,8 +66,8 @@ def main():
         args, args.outdir, argv=sys.argv)
     print('Output files are saved in {}'.format(args.outdir))
 
-    if args.seed is not None:
-        misc.set_random_seed(args.seed)
+    # Set a random seed used in ChainerRL
+    misc.set_random_seed(args.seed, gpus=(args.gpu,))
 
     def clip_action_filter(a):
         return np.clip(a, action_space.low, action_space.high)
@@ -74,22 +75,22 @@ def main():
     def reward_filter(r):
         return r * args.reward_scale_factor
 
-    def make_env():
+    def make_env(test):
         env = gym.make(args.env)
+        # Use different random seeds for train and test envs
+        env_seed = 2 ** 32 - 1 - args.seed if test else args.seed
+        env.seed(env_seed)
         if args.monitor:
             env = gym.wrappers.Monitor(env, args.outdir)
         if isinstance(env.action_space, spaces.Box):
             misc.env_modifiers.make_action_filtered(env, clip_action_filter)
-        misc.env_modifiers.make_reward_filtered(env, reward_filter)
-        if args.render:
+        if not test:
+            misc.env_modifiers.make_reward_filtered(env, reward_filter)
+        if args.render and not test:
             misc.env_modifiers.make_rendered(env)
-
-        def __exit__(self, *args):
-            pass
-        env.__exit__ = __exit__
         return env
 
-    env = make_env()
+    env = make_env(test=False)
     timestep_limit = env.spec.tags.get(
         'wrapper_config.TimeLimit.max_episode_steps')
     obs_size = np.asarray(env.observation_space.shape).prod()
@@ -153,9 +154,10 @@ def main():
     if len(args.load) > 0:
         agent.load(args.load)
 
+    eval_env = make_env(test=True)
     if args.demo:
         eval_stats = experiments.eval_performance(
-            env=env,
+            env=eval_env,
             agent=agent,
             n_runs=args.eval_n_runs,
             max_episode_len=timestep_limit)
@@ -165,9 +167,11 @@ def main():
     else:
         experiments.train_agent_with_evaluation(
             agent=agent, env=env, steps=args.steps,
+            eval_env=eval_env,
             eval_n_runs=args.eval_n_runs, eval_interval=args.eval_interval,
             outdir=args.outdir,
             max_episode_len=timestep_limit)
+
 
 if __name__ == '__main__':
     main()
