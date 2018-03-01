@@ -38,6 +38,13 @@ class TestFactorizedNoisyLinear(unittest.TestCase):
         self.l.to_gpu(0)
         self._test_calls(cuda.cupy)
 
+    @attr.gpu
+    def test_calls_gpu_after_to_gpu(self):
+        mu = self.l.mu
+        mu.to_gpu(0)
+        self.l = noisy_linear.FactorizedNoisyLinear(mu)
+        self._test_calls(cuda.cupy)
+
     def _test_randomness(self, xp):
         x = xp.random.standard_normal((10, 6)).astype(numpy.float32)
         y1 = self.l(x).data

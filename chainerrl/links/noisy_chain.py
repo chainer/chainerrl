@@ -13,9 +13,6 @@ def to_factorized_noisy(link, *args, **kwargs):
     """Add noisiness to components of given link
 
     Currently this function supports L.Linear (with and without bias)
-
-    To put a noisy link on a gpu, this function should be called before
-    link.to_gpu()
     """
 
     def func_to_factorized_noisy(link):

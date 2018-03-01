@@ -31,6 +31,10 @@ class FactorizedNoisyLinear(chainer.Chain):
                 initialW=VarianceScalingConstant(sigma_scale),
                 initial_bias=Constant(sigma_scale))
 
+        device_id = self.mu._device_id
+        if device_id is not None:
+            self.to_gpu(device_id)
+
     def _eps(self, shape, dtype):
         xp = self.xp
         r = xp.random.standard_normal(shape).astype(dtype)
