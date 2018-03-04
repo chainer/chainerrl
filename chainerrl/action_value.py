@@ -171,6 +171,10 @@ class DistributionalDiscreteActionValue(ActionValue):
         return 'DistributionalDiscreteActionValue greedy_actions:{} q_values:{}'.format(
             self.greedy_actions.data, self.q_values)
 
+    @property
+    def params(self):
+        return (self.q_dist, self.z_values,)
+
 
 class QuadraticActionValue(ActionValue):
     """Q-function output for continuous action space.
