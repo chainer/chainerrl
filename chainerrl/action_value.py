@@ -21,6 +21,7 @@ import numpy as np
 
 from chainerrl.misc.chainer_compat import matmul_v3
 
+
 class ActionValue(with_metaclass(ABCMeta, object)):
     """Struct that holds state-fixed Q-functions and its subproducts.
 
@@ -114,14 +115,19 @@ class DistributionalDiscreteActionValue(ActionValue):
     """distributional Q-function output for discrete action space.
 
     Args:
-        q_dist (ndarray or chainer.Variable):
-            Array of Q distributions whose shape is (batchsize, n_actions, n_atoms)
+        q_dist (chainer.Variable): Probabilities of atoms. Its shape must be
+            (batchsize, n_actions, n_atoms).
+        z_values (ndarray or chainer.Variable): Values represented by atoms.
+            Its shape must be (n_atoms,).
     """
 
     def __init__(self, q_dist, z_values, q_values_formatter=lambda x: x):
         assert isinstance(q_dist, chainer.Variable)
-        self.xp = cuda.get_array_module(q_dist.data)
+        assert q_dist.ndim == 3
+        assert z_values.ndim == 1
+        assert q_dist.shape[2] == z_values.shape[0]
 
+        self.xp = cuda.get_array_module(q_dist.data)
         self.z_values = z_values
         self.q_values = F.sum(F.scale(q_dist, self.z_values, axis=2), axis=2)
         self.q_dist = q_dist
@@ -136,26 +142,24 @@ class DistributionalDiscreteActionValue(ActionValue):
     @cached_property
     def max(self):
         with chainer.force_backprop_mode():
-            return self.q_values[self.xp.arange(self.q_values.shape[0]), self.greedy_actions.data]
+            return self.q_values[
+                self.xp.arange(self.q_values.shape[0]),
+                self.greedy_actions.data]
 
     @cached_property
     def max_distribution(self):
-        with chainer.force_backprop_mode():
-            return self.q_dist[self.xp.arange(self.q_values.shape[0]), self.greedy_actions.data]
+        """Return the Q-distributions of the greedy actions.
 
-    def sample_epsilon_greedy_actions(self, epsilon):
-        assert self.q_values.data.shape[0] == 1, \
-            "This method doesn't support batch computation"
-        if np.random.random() < epsilon:
-            return chainer.Variable(
-                self.xp.asarray([np.random.randint(0, self.n_actions)],
-                                dtype=np.int32))
-        else:
-            return self.greedy_actions
+        Returns:
+            chainer.Variable: (batch_size, n_atoms).
+        """
+        with chainer.force_backprop_mode():
+            return self.q_dist[
+                self.xp.arange(self.q_values.shape[0]),
+                self.greedy_actions.data]
 
     def evaluate_actions(self, actions):
         return self.q_dist[self.xp.arange(self.q_dist.shape[0]), actions]
-        #return self.q_dist[self.xp.arange(self.q_values.shape[0]), actions]
 
     def compute_advantage(self, actions):
         return self.evaluate_actions(actions) - self.max
@@ -168,7 +172,7 @@ class DistributionalDiscreteActionValue(ActionValue):
         return F.sum(F.softmax(beta * self.q_values) * self.q_values, axis=1)
 
     def __repr__(self):
-        return 'DistributionalDiscreteActionValue greedy_actions:{} q_values:{}'.format(
+        return 'DistributionalDiscreteActionValue greedy_actions:{} q_values:{}'.format(  # NOQA
             self.greedy_actions.data, self.q_values)
 
     @property
