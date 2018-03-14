@@ -7,9 +7,9 @@ from future import standard_library
 standard_library.install_aliases()
 
 import collections
-from distutils.version import StrictVersion
 import itertools
 from logging import getLogger
+from pkg_resources import parse_version
 
 import chainer
 import chainer.functions as F
@@ -20,8 +20,14 @@ from chainerrl import agent
 from chainerrl.misc.batch_states import batch_states
 
 
+# pkg_resources.parse_version can handle rc and b suffixes
+assert parse_version('3.0.0') >\
+    parse_version('3.0.0rc1') >\
+    parse_version('3.0.0b2')
+
+# Double backprop is supported by Chainer v3 or newer
 _is_double_backprop_supported = (
-    StrictVersion(chainer.__version__) >= StrictVersion('3.0.0'))
+    parse_version(chainer.__version__) >= parse_version('3.0.0'))
 
 
 def _get_ordered_params(link):

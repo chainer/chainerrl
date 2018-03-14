@@ -25,8 +25,7 @@ from chainerrl import policies
 from chainerrl import v_functions
 
 
-_is_double_backprop_supported = (
-    StrictVersion(chainer.__version__) >= StrictVersion('3.0.0'))
+_is_double_backprop_supported = trpo._is_double_backprop_supported
 
 
 class OldStyleIdentity(chainer.Function):
