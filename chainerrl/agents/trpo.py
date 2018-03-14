@@ -219,6 +219,11 @@ You're using Chainer v{}. TRPO requires Chainer v3.0.0 or newer.""".format(chain
         self.policy_step_size_record = collections.deque(
             maxlen=policy_step_size_stats_window)
 
+        assert self.policy.xp is self.vf.xp,\
+            'policy and vf should be in the same device.'
+        if self.obs_normalizer is not None:
+            assert self.policy.xp is self.obs_normalizer.xp,\
+                'policy and obs_normalizer should be in the same device.'
         self.xp = self.policy.xp
         self.last_state = None
         self.last_action = None
