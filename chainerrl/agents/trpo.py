@@ -31,20 +31,6 @@ def _get_ordered_params(link):
     return [x[1] for x in ordered_name_param_pairs]
 
 
-def _chainer_grad_with_zero(outputs, inputs, *args, **kwargs):
-    """Same as chainer.grad except that None grad will be replaced with zeros.
-
-    Gradients from chainer.grad may contain None. This function replaces None
-    with a zero-filled variable with the same shape as the corresponding input
-    variable.
-    """
-    default_grads = chainer.grad(outputs, inputs, *args, **kwargs)
-    xp = chainer.cuda.get_array_module(inputs[0])
-    return [grad if grad is not None
-            else chainer.Variable(xp.zeros_like(param.data))
-            for grad, param in zip(default_grads, inputs)]
-
-
 def _flatten_and_concat_variables(vs):
     """Flatten and concat variables to make a single flat vector variable."""
     return F.concat([F.flatten(v) for v in vs], axis=0)
@@ -81,7 +67,9 @@ def _replace_params_data(params, new_params_data):
 
 def _hessian_vector_product(flat_grads, params, vec):
     """Compute hessian vector product efficiently by backprop."""
-    grads = _chainer_grad_with_zero([F.sum(flat_grads * vec)], params)
+    grads = chainer.grad([F.sum(flat_grads * vec)], params)
+    assert all(grad is not None for grad in grads),\
+        "The Hessian-vector product contains None."
     grads_data = [grad.data for grad in grads]
     return _flatten_and_concat_ndarrays(grads_data)
 
@@ -403,15 +391,19 @@ should be done with new-style functions (chainer.FunctionNode) only.
 
 Found old-style functions: {}""".format(old_style_funcs))
 
-        kl_grads = _chainer_grad_with_zero([kl], policy_params,
-                                           enable_double_backprop=True)
+        kl_grads = chainer.grad([kl], policy_params,
+                                enable_double_backprop=True)
+        assert all(g is not None for g in kl_grads), "\
+The gradient contains None. The policy may have unused parameters."
         flat_kl_grads = _flatten_and_concat_variables(kl_grads)
 
         def fisher_vector_product_func(vec):
             fvp = _hessian_vector_product(flat_kl_grads, policy_params, vec)
             return fvp + self.conjugate_gradient_damping * vec
 
-        gain_grads = _chainer_grad_with_zero([gain], policy_params)
+        gain_grads = chainer.grad([gain], policy_params)
+        assert all(g is not None for g in kl_grads), "\
+The gradient contains None. The policy may have unused parameters."
         flat_gain_grads = _flatten_and_concat_ndarrays(gain_grads)
         step_direction = chainerrl.misc.conjugate_gradient(
             fisher_vector_product_func, flat_gain_grads,

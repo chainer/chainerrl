@@ -29,43 +29,6 @@ _is_double_backprop_supported = (
     StrictVersion(chainer.__version__) >= StrictVersion('3.0.0'))
 
 
-class TestChainerGradWithZero(unittest.TestCase):
-
-    def setUp(self):
-        if not _is_double_backprop_supported:
-            self.skipTest(
-                'Chainer v{} does not support double backprop.'.format(
-                    chainer.__version__))
-
-    def test(self):
-        a = chainer.Variable(np.random.rand(3).astype(np.float32))
-        b = chainer.Variable(np.random.rand(1).astype(np.float32))
-        c = chainer.Variable(np.random.rand(2).astype(np.float32))
-
-        # grads of unused variables must be zero
-
-        # a and be are used
-        y = F.sum(a, keepdims=True) * 3 + b
-        grads = trpo._chainer_grad_with_zero([y], [a, b, c])
-        np.testing.assert_allclose(grads[0].data, 3)
-        np.testing.assert_allclose(grads[1].data, 1)
-        np.testing.assert_allclose(grads[2].data, 0)
-
-        # only a is used
-        y = F.sum(a, keepdims=True) * 3
-        grads = trpo._chainer_grad_with_zero([y], [a, b, c])
-        np.testing.assert_allclose(grads[0].data, 3)
-        np.testing.assert_allclose(grads[1].data, 0)
-        np.testing.assert_allclose(grads[2].data, 0)
-
-        # only b is used
-        y = b
-        grads = trpo._chainer_grad_with_zero([b], [a, b, c])
-        np.testing.assert_allclose(grads[0].data, 0)
-        np.testing.assert_allclose(grads[1].data, 1)
-        np.testing.assert_allclose(grads[2].data, 0)
-
-
 class OldStyleIdentity(chainer.Function):
 
     """Old-style identity function."""
@@ -119,19 +82,19 @@ class TestFindOldStyleFunction(unittest.TestCase):
 
 
 def compute_hessian_vector_product(y, params, vec):
-    grads = trpo._chainer_grad_with_zero(
+    grads = chainer.grad(
         [y], params, enable_double_backprop=True)
     flat_grads = trpo._flatten_and_concat_variables(grads)
     return trpo._hessian_vector_product(flat_grads, params, vec)
 
 
 def compute_hessian(y, params):
-    grads = trpo._chainer_grad_with_zero(
+    grads = chainer.grad(
         [y], params, enable_double_backprop=True)
     flat_grads = trpo._flatten_and_concat_variables(grads)
     hessian_rows = []
     for i in range(len(flat_grads)):
-        ggrads = trpo._chainer_grad_with_zero([flat_grads[i]], params)
+        ggrads = chainer.grad([flat_grads[i]], params)
         assert all(ggrad is not None for ggrad in ggrads)
         ggrads_data = [ggrad.data for ggrad in ggrads]
         flat_ggrads_data = trpo._flatten_and_concat_ndarrays(ggrads_data)
@@ -162,7 +125,7 @@ class TestHessianVectorProduct(unittest.TestCase):
         return params, y
 
     def test_first_order(self):
-        # First order, so its Hessian will be zero
+        # First order, so its Hessian will contain None
         params, y = self._generate_params_and_first_order_output()
 
         old_style_funcs = trpo._find_old_style_function([y])
@@ -171,18 +134,10 @@ class TestHessianVectorProduct(unittest.TestCase):
 Chainer v{} does not support double backprop of these functions: {}.""".format(
                 chainer.__version__, old_style_funcs))
 
-        def test_hessian_vector_product_zero(vec):
-            hvp = compute_hessian_vector_product(y, params, vec)
-            hessian = compute_hessian(y, params)
-            self.assertEqual(np.count_nonzero(hvp), 0)
-            self.assertEqual(np.count_nonzero(hessian), 0)
-            np.testing.assert_allclose(hvp, hessian.dot(vec), atol=1e-3)
-
-        # Test with two different random vectors, reusing y
-        test_hessian_vector_product_zero(
-            np.random.rand(4).astype(np.float32))
-        test_hessian_vector_product_zero(
-            np.random.rand(4).astype(np.float32))
+        vec = np.random.rand(4).astype(np.float32)
+        # Hessian-vector product computation should raise an error due to None
+        with self.assertRaises(AssertionError):
+            compute_hessian_vector_product(y, params, vec)
 
     def test_second_order(self):
         # Second order, so its Hessian will be non-zero
