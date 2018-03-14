@@ -474,8 +474,8 @@ The gradient contains None. The policy may have unused parameters."
                 break
             step_size *= 0.5
         else:
-            self.logger.info("""\
-Line search coundn't find a good step size. The policy was not updated.""")  # NOQA
+            self.logger.info("\
+Line search coundn't find a good step size. The policy was not updated.")
             self.policy_step_size_record.append(0.)
             _replace_params_data(
                 policy_params,

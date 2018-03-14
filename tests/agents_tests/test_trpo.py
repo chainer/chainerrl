@@ -130,8 +130,8 @@ class TestHessianVectorProduct(unittest.TestCase):
 
         old_style_funcs = trpo._find_old_style_function([y])
         if old_style_funcs:
-            self.skipTest("""\
-Chainer v{} does not support double backprop of these functions: {}.""".format(
+            self.skipTest("\
+Chainer v{} does not support double backprop of these functions: {}.".format(
                 chainer.__version__, old_style_funcs))
 
         vec = np.random.rand(4).astype(np.float32)
@@ -145,8 +145,8 @@ Chainer v{} does not support double backprop of these functions: {}.""".format(
 
         old_style_funcs = trpo._find_old_style_function([y])
         if old_style_funcs:
-            self.skipTest("""\
-Chainer v{} does not support double backprop of these functions: {}.""".format(
+            self.skipTest("\
+Chainer v{} does not support double backprop of these functions: {}.".format(
                 chainer.__version__, old_style_funcs))
 
         def test_hessian_vector_product_nonzero(vec):
@@ -325,8 +325,8 @@ class TestTRPO(unittest.TestCase):
         kl = action_distrib.kl(action_distrib)
         old_style_funcs = trpo._find_old_style_function([kl])
         if old_style_funcs:
-            self.skipTest("""\
-Chainer v{} does not support double backprop of these functions: {}.""".format(
+            self.skipTest("\
+Chainer v{} does not support double backprop of these functions: {}.".format(
                 chainer.__version__, old_style_funcs))
 
         return pi, v
