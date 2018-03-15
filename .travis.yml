@@ -20,6 +20,7 @@ install:
   - pip install jupyter
   - pip install atari_py>=0.1.1
   - pip install hacking
+  - pip install autopep8
   - pip install coveralls
   - python setup.py develop
   - python -c "import numpy; numpy.show_config()"
@@ -32,6 +33,8 @@ script:
   - flake8 chainerrl
   - flake8 tests
   - flake8 examples
+  - autopep8 -r chainerrl tests examples --diff | tee check_autopep8
+  - test ! -s check_autopep8
   - |
     if [[ $CHAINER_VERSION == 2 ]]; then
       nosetests -a '!gpu,!slow' -x tests --with-coverage --cover-package chainerrl
