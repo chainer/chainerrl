@@ -6,7 +6,6 @@ from builtins import *  # NOQA
 from future import standard_library
 standard_library.install_aliases()
 
-from distutils.version import StrictVersion
 import os
 import tempfile
 import unittest
