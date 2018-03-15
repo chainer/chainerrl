@@ -118,6 +118,8 @@ class AttributeSavingMixin(object):
         for attr in self.saved_attributes:
             assert hasattr(self, attr)
             attr_value = getattr(self, attr)
+            if attr_value is None:
+                continue
             if isinstance(attr_value, AttributeSavingMixin):
                 assert not any(
                     attr_value is ancestor
@@ -139,6 +141,8 @@ class AttributeSavingMixin(object):
         for attr in self.saved_attributes:
             assert hasattr(self, attr)
             attr_value = getattr(self, attr)
+            if attr_value is None:
+                continue
             if isinstance(attr_value, AttributeSavingMixin):
                 assert not any(
                     attr_value is ancestor
