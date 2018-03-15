@@ -21,6 +21,7 @@ import os
 
 import chainer
 import gym
+gym.undo_logger_setup()
 import gym.wrappers
 import numpy as np
 
@@ -38,7 +39,8 @@ def main():
 
     parser = argparse.ArgumentParser()
     parser.add_argument('--env', type=str, default='CartPole-v0')
-    parser.add_argument('--seed', type=int, default=None)
+    parser.add_argument('--seed', type=int, default=0,
+                        help='Random seed [0, 2 ** 32)')
     parser.add_argument('--gpu', type=int, default=0)
     parser.add_argument('--outdir', type=str, default='results')
     parser.add_argument('--beta', type=float, default=1e-4)
@@ -55,15 +57,18 @@ def main():
     parser.add_argument('--monitor', action='store_true')
     args = parser.parse_args()
 
-    logging.getLogger().setLevel(args.logger_level)
+    logging.basicConfig(level=args.logger_level)
 
-    if args.seed is not None:
-        misc.set_random_seed(args.seed)
+    # Set a random seed used in ChainerRL.
+    misc.set_random_seed(args.seed, gpus=(args.gpu,))
 
     args.outdir = experiments.prepare_output_dir(args, args.outdir)
 
     def make_env(test):
         env = gym.make(args.env)
+        # Use different random seeds for train and test envs
+        env_seed = 2 ** 32 - 1 - args.seed if test else args.seed
+        env.seed(env_seed)
         if args.monitor:
             env = gym.wrappers.Monitor(env, args.outdir)
         # Scale rewards observed by agents

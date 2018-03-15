@@ -166,11 +166,11 @@ class DDPG(AttributeSavingMixin, Agent):
         Preconditions:
           target_q_function must have seen up to s_t and a_t.
           target_policy must have seen up to s_t.
-          q_function must have seen up to s_{t-1}.
+          q_function must have seen up to s_{t-1} and a_{t-1}.
         Postconditions:
           target_q_function must have seen up to s_{t+1} and a_{t+1}.
           target_policy must have seen up to s_{t+1}.
-          q_function must have seen up to s_t.
+          q_function must have seen up to s_t and a_t.
         """
 
         batch_next_state = batch['next_state']
@@ -219,7 +219,7 @@ class DDPG(AttributeSavingMixin, Agent):
         Preconditions:
           q_function must have seen up to s_{t-1} and s_{t-1}.
           policy must have seen up to s_{t-1}.
-        Preconditions:
+        Postconditions:
           q_function must have seen up to s_t and s_t.
           policy must have seen up to s_t.
         """

@@ -33,6 +33,7 @@ import chainerrl
 from chainerrl.agents.dqn import DQN
 from chainerrl import experiments
 from chainerrl import explorers
+from chainerrl import links
 from chainerrl import misc
 from chainerrl import q_functions
 from chainerrl import replay_buffer
@@ -45,12 +46,14 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--outdir', type=str, default='dqn_out')
     parser.add_argument('--env', type=str, default='Pendulum-v0')
-    parser.add_argument('--seed', type=int, default=None)
+    parser.add_argument('--seed', type=int, default=0,
+                        help='Random seed [0, 2 ** 32)')
     parser.add_argument('--gpu', type=int, default=0)
     parser.add_argument('--final-exploration-steps',
                         type=int, default=10 ** 4)
     parser.add_argument('--start-epsilon', type=float, default=1.0)
     parser.add_argument('--end-epsilon', type=float, default=0.1)
+    parser.add_argument('--noisy-net-sigma', type=float, default=None)
     parser.add_argument('--demo', action='store_true', default=False)
     parser.add_argument('--load', type=str, default=None)
     parser.add_argument('--steps', type=int, default=10 ** 5)
@@ -73,31 +76,34 @@ def main():
     parser.add_argument('--reward-scale-factor', type=float, default=1e-3)
     args = parser.parse_args()
 
+    # Set a random seed used in ChainerRL
+    misc.set_random_seed(args.seed, gpus=(args.gpu,))
+
     args.outdir = experiments.prepare_output_dir(
         args, args.outdir, argv=sys.argv)
     print('Output files are saved in {}'.format(args.outdir))
 
-    if args.seed is not None:
-        misc.set_random_seed(args.seed)
-
     def clip_action_filter(a):
         return np.clip(a, action_space.low, action_space.high)
 
-    def make_env(for_eval):
+    def make_env(test):
         env = gym.make(args.env)
+        # Use different random seeds for train and test envs
+        env_seed = 2 ** 32 - 1 - args.seed if test else args.seed
+        env.seed(env_seed)
         if args.monitor:
             env = gym.wrappers.Monitor(env, args.outdir)
         if isinstance(env.action_space, spaces.Box):
             misc.env_modifiers.make_action_filtered(env, clip_action_filter)
-        if not for_eval:
+        if not test:
             misc.env_modifiers.make_reward_filtered(
                 env, lambda x: x * args.reward_scale_factor)
-        if ((args.render_eval and for_eval) or
-                (args.render_train and not for_eval)):
+        if ((args.render_eval and test) or
+                (args.render_train and not test)):
             misc.env_modifiers.make_rendered(env)
         return env
 
-    env = make_env(for_eval=False)
+    env = make_env(test=False)
     timestep_limit = env.spec.tags.get(
         'wrapper_config.TimeLimit.max_episode_steps')
     obs_space = env.observation_space
@@ -125,6 +131,11 @@ def main():
         explorer = explorers.LinearDecayEpsilonGreedy(
             args.start_epsilon, args.end_epsilon, args.final_exploration_steps,
             action_space.sample)
+
+    if args.noisy_net_sigma is not None:
+        links.to_factorized_noisy(q_func)
+        # Turn off explorer
+        explorer = explorers.Greedy()
 
     # Draw the computational graph and save it in the output directory.
     chainerrl.misc.draw_computational_graph(
@@ -171,7 +182,7 @@ def main():
     if args.load:
         agent.load(args.load)
 
-    eval_env = make_env(for_eval=True)
+    eval_env = make_env(test=True)
 
     if args.demo:
         eval_stats = experiments.eval_performance(
