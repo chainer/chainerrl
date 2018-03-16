@@ -1,14 +1,10 @@
-"""An example of training DQN against OpenAI Gym Envs.
+"""An example of training C51 against OpenAI Gym Envs.
 
-This script is an example of training a DQN agent against OpenAI Gym envs.
-Both discrete and continuous action spaces are supported. For continuous action
-spaces, A NAF (Normalized Advantage Function) is used to approximate Q-values.
+This script is an example of training a C51 agent against OpenAI Gym envs.
+Only discrete spaces are supported.
 
 To solve CartPole-v0, run:
-    python train_dqn_gym.py --env CartPole-v0
-
-To solve Pendulum-v0, run:
-    python train_dqn_gym.py --env Pendulum-v0
+    python train_c51_gym.py --env CartPole-v0
 """
 from __future__ import print_function
 from __future__ import unicode_literals
@@ -24,7 +20,6 @@ import sys
 from chainer import optimizers
 import gym
 gym.undo_logger_setup()
-from gym import spaces
 import gym.wrappers
 import numpy as np
 
@@ -80,15 +75,10 @@ def main():
     if args.seed is not None:
         misc.set_random_seed(args.seed)
 
-    def clip_action_filter(a):
-        return np.clip(a, action_space.low, action_space.high)
-
     def make_env(for_eval):
         env = gym.make(args.env)
         if args.monitor:
             env = gym.wrappers.Monitor(env, args.outdir)
-        if isinstance(env.action_space, spaces.Box):
-            misc.env_modifiers.make_action_filtered(env, clip_action_filter)
         if not for_eval:
             misc.env_modifiers.make_reward_filtered(
                 env, lambda x: x * args.reward_scale_factor)
