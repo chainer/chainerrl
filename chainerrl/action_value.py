@@ -117,12 +117,13 @@ class DistributionalDiscreteActionValue(ActionValue):
     Args:
         q_dist (chainer.Variable): Probabilities of atoms. Its shape must be
             (batchsize, n_actions, n_atoms).
-        z_values (ndarray or chainer.Variable): Values represented by atoms.
+        z_values (ndarray): Values represented by atoms.
             Its shape must be (n_atoms,).
     """
 
     def __init__(self, q_dist, z_values, q_values_formatter=lambda x: x):
         assert isinstance(q_dist, chainer.Variable)
+        assert not isinstance(z_values, chainer.Variable)
         assert q_dist.ndim == 3
         assert z_values.ndim == 1
         assert q_dist.shape[2] == z_values.shape[0]
@@ -177,7 +178,7 @@ class DistributionalDiscreteActionValue(ActionValue):
 
     @property
     def params(self):
-        return (self.q_dist, self.z_values,)
+        return (self.q_dist,)
 
 
 class QuadraticActionValue(ActionValue):
