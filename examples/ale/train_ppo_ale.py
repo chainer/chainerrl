@@ -146,8 +146,8 @@ def main():
             step_hooks=[
                 lr_decay_hook,
                 clip_eps_decay_hook,
-                ],
-            )
+            ],
+        )
 
 
 if __name__ == '__main__':

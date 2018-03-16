@@ -138,7 +138,7 @@ class PPO(agent.AttributeSavingMixin, agent.Agent):
                 + (self.gamma * transition['nonterminal']
                    * transition['next_v_pred'])
                 - transition['v_pred']
-                )
+            )
             adv = td_err + self.gamma * self.lambd * adv
             transition['adv'] = adv
             transition['v_teacher'] = adv + transition['v_pred']
@@ -153,7 +153,7 @@ class PPO(agent.AttributeSavingMixin, agent.Agent):
         prob_ratio = F.expand_dims(prob_ratio, axis=-1)
         loss_policy = - F.mean(F.minimum(
             prob_ratio * advs,
-            F.clip(prob_ratio, 1-self.clip_eps, 1+self.clip_eps) * advs))
+            F.clip(prob_ratio, 1 - self.clip_eps, 1 + self.clip_eps) * advs))
 
         if self.clip_eps_vf is None:
             loss_value_func = F.mean_squared_error(vs_pred, vs_teacher)
@@ -164,7 +164,7 @@ class PPO(agent.AttributeSavingMixin, agent.Agent):
                                            vs_pred_old - self.clip_eps_vf,
                                            vs_pred_old + self.clip_eps_vf)
                          - vs_teacher)
-                ))
+            ))
 
         loss_entropy = -F.mean(ent)
 
@@ -183,7 +183,7 @@ class PPO(agent.AttributeSavingMixin, agent.Agent):
             loss_policy
             + self.value_func_coef * loss_value_func
             + self.entropy_coef * loss_entropy
-            )
+        )
 
     def update(self):
         xp = self.xp
@@ -219,7 +219,7 @@ class PPO(agent.AttributeSavingMixin, agent.Agent):
                 advs=advs,
                 vs_teacher=xp.array(
                     [b['v_teacher'] for b in batch], dtype=xp.float32),
-                )
+            )
 
     def act_and_train(self, obs, reward):
         if hasattr(self.model, 'obs_filter'):
@@ -289,4 +289,4 @@ class PPO(agent.AttributeSavingMixin, agent.Agent):
             ('average_loss_policy', self.average_loss_policy),
             ('average_loss_value_func', self.average_loss_value_func),
             ('average_loss_entropy', self.average_loss_entropy),
-            ]
+        ]
