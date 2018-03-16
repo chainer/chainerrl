@@ -44,7 +44,9 @@ def main():
     parser.add_argument('--use-sdl', action='store_true', default=False)
     parser.add_argument('--final-exploration-frames',
                         type=int, default=4 * 10 ** 6)
-    parser.add_argument('--outdir', type=str, default='nsq_output')
+    parser.add_argument('--outdir', type=str, default='results',
+                        help='Directory path to save output files.'
+                             ' If it does not exist, it will be created.')
     parser.add_argument('--profile', action='store_true')
     parser.add_argument('--eval-interval', type=int, default=10 ** 6)
     parser.add_argument('--eval-n-runs', type=int, default=10)
