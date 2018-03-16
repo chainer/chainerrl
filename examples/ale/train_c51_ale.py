@@ -38,6 +38,8 @@ def main():
     parser.add_argument('--use-sdl', action='store_true', default=False)
     parser.add_argument('--final-exploration-frames',
                         type=int, default=10 ** 6)
+    parser.add_argument('--final-epsilon', type=float, default=0.1)
+    parser.add_argument('--eval-epsilon', type=float, default=0.05)
     parser.add_argument('--model', type=str, default='')
     parser.add_argument('--arch', type=str, default='nature',
                         choices=['nature', 'nips', 'dueling'])
@@ -97,7 +99,7 @@ def main():
     rbuf = replay_buffer.ReplayBuffer(10 ** 6)
 
     explorer = explorers.LinearDecayEpsilonGreedy(
-        1.0, 0.1,
+        1.0, args.final_epsilon,
         args.final_exploration_frames,
         lambda: np.random.randint(n_actions))
     agent = chainerrl.agents.C51(
@@ -122,7 +124,7 @@ def main():
     else:
         # In testing DQN, randomly select 5% of actions
         eval_explorer = explorers.ConstantEpsilonGreedy(
-            5e-2, lambda: np.random.randint(n_actions))
+            args.eval_epsilon, lambda: np.random.randint(n_actions))
         experiments.train_agent_with_evaluation(
             agent=agent, env=env, steps=args.steps,
             eval_n_runs=args.eval_n_runs, eval_interval=args.eval_interval,
