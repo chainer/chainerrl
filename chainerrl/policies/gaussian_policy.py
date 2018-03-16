@@ -145,13 +145,20 @@ class FCGaussianPolicyWithStateIndependentCovariance(
             'spherical' or 'diagonal'.
         nonlinearity (callable): Nonlinearity placed between layers.
         mean_wscale (float): Scale of weight initialization of the mean layer.
+        var_func (callable): Callable that computes the variance from the var
+            parameter. It should always return positive values.
+        var_param_init (float): Initial value the var parameter.
     """
 
     def __init__(self, n_input_channels, action_size,
                  n_hidden_layers=0, n_hidden_channels=None,
                  min_action=None, max_action=None, bound_mean=False,
                  var_type='spherical',
-                 nonlinearity=F.relu, mean_wscale=1):
+                 nonlinearity=F.relu,
+                 mean_wscale=1,
+                 var_func=F.softplus,
+                 var_param_init=0,
+                 ):
 
         self.n_input_channels = n_input_channels
         self.action_size = action_size
@@ -161,6 +168,7 @@ class FCGaussianPolicyWithStateIndependentCovariance(
         self.max_action = max_action
         self.bound_mean = bound_mean
         self.nonlinearity = nonlinearity
+        self.var_func = var_func
         var_size = {'spherical': 1, 'diagonal': action_size}[var_type]
 
         layers = []
@@ -182,13 +190,11 @@ class FCGaussianPolicyWithStateIndependentCovariance(
         with self.init_scope():
             self.hidden_layers = links.Sequence(*layers)
             self.var_param = chainer.Parameter(
-                initializer=0.0, shape=(var_size,))
+                initializer=var_param_init, shape=(var_size,))
 
     def __call__(self, x):
         mean = self.hidden_layers(x)
-        var = F.broadcast_to(
-            F.softplus(self.var_param),
-            mean.shape)
+        var = F.broadcast_to(self.var_func(self.var_param), mean.shape)
         return distribution.GaussianDistribution(mean, var)
 
 

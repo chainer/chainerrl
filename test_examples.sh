@@ -7,6 +7,9 @@ echo "outdir: $outdir"
 
 gpu="$1"
 
+# While Chaienr v3 supports double backprop, v3.0.0's supported functions are very limited, so use v3.1.0.
+double_backprop_support=$(python -c "import chainer; from distutils.version import StrictVersion; print(1 if StrictVersion(chainer.__version__) >= StrictVersion('3.1.0') else 0)")
+
 # ale/dqn
 python examples/ale/train_dqn_ale.py pong --steps 100 --replay-start-size 50 --outdir $outdir/ale/dqn --gpu $gpu
 model=$(find $outdir/ale/dqn -name "*_finish")
@@ -72,3 +75,10 @@ python examples/gym/train_reinforce_gym.py --demo --load $model --eval-n-runs 1 
 python examples/gym/train_ppo_gym.py --steps 100 --update-interval 50 --batchsize 16 --epochs 2 --outdir $outdir/gym/ppo --env Pendulum-v0 --gpu $gpu
 model=$(find $outdir/gym/ppo -name "*_finish")
 python examples/gym/train_ppo_gym.py --demo --load $model --eval-n-runs 1 --env Pendulum-v0 --outdir $outdir/temp --gpu $gpu
+
+# gym/trpo (specify non-mujoco env to test without mujoco)
+if [[ $double_backprop_support = 1 ]]; then
+  python examples/gym/train_trpo_gym.py --steps 100 --trpo-update-interval 50 --outdir $outdir/gym/trpo --env Pendulum-v0 --gpu $gpu
+  model=$(find $outdir/gym/trpo -name "*_finish")
+  python examples/gym/train_trpo_gym.py --demo --load $model --eval-n-runs 1 --env Pendulum-v0 --outdir $outdir/temp --gpu $gpu
+fi
