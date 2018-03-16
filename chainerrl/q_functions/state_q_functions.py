@@ -12,11 +12,11 @@ from chainer import functions as F
 from chainer import links as L
 import numpy as np
 
+import chainerrl
 from chainerrl.action_value import DiscreteActionValue, DistributionalDiscreteActionValue
 from chainerrl.action_value import QuadraticActionValue
 from chainerrl.functions.lower_triangular_matrix import lower_triangular_matrix
 from chainerrl.links.mlp import MLP
-from chainerrl.links.mlp_distribution import MLPDistribution
 from chainerrl.links.mlp_bn import MLPBN
 from chainerrl.misc.chainer_compat import matmul_v3
 from chainerrl.q_function import StateQFunction
@@ -81,7 +81,7 @@ class DistributionalSingleModelStateQFunctionWithDiscreteAction(
 
     def __init__(self, model, z_values):
         super().__init__(model=model)
-        self.z_values = z_values
+        self.add_persistent('z_values', z_values)
 
     def __call__(self, x):
         h = self.model(x)
@@ -100,14 +100,18 @@ class DistributionalFCStateQFunctionWithDiscreteAction(
         n_hidden_layers: number of hidden layers
     """
 
-    def __init__(self, ndim_obs, n_actions, n_atoms, z_values, n_hidden_channels,
-                 n_hidden_layers, nonlinearity=F.relu,
-                 last_wscale=1.0):
-        super().__init__(model=MLPDistribution(
-            in_size=ndim_obs, n_atoms=n_atoms, out_size=n_actions,
-            hidden_sizes=[n_hidden_channels] * n_hidden_layers,
-            nonlinearity=nonlinearity,
-            last_wscale=last_wscale), z_values=z_values)
+    def __init__(self, ndim_obs, n_actions, n_atoms, z_values,
+                 n_hidden_channels, n_hidden_layers,
+                 nonlinearity=F.relu, last_wscale=1.0):
+        model = chainerrl.links.Sequence(
+            MLP(in_size=ndim_obs, out_size=n_actions * n_atoms,
+                hidden_sizes=[n_hidden_channels] * n_hidden_layers,
+                nonlinearity=nonlinearity,
+                last_wscale=last_wscale),
+            lambda x: F.reshape(x, (-1, n_actions, n_atoms)),
+            lambda x: F.softmax(x, axis=2),
+        )
+        super().__init__(model=model, z_values=z_values)
 
 
 class FCLSTMStateQFunction(chainer.Chain, StateQFunction, RecurrentChainMixin):
