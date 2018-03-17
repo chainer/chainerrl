@@ -116,18 +116,37 @@ def save_agent(agent, t, outdir, logger, suffix=''):
     logger.info('Saved the agent to %s', dirname)
 
 
-def update_best_model(agent, outdir, t, old_max_score, new_max_score, logger):
-    # Save the best model so far
-    logger.info('The best score is updated %s -> %s',
-                old_max_score, new_max_score)
-    save_agent(agent, t, outdir, logger)
-
-
 class Evaluator(object):
+    """Object that is responsible for evaluating a given agent.
 
-    def __init__(self, agent, env, n_runs, eval_interval,
-                 outdir, max_episode_len=None, explorer=None,
-                 step_offset=0, logger=None):
+    Args:
+        agent (Agent): Agent to evaluate.
+        env (Env): Env to evaluate the agent on.
+        n_runs (int): Number of episodes used in each evaluation.
+        eval_interval (int): Interval of evaluations in steps.
+        outdir (str): Path to a directory to save things.
+        max_episode_len (int): Maximum length of episodes used in evaluations.
+        explorer (Explorer or None): If set to a Explorer, it is used in
+            evaluations. If set to None, actions returned by the agent are
+            directly passed to the env.
+        step_offset (int): Offset of steps used to schedule evaluations.
+        save_best_so_far_agent (bool): If set to True, after each evaluation,
+            if the score (= mean of returns in evaluation episodes) exceeds
+            the best-so-far score, the current agent is saved.
+    """
+
+    def __init__(self,
+                 agent,
+                 env,
+                 n_runs,
+                 eval_interval,
+                 outdir,
+                 max_episode_len=None,
+                 explorer=None,
+                 step_offset=0,
+                 save_best_so_far_agent=True,
+                 logger=None,
+                 ):
         self.agent = agent
         self.env = env
         self.max_score = np.finfo(np.float32).min
@@ -140,6 +159,7 @@ class Evaluator(object):
         self.step_offset = step_offset
         self.prev_eval_t = (self.step_offset -
                             self.step_offset % self.eval_interval)
+        self.save_best_so_far_agent = save_best_so_far_agent
         self.logger = logger or logging.getLogger(__name__)
 
         # Write a header line first
@@ -166,9 +186,11 @@ class Evaluator(object):
                   eval_stats['min']) + custom_values
         record_stats(self.outdir, values)
         if mean > self.max_score:
-            update_best_model(self.agent, self.outdir, t, self.max_score, mean,
-                              logger=self.logger)
+            self.logger.info('The best score is updated %s -> %s',
+                             self.max_score, mean)
             self.max_score = mean
+            if self.save_best_so_far_agent:
+                save_agent(self.agent, t, self.outdir, self.logger)
         return mean
 
     def evaluate_if_necessary(self, t, episodes):
@@ -180,10 +202,32 @@ class Evaluator(object):
 
 
 class AsyncEvaluator(object):
+    """Object that is responsible for evaluating asynchronous multiple agents.
 
-    def __init__(self, n_runs, eval_interval,
-                 outdir, max_episode_len=None, explorer=None,
-                 step_offset=0, logger=None):
+    Args:
+        n_runs (int): Number of episodes used in each evaluation.
+        eval_interval (int): Interval of evaluations in steps.
+        outdir (str): Path to a directory to save things.
+        max_episode_len (int): Maximum length of episodes used in evaluations.
+        explorer (Explorer or None): If set to a Explorer, it is used in
+            evaluations. If set to None, actions returned by the agent are
+            directly passed to the env.
+        step_offset (int): Offset of steps used to schedule evaluations.
+        save_best_so_far_agent (bool): If set to True, after each evaluation,
+            if the score (= mean return of evaluation episodes) exceeds
+            the best-so-far score, the current agent is saved.
+    """
+
+    def __init__(self,
+                 n_runs,
+                 eval_interval,
+                 outdir,
+                 max_episode_len=None,
+                 explorer=None,
+                 step_offset=0,
+                 save_best_so_far_agent=True,
+                 logger=None,
+                 ):
 
         self.start_time = time.time()
         self.n_runs = n_runs
@@ -192,6 +236,7 @@ class AsyncEvaluator(object):
         self.max_episode_len = max_episode_len
         self.explorer = explorer
         self.step_offset = step_offset
+        self.save_best_so_far_agent = save_best_so_far_agent
         self.logger = logger or logging.getLogger(__name__)
 
         # Values below are shared among processes
@@ -229,10 +274,11 @@ class AsyncEvaluator(object):
         record_stats(self.outdir, values)
         with self._max_score.get_lock():
             if mean > self._max_score.value:
-                update_best_model(
-                    agent, self.outdir, t, self._max_score.value, mean,
-                    logger=self.logger)
+                self.logger.info('The best score is updated %s -> %s',
+                                 self._max_score.value, mean)
                 self._max_score.value = mean
+                if self.save_best_so_far_agent:
+                    save_agent(agent, t, self.outdir, self.logger)
         return mean
 
     def write_header(self, agent):
