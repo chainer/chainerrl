@@ -129,6 +129,7 @@ def main():
             agent=agent, env=env, steps=args.steps,
             eval_n_runs=args.eval_n_runs, eval_interval=args.eval_interval,
             outdir=args.outdir, eval_explorer=eval_explorer,
+            save_best_so_far_agent=False,
             eval_env=eval_env)
 
 
