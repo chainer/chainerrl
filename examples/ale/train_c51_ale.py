@@ -22,9 +22,6 @@ from dqn_phi import dqn_phi
 
 
 def main():
-    import logging
-    logging.basicConfig(level=logging.DEBUG)
-
     parser = argparse.ArgumentParser()
     parser.add_argument('rom', type=str)
     parser.add_argument('--outdir', type=str, default='results',
@@ -52,7 +49,12 @@ def main():
     parser.add_argument('--activation', type=str, default='relu')
     parser.add_argument('--eval-n-runs', type=int, default=10)
     parser.add_argument('--batch-size', type=int, default=32)
+    parser.add_argument('--logging-level', type=int, default=20,
+                        help='Logging level. 10:DEBUG, 20:INFO etc.')
     args = parser.parse_args()
+
+    import logging
+    logging.basicConfig(level=args.logging_level)
 
     # Set a random seed used in ChainerRL.
     misc.set_random_seed(args.seed, gpus=(args.gpu,))

@@ -63,9 +63,6 @@ def parse_agent(agent):
 
 
 def main():
-    import logging
-    logging.basicConfig(level=logging.DEBUG)
-
     parser = argparse.ArgumentParser()
     parser.add_argument('rom', type=str)
     parser.add_argument('--outdir', type=str, default='results',
@@ -97,7 +94,12 @@ def main():
     parser.set_defaults(clip_delta=True)
     parser.add_argument('--agent', type=str, default='DQN',
                         choices=['DQN', 'DoubleDQN', 'PAL'])
+    parser.add_argument('--logging-level', type=int, default=20,
+                        help='Logging level. 10:DEBUG, 20:INFO etc.')
     args = parser.parse_args()
+
+    import logging
+    logging.basicConfig(level=args.logging_level)
 
     # Set a random seed used in ChainerRL.
     misc.set_random_seed(args.seed, gpus=(args.gpu,))
