@@ -168,6 +168,7 @@ def main():
             eval_n_runs=args.eval_n_runs, eval_interval=args.eval_interval,
             outdir=args.outdir, eval_explorer=eval_explorer,
             save_best_so_far_agent=False,
+            max_episode_len=15 * 60 * 5,  # 5 min.
             eval_env=eval_env)
 
 
