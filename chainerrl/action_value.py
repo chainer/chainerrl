@@ -143,24 +143,24 @@ class DistributionalDiscreteActionValue(ActionValue):
     @cached_property
     def max(self):
         with chainer.force_backprop_mode():
-            return self.q_values[
-                self.xp.arange(self.q_values.shape[0]),
-                self.greedy_actions.data]
+            return F.select_item(self.q_values, self.greedy_actions)
 
     @cached_property
-    def max_distribution(self):
-        """Return the Q-distributions of the greedy actions.
+    def max_as_distribution(self):
+        """Return the return distributions of the greedy actions.
 
         Returns:
             chainer.Variable: (batch_size, n_atoms).
         """
         with chainer.force_backprop_mode():
-            return self.q_dist[
-                self.xp.arange(self.q_values.shape[0]),
-                self.greedy_actions.data]
+            return self.q_dist[self.xp.arange(self.q_values.shape[0]),
+                               self.greedy_actions.data]
 
     def evaluate_actions(self, actions):
-        return self.q_dist[self.xp.arange(self.q_dist.shape[0]), actions]
+        return F.select_item(self.q_values, actions)
+
+    def evaluate_actions_as_distribution(self, actions):
+        return self.q_dist[self.xp.arange(self.q_values.shape[0]), actions]
 
     def compute_advantage(self, actions):
         return self.evaluate_actions(actions) - self.max
