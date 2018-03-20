@@ -150,7 +150,8 @@ class DistributionalDiscreteActionValue(ActionValue):
         """Return the return distributions of the greedy actions.
 
         Returns:
-            chainer.Variable: (batch_size, n_atoms).
+            chainer.Variable: Return distributions. Its shape will be
+                (batch_size, n_atoms).
         """
         with chainer.force_backprop_mode():
             return self.q_dist[self.xp.arange(self.q_values.shape[0]),
@@ -160,6 +161,16 @@ class DistributionalDiscreteActionValue(ActionValue):
         return F.select_item(self.q_values, actions)
 
     def evaluate_actions_as_distribution(self, actions):
+        """Return the return distributions of given actions.
+
+        Args:
+            actions (chainer.Variable or ndarray): Array of action indices.
+                Its shape must be (batch_size,).
+
+        Returns:
+            chainer.Variable: Return distributions. Its shape will be
+                (batch_size, n_atoms).
+        """
         return self.q_dist[self.xp.arange(self.q_values.shape[0]), actions]
 
     def compute_advantage(self, actions):
