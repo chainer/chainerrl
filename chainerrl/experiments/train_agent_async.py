@@ -90,7 +90,7 @@ def train_loop(process_idx, env, agent, steps, outdir, counter,
                 if global_t > steps or training_done.value:
                     break
 
-    except KeyboardInterrupt:
+    except (Exception, KeyboardInterrupt):
         if process_idx == 0:
             # Save the current model before being killed
             dirname = os.path.join(outdir, '{}_except'.format(global_t))
