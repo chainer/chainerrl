@@ -6,8 +6,9 @@ from collections import deque
 
 import cv2
 import gym
-from gym import spaces
 import numpy as np
+
+from chainerrl import spaces
 
 cv2.ocl.setUseOpenCL(False)
 
@@ -24,7 +25,7 @@ class NoopResetEnv(gym.Wrapper):
         self.noop_action = 0
         assert env.unwrapped.get_action_meanings()[0] == 'NOOP'
 
-    def reset(self, **kwargs):
+    def _reset(self, **kwargs):
         """Do no-op action for a number of steps in [1, noop_max]."""
         self.env.reset(**kwargs)
         if self.override_num_noops is not None:
@@ -40,7 +41,7 @@ class NoopResetEnv(gym.Wrapper):
                 obs = self.env.reset(**kwargs)
         return obs
 
-    def step(self, ac):
+    def _step(self, ac):
         return self.env.step(ac)
 
 
@@ -51,7 +52,7 @@ class FireResetEnv(gym.Wrapper):
         assert env.unwrapped.get_action_meanings()[1] == 'FIRE'
         assert len(env.unwrapped.get_action_meanings()) >= 3
 
-    def reset(self, **kwargs):
+    def _reset(self, **kwargs):
         self.env.reset(**kwargs)
         obs, _, done, _ = self.env.step(1)
         if done:
@@ -61,7 +62,7 @@ class FireResetEnv(gym.Wrapper):
             self.env.reset(**kwargs)
         return obs
 
-    def step(self, ac):
+    def _step(self, ac):
         return self.env.step(ac)
 
 
@@ -75,7 +76,7 @@ class EpisodicLifeEnv(gym.Wrapper):
         self.lives = 0
         self.was_real_done = True
 
-    def step(self, action):
+    def _step(self, action):
         obs, reward, done, info = self.env.step(action)
         self.was_real_done = done
         # check current lives, make loss of life terminal,
@@ -90,7 +91,7 @@ class EpisodicLifeEnv(gym.Wrapper):
         self.lives = lives
         return obs, reward, done, info
 
-    def reset(self, **kwargs):
+    def _reset(self, **kwargs):
         """Reset only when lives are exhausted.
 
         This way all states are still reachable even though lives are episodic,
@@ -114,7 +115,7 @@ class MaxAndSkipEnv(gym.Wrapper):
             (2,) + env.observation_space.shape, dtype=np.uint8)
         self._skip = skip
 
-    def step(self, action):
+    def _step(self, action):
         """Repeat action, sum reward, and max over last observations."""
         total_reward = 0.0
         done = None
@@ -133,7 +134,7 @@ class MaxAndSkipEnv(gym.Wrapper):
 
         return max_frame, total_reward, done, info
 
-    def reset(self, **kwargs):
+    def _reset(self, **kwargs):
         return self.env.reset(**kwargs)
 
 
@@ -141,7 +142,7 @@ class ClipRewardEnv(gym.RewardWrapper):
     def __init__(self, env):
         gym.RewardWrapper.__init__(self, env)
 
-    def reward(self, reward):
+    def _reward(self, reward):
         """Bin reward to {+1, 0, -1} by its sign."""
         return np.sign(reward)
 
@@ -156,7 +157,7 @@ class WarpFrame(gym.ObservationWrapper):
             low=0, high=255,
             shape=(self.height, self.width, 1), dtype=np.uint8)
 
-    def observation(self, frame):
+    def _observation(self, frame):
         frame = cv2.cvtColor(frame, cv2.COLOR_RGB2GRAY)
         frame = cv2.resize(frame, (self.width, self.height),
                            interpolation=cv2.INTER_AREA)
@@ -180,13 +181,13 @@ class FrameStack(gym.Wrapper):
         self.observation_space = spaces.Box(low=0, high=255, shape=(
             shp[0], shp[1], shp[2] * k), dtype=np.uint8)
 
-    def reset(self):
+    def _reset(self):
         ob = self.env.reset()
         for _ in range(self.k):
             self.frames.append(ob)
         return self._get_ob()
 
-    def step(self, action):
+    def _step(self, action):
         ob, reward, done, info = self.env.step(action)
         self.frames.append(ob)
         return self._get_ob(), reward, done, info
@@ -200,7 +201,7 @@ class ScaledFloatFrame(gym.ObservationWrapper):
     def __init__(self, env):
         gym.ObservationWrapper.__init__(self, env)
 
-    def observation(self, observation):
+    def _observation(self, observation):
         # careful! This undoes the memory optimization, use
         # with smaller replay buffers only.
         return np.array(observation).astype(np.float32) / 255.0
@@ -251,7 +252,7 @@ def make_atari(env_id):
 
 
 def wrap_deepmind(env, episode_life=True, clip_rewards=True,
-                  frame_stack=False, scale=False):
+                  frame_stack=True, scale=False):
     """Configure environment for DeepMind-style Atari."""
     if episode_life:
         env = EpisodicLifeEnv(env)
