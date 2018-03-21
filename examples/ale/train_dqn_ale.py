@@ -8,6 +8,8 @@ standard_library.install_aliases()
 import argparse
 import os
 
+import gym
+gym.undo_logger_setup()
 from chainer import functions as F
 from chainer import links as L
 from chainer import optimizers
@@ -16,7 +18,6 @@ import numpy as np
 import chainerrl
 from chainerrl.action_value import DiscreteActionValue
 from chainerrl import agents
-from chainerrl.envs import ale
 from chainerrl import experiments
 from chainerrl import explorers
 from chainerrl import links
@@ -24,7 +25,7 @@ from chainerrl import misc
 from chainerrl.q_functions import DuelingDQN
 from chainerrl import replay_buffer
 
-from dqn_phi import dqn_phi
+import atari_wrappers
 
 
 def parse_activation(activation_str):
@@ -64,7 +65,7 @@ def parse_agent(agent):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('rom', type=str)
+    parser.add_argument('--env', type=str, default='BreakoutNoFrameskip-v4')
     parser.add_argument('--outdir', type=str, default='results',
                         help='Directory path to save output files.'
                              ' If it does not exist, it will be created.')
@@ -112,14 +113,17 @@ def main():
     print('Output files are saved in {}'.format(args.outdir))
 
     # In training, life loss is considered as terminal states
-    env = ale.ALE(args.rom, use_sdl=args.use_sdl, seed=train_seed)
-    misc.env_modifiers.make_reward_clipped(env, -1, 1)
-    # In testing, an episode is terminated  when all lives are lost
-    eval_env = ale.ALE(args.rom, use_sdl=args.use_sdl,
-                       treat_life_lost_as_terminal=False,
-                       seed=test_seed)
+    env = gym.make(args.env)
+    env.seed(train_seed)
+    env = atari_wrappers.wrap_deepmind(env)
 
-    n_actions = env.number_of_actions
+    # In testing, an episode is terminated  when all lives are lost
+    eval_env = gym.make(args.env)
+    eval_env.seed(test_seed)
+    eval_env = atari_wrappers.wrap_deepmind(
+        eval_env, episode_life=False, clip_rewards=False)
+
+    n_actions = env.action_space.n
     activation = parse_activation(args.activation)
     q_func = parse_arch(args.arch, n_actions, activation)
 
@@ -140,13 +144,18 @@ def main():
         1.0, args.final_epsilon,
         args.final_exploration_frames,
         lambda: np.random.randint(n_actions))
+
+    def phi(x):
+        return np.asarray(x).transpose(2, 0, 1).astype(np.float32) / 255
+
     Agent = parse_agent(args.agent)
     agent = Agent(q_func, opt, rbuf, gpu=args.gpu, gamma=0.99,
                   explorer=explorer, replay_start_size=args.replay_start_size,
                   target_update_interval=args.target_update_interval,
                   clip_delta=args.clip_delta,
                   update_interval=args.update_interval,
-                  batch_accumulator='sum', phi=dqn_phi)
+                  batch_accumulator='sum',
+                  phi=phi)
 
     if args.load:
         agent.load(args.load)
@@ -168,7 +177,6 @@ def main():
             eval_n_runs=args.eval_n_runs, eval_interval=args.eval_interval,
             outdir=args.outdir, eval_explorer=eval_explorer,
             save_best_so_far_agent=False,
-            max_episode_len=15 * 60 * 5,  # 5 min.
             eval_env=eval_env)
 
 
