@@ -113,15 +113,15 @@ def main():
     print('Output files are saved in {}'.format(args.outdir))
 
     # In training, life loss is considered as terminal states
-    env = gym.make(args.env)
+    env = atari_wrappers.wrap_deepmind(atari_wrappers.make_atari(args.env))
     env.seed(train_seed)
-    env = atari_wrappers.wrap_deepmind(env)
 
     # In testing, an episode is terminated  when all lives are lost
-    eval_env = gym.make(args.env)
-    eval_env.seed(test_seed)
     eval_env = atari_wrappers.wrap_deepmind(
-        eval_env, episode_life=False, clip_rewards=False)
+        atari_wrappers.make_atari(args.env),
+        episode_life=False,
+        clip_rewards=False)
+    eval_env.seed(test_seed)
 
     n_actions = env.action_space.n
     activation = parse_activation(args.activation)
