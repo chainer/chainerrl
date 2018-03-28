@@ -50,7 +50,9 @@ def main():
     parser.add_argument('--gpu', type=int, default=0)
     parser.add_argument('--seed', type=int, default=0,
                         help='Random seed [0, 2 ** 31)')
-    parser.add_argument('--outdir', type=str, default=None)
+    parser.add_argument('--outdir', type=str, default='results',
+                        help='Directory path to save output files.'
+                             ' If it does not exist, it will be created.')
     parser.add_argument('--use-sdl', action='store_true')
     parser.add_argument('--max-episode-len', type=int, default=10000)
     parser.add_argument('--profile', action='store_true')

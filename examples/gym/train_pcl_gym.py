@@ -47,7 +47,9 @@ def main():
     parser.add_argument('--env', type=str, default='CartPole-v0')
     parser.add_argument('--seed', type=int, default=0,
                         help='Random seed [0, 2 ** 32)')
-    parser.add_argument('--outdir', type=str, default=None)
+    parser.add_argument('--outdir', type=str, default='results',
+                        help='Directory path to save output files.'
+                             ' If it does not exist, it will be created.')
     parser.add_argument('--batchsize', type=int, default=10)
     parser.add_argument('--rollout-len', type=int, default=10)
     parser.add_argument('--n-hidden-channels', type=int, default=100)
