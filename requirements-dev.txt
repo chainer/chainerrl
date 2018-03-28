@@ -1,0 +1,7 @@
+-r requirements.txt
+atari_py
+hacking
+mock
+pytest
+sphinx
+sphinx_rtd_theme

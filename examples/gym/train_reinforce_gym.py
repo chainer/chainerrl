@@ -17,9 +17,11 @@ from builtins import *  # NOQA
 from future import standard_library
 standard_library.install_aliases()
 import argparse
+import os
 
 import chainer
 import gym
+gym.undo_logger_setup()
 import gym.wrappers
 
 import chainerrl
@@ -32,9 +34,12 @@ def main():
 
     parser = argparse.ArgumentParser()
     parser.add_argument('--env', type=str, default='CartPole-v0')
-    parser.add_argument('--seed', type=int, default=None)
+    parser.add_argument('--seed', type=int, default=0,
+                        help='Random seed [0, 2 ** 32)')
     parser.add_argument('--gpu', type=int, default=0)
-    parser.add_argument('--outdir', type=str, default='results')
+    parser.add_argument('--outdir', type=str, default='results',
+                        help='Directory path to save output files.'
+                             ' If it does not exist, it will be created.')
     parser.add_argument('--beta', type=float, default=1e-4)
     parser.add_argument('--batchsize', type=int, default=10)
     parser.add_argument('--steps', type=int, default=10 ** 5)
@@ -49,15 +54,18 @@ def main():
     parser.add_argument('--monitor', action='store_true')
     args = parser.parse_args()
 
-    logging.getLogger().setLevel(args.logger_level)
+    logging.basicConfig(level=args.logger_level)
 
-    if args.seed is not None:
-        misc.set_random_seed(args.seed)
+    # Set a random seed used in ChainerRL.
+    misc.set_random_seed(args.seed, gpus=(args.gpu,))
 
     args.outdir = experiments.prepare_output_dir(args, args.outdir)
 
     def make_env(test):
         env = gym.make(args.env)
+        # Use different random seeds for train and test envs
+        env_seed = 2 ** 32 - 1 - args.seed if test else args.seed
+        env.seed(env_seed)
         # Cast observations to float32 because our model uses float32
         env = chainerrl.wrappers.CastObservationToFloat32(env)
         if args.monitor:
@@ -94,6 +102,11 @@ def main():
             n_hidden_layers=2,
             nonlinearity=chainer.functions.leaky_relu,
         )
+
+    # Draw the computational graph and save it in the output directory.
+    chainerrl.misc.draw_computational_graph(
+        [model(np.zeros_like(obs_space.low, dtype=np.float32)[None])],
+        os.path.join(args.outdir, 'model'))
 
     if args.gpu >= 0:
         chainer.cuda.get_device(args.gpu).use()

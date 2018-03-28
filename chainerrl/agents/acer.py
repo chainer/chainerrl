@@ -611,9 +611,9 @@ class ACER(agent.AttributeSavingMixin, agent.AsyncAgent):
 
         self.init_history_data_for_online_update()
 
-    def act_and_train(self, state, reward):
+    def act_and_train(self, obs, reward):
 
-        statevar = np.expand_dims(self.phi(state), 0)
+        statevar = np.expand_dims(self.phi(obs), 0)
 
         self.past_rewards[self.t - 1] = reward
 
@@ -658,13 +658,13 @@ class ACER(agent.AttributeSavingMixin, agent.AsyncAgent):
                 state=self.last_state,
                 action=self.last_action,
                 reward=reward,
-                next_state=state,
+                next_state=obs,
                 next_action=action,
                 is_state_terminal=False,
                 mu=self.last_action_distrib,
             )
 
-        self.last_state = state
+        self.last_state = obs
         self.last_action = action
         self.last_action_distrib = action_distrib.copy()
 

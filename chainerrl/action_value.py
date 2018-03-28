@@ -10,6 +10,7 @@ standard_library.install_aliases()
 from abc import ABCMeta
 from abc import abstractmethod
 from abc import abstractproperty
+import warnings
 
 from cached_property import cached_property
 import chainer
@@ -39,6 +40,15 @@ class ActionValue(with_metaclass(ABCMeta, object)):
     @abstractmethod
     def evaluate_actions(self, actions):
         """Evaluate Q(s,a) with a = given actions."""
+        raise NotImplementedError()
+
+    @abstractproperty
+    def params(self):
+        """Learnable parameters of this action value.
+
+        Returns:
+            tuple of chainer.Variable
+        """
         raise NotImplementedError()
 
 
@@ -95,6 +105,10 @@ class DiscreteActionValue(ActionValue):
             self.greedy_actions.data,
             self.q_values_formatter(self.q_values.data))
 
+    @property
+    def params(self):
+        return (self.q_values,)
+
 
 class QuadraticActionValue(ActionValue):
     """Q-function output for continuous action space.
@@ -120,8 +134,14 @@ class QuadraticActionValue(ActionValue):
         self.mu = mu
         self.mat = mat
         self.v = v
-        self.min_action = self.xp.asarray(min_action, dtype=np.float32)
-        self.max_action = self.xp.asarray(max_action, dtype=np.float32)
+        if min_action is None:
+            self.min_action = None
+        else:
+            self.min_action = self.xp.asarray(min_action, dtype=np.float32)
+        if max_action is None:
+            self.max_action = None
+        else:
+            self.max_action = self.xp.asarray(max_action, dtype=np.float32)
 
         self.batch_size = self.mu.data.shape[0]
 
@@ -164,6 +184,10 @@ class QuadraticActionValue(ActionValue):
         return 'QuadraticActionValue greedy_actions:{} v:{}'.format(
             self.greedy_actions.data, self.v.data)
 
+    @property
+    def params(self):
+        return (self.mu, self.mat, self.v)
+
 
 class SingleActionValue(ActionValue):
     """ActionValue that can evaluate only a single action."""
@@ -194,3 +218,12 @@ class SingleActionValue(ActionValue):
 
     def __repr__(self):
         return 'SingleActionValue'
+
+    @property
+    def params(self):
+        warnings.warn(
+            'SingleActionValue has no learnable parameters until it'
+            ' is evaluated on some action. If you want to draw a computation'
+            ' graph that outputs SingleActionValue, use the variable returned'
+            ' by its method such as evaluate_actions instead.')
+        return ()

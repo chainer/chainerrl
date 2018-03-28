@@ -6,6 +6,10 @@ from builtins import *  # NOQA
 from future import standard_library
 standard_library.install_aliases()
 import argparse
+import os
+
+# This prevents numpy from using multiple threads
+os.environ['OMP_NUM_THREADS'] = '1'
 
 import chainer
 from chainer import functions as F
@@ -35,8 +39,11 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('processes', type=int)
     parser.add_argument('--env', type=str, default='CartPole-v0')
-    parser.add_argument('--seed', type=int, default=None)
-    parser.add_argument('--outdir', type=str, default=None)
+    parser.add_argument('--seed', type=int, default=0,
+                        help='Random seed [0, 2 ** 32)')
+    parser.add_argument('--outdir', type=str, default='results',
+                        help='Directory path to save output files.'
+                             ' If it does not exist, it will be created.')
     parser.add_argument('--t-max', type=int, default=50)
     parser.add_argument('--n-times-replay', type=int, default=4)
     parser.add_argument('--n-hidden-channels', type=int, default=100)
@@ -63,13 +70,25 @@ def main():
 
     logging.basicConfig(level=args.logger_level)
 
-    if args.seed is not None:
-        misc.set_random_seed(args.seed)
+    # Set a random seed used in ChainerRL.
+    # If you use more than one processes, the results will be no longer
+    # deterministic even with the same random seed.
+    misc.set_random_seed(args.seed)
+
+    # Set different random seeds for different subprocesses.
+    # If seed=0 and processes=4, subprocess seeds are [0, 1, 2, 3].
+    # If seed=1 and processes=4, subprocess seeds are [4, 5, 6, 7].
+    process_seeds = np.arange(args.processes) + args.seed * args.processes
+    assert process_seeds.max() < 2 ** 32
 
     args.outdir = experiments.prepare_output_dir(args, args.outdir)
 
     def make_env(process_idx, test):
         env = gym.make(args.env)
+        # Use different random seeds for train and test envs
+        process_seed = int(process_seeds[process_idx])
+        env_seed = 2 ** 32 - 1 - process_seed if test else process_seed
+        env.seed(env_seed)
         # Cast observations to float32 because our model uses float32
         env = chainerrl.wrappers.CastObservationToFloat32(env)
         if args.monitor and process_idx == 0:

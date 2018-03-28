@@ -81,7 +81,7 @@ def train_agent(agent, env, steps, outdir, max_episode_len=None,
                 r = 0
                 done = False
 
-    except Exception:
+    except (Exception, KeyboardInterrupt):
         # Save the current model before being killed
         save_agent(agent, t, outdir, logger, suffix='_except')
         raise
@@ -90,11 +90,22 @@ def train_agent(agent, env, steps, outdir, max_episode_len=None,
     save_agent(agent, t, outdir, logger, suffix='_finish')
 
 
-def train_agent_with_evaluation(
-        agent, env, steps, eval_n_runs, eval_interval,
-        outdir, max_episode_len=None, step_offset=0, eval_explorer=None,
-        eval_max_episode_len=None, eval_env=None, successful_score=None,
-        step_hooks=[], logger=None):
+def train_agent_with_evaluation(agent,
+                                env,
+                                steps,
+                                eval_n_runs,
+                                eval_interval,
+                                outdir,
+                                max_episode_len=None,
+                                step_offset=0,
+                                eval_explorer=None,
+                                eval_max_episode_len=None,
+                                eval_env=None,
+                                successful_score=None,
+                                step_hooks=[],
+                                save_best_so_far_agent=True,
+                                logger=None,
+                                ):
     """Train an agent while regularly evaluating it.
 
     Args:
@@ -107,12 +118,17 @@ def train_agent_with_evaluation(
         max_episode_len (int): Maximum episode length.
         step_offset (int): Time step from which training starts.
         eval_explorer: Explorer used for evaluation.
+        eval_max_episode_len (int or None): Maximum episode length of
+            evaluation runs. If set to None, max_episode_len is used instead.
         eval_env: Environment used for evaluation.
         successful_score (float): Finish training if the mean score is greater
             or equal to this value if not None
         step_hooks (list): List of callable objects that accepts
             (env, agent, step) as arguments. They are called every step.
             See chainerrl.experiments.hooks.
+        save_best_so_far_agent (bool): If set to True, after each evaluation,
+            if the score (= mean return of evaluation episodes) exceeds
+            the best-so-far score, the current agent is saved.
         logger (logging.Logger): Logger used in this function.
     """
 
@@ -133,7 +149,9 @@ def train_agent_with_evaluation(
                           explorer=eval_explorer,
                           env=eval_env,
                           step_offset=step_offset,
-                          logger=logger)
+                          save_best_so_far_agent=save_best_so_far_agent,
+                          logger=logger,
+                          )
 
     train_agent(
         agent, env, steps, outdir,

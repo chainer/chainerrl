@@ -10,6 +10,8 @@ from chainerrl.agents.nsq import NSQ  # NOQA
 from chainerrl.agents.pal import PAL  # NOQA
 from chainerrl.agents.pcl import PCL  # NOQA
 from chainerrl.agents.pgt import PGT  # NOQA
+from chainerrl.agents.ppo import PPO  # NOQA
 from chainerrl.agents.reinforce import REINFORCE  # NOQA
 from chainerrl.agents.residual_dqn import ResidualDQN  # NOQA
 from chainerrl.agents.sarsa import SARSA  # NOQA
+from chainerrl.agents.trpo import TRPO  # NOQA

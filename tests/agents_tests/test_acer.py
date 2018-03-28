@@ -11,11 +11,13 @@ import logging
 import os
 import tempfile
 import unittest
+import warnings
 
 import chainer
 from chainer import functions as F
 from chainer import links as L
 from chainer import testing
+from chainer.testing import condition
 import numpy as np
 
 import chainerrl
@@ -127,7 +129,8 @@ class TestBiasCorrection(unittest.TestCase):
     def setUp(self):
         pass
 
-    @chainer.testing.condition.retry(3)
+    @testing.attr.slow
+    @condition.retry(3)
     def test_bias_correction(self):
 
         if self.distrib_type == 'Gaussian':
@@ -471,13 +474,15 @@ class TestACER(unittest.TestCase):
 
         max_episode_len = None if episodic else 2
 
-        train_agent_async(
-            outdir=self.outdir, processes=nproc, make_env=make_env,
-            agent=agent, steps=steps,
-            max_episode_len=max_episode_len,
-            eval_interval=500,
-            eval_n_runs=5,
-            successful_score=1)
+        with warnings.catch_warnings(record=True) as warns:
+            train_agent_async(
+                outdir=self.outdir, processes=nproc, make_env=make_env,
+                agent=agent, steps=steps,
+                max_episode_len=max_episode_len,
+                eval_interval=500,
+                eval_n_runs=5,
+                successful_score=1)
+            assert len(warns) == 0, warns[0]
 
         # The agent returned by train_agent_async is not guaranteed to be
         # successful because parameters could be modified by other processes

@@ -5,9 +5,10 @@ from __future__ import absolute_import
 from builtins import *  # NOQA
 from future import standard_library
 standard_library.install_aliases()
-import random
 
 import numpy as np
+
+from chainerrl.misc.random import sample_n_k
 
 
 class PrioritizedBuffer (object):
@@ -38,7 +39,7 @@ class PrioritizedBuffer (object):
     def _pop_random_data_inf(self):
         assert self.data_inf
         n = len(self.data_inf)
-        i = random.randrange(n)
+        i = np.random.randint(n)
         ret = self.data_inf[i]
         self.data_inf[i] = self.data_inf[n - 1]
         self.data_inf.pop()
@@ -55,7 +56,7 @@ class PrioritizedBuffer (object):
         n = len(self.data)
         if n == 0:
             return self._pop_random_data_inf()
-        i = random.randrange(0, n)
+        i = np.random.randint(n)
         # remove i-th
         self.priority_tree[i] = self.priority_tree[n - 1]
         del self.priority_tree[n - 1]
@@ -129,8 +130,9 @@ class PrioritizedBuffer (object):
         self.sampled_indices = []
 
     def _uniform_sample_indices_and_probabilities(self, n):
-        indices = random.sample(range(len(self.data)),
-                                max(0, n - len(self.data_inf)))
+        indices = list(sample_n_k(
+            len(self.data),
+            max(0, n - len(self.data_inf))))
         probabilities = [1 / len(self)] * len(indices)
         while len(indices) < n:
             i = len(self.data)
@@ -242,7 +244,7 @@ class SumTree (object):
         vals = []
         total_val = self.s  # save this before it changes by removing
         for _ in range(n):
-            ix, val = self._pick(random.uniform(0.0, self.s))
+            ix, val = self._pick(np.random.uniform(0.0, self.s))
             ixs.append(ix)
             vals.append(val)
             self._write(ix, 0.0)
@@ -252,7 +254,7 @@ class SumTree (object):
         return ixs, [v / total_val for v in vals]
 
     def prioritized_choice(self):
-        ix, s = self._pick(random.uniform(0.0, self.s))
+        ix, s = self._pick(np.random.uniform(0.0, self.s))
         return ix, s / self.s
 
     def _pick(self, cum):

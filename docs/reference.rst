@@ -9,3 +9,4 @@ API Reference
    agents
    distributions
    experiments
+   recurrent

@@ -10,7 +10,11 @@ import argparse
 import os
 import random
 
+# This prevents numpy from using multiple threads
+os.environ['OMP_NUM_THREADS'] = '1'
+
 from chainer import links as L
+import numpy as np
 
 from chainerrl.action_value import DiscreteActionValue
 from chainerrl.agents import nsq
@@ -27,22 +31,22 @@ from dqn_phi import dqn_phi
 
 def main():
 
-    # This prevents numpy from using multiple threads
-    os.environ['OMP_NUM_THREADS'] = '1'
-
     import logging
-    # logging.basicConfig(level=logging.DEBUG)
+    logging.basicConfig(level=logging.DEBUG)
 
     parser = argparse.ArgumentParser()
     parser.add_argument('processes', type=int)
     parser.add_argument('rom', type=str)
-    parser.add_argument('--seed', type=int, default=None)
+    parser.add_argument('--seed', type=int, default=0,
+                        help='Random seed [0, 2 ** 31)')
     parser.add_argument('--lr', type=float, default=7e-4)
     parser.add_argument('--steps', type=int, default=8 * 10 ** 7)
     parser.add_argument('--use-sdl', action='store_true', default=False)
     parser.add_argument('--final-exploration-frames',
                         type=int, default=4 * 10 ** 6)
-    parser.add_argument('--outdir', type=str, default='nsq_output')
+    parser.add_argument('--outdir', type=str, default='results',
+                        help='Directory path to save output files.'
+                             ' If it does not exist, it will be created.')
     parser.add_argument('--profile', action='store_true')
     parser.add_argument('--eval-interval', type=int, default=10 ** 6)
     parser.add_argument('--eval-n-runs', type=int, default=10)
@@ -50,16 +54,27 @@ def main():
     parser.add_argument('--load', type=str, default=None)
     args = parser.parse_args()
 
-    if args.seed is not None:
-        misc.set_random_seed(args.seed)
+    # Set a random seed used in ChainerRL.
+    # If you use more than one processes, the results will be no longer
+    # deterministic even with the same random seed.
+    misc.set_random_seed(args.seed)
+
+    # Set different random seeds for different subprocesses.
+    # If seed=0 and processes=4, subprocess seeds are [0, 1, 2, 3].
+    # If seed=1 and processes=4, subprocess seeds are [4, 5, 6, 7].
+    process_seeds = np.arange(args.processes) + args.seed * args.processes
+    assert process_seeds.max() < 2 ** 31
 
     args.outdir = experiments.prepare_output_dir(args, args.outdir)
-
     print('Output files are saved in {}'.format(args.outdir))
 
     def make_env(process_idx, test):
+        # Use different random seeds for train and test envs
+        process_seed = process_seeds[process_idx]
+        env_seed = 2 ** 31 - 1 - process_seed if test else process_seed
         env = ale.ALE(args.rom, use_sdl=args.use_sdl,
-                      treat_life_lost_as_terminal=not test)
+                      treat_life_lost_as_terminal=not test,
+                      seed=env_seed)
         if not test:
             misc.env_modifiers.make_reward_clipped(env, -1, 1)
         return env
@@ -126,6 +141,7 @@ def main():
             eval_interval=args.eval_interval,
             eval_explorer=explorer,
             global_step_hooks=[lr_decay_hook])
+
 
 if __name__ == '__main__':
     main()

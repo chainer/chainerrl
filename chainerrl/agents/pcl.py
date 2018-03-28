@@ -46,8 +46,9 @@ class PCL(agent.AttributeSavingMixin, agent.AsyncAgent):
     Args:
         model (chainer.Link): Model to train. It must be a callable that
             accepts a batch of observations as input and return two values:
-                - action distributions (Distribution)
-                - state values (chainer.Variable)
+
+            - action distributions (Distribution)
+            - state values (chainer.Variable)
         optimizer (chainer.Optimizer): optimizer used to train the model
         t_max (int or None): The model is updated after every t_max local
             steps. If set None, the model is updated after every episode.
@@ -377,9 +378,9 @@ class PCL(agent.AttributeSavingMixin, agent.AsyncAgent):
 
         self.init_history_data_for_online_update()
 
-    def act_and_train(self, state, reward):
+    def act_and_train(self, obs, reward):
 
-        statevar = self.batch_states([state], self.xp, self.phi)
+        statevar = self.batch_states([obs], self.xp, self.phi)
 
         if self.last_state is not None:
             self.past_rewards[self.t - 1] = reward
@@ -422,13 +423,13 @@ class PCL(agent.AttributeSavingMixin, agent.AsyncAgent):
                 state=self.last_state,
                 action=self.last_action,
                 reward=reward,
-                next_state=state,
+                next_state=obs,
                 next_action=action,
                 is_state_terminal=False,
                 mu=self.last_action_distrib,
             )
 
-        self.last_state = state
+        self.last_state = obs
         self.last_action = action
         self.last_action_distrib = action_distrib.copy()
 

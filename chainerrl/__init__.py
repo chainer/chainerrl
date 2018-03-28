@@ -7,7 +7,6 @@ from chainerrl import envs  # NOQA
 from chainerrl import experiments  # NOQA
 from chainerrl import explorer  # NOQA
 from chainerrl import explorers  # NOQA
-from chainerrl import explorers  # NOQA
 from chainerrl import functions  # NOQA
 from chainerrl import links  # NOQA
 from chainerrl import misc  # NOQA

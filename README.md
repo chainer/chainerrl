@@ -39,10 +39,12 @@ For more information, you can refer to [ChainerRL's documentation](http://chaine
 |:----------|:---------------:|:----------------:|:---------------:|:------------------:|
 | DQN (including DoubleDQN etc.) | ✓ | ✓ (NAF) | ✓ | x |
 | DDPG | x | ✓ | ✓ | x |
-| A3C | ✓ | ✓ | ✓ | ✓ |
+| A3C  | ✓ | ✓ | ✓ | ✓ |
 | ACER | ✓ | ✓ | ✓ | ✓ |
 | NSQ (N-step Q-learning) | ✓ | ✓ (NAF) | ✓ | ✓ |
 | PCL (Path Consistency Learning) | ✓ | ✓ | ✓ | ✓ |
+| PPO  | ✓ | ✓ | x | x |
+| TRPO | ✓ | ✓ | x | x |
 
 Following algorithms have been implemented in ChainerRL:
 - A3C (Asynchronous Advantage Actor-Critic)
@@ -52,6 +54,8 @@ Following algorithms have been implemented in ChainerRL:
 - DDPG (Deep Deterministic Poilcy Gradients) (including SVG(0))
 - PGT (Policy Gradient Theorem)
 - PCL (Path Consistency Learning)
+- PPO (Proximal Policy Optimization)
+- TRPO (Trust Region Policy Optimization)
 
 Q-function based algorithms such as DQN can utilize a Normalized Advantage Function (NAF) to tackle continuous-action problems as well as DQN-like discrete output networks.
 
