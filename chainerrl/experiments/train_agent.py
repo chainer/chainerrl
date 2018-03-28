@@ -81,7 +81,7 @@ def train_agent(agent, env, steps, outdir, max_episode_len=None,
                 r = 0
                 done = False
 
-    except Exception:
+    except (Exception, KeyboardInterrupt):
         # Save the current model before being killed
         save_agent(agent, t, outdir, logger, suffix='_except')
         raise
