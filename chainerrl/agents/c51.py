@@ -54,7 +54,7 @@ class C51(dqn.DQN):
         assert m_l.shape == (batch_size, n_atoms)
         assert m_u.shape == (batch_size, n_atoms)
 
-        if xp is chainer.cuda.cupy:
+        if chainer.cuda.available and xp is chainer.cuda.cupy:
             scatter_add = xp.scatter_add
         else:
             scatter_add = np.add.at
