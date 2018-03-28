@@ -117,7 +117,7 @@ def main():
         explorer=explorer, replay_start_size=args.replay_start_size,
         target_update_interval=args.target_update_interval,
         update_interval=args.update_interval,
-        batch_accumulator='sum',
+        batch_accumulator='mean',
         phi=phi,
     )
 

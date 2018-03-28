@@ -13,7 +13,8 @@ from chainer import links as L
 import numpy as np
 
 import chainerrl
-from chainerrl.action_value import DiscreteActionValue, DistributionalDiscreteActionValue
+from chainerrl.action_value import DiscreteActionValue
+from chainerrl.action_value import DistributionalDiscreteActionValue
 from chainerrl.action_value import QuadraticActionValue
 from chainerrl.functions.lower_triangular_matrix import lower_triangular_matrix
 from chainerrl.links.mlp import MLP
@@ -76,7 +77,9 @@ class DistributionalSingleModelStateQFunctionWithDiscreteAction(
 
     Args:
         model (chainer.Link):
-            Link that is callable and outputs action values.
+            Link that is callable and outputs atoms for each action.
+        z_values (ndarray): Returns represented by atoms. Its shape must be
+            (n_atoms,).
     """
 
     def __init__(self, model, z_values):
@@ -90,14 +93,18 @@ class DistributionalSingleModelStateQFunctionWithDiscreteAction(
 
 class DistributionalFCStateQFunctionWithDiscreteAction(
         DistributionalSingleModelStateQFunctionWithDiscreteAction):
-    """distributional Fully-connected state-input Q-function with discrete actions.
+    """Distributional fully-connected Q-function with discrete actions.
 
     Args:
-        n_dim_obs: number of dimensions of observation space
-        n_dim_action: number of dimensions of action space
-        n_atoms: number of atoms of value distribution
-        n_hidden_channels: number of hidden channels
-        n_hidden_layers: number of hidden layers
+        n_dim_obs (int): Number of dimensions of observation space.
+        n_actions (int): Number of actions in action space.
+        n_atoms (int): Number of atoms of return distribution.
+        z_values (ndarray): Returns represented by atoms. Its shape must be
+            (n_atoms,).
+        n_hidden_channels (int): Number of hidden channels.
+        n_hidden_layers (int): Number of hidden layers.
+        nonlinearity (callable): Nonlinearity applied after each hidden layer.
+        last_wscale (float): Weight scale of the last layer.
     """
 
     def __init__(self, ndim_obs, n_actions, n_atoms, z_values,
