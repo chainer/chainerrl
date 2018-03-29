@@ -185,7 +185,8 @@ class DistributionalDiscreteActionValue(ActionValue):
 
     def __repr__(self):
         return 'DistributionalDiscreteActionValue greedy_actions:{} q_values:{}'.format(  # NOQA
-            self.greedy_actions.data, self.q_values)
+            self.greedy_actions.data,
+            self.q_values_formatter(self.q_values.data))
 
     @property
     def params(self):
