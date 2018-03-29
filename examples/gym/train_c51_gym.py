@@ -99,9 +99,7 @@ def main():
     n_atoms = 51
     v_max = 500
     v_min = 0
-    delta_z = (v_max - v_min) / float(n_atoms - 1)
-    z_values = np.array(
-        [v_min + i * delta_z for i in range(n_atoms)], dtype=np.float32)
+    z_values = np.linspace(v_min, v_max, num=n_atoms, dtype=np.float32)
 
     n_actions = action_space.n
     q_func = q_functions.DistributionalFCStateQFunctionWithDiscreteAction(

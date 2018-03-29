@@ -79,9 +79,7 @@ def main():
     n_atoms = 51
     v_max = 10
     v_min = -10
-    delta_z = (v_max - v_min) / float(n_atoms - 1)
-    z_values = np.array([v_min + i * delta_z
-                         for i in range(n_atoms)], dtype=np.float32)
+    z_values = np.linspace(v_min, v_max, num=n_atoms, dtype=np.float32)
     q_func = chainerrl.links.Sequence(
         chainerrl.links.NatureDQNHead(),
         chainerrl.q_functions.DistributionalFCStateQFunctionWithDiscreteAction(
