@@ -7,9 +7,42 @@ standard_library.install_aliases()
 
 import chainer
 import chainer.functions as F
-import numpy as np
 
 from chainerrl.agents import dqn
+
+
+def _apply_categorical_projection(y, y_probs, z):
+    """Apply categorical projection.
+
+    See (7) in https://arxiv.org/abs/1707.06887.
+
+    Args:
+        y (ndarray): Values of atoms before projection. Its shape must be
+            (batch_size, n_atoms).
+        y_probs (ndarray): Probabilities of atoms whose values are y.
+            Its shape must be (batch_size, n_atoms).
+        z (ndarray): Values of atoms before projection after projection. Its
+            shape must be (n_atoms,). It is assumed that the values are sorted
+            in ascending order and evenly spaced.
+
+    Returns:
+        ndarray: Probabilities of atoms whose values are z.
+    """
+    batch_size, n_atoms = y.shape
+    assert z.shape == (n_atoms,)
+    assert y_probs.shape == (batch_size, n_atoms)
+    delta_z = z[1] - z[0]
+    v_min = z[0]
+    v_max = z[-1]
+    xp = chainer.cuda.get_array_module(z)
+    y = xp.clip(y, v_min, v_max)
+    # Broadcast to (batch_size, n_atoms, n_atoms) to consider all the
+    # combinations of z and y. The second and third axes correspond to z and y,
+    # respectively.
+    y = y.reshape((batch_size, 1, n_atoms))
+    y_probs = y_probs.reshape((batch_size, 1, n_atoms))
+    z = z.reshape((1, n_atoms, 1))
+    return (xp.clip(1 - abs(y - z) / delta_z, 0, 1) * y_probs).sum(axis=2)
 
 
 class C51(dqn.DQN):
@@ -22,8 +55,6 @@ class C51(dqn.DQN):
         """Compute a batch of target return distributions."""
 
         batch_next_state = exp_batch['next_state']
-        xp = self.xp
-
         target_next_qout = self.target_model(batch_next_state)
 
         batch_rewards = exp_batch['reward']
@@ -31,9 +62,6 @@ class C51(dqn.DQN):
 
         batch_size = exp_batch['reward'].shape[0]
         z_values = target_next_qout.z_values
-        delta_z = z_values[1] - z_values[0]
-        v_min = z_values[0]
-        v_max = z_values[-1]
         n_atoms = z_values.size
 
         # next_q_max: (batch_size, n_atoms)
@@ -41,35 +69,9 @@ class C51(dqn.DQN):
         assert next_q_max.shape == (batch_size, n_atoms), next_q_max.shape
 
         # Tz: (batch_size, n_atoms)
-        Tz = xp.clip(
-            batch_rewards[..., None]
-            + (1.0 - batch_terminal[..., None]) * gamma * z_values[None],
-            v_min, v_max)
-        assert Tz.shape == (batch_size, n_atoms)
-        # bj: (batch_size, n_atoms)
-        bj = (Tz - v_min) / delta_z
-        assert bj.shape == (batch_size, n_atoms)
-        # m_l, m_u: (batch_size, n_atoms)
-        m_l, m_u = xp.floor(bj), xp.ceil(bj)
-        assert m_l.shape == (batch_size, n_atoms)
-        assert m_u.shape == (batch_size, n_atoms)
-
-        if chainer.cuda.available and xp is chainer.cuda.cupy:
-            scatter_add = xp.scatter_add
-        else:
-            scatter_add = np.add.at
-        target_values = xp.zeros((batch_size, n_atoms), dtype=xp.float32)
-        offset = xp.arange(
-            0, batch_size * n_atoms, n_atoms, dtype=xp.int32)[..., None]
-        scatter_add(
-            target_values.ravel(),
-            (m_l.astype(xp.int32) + offset).ravel(),
-            (next_q_max * (m_u - bj)).ravel())
-        scatter_add(
-            target_values.ravel(),
-            (m_u.astype(xp.int32) + offset).ravel(),
-            (next_q_max * (bj - m_l)).ravel())
-        return target_values
+        Tz = (batch_rewards[..., None]
+              + (1.0 - batch_terminal[..., None]) * gamma * z_values[None])
+        return _apply_categorical_projection(Tz, next_q_max, z_values)
 
     def _compute_y_and_t(self, exp_batch, gamma):
         """Compute a batch of predicted/target return distributions."""
