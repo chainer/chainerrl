@@ -77,6 +77,9 @@ class CategoricalDQN(dqn.DQN):
     """Categorical DQN.
 
     See https://arxiv.org/abs/1707.06887.
+
+    Arguments are the same as those of DQN except q_function must return
+    DistributionalDiscreteActionValue and clip_delta is ignored.
     """
 
     def _compute_target_values(self, exp_batch, gamma):
