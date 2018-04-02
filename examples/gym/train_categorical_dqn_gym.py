@@ -1,10 +1,10 @@
-"""An example of training C51 against OpenAI Gym Envs.
+"""An example of training Categorical DQN against OpenAI Gym Envs.
 
-This script is an example of training a C51 agent against OpenAI Gym envs.
-Only discrete spaces are supported.
+This script is an example of training a CategoricalDQN agent against OpenAI
+Gym envs. Only discrete spaces are supported.
 
 To solve CartPole-v0, run:
-    python train_c51_gym.py --env CartPole-v0
+    python train_categorical_dqn_gym.py --env CartPole-v0
 """
 from __future__ import print_function
 from __future__ import unicode_literals
@@ -23,7 +23,7 @@ gym.undo_logger_setup()
 import gym.wrappers
 import numpy as np
 
-from chainerrl.agents.c51 import C51
+import chainerrl
 from chainerrl import experiments
 from chainerrl import explorers
 from chainerrl import misc
@@ -139,14 +139,15 @@ def main():
     def phi(obs):
         return obs.astype(np.float32)
 
-    agent = C51(q_func, opt, rbuf, gpu=args.gpu, gamma=args.gamma,
-                explorer=explorer, replay_start_size=args.replay_start_size,
-                target_update_interval=args.target_update_interval,
-                update_interval=args.update_interval,
-                phi=phi, minibatch_size=args.minibatch_size,
-                target_update_method=args.target_update_method,
-                soft_update_tau=args.soft_update_tau,
-                episodic_update=args.episodic_replay, episodic_update_len=16)
+    agent = chainerrl.agents.CategoricalDQN(
+        q_func, opt, rbuf, gpu=args.gpu, gamma=args.gamma,
+        explorer=explorer, replay_start_size=args.replay_start_size,
+        target_update_interval=args.target_update_interval,
+        update_interval=args.update_interval,
+        phi=phi, minibatch_size=args.minibatch_size,
+        target_update_method=args.target_update_method,
+        soft_update_tau=args.soft_update_tau,
+        episodic_update=args.episodic_replay, episodic_update_len=16)
 
     if args.load:
         agent.load(args.load)

@@ -14,8 +14,8 @@ import numpy as np
 
 import basetest_dqn_like as base
 import chainerrl
-from chainerrl.agents import C51
-from chainerrl.agents import c51
+from chainerrl.agents import categorical_dqn
+from chainerrl.agents import CategoricalDQN
 
 
 def _apply_categorical_projection_naive(y, y_probs, z):
@@ -76,7 +76,7 @@ class TestApplyCategoricalProjectionToRandomCases(unittest.TestCase):
             atol=1e-5)
 
         # Batch implementation to test
-        proj = c51._apply_categorical_projection(y, y_probs, z)
+        proj = categorical_dqn._apply_categorical_projection(y, y_probs, z)
         # Projected probabilities should sum to one
         xp.testing.assert_allclose(
             proj.sum(axis=1), xp.ones(self.batch_size, dtype=np.float32),
@@ -128,7 +128,7 @@ class TestApplyCategoricalProjectionToManualCases(unittest.TestCase):
             [0.25, 0.6, 0.15],
         ], dtype=np.float32)
 
-        proj = c51._apply_categorical_projection(y, y_probs, z)
+        proj = categorical_dqn._apply_categorical_projection(y, y_probs, z)
         xp.testing.assert_allclose(proj, proj_gt, atol=1e-5)
 
     def test_cpu(self):
@@ -174,24 +174,26 @@ def make_distrib_recurrent_q_func(env):
     )
 
 
-class TestC51OnDiscreteABC(base._TestDQNOnDiscreteABC):
+class TestCategoricalDQNOnDiscreteABC(base._TestDQNOnDiscreteABC):
 
     def make_q_func(self, env):
         return make_distrib_ff_q_func(env)
 
     def make_dqn_agent(self, env, q_func, opt, explorer, rbuf, gpu):
-        return C51(q_func, opt, rbuf, gpu=gpu, gamma=0.9, explorer=explorer,
-                   replay_start_size=100, target_update_interval=100)
+        return CategoricalDQN(
+            q_func, opt, rbuf, gpu=gpu, gamma=0.9, explorer=explorer,
+            replay_start_size=100, target_update_interval=100)
 
 
 # Continuous action spaces are not supported
 
-class TestC51OnDiscretePOABC(base._TestDQNOnDiscretePOABC):
+class TestCategoricalDQNOnDiscretePOABC(base._TestDQNOnDiscretePOABC):
 
     def make_q_func(self, env):
         return make_distrib_recurrent_q_func(env)
 
     def make_dqn_agent(self, env, q_func, opt, explorer, rbuf, gpu):
-        return C51(q_func, opt, rbuf, gpu=gpu, gamma=0.9, explorer=explorer,
-                   replay_start_size=100, target_update_interval=100,
-                   episodic_update=True)
+        return CategoricalDQN(
+            q_func, opt, rbuf, gpu=gpu, gamma=0.9, explorer=explorer,
+            replay_start_size=100, target_update_interval=100,
+            episodic_update=True)
