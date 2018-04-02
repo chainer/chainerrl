@@ -41,10 +41,10 @@ python examples/ale/train_ppo_ale.py pong --steps 100 --update-interval 50 --bat
 model=$(find $outdir/ale/ppo -name "*_finish")
 python examples/ale/train_ppo_ale.py pong --demo --load $model --eval-n-runs 1 --outdir $outdir/temp --gpu $gpu
 
-# ale/c51
-python examples/ale/train_c51_ale.py pong --steps 100 --replay-start-size 50 --outdir $outdir/ale/c51 --gpu $gpu
-model=$(find $outdir/ale/c51 -name "*_finish")
-python examples/ale/train_c51_ale.py pong --demo --load $model --eval-n-runs 1 --outdir $outdir/temp --gpu $gpu
+# ale/categorical_dqn
+python examples/ale/train_categorical_dqn_ale.py pong --steps 100 --replay-start-size 50 --outdir $outdir/ale/categorical_dqn --gpu $gpu
+model=$(find $outdir/ale/categorical_dqn -name "*_finish")
+python examples/ale/train_categorical_dqn_ale.py pong --demo --load $model --eval-n-runs 1 --outdir $outdir/temp --gpu $gpu
 
 # gym/dqn
 python examples/gym/train_dqn_gym.py --steps 100 --replay-start-size 50 --outdir $outdir/gym/dqn --gpu $gpu
@@ -88,7 +88,7 @@ if [[ $double_backprop_support = 1 ]]; then
   python examples/gym/train_trpo_gym.py --demo --load $model --eval-n-runs 1 --env Pendulum-v0 --outdir $outdir/temp --gpu $gpu
 fi
 
-# gym/c51
-python examples/gym/train_c51_gym.py --steps 100 --replay-start-size 50 --outdir $outdir/gym/c51 --gpu $gpu
-model=$(find $outdir/gym/c51 -name "*_finish")
-python examples/gym/train_c51_gym.py --demo --load $model --eval-n-runs 1 --outdir $outdir/temp --gpu $gpu
+# gym/categorical_dqn
+python examples/gym/train_categorical_dqn_gym.py --steps 100 --replay-start-size 50 --outdir $outdir/gym/categorical_dqn --gpu $gpu
+model=$(find $outdir/gym/categorical_dqn -name "*_finish")
+python examples/gym/train_categorical_dqn_gym.py --demo --load $model --eval-n-runs 1 --outdir $outdir/temp --gpu $gpu
