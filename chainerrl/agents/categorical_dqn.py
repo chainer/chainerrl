@@ -87,7 +87,6 @@ class CategoricalDQN(dqn.DQN):
 
         batch_actions = exp_batch['action']
         batch_q = qout.evaluate_actions_as_distribution(batch_actions)
-        # batch_q = F.reshape(h, (batch_size, n_atoms))
         assert batch_q.shape == (batch_size, n_atoms)
 
         with chainer.no_backprop_mode():
