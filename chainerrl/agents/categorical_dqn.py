@@ -45,7 +45,7 @@ def _apply_categorical_projection(y, y_probs, z):
     return (xp.clip(1 - abs(y - z) / delta_z, 0, 1) * y_probs).sum(axis=2)
 
 
-class C51(dqn.DQN):
+class CategoricalDQN(dqn.DQN):
     """Categorical DQN.
 
     See https://arxiv.org/abs/1707.06887.

@@ -102,7 +102,7 @@ def main():
         1.0, args.final_epsilon,
         args.final_exploration_frames,
         lambda: np.random.randint(n_actions))
-    agent = chainerrl.agents.C51(
+    agent = chainerrl.agents.CategoricalDQN(
         q_func, opt, rbuf, gpu=args.gpu, gamma=0.99,
         explorer=explorer, replay_start_size=args.replay_start_size,
         target_update_interval=args.target_update_interval,
