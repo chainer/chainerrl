@@ -7,6 +7,7 @@ standard_library.install_aliases()
 
 import chainer
 import chainer.functions as F
+import numpy as np
 
 from chainerrl.agents import dqn
 
@@ -14,7 +15,7 @@ from chainerrl.agents import dqn
 def _apply_categorical_projection(y, y_probs, z):
     """Apply categorical projection.
 
-    See (7) in https://arxiv.org/abs/1707.06887.
+    See Algorithm 1 in https://arxiv.org/abs/1707.06887.
 
     Args:
         y (ndarray): Values of atoms before projection. Its shape must be
@@ -36,13 +37,40 @@ def _apply_categorical_projection(y, y_probs, z):
     v_max = z[-1]
     xp = chainer.cuda.get_array_module(z)
     y = xp.clip(y, v_min, v_max)
-    # Broadcast to (batch_size, n_atoms, n_atoms) to consider all the
-    # combinations of z and y. The second and third axes correspond to z and y,
-    # respectively.
-    y = y.reshape((batch_size, 1, n_atoms))
-    y_probs = y_probs.reshape((batch_size, 1, n_atoms))
-    z = z.reshape((1, n_atoms, 1))
-    return (xp.clip(1 - abs(y - z) / delta_z, 0, 1) * y_probs).sum(axis=2)
+
+    # bj: (batch_size, n_atoms)
+    bj = (y - v_min) / delta_z
+    assert bj.shape == (batch_size, n_atoms)
+
+    # l, u: (batch_size, n_atoms)
+    l, u = xp.floor(bj), xp.ceil(bj)
+    assert l.shape == (batch_size, n_atoms)
+    assert u.shape == (batch_size, n_atoms)
+
+    if chainer.cuda.available and xp is chainer.cuda.cupy:
+        scatter_add = xp.scatter_add
+    else:
+        scatter_add = np.add.at
+
+    z_probs = xp.zeros((batch_size, n_atoms), dtype=xp.float32)
+    offset = xp.arange(
+        0, batch_size * n_atoms, n_atoms, dtype=xp.int32)[..., None]
+    # Accumulate m_l
+    scatter_add(
+        z_probs.ravel(),
+        (l.astype(xp.int32) + offset).ravel(),
+        (y_probs * (u - bj)).ravel())
+    # Accumulate m_u
+    scatter_add(
+        z_probs.ravel(),
+        (u.astype(xp.int32) + offset).ravel(),
+        (y_probs * (bj - l)).ravel())
+    # Deal with the case when bj is an integer, i.e., l = u = bj
+    scatter_add(
+        z_probs.ravel(),
+        (u.astype(xp.int32) + offset).ravel(),
+        (y_probs * (u == l)).ravel())
+    return z_probs
 
 
 class CategoricalDQN(dqn.DQN):
