@@ -56,20 +56,17 @@ def _apply_categorical_projection(y, y_probs, z):
     offset = xp.arange(
         0, batch_size * n_atoms, n_atoms, dtype=xp.int32)[..., None]
     # Accumulate m_l
+    # Note that u - bj in the original paper is replaced with 1 - (bj - l) to
+    # deal with the case when bj is an integer, i.e., l = u = bj
     scatter_add(
         z_probs.ravel(),
         (l.astype(xp.int32) + offset).ravel(),
-        (y_probs * (u - bj)).ravel())
+        (y_probs * (1 - (bj - l))).ravel())
     # Accumulate m_u
     scatter_add(
         z_probs.ravel(),
         (u.astype(xp.int32) + offset).ravel(),
         (y_probs * (bj - l)).ravel())
-    # Deal with the case when bj is an integer, i.e., l = u = bj
-    scatter_add(
-        z_probs.ravel(),
-        (u.astype(xp.int32) + offset).ravel(),
-        (y_probs * (u == l)).ravel())
     return z_probs
 
 
