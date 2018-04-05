@@ -79,11 +79,10 @@ def main():
     n_atoms = 51
     v_max = 10
     v_min = -10
-    z_values = np.linspace(v_min, v_max, num=n_atoms, dtype=np.float32)
     q_func = chainerrl.links.Sequence(
         chainerrl.links.NatureDQNHead(),
         chainerrl.q_functions.DistributionalFCStateQFunctionWithDiscreteAction(
-            None, n_actions, n_atoms, z_values,
+            None, n_actions, n_atoms, v_min, v_max,
             n_hidden_channels=0, n_hidden_layers=0),
     )
 

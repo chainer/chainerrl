@@ -99,11 +99,10 @@ def main():
     n_atoms = 51
     v_max = 500
     v_min = 0
-    z_values = np.linspace(v_min, v_max, num=n_atoms, dtype=np.float32)
 
     n_actions = action_space.n
     q_func = q_functions.DistributionalFCStateQFunctionWithDiscreteAction(
-        obs_size, n_actions, n_atoms, z_values,
+        obs_size, n_actions, n_atoms, v_min, v_max,
         n_hidden_channels=args.n_hidden_channels,
         n_hidden_layers=args.n_hidden_layers)
     # Use epsilon-greedy for exploration

@@ -99,17 +99,20 @@ class DistributionalFCStateQFunctionWithDiscreteAction(
         n_dim_obs (int): Number of dimensions of observation space.
         n_actions (int): Number of actions in action space.
         n_atoms (int): Number of atoms of return distribution.
-        z_values (ndarray): Returns represented by atoms. Its shape must be
-            (n_atoms,).
+        v_min (float): Minimum value this model can approximate.
+        v_max (float): Maximum value this model can approximate.
         n_hidden_channels (int): Number of hidden channels.
         n_hidden_layers (int): Number of hidden layers.
         nonlinearity (callable): Nonlinearity applied after each hidden layer.
         last_wscale (float): Weight scale of the last layer.
     """
 
-    def __init__(self, ndim_obs, n_actions, n_atoms, z_values,
+    def __init__(self, ndim_obs, n_actions, n_atoms, v_min, v_max,
                  n_hidden_channels, n_hidden_layers,
                  nonlinearity=F.relu, last_wscale=1.0):
+        assert n_atoms >= 2
+        assert v_min < v_max
+        z_values = np.linspace(v_min, v_max, num=n_atoms, dtype=np.float32)
         model = chainerrl.links.Sequence(
             MLP(in_size=ndim_obs, out_size=n_actions * n_atoms,
                 hidden_sizes=[n_hidden_channels] * n_hidden_layers,

@@ -143,11 +143,11 @@ def make_distrib_ff_q_func(env):
     n_atoms = 51
     v_max = 10
     v_min = -10
-    z_values = np.linspace(v_min, v_max, num=n_atoms, dtype=np.float32)
     return chainerrl.q_functions.DistributionalFCStateQFunctionWithDiscreteAction(  # NOQA
         env.observation_space.low.size, env.action_space.n,
         n_atoms=n_atoms,
-        z_values=z_values,
+        v_min=v_min,
+        v_max=v_max,
         n_hidden_channels=20,
         n_hidden_layers=1,
     )
@@ -157,13 +157,13 @@ def make_distrib_recurrent_q_func(env):
     n_atoms = 51
     v_max = 10
     v_min = -10
-    z_values = np.linspace(v_min, v_max, num=n_atoms, dtype=np.float32)
     return chainerrl.links.Sequence(
         L.LSTM(env.observation_space.low.size, 20),
         chainerrl.q_functions.DistributionalFCStateQFunctionWithDiscreteAction(  # NOQA
             20, env.action_space.n,
             n_atoms=n_atoms,
-            z_values=z_values,
+            v_min=v_min,
+            v_max=v_max,
             n_hidden_channels=None,
             n_hidden_layers=0,
         ),
