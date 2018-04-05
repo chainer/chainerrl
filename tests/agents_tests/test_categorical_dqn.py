@@ -26,7 +26,6 @@ def _apply_categorical_projection_naive(y, y_probs, z):
     batch_size, n_atoms = y.shape
     assert z.shape == (n_atoms,)
     assert y_probs.shape == (batch_size, n_atoms)
-    delta_z = z[1] - z[0]
     v_min = z[0]
     v_max = z[-1]
     xp = chainer.cuda.get_array_module(z)
@@ -42,6 +41,7 @@ def _apply_categorical_projection_naive(y, y_probs, z):
             else:
                 for j in range(n_atoms - 1):
                     if z[j] < yi <= z[j + 1]:
+                        delta_z = z[j + 1] - z[j]
                         proj_probs[b, j] += (z[j + 1] - yi) / delta_z * p
                         proj_probs[b, j + 1] += (yi - z[j]) / delta_z * p
                         break
