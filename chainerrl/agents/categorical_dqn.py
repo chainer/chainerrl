@@ -126,7 +126,8 @@ class CategoricalDQN(dqn.DQN):
     def _compute_loss(self, exp_batch, gamma, errors_out=None):
         """Compute a loss of categorical DQN."""
         y, t = self._compute_y_and_t(exp_batch, gamma)
-        # minimize the cross entropy
+        # Minimize the cross entropy
+        # y is clipped to avoid log(0)
         eltwise_loss = -t * F.log(F.clip(y, 1e-10, 1.))
         if self.batch_accumulator == 'sum':
             loss = F.sum(eltwise_loss)
