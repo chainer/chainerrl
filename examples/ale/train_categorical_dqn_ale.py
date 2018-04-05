@@ -83,11 +83,10 @@ def main():
     n_atoms = 51
     v_max = 10
     v_min = -10
-    z_values = np.linspace(v_min, v_max, num=n_atoms, dtype=np.float32)
     q_func = chainerrl.links.Sequence(
         chainerrl.links.NatureDQNHead(),
         chainerrl.q_functions.DistributionalFCStateQFunctionWithDiscreteAction(
-            None, n_actions, n_atoms, z_values,
+            None, n_actions, n_atoms, v_min, v_max,
             n_hidden_channels=0, n_hidden_layers=0),
     )
 
@@ -110,7 +109,7 @@ def main():
     def phi(x):
         return np.asarray(x).transpose(2, 0, 1).astype(np.float32) / 255
 
-    agent = chainerrl.agents.C51(
+    agent = chainerrl.agents.CategoricalDQN(
         q_func, opt, rbuf, gpu=args.gpu, gamma=0.99,
         explorer=explorer, replay_start_size=args.replay_start_size,
         target_update_interval=args.target_update_interval,

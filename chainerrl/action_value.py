@@ -16,7 +16,6 @@ from cached_property import cached_property
 import chainer
 from chainer import cuda
 from chainer import functions as F
-
 import numpy as np
 
 from chainerrl.misc.chainer_compat import matmul_v3
