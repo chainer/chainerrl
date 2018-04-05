@@ -22,9 +22,9 @@ def _apply_categorical_projection(y, y_probs, z):
             (batch_size, n_atoms).
         y_probs (ndarray): Probabilities of atoms whose values are y.
             Its shape must be (batch_size, n_atoms).
-        z (ndarray): Values of atoms before projection after projection. Its
-            shape must be (n_atoms,). It is assumed that the values are sorted
-            in ascending order and evenly spaced.
+        z (ndarray): Values of atoms before projection. Its shape must be
+            (n_atoms,). It is assumed that the values are sorted in ascending
+            order and evenly spaced.
 
     Returns:
         ndarray: Probabilities of atoms whose values are z.
