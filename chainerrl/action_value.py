@@ -110,6 +110,88 @@ class DiscreteActionValue(ActionValue):
         return (self.q_values,)
 
 
+class DistributionalDiscreteActionValue(ActionValue):
+    """distributional Q-function output for discrete action space.
+
+    Args:
+        q_dist (chainer.Variable): Probabilities of atoms. Its shape must be
+            (batchsize, n_actions, n_atoms).
+        z_values (ndarray): Values represented by atoms.
+            Its shape must be (n_atoms,).
+    """
+
+    def __init__(self, q_dist, z_values, q_values_formatter=lambda x: x):
+        assert isinstance(q_dist, chainer.Variable)
+        assert not isinstance(z_values, chainer.Variable)
+        assert q_dist.ndim == 3
+        assert z_values.ndim == 1
+        assert q_dist.shape[2] == z_values.shape[0]
+
+        self.xp = cuda.get_array_module(q_dist.data)
+        self.z_values = z_values
+        self.q_values = F.sum(F.scale(q_dist, self.z_values, axis=2), axis=2)
+        self.q_dist = q_dist
+        self.n_actions = q_dist.data.shape[1]
+        self.q_values_formatter = q_values_formatter
+
+    @cached_property
+    def greedy_actions(self):
+        return chainer.Variable(
+            self.q_values.data.argmax(axis=1).astype(np.int32))
+
+    @cached_property
+    def max(self):
+        with chainer.force_backprop_mode():
+            return F.select_item(self.q_values, self.greedy_actions)
+
+    @cached_property
+    def max_as_distribution(self):
+        """Return the return distributions of the greedy actions.
+
+        Returns:
+            chainer.Variable: Return distributions. Its shape will be
+                (batch_size, n_atoms).
+        """
+        with chainer.force_backprop_mode():
+            return self.q_dist[self.xp.arange(self.q_values.shape[0]),
+                               self.greedy_actions.data]
+
+    def evaluate_actions(self, actions):
+        return F.select_item(self.q_values, actions)
+
+    def evaluate_actions_as_distribution(self, actions):
+        """Return the return distributions of given actions.
+
+        Args:
+            actions (chainer.Variable or ndarray): Array of action indices.
+                Its shape must be (batch_size,).
+
+        Returns:
+            chainer.Variable: Return distributions. Its shape will be
+                (batch_size, n_atoms).
+        """
+        return self.q_dist[self.xp.arange(self.q_values.shape[0]), actions]
+
+    def compute_advantage(self, actions):
+        return self.evaluate_actions(actions) - self.max
+
+    def compute_double_advantage(self, actions, argmax_actions):
+        return (self.evaluate_actions(actions) -
+                self.evaluate_actions(argmax_actions))
+
+    def compute_expectation(self, beta):
+        return F.sum(F.softmax(beta * self.q_values) * self.q_values, axis=1)
+
+    def __repr__(self):
+        return 'DistributionalDiscreteActionValue greedy_actions:{} q_values:{}'.format(  # NOQA
+            self.greedy_actions.data,
+            self.q_values_formatter(self.q_values.data))
+
+    @property
+    def params(self):
+        return (self.q_dist,)
+
+
 class QuadraticActionValue(ActionValue):
     """Q-function output for continuous action space.
 
