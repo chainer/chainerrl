@@ -17,11 +17,13 @@ To test examples, run `test_examples.sh [gpu device id]`. `-1` would run example
 
 ## Coding style
 
-We use PEP8. To check your code, use `flake8` command installed by `hacking` package.
+We use PEP8. To check your code, use `autopep8` and `flake8` command installed by `hacking` package.
 ```
-$ pip install hacking
+$ pip install autopep8 hacking
+$ autopep8 --diff path/to/your/code.py
 $ flake8 path/to/your/code.py
 ```
+
 
 To use Python 3 features as much as possible while keeping Python 2 support, add the following lines to the head of each file.
 ```

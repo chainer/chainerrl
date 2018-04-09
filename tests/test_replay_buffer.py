@@ -139,8 +139,8 @@ class TestEpisodicReplayBuffer(unittest.TestCase):
 
         rbuf = replay_buffer.EpisodicReplayBuffer(capacity)
 
-        transs = [dict(state=n, action=n+10, reward=n+20,
-                       next_state=n+1, next_action=n+11,
+        transs = [dict(state=n, action=n + 10, reward=n + 20,
+                       next_state=n + 1, next_action=n + 11,
                        is_state_terminal=False)
                   for n in range(5)]
 

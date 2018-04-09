@@ -180,8 +180,8 @@ class TestEpisodicReplayBufferCompat(unittest.TestCase):
 
         # Give clear terminals of episodes for the test because v0.2 buffer
         # didn't save episodic_memory.
-        transs = [dict(state=n, action=n+10, reward=n+20,
-                       next_state=n+1, next_action=n+11,
+        transs = [dict(state=n, action=n + 10, reward=n + 20,
+                       next_state=n + 1, next_action=n + 11,
                        is_state_terminal=n in [1, 4])
                   for n in range(5)]
 
