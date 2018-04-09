@@ -38,6 +38,7 @@ For more information, you can refer to [ChainerRL's documentation](http://chaine
 | Algorithm | Discrete Action | Continous Action | Recurrent Model | CPU Async Training |
 |:----------|:---------------:|:----------------:|:---------------:|:------------------:|
 | DQN (including DoubleDQN etc.) | ✓ | ✓ (NAF) | ✓ | x |
+| Categorical DQN | ✓ | x | ✓ | x |
 | DDPG | x | ✓ | ✓ | x |
 | A3C  | ✓ | ✓ | ✓ | ✓ |
 | ACER | ✓ | ✓ | ✓ | ✓ |
@@ -50,6 +51,7 @@ Following algorithms have been implemented in ChainerRL:
 - A3C (Asynchronous Advantage Actor-Critic)
 - ACER (Actor-Critic with Experience Replay)
 - Asynchronous N-step Q-learning
+- Categorical DQN
 - DQN (including Double DQN, Persistent Advantage Learning (PAL), Double PAL, Dynamic Policy Programming (DPP))
 - DDPG (Deep Deterministic Poilcy Gradients) (including SVG(0))
 - PGT (Policy Gradient Theorem)
