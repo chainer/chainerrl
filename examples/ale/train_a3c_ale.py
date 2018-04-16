@@ -146,7 +146,7 @@ def main():
             atari_wrappers.make_atari(args.env),
             episode_life=not test,
             clip_rewards=not test)
-        env.seed(env_seed)
+        env.seed(int(env_seed))
         return env
 
     if args.demo:
