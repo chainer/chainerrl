@@ -73,7 +73,9 @@ def main():
                         help='Directory path to save output files.'
                              ' If it does not exist, it will be created.')
     parser.add_argument('--t-max', type=int, default=5)
-    parser.add_argument('--max-episode-len', type=int, default=10000)
+    parser.add_argument('--max-episode-len', type=int,
+                        default=30 * 60 * 60 // 4,  # 30 minutes
+                        help='Maximum number of steps for each episode.')
     parser.add_argument('--beta', type=float, default=1e-2)
     parser.add_argument('--profile', action='store_true')
     parser.add_argument('--steps', type=int, default=8 * 10 ** 7)
