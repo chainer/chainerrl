@@ -63,9 +63,6 @@ class A3CLSTM(chainer.ChainList, a3c.A3CModel, RecurrentChainMixin):
 
 def main():
 
-    import logging
-    logging.basicConfig(level=logging.DEBUG)
-
     parser = argparse.ArgumentParser()
     parser.add_argument('processes', type=int)
     parser.add_argument('rom', type=str)
@@ -87,9 +84,14 @@ def main():
     parser.add_argument('--use-lstm', action='store_true')
     parser.add_argument('--demo', action='store_true', default=False)
     parser.add_argument('--load', type=str, default='')
+    parser.add_argument('--logging-level', type=int, default=20,
+                        help='Logging level. 10:DEBUG, 20:INFO etc.')
     parser.set_defaults(use_sdl=False)
     parser.set_defaults(use_lstm=False)
     args = parser.parse_args()
+
+    import logging
+    logging.basicConfig(level=args.logging_level)
 
     # Set a random seed used in ChainerRL.
     # If you use more than one processes, the results will be no longer
