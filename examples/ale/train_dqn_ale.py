@@ -78,7 +78,6 @@ def main():
                         type=int, default=10 ** 6)
     parser.add_argument('--final-epsilon', type=float, default=0.1)
     parser.add_argument('--eval-epsilon', type=float, default=0.05)
-    parser.add_argument('--model', type=str, default='')
     parser.add_argument('--arch', type=str, default='nature',
                         choices=['nature', 'nips', 'dueling'])
     parser.add_argument('--steps', type=int, default=10 ** 7)
