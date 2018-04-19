@@ -43,21 +43,21 @@ def main():
     parser.add_argument('--seed', type=int, default=0)
     parser.add_argument('--gpu', type=int, default=0)
     parser.add_argument('--final-exploration-steps',
-                        type=int, default=1000)  # **4
+                        type=int, default=1000)
     parser.add_argument('--start-epsilon', type=float, default=1.0)
-    parser.add_argument('--end-epsilon', type=float, default=0.1)  # 0.1
+    parser.add_argument('--end-epsilon', type=float, default=0.1)
     parser.add_argument('--demo', action='store_true', default=False)
     parser.add_argument('--load', type=str, default=None)
     parser.add_argument('--steps', type=int, default=10 ** 8)
     parser.add_argument('--prioritized-replay', action='store_true')
     parser.add_argument('--episodic-replay', action='store_true')
-    parser.add_argument('--replay-start-size', type=int, default=50)  # 1000
+    parser.add_argument('--replay-start-size', type=int, default=50)
     parser.add_argument('--target-update-interval', type=int, default=100)
     parser.add_argument('--target-update-method', type=str, default='hard')
     parser.add_argument('--soft-update-tau', type=float, default=1e-2)
     parser.add_argument('--update-interval', type=int, default=1)
     parser.add_argument('--eval-n-runs', type=int, default=100)
-    parser.add_argument('--eval-interval', type=int, default=1000)  # 10 ** 4)
+    parser.add_argument('--eval-interval', type=int, default=1000)
     parser.add_argument('--n-hidden-channels', type=int, default=12)
     parser.add_argument('--n-hidden-layers', type=int, default=3)
     parser.add_argument('--gamma', type=float, default=0.95)
@@ -66,7 +66,7 @@ def main():
     parser.add_argument('--render-eval', action='store_true')
     parser.add_argument('--monitor', action='store_true')
     parser.add_argument('--reward-scale-factor',
-                        type=float, default=1.0)  # 1e-3
+                        type=float, default=1.0)
     args = parser.parse_args()
 
     # Set a random seed used in ChainerRL
