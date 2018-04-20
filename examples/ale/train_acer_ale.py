@@ -11,6 +11,8 @@ import os
 # Prevent numpy from using multiple threads
 os.environ['OMP_NUM_THREADS'] = '1'
 
+import gym
+gym.undo_logger_setup()
 import chainer
 from chainer import links as L
 import numpy as np
@@ -18,7 +20,6 @@ import numpy as np
 from chainerrl.action_value import DiscreteActionValue
 from chainerrl.agents import acer
 from chainerrl.distribution import SoftmaxDistribution
-from chainerrl.envs import ale
 from chainerrl import experiments
 from chainerrl import links
 from chainerrl import misc
@@ -26,23 +27,19 @@ from chainerrl.optimizers.nonbias_weight_decay import NonbiasWeightDecay
 from chainerrl.optimizers import rmsprop_async
 from chainerrl.replay_buffer import EpisodicReplayBuffer
 
-from dqn_phi import dqn_phi
+import atari_wrappers
 
 
 def main():
 
-    import logging
-    logging.basicConfig(level=logging.DEBUG)
-
     parser = argparse.ArgumentParser()
     parser.add_argument('processes', type=int)
-    parser.add_argument('rom', type=str)
+    parser.add_argument('--env', type=str, default='BreakoutNoFrameskip-v4')
     parser.add_argument('--seed', type=int, default=0,
                         help='Random seed [0, 2 ** 31)')
     parser.add_argument('--outdir', type=str, default='results',
                         help='Directory path to save output files.'
                              ' If it does not exist, it will be created.')
-    parser.add_argument('--use-sdl', action='store_true')
     parser.add_argument('--t-max', type=int, default=5)
     parser.add_argument('--replay-start-size', type=int, default=10000)
     parser.add_argument('--n-times-replay', type=int, default=4)
@@ -57,9 +54,18 @@ def main():
     parser.add_argument('--use-lstm', action='store_true')
     parser.add_argument('--demo', action='store_true', default=False)
     parser.add_argument('--load', type=str, default='')
-    parser.set_defaults(use_sdl=False)
+    parser.add_argument('--logging-level', type=int, default=20,
+                        help='Logging level. 10:DEBUG, 20:INFO etc.')
+    parser.add_argument('--render', action='store_true', default=False,
+                        help='Render env states in a GUI window.')
+    parser.add_argument('--monitor', action='store_true', default=False,
+                        help='Monitor env. Videos and additional information'
+                             ' are saved as output files.')
     parser.set_defaults(use_lstm=False)
     args = parser.parse_args()
+
+    import logging
+    logging.basicConfig(level=args.logging_level)
 
     # Set a random seed used in ChainerRL.
     # If you use more than one processes, the results will be no longer
@@ -75,7 +81,7 @@ def main():
     args.outdir = experiments.prepare_output_dir(args, args.outdir)
     print('Output files are saved in {}'.format(args.outdir))
 
-    n_actions = ale.ALE(args.rom).number_of_actions
+    n_actions = gym.make(args.env).action_space.n
 
     if args.use_lstm:
         model = acer.ACERSharedModel(
@@ -105,11 +111,16 @@ def main():
     if args.weight_decay > 0:
         opt.add_hook(NonbiasWeightDecay(args.weight_decay))
     replay_buffer = EpisodicReplayBuffer(10 ** 6 // args.processes)
+
+    def phi(x):
+        # Feature extractor
+        return np.asarray(x, dtype=np.float32) / 255
+
     agent = acer.ACER(model, opt, t_max=args.t_max, gamma=0.99,
                       replay_buffer=replay_buffer,
                       n_times_replay=args.n_times_replay,
                       replay_start_size=args.replay_start_size,
-                      beta=args.beta, phi=dqn_phi)
+                      beta=args.beta, phi=phi)
 
     if args.load:
         agent.load(args.load)
@@ -118,11 +129,17 @@ def main():
         # Use different random seeds for train and test envs
         process_seed = process_seeds[process_idx]
         env_seed = 2 ** 31 - 1 - process_seed if test else process_seed
-        env = ale.ALE(args.rom, use_sdl=args.use_sdl,
-                      treat_life_lost_as_terminal=not test,
-                      seed=env_seed)
-        if not test:
-            misc.env_modifiers.make_reward_clipped(env, -1, 1)
+        env = atari_wrappers.wrap_deepmind(
+            atari_wrappers.make_atari(args.env),
+            episode_life=not test,
+            clip_rewards=not test)
+        env.seed(int(env_seed))
+        if args.monitor:
+            env = gym.wrappers.Monitor(
+                env, args.outdir,
+                mode='evaluation' if test else 'training')
+        if args.render:
+            misc.env_modifiers.make_rendered(env)
         return env
 
     if args.demo:
@@ -153,7 +170,9 @@ def main():
             eval_n_runs=args.eval_n_runs,
             eval_interval=args.eval_interval,
             max_episode_len=args.max_episode_len,
-            global_step_hooks=[lr_decay_hook])
+            global_step_hooks=[lr_decay_hook],
+            save_best_so_far_agent=False,
+        )
 
 
 if __name__ == '__main__':
