@@ -148,24 +148,28 @@ class ClipRewardEnv(gym.RewardWrapper):
 
 
 class WarpFrame(gym.ObservationWrapper):
-    def __init__(self, env):
+    def __init__(self, env, channel_order='hwc'):
         """Warp frames to 84x84 as done in the Nature paper and later work."""
         gym.ObservationWrapper.__init__(self, env)
         self.width = 84
         self.height = 84
+        shape = {
+            'hwc': (self.height, self.width, 1),
+            'chw': (1, self.height, self.width),
+        }
         self.observation_space = spaces.Box(
             low=0, high=255,
-            shape=(self.height, self.width, 1), dtype=np.uint8)
+            shape=shape[channel_order], dtype=np.uint8)
 
     def _observation(self, frame):
         frame = cv2.cvtColor(frame, cv2.COLOR_RGB2GRAY)
         frame = cv2.resize(frame, (self.width, self.height),
                            interpolation=cv2.INTER_AREA)
-        return frame[:, :, None]
+        return frame.reshape(self.observation_space.low.shape)
 
 
 class FrameStack(gym.Wrapper):
-    def __init__(self, env, k):
+    def __init__(self, env, k, channel_order='hwc'):
         """Stack k last frames.
 
         Returns lazy array, which is much more memory efficient.
@@ -177,9 +181,12 @@ class FrameStack(gym.Wrapper):
         gym.Wrapper.__init__(self, env)
         self.k = k
         self.frames = deque([], maxlen=k)
-        shp = env.observation_space.shape
-        self.observation_space = spaces.Box(low=0, high=255, shape=(
-            shp[0], shp[1], shp[2] * k), dtype=np.uint8)
+        orig_shape = env.observation_space.shape
+        self.stack_axis = {'hwc': 2, 'chw': 0}[channel_order]
+        shape = list(orig_shape)
+        shape[self.stack_axis] *= k
+        self.observation_space = spaces.Box(
+            low=0, high=255, shape=shape, dtype=np.uint8)
 
     def _reset(self):
         ob = self.env.reset()
@@ -194,7 +201,7 @@ class FrameStack(gym.Wrapper):
 
     def _get_ob(self):
         assert len(self.frames) == self.k
-        return LazyFrames(list(self.frames))
+        return LazyFrames(list(self.frames), stack_axis=self.stack_axis)
 
 
 class ScaledFloatFrame(gym.ObservationWrapper):
@@ -220,13 +227,14 @@ class LazyFrames(object):
     You'd not believe how complex the previous solution was.
     """
 
-    def __init__(self, frames):
+    def __init__(self, frames, stack_axis=2):
+        self.stack_axis = stack_axis
         self._frames = frames
         self._out = None
 
     def _force(self):
         if self._out is None:
-            self._out = np.concatenate(self._frames, axis=2)
+            self._out = np.concatenate(self._frames, axis=self.stack_axis)
             self._frames = None
         return self._out
 
@@ -252,17 +260,18 @@ def make_atari(env_id):
 
 
 def wrap_deepmind(env, episode_life=True, clip_rewards=True,
-                  frame_stack=True, scale=False, fire_reset=False):
+                  frame_stack=True, scale=False, fire_reset=False,
+                  channel_order='chw'):
     """Configure environment for DeepMind-style Atari."""
     if episode_life:
         env = EpisodicLifeEnv(env)
     if fire_reset and 'FIRE' in env.unwrapped.get_action_meanings():
         env = FireResetEnv(env)
-    env = WarpFrame(env)
+    env = WarpFrame(env, channel_order=channel_order)
     if scale:
         env = ScaledFloatFrame(env)
     if clip_rewards:
         env = ClipRewardEnv(env)
     if frame_stack:
-        env = FrameStack(env, 4)
+        env = FrameStack(env, 4, channel_order=channel_order)
     return env

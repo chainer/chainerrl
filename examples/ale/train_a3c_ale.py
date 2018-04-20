@@ -137,7 +137,8 @@ def main():
         opt.add_hook(NonbiasWeightDecay(args.weight_decay))
 
     def phi(x):
-        return np.asarray(x).transpose(2, 0, 1).astype(np.float32) / 255
+        # Feature extractor
+        return np.asarray(x, dtype=np.float32) / 255
 
     agent = a3c.A3C(model, opt, t_max=args.t_max, gamma=0.99,
                     beta=args.beta, phi=phi)

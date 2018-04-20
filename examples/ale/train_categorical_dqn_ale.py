@@ -107,7 +107,8 @@ def main():
         lambda: np.random.randint(n_actions))
 
     def phi(x):
-        return np.asarray(x).transpose(2, 0, 1).astype(np.float32) / 255
+        # Feature extractor
+        return np.asarray(x, dtype=np.float32) / 255
 
     agent = chainerrl.agents.CategoricalDQN(
         q_func, opt, rbuf, gpu=args.gpu, gamma=0.99,
