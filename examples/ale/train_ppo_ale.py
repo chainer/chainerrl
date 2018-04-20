@@ -6,13 +6,14 @@ from builtins import *  # NOQA
 from future import standard_library
 standard_library.install_aliases()
 import argparse
-import os
 
+import gym
+gym.undo_logger_setup()
 import chainer
+import numpy as np
 
 from chainerrl.agents.a3c import A3CModel
 from chainerrl.agents import PPO
-from chainerrl.envs import ale
 from chainerrl import experiments
 from chainerrl import links
 from chainerrl import misc
@@ -20,7 +21,7 @@ from chainerrl.optimizers.nonbias_weight_decay import NonbiasWeightDecay
 from chainerrl import policy
 from chainerrl import v_function
 
-from dqn_phi import dqn_phi
+import atari_wrappers
 
 
 class A3CFF(chainer.ChainList, A3CModel):
@@ -38,15 +39,8 @@ class A3CFF(chainer.ChainList, A3CModel):
 
 
 def main():
-
-    # Prevent numpy from using multiple threads
-    os.environ['OMP_NUM_THREADS'] = '1'
-
-    import logging
-    logging.basicConfig(level=logging.DEBUG)
-
     parser = argparse.ArgumentParser()
-    parser.add_argument('rom', type=str)
+    parser.add_argument('--env', type=str, default='BreakoutNoFrameskip-v4')
     parser.add_argument('--gpu', type=int, default=0)
     parser.add_argument('--seed', type=int, default=0,
                         help='Random seed [0, 2 ** 31)')
@@ -65,6 +59,13 @@ def main():
     parser.add_argument('--weight-decay', type=float, default=0.0)
     parser.add_argument('--demo', action='store_true', default=False)
     parser.add_argument('--load', type=str, default='')
+    parser.add_argument('--logging-level', type=int, default=20,
+                        help='Logging level. 10:DEBUG, 20:INFO etc.')
+    parser.add_argument('--render', action='store_true', default=False,
+                        help='Render env states in a GUI window.')
+    parser.add_argument('--monitor', action='store_true', default=False,
+                        help='Monitor env. Videos and additional information'
+                             ' are saved as output files.')
 
     # In the original paper, agent runs in 8 environments parallely
     # and samples 128 steps per environment.
@@ -73,16 +74,41 @@ def main():
 
     parser.add_argument('--batchsize', type=int, default=32)
     parser.add_argument('--epochs', type=int, default=3)
-    parser.set_defaults(use_sdl=False)
     args = parser.parse_args()
+
+    import logging
+    logging.basicConfig(level=args.logging_level)
 
     # Set a random seed used in ChainerRL.
     misc.set_random_seed(args.seed, gpus=(args.gpu,))
 
+    # Set different random seeds for train and test envs.
+    train_seed = args.seed
+    test_seed = 2 ** 31 - 1 - args.seed
+
     args.outdir = experiments.prepare_output_dir(args, args.outdir)
     print('Output files are saved in {}'.format(args.outdir))
 
-    n_actions = ale.ALE(args.rom).number_of_actions
+    def make_env(test):
+        # Use different random seeds for train and test envs
+        env_seed = test_seed if test else train_seed
+        env = atari_wrappers.wrap_deepmind(
+            atari_wrappers.make_atari(args.env),
+            episode_life=not test,
+            clip_rewards=not test)
+        env.seed(int(env_seed))
+        if args.monitor:
+            env = gym.wrappers.Monitor(
+                env, args.outdir,
+                mode='evaluation' if test else 'training')
+        if args.render:
+            misc.env_modifiers.make_rendered(env)
+        return env
+
+    env = make_env(test=False)
+    eval_env = make_env(test=True)
+
+    n_actions = env.action_space.n
 
     model = A3CFF(n_actions)
     opt = chainer.optimizers.Adam(alpha=args.lr)
@@ -90,9 +116,14 @@ def main():
     opt.add_hook(chainer.optimizer.GradientClipping(40))
     if args.weight_decay > 0:
         opt.add_hook(NonbiasWeightDecay(args.weight_decay))
+
+    def phi(x):
+        # Feature extractor
+        return np.asarray(x, dtype=np.float32) / 255
+
     agent = PPO(model, opt,
                 gpu=args.gpu,
-                phi=dqn_phi,
+                phi=phi,
                 update_interval=args.update_interval,
                 minibatch_size=args.batchsize, epochs=args.epochs,
                 clip_eps=0.1,
@@ -102,20 +133,9 @@ def main():
     if args.load:
         agent.load(args.load)
 
-    def make_env(test):
-        # Use different random seeds for train and test envs
-        env_seed = 2 ** 31 - 1 - args.seed if test else args.seed
-        env = ale.ALE(args.rom, use_sdl=args.use_sdl,
-                      treat_life_lost_as_terminal=not test,
-                      seed=env_seed)
-        if not test:
-            misc.env_modifiers.make_reward_clipped(env, -1, 1)
-        return env
-
     if args.demo:
-        env = make_env(True)
         eval_stats = experiments.eval_performance(
-            env=env,
+            env=eval_env,
             agent=agent,
             n_runs=args.eval_n_runs)
         print('n_runs: {} mean: {} median: {} stdev: {}'.format(
@@ -138,8 +158,8 @@ def main():
 
         experiments.train_agent_with_evaluation(
             agent=agent,
-            env=make_env(False),
-            eval_env=make_env(True),
+            env=env,
+            eval_env=eval_env,
             outdir=args.outdir,
             steps=args.steps,
             eval_n_runs=args.eval_n_runs,
