@@ -88,6 +88,11 @@ def main():
     parser.add_argument('--load', type=str, default='')
     parser.add_argument('--logging-level', type=int, default=20,
                         help='Logging level. 10:DEBUG, 20:INFO etc.')
+    parser.add_argument('--render', action='store_true', default=False,
+                        help='Render env states in a GUI window.')
+    parser.add_argument('--monitor', action='store_true', default=False,
+                        help='Monitor env. Videos and additional information'
+                             ' are saved as output files.')
     parser.set_defaults(use_lstm=False)
     args = parser.parse_args()
 
@@ -149,6 +154,12 @@ def main():
             episode_life=not test,
             clip_rewards=not test)
         env.seed(int(env_seed))
+        if args.monitor:
+            env = gym.wrappers.Monitor(
+                env, args.outdir,
+                mode='evaluation' if test else 'training')
+        if args.render:
+            misc.env_modifiers.make_rendered(env)
         return env
 
     if args.demo:
