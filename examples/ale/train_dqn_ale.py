@@ -97,6 +97,11 @@ def main():
                         choices=['DQN', 'DoubleDQN', 'PAL'])
     parser.add_argument('--logging-level', type=int, default=20,
                         help='Logging level. 10:DEBUG, 20:INFO etc.')
+    parser.add_argument('--render', action='store_true', default=False,
+                        help='Render env states in a GUI window.')
+    parser.add_argument('--monitor', action='store_true', default=False,
+                        help='Monitor env. Videos and additional information'
+                             ' are saved as output files.')
     args = parser.parse_args()
 
     import logging
@@ -112,16 +117,24 @@ def main():
     args.outdir = experiments.prepare_output_dir(args, args.outdir)
     print('Output files are saved in {}'.format(args.outdir))
 
-    # In training, life loss is considered as terminal states
-    env = atari_wrappers.wrap_deepmind(atari_wrappers.make_atari(args.env))
-    env.seed(train_seed)
+    def make_env(test):
+        # Use different random seeds for train and test envs
+        env_seed = test_seed if test else train_seed
+        env = atari_wrappers.wrap_deepmind(
+            atari_wrappers.make_atari(args.env),
+            episode_life=not test,
+            clip_rewards=not test)
+        env.seed(int(env_seed))
+        if args.monitor:
+            env = gym.wrappers.Monitor(
+                env, args.outdir,
+                mode='evaluation' if test else 'training')
+        if args.render:
+            misc.env_modifiers.make_rendered(env)
+        return env
 
-    # In testing, an episode is terminated  when all lives are lost
-    eval_env = atari_wrappers.wrap_deepmind(
-        atari_wrappers.make_atari(args.env),
-        episode_life=False,
-        clip_rewards=False)
-    eval_env.seed(test_seed)
+    env = make_env(test=False)
+    eval_env = make_env(test=True)
 
     n_actions = env.action_space.n
     activation = parse_activation(args.activation)
