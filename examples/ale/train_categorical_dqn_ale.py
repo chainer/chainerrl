@@ -38,16 +38,12 @@ def main():
                         type=int, default=10 ** 6)
     parser.add_argument('--final-epsilon', type=float, default=0.1)
     parser.add_argument('--eval-epsilon', type=float, default=0.05)
-    parser.add_argument('--model', type=str, default='')
-    parser.add_argument('--arch', type=str, default='nature',
-                        choices=['nature', 'nips', 'dueling'])
     parser.add_argument('--steps', type=int, default=10 ** 7)
     parser.add_argument('--replay-start-size', type=int, default=5 * 10 ** 4)
     parser.add_argument('--target-update-interval',
                         type=int, default=10 ** 4)
     parser.add_argument('--eval-interval', type=int, default=10 ** 5)
     parser.add_argument('--update-interval', type=int, default=4)
-    parser.add_argument('--activation', type=str, default='relu')
     parser.add_argument('--eval-n-runs', type=int, default=10)
     parser.add_argument('--batch-size', type=int, default=32)
     parser.add_argument('--logging-level', type=int, default=20,
