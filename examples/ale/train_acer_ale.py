@@ -46,7 +46,7 @@ def main():
     parser.add_argument('--max-episode-len', type=int, default=10000)
     parser.add_argument('--beta', type=float, default=1e-2)
     parser.add_argument('--profile', action='store_true')
-    parser.add_argument('--steps', type=int, default=8 * 10 ** 7)
+    parser.add_argument('--steps', type=int, default=10 ** 7)
     parser.add_argument('--lr', type=float, default=7e-4)
     parser.add_argument('--eval-interval', type=int, default=10 ** 6)
     parser.add_argument('--eval-n-runs', type=int, default=10)

@@ -38,7 +38,7 @@ def main():
     parser.add_argument('--seed', type=int, default=0,
                         help='Random seed [0, 2 ** 31)')
     parser.add_argument('--lr', type=float, default=7e-4)
-    parser.add_argument('--steps', type=int, default=8 * 10 ** 7)
+    parser.add_argument('--steps', type=int, default=10 ** 7)
     parser.add_argument('--final-exploration-frames',
                         type=int, default=4 * 10 ** 6)
     parser.add_argument('--outdir', type=str, default='results',
