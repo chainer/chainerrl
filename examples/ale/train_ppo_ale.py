@@ -55,7 +55,6 @@ def main():
                              ' If it does not exist, it will be created.')
     parser.add_argument('--use-sdl', action='store_true')
     parser.add_argument('--max-episode-len', type=int, default=10000)
-    parser.add_argument('--profile', action='store_true')
     parser.add_argument('--steps', type=int, default=8 * 10 ** 7)
     parser.add_argument('--lr', type=float, default=2.5e-4)
 
