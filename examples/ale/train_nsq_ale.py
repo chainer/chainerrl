@@ -39,6 +39,9 @@ def main():
                         help='Random seed [0, 2 ** 31)')
     parser.add_argument('--lr', type=float, default=7e-4)
     parser.add_argument('--steps', type=int, default=8 * 10 ** 7)
+    parser.add_argument('--max-episode-len', type=int,
+                        default=5 * 60 * 60 // 4,  # 5 minutes with 60/4 fps
+                        help='Maximum number of steps for each episode.')
     parser.add_argument('--final-exploration-frames',
                         type=int, default=4 * 10 ** 6)
     parser.add_argument('--outdir', type=str, default='results',
@@ -157,6 +160,7 @@ def main():
             eval_n_runs=args.eval_n_runs,
             eval_interval=args.eval_interval,
             eval_explorer=explorer,
+            max_episode_len=args.max_episode_len,
             global_step_hooks=[lr_decay_hook],
             save_best_so_far_agent=False,
         )

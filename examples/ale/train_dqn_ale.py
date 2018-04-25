@@ -82,6 +82,9 @@ def main():
     parser.add_argument('--arch', type=str, default='nature',
                         choices=['nature', 'nips', 'dueling'])
     parser.add_argument('--steps', type=int, default=10 ** 7)
+    parser.add_argument('--max-episode-len', type=int,
+                        default=5 * 60 * 60 // 4,  # 5 minutes with 60/4 fps
+                        help='Maximum number of steps for each episode.')
     parser.add_argument('--replay-start-size', type=int, default=5 * 10 ** 4)
     parser.add_argument('--target-update-interval',
                         type=int, default=10 ** 4)
@@ -190,7 +193,7 @@ def main():
             eval_n_runs=args.eval_n_runs, eval_interval=args.eval_interval,
             outdir=args.outdir, eval_explorer=eval_explorer,
             save_best_so_far_agent=False,
-            eval_max_episode_len=5 * 60 * 60 // 4,  # 5 minutes with 60/4 fps
+            max_episode_len=args.max_episode_len,
             eval_env=eval_env,
         )
 

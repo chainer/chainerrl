@@ -47,11 +47,13 @@ def main():
     parser.add_argument('--outdir', type=str, default='results',
                         help='Directory path to save output files.'
                              ' If it does not exist, it will be created.')
-    parser.add_argument('--max-episode-len', type=int, default=10000)
     parser.add_argument('--steps', type=int, default=10 ** 7)
+    parser.add_argument('--max-episode-len', type=int,
+                        default=5 * 60 * 60 // 4,  # 5 minutes with 60/4 fps
+                        help='Maximum number of steps for each episode.')
     parser.add_argument('--lr', type=float, default=2.5e-4)
 
-    parser.add_argument('--eval-interval', type=int, default=10 ** 6)
+    parser.add_argument('--eval-interval', type=int, default=10 ** 5)
     parser.add_argument('--eval-n-runs', type=int, default=10)
     parser.add_argument('--standardize-advantages', action='store_true')
     parser.add_argument('--weight-decay', type=float, default=0.0)
