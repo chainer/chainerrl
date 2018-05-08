@@ -352,22 +352,6 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
             return compute_value_loss(y, t, clip_delta=self.clip_delta,
                                       batch_accumulator=self.batch_accumulator)
 
-    def compute_q_values(self, states):
-        """Compute Q-values
-
-        Args:
-          states (list of cupy.ndarray or numpy.ndarray)
-        Returns:
-          list of numpy.ndarray
-        """
-        with chainer.using_config('train', False):
-            if not states:
-                return []
-            batch_x = self.batch_states(states, self.xp, self.phi)
-            q_values = list(cuda.to_cpu(
-                self.model(batch_x).q_values))
-            return q_values
-
     def act(self, obs):
         with chainer.using_config('train', False):
             with chainer.no_backprop_mode():
