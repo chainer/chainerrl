@@ -203,7 +203,8 @@ class PPO(agent.AttributeSavingMixin, agent.Agent):
         dataset_iter.reset()
         while dataset_iter.epoch < self.epochs:
             batch = dataset_iter.__next__()
-            states = self.batch_states([b['state'] for b in batch], xp, self.phi)
+            states = self.batch_states(
+                [b['state'] for b in batch], xp, self.phi)
             actions = xp.array([b['action'] for b in batch])
             distribs, vs_pred = self.model(states)
             with chainer.no_backprop_mode():
