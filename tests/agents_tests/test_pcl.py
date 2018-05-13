@@ -4,6 +4,7 @@ from __future__ import division
 from __future__ import absolute_import
 from builtins import *  # NOQA
 from future import standard_library
+
 standard_library.install_aliases()
 
 import logging
@@ -27,7 +28,7 @@ from chainerrl import v_function
 
 @testing.parameterize(*(
     testing.product({
-        't_max': [1],
+        't_max': [2],  # PCL demands episodes of length >= 2
         'use_lstm': [False],
         'episodic': [True],  # PCL doesn't work well with continuing envs
         'disable_online_update': [True, False],

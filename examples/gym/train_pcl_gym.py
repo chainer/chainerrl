@@ -15,6 +15,7 @@ from __future__ import unicode_literals
 from __future__ import absolute_import
 from builtins import *  # NOQA
 from future import standard_library
+
 standard_library.install_aliases()
 import argparse
 import os
@@ -23,12 +24,15 @@ import os
 os.environ['OMP_NUM_THREADS'] = '1'
 
 import chainer
+from chainer import functions as F
 import gym
+
 gym.undo_logger_setup()
 import gym.wrappers
 import numpy as np
 
 import chainerrl
+from chainerrl import distribution
 from chainerrl import experiments
 from chainerrl import misc
 from chainerrl.optimizers import rmsprop_async
@@ -36,6 +40,31 @@ from chainerrl.optimizers import rmsprop_async
 
 def exp_return_of_episode(episode):
     return np.exp(sum(x['reward'] for x in episode))
+
+
+class PCLUnifiedVFunction(chainerrl.v_functions.SingleModelVFunction):
+    def __init__(self, q, tau):
+        super().__init__(model=q)
+        self.tau = tau
+
+    def __call__(self, x):
+        h = self.model(x)
+        s = F.expand_dims(F.logsumexp(h / self.tau, axis=1), axis=1)
+        vout = self.tau * s
+        return vout
+
+
+class PCLUnifiedSoftmaxPolicy(chainer.Chain, chainerrl.policy.Policy):
+    def __init__(self, q, tau):
+        super().__init__(q=q)
+        self.tau = tau
+        self.v = PCLUnifiedVFunction(self.q, tau)
+
+    def __call__(self, x):
+        q = self.q(x)
+        v = F.broadcast_to(self.v(x), q.shape)
+        return distribution.SoftmaxDistribution(
+            q - v, beta=1 / self.tau)
 
 
 def main():
@@ -52,10 +81,10 @@ def main():
                              ' If it does not exist, it will be created.')
     parser.add_argument('--batchsize', type=int, default=10)
     parser.add_argument('--rollout-len', type=int, default=10)
-    parser.add_argument('--n-hidden-channels', type=int, default=100)
+    parser.add_argument('--n-hidden-channels', type=int, default=32)
     parser.add_argument('--n-hidden-layers', type=int, default=2)
     parser.add_argument('--n-times-replay', type=int, default=1)
-    parser.add_argument('--replay-start-size', type=int, default=10000)
+    parser.add_argument('--replay-start-size', type=int, default=1000)
     parser.add_argument('--t-max', type=int, default=None)
     parser.add_argument('--tau', type=float, default=1e-2)
     parser.add_argument('--profile', action='store_true')
@@ -64,11 +93,12 @@ def main():
     parser.add_argument('--eval-n-runs', type=int, default=10)
     parser.add_argument('--reward-scale-factor', type=float, default=1e-2)
     parser.add_argument('--render', action='store_true', default=False)
-    parser.add_argument('--lr', type=float, default=7e-4)
+    parser.add_argument('--lr', type=float, default=7e-3)
     parser.add_argument('--demo', action='store_true', default=False)
     parser.add_argument('--load', type=str, default='')
     parser.add_argument('--logger-level', type=int, default=logging.DEBUG)
     parser.add_argument('--monitor', action='store_true')
+    parser.add_argument('--unified', action='store_true', default=False)
     parser.add_argument('--train-async', action='store_true', default=False)
     parser.add_argument('--prioritized-replay', action='store_true',
                         default=False)
@@ -142,18 +172,28 @@ def main():
             )
         )
     else:
-        model = chainerrl.agents.pcl.PCLSeparateModel(
-            pi=chainerrl.policies.FCSoftmaxPolicy(
+        if args.unified:
+            # Unified PCL in discrete case
+            q_func = chainerrl.links.MLP(
                 obs_space.low.size, action_space.n,
-                n_hidden_channels=args.n_hidden_channels,
-                n_hidden_layers=args.n_hidden_layers
-            ),
-            v=chainerrl.v_functions.FCVFunction(
-                obs_space.low.size,
-                n_hidden_channels=args.n_hidden_channels,
-                n_hidden_layers=args.n_hidden_layers,
-            ),
-        )
+                [args.n_hidden_channels] * args.n_hidden_layers
+            )
+            v_func = PCLUnifiedVFunction(q_func, args.tau)
+            pi = PCLUnifiedSoftmaxPolicy(q_func, args.tau)
+            model = chainerrl.agents.pcl.PCLSeparateModel(pi=pi, v=v_func)
+        else:
+            model = chainerrl.agents.pcl.PCLSeparateModel(
+                pi=chainerrl.policies.FCSoftmaxPolicy(
+                    obs_space.low.size, action_space.n,
+                    n_hidden_channels=args.n_hidden_channels,
+                    n_hidden_layers=args.n_hidden_layers
+                ),
+                v=chainerrl.v_functions.FCVFunction(
+                    obs_space.low.size,
+                    n_hidden_channels=args.n_hidden_channels,
+                    n_hidden_layers=args.n_hidden_layers,
+                ),
+            )
 
     if not args.train_async and args.gpu >= 0:
         chainer.cuda.get_device(args.gpu).use()
