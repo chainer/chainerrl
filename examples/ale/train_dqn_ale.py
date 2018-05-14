@@ -109,6 +109,8 @@ def main():
 
     args.outdir = experiments.prepare_output_dir(args, args.outdir)
     print('Output files are saved in {}'.format(args.outdir))
+    
+    args.rom = args.rom.lower()
 
     # In training, life loss is considered as terminal states
     env = ale.ALE(args.rom, use_sdl=args.use_sdl, seed=train_seed)
