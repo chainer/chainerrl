@@ -5,4 +5,5 @@ build/
 dist/
 .idea/
 
+results/
 examples/gym/results/

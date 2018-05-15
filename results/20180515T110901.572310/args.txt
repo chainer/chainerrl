@@ -1,1 +1,0 @@
-{"gpu": -1, "lr": 0.001, "steps": 100000, "demo": false, "render": false, "logger_level": 10, "env": "CartPole-v0", "eval_n_runs": 100, "beta": 0.0001, "outdir": "results", "seed": 0, "eval_interval": 10000, "monitor": false, "reward_scale_factor": 0.01, "batchsize": 10, "load": ""}
