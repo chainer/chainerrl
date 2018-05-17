@@ -77,16 +77,6 @@ class DiscreteActionValue(ActionValue):
         with chainer.force_backprop_mode():
             return F.select_item(self.q_values, self.greedy_actions)
 
-    def sample_epsilon_greedy_actions(self, epsilon):
-        assert self.q_values.data.shape[0] == 1, \
-            "This method doesn't support batch computation"
-        if np.random.random() < epsilon:
-            return chainer.Variable(
-                self.xp.asarray([np.random.randint(0, self.n_actions)],
-                                dtype=np.int32))
-        else:
-            return self.greedy_actions
-
     def evaluate_actions(self, actions):
         return F.select_item(self.q_values, actions)
 
