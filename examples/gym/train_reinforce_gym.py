@@ -21,7 +21,7 @@ import os
 
 import chainer
 import gym
-gym.undo_logger_setup()
+gym.undo_logger_setup()  # NOQA
 import gym.wrappers
 import numpy as np
 
