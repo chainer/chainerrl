@@ -4,7 +4,7 @@ from __future__ import division
 from __future__ import absolute_import
 from future import standard_library
 from future.utils import with_metaclass
-standard_library.install_aliases()
+standard_library.install_aliases()  # NOQA
 
 from abc import ABCMeta
 from abc import abstractmethod
