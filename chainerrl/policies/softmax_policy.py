@@ -7,7 +7,6 @@ from future import standard_library
 standard_library.install_aliases()  # NOQA
 
 from logging import getLogger
-logger = getLogger(__name__)
 
 import chainer
 from chainer import functions as F
@@ -15,6 +14,9 @@ from chainer import functions as F
 from chainerrl import distribution
 from chainerrl.links.mlp import MLP
 from chainerrl.policy import Policy
+
+
+logger = getLogger(__name__)
 
 
 class SoftmaxPolicy(chainer.Chain, Policy):

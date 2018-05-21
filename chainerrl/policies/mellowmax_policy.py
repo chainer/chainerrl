@@ -7,12 +7,14 @@ from future import standard_library
 standard_library.install_aliases()  # NOQA
 
 from logging import getLogger
-logger = getLogger(__name__)
 
 import chainer
 
 from chainerrl import distribution
 from chainerrl.policy import Policy
+
+
+logger = getLogger(__name__)
 
 
 class MellowmaxPolicy(chainer.Chain, Policy):

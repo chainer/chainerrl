@@ -8,7 +8,6 @@ standard_library.install_aliases()  # NOQA
 
 from abc import abstractmethod
 from logging import getLogger
-logger = getLogger(__name__)
 
 import chainer
 from chainer import functions as F
@@ -20,6 +19,9 @@ from chainerrl.functions.bound_by_tanh import bound_by_tanh
 from chainerrl.initializers import LeCunNormal
 from chainerrl import links
 from chainerrl.policy import Policy
+
+
+logger = getLogger(__name__)
 
 
 class GaussianPolicy(Policy):
