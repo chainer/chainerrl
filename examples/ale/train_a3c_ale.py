@@ -9,7 +9,7 @@ import argparse
 import os
 
 # Prevent numpy from using multiple threads
-os.environ['OMP_NUM_THREADS'] = '1'
+os.environ['OMP_NUM_THREADS'] = '1'  # NOQA
 
 import chainer
 from chainer import links as L

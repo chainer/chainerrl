@@ -40,7 +40,7 @@ class A3CFF(chainer.ChainList, A3CModel):
 def main():
 
     # Prevent numpy from using multiple threads
-    os.environ['OMP_NUM_THREADS'] = '1'
+    os.environ['OMP_NUM_THREADS'] = '1'  # NOQA
 
     import logging
     logging.basicConfig(level=logging.DEBUG)
