@@ -4,10 +4,9 @@ from __future__ import division
 from __future__ import absolute_import
 from builtins import *  # NOQA
 from future import standard_library
-standard_library.install_aliases()
+standard_library.install_aliases()  # NOQA
 
 from logging import getLogger
-logger = getLogger(__name__)
 
 import chainer
 from chainer import functions as F
@@ -20,6 +19,9 @@ from chainerrl.links.mlp import MLP
 from chainerrl.links.mlp_bn import MLPBN
 from chainerrl.policy import Policy
 from chainerrl.recurrent import RecurrentChainMixin
+
+
+logger = getLogger(__name__)
 
 
 class ContinuousDeterministicPolicy(

@@ -3,14 +3,14 @@ from __future__ import unicode_literals
 from __future__ import division
 from __future__ import absolute_import
 from future import standard_library
-standard_library.install_aliases()
+standard_library.install_aliases()  # NOQA
 import argparse
 import sys
 
 import chainer
 from chainer import optimizers
 import gym
-gym.undo_logger_setup()
+gym.undo_logger_setup()  # NOQA
 from gym import spaces
 import gym.wrappers
 import numpy as np

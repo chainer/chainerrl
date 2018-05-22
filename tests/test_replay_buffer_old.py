@@ -4,7 +4,7 @@ from __future__ import division
 from __future__ import absolute_import
 from builtins import *  # NOQA
 from future import standard_library
-standard_library.install_aliases()
+standard_library.install_aliases()  # NOQA
 from collections import deque
 import os
 import tempfile
@@ -83,11 +83,6 @@ class ReplayBufferV0_2(object):
                           is_state_terminal=is_state_terminal)
         self.memory.append(experience)
 
-    def sample(self, n):
-        """Sample n unique samples from this replay buffer"""
-        assert len(self.memory) >= n
-        return random.sample(self.memory, n)
-
     def __len__(self):
         return len(self.memory)
 
@@ -130,20 +125,6 @@ class EpisodicReplayBufferV0_2(object):
         self.current_episode.append(experience)
         if is_state_terminal:
             self.stop_current_episode()
-
-    def sample(self, n):
-        """Sample n unique samples from this replay buffer"""
-        assert len(self.memory) >= n
-        return random.sample(self.memory, n)
-
-    def sample_episodes(self, n_episodes, max_len=None):
-        """Sample n unique samples from this replay buffer"""
-        assert len(self.episodic_memory) >= n_episodes
-        episodes = random.sample(self.episodic_memory, n_episodes)
-        if max_len is not None:
-            return [random_subseq(ep, max_len) for ep in episodes]
-        else:
-            return episodes
 
     def __len__(self):
         return len(self.episodic_memory)
