@@ -1,3 +1,6 @@
 *.pyc
 .ipynb_checkpoints
 chainerrl.egg-info
+results
+build
+dist

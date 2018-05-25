@@ -16,7 +16,7 @@ class FactorizedNoisyLinear(chainer.Chain):
             Scaling factor of the initial weights of noise-scaling parameters.
     """
 
-    def __init__(self, mu_link, sigma_scale=0.4):
+    def __init__(self, mu_link, sigma_scale=0.4, constant=-1):
         super(FactorizedNoisyLinear, self).__init__()
         self.out_size = mu_link.out_size
         self.nobias = not ('/b' in [name for name, _ in mu_link.namedparams()])
@@ -34,6 +34,8 @@ class FactorizedNoisyLinear(chainer.Chain):
         device_id = self.mu._device_id
         if device_id is not None:
             self.to_gpu(device_id)
+
+        self.constant = constant
 
     def _eps(self, shape, dtype):
         xp = self.xp
@@ -54,9 +56,18 @@ class FactorizedNoisyLinear(chainer.Chain):
 
         eps_x = self._eps(in_size, dtype)
         eps_y = self._eps(out_size, dtype)
-        W = self.mu.W + self.sigma.W * self.xp.outer(eps_y, eps_x)
-        if self.nobias:
-            return F.linear(x, W)
+
+        if self.constant > 0:
+            W = self.mu.W + self.constant * self.xp.outer(eps_y, eps_x)
+            if self.nobias:
+                return F.linear(x, W)
+            else:
+                b = self.mu.b# + self.sigma.b * eps_y
+                return F.linear(x, W, b)
         else:
-            b = self.mu.b + self.sigma.b * eps_y
-            return F.linear(x, W, b)
+            W = self.mu.W + self.sigma.W * self.xp.outer(eps_y, eps_x)
+            if self.nobias:
+                return F.linear(x, W)
+            else:
+                b = self.mu.b + self.sigma.b * eps_y
+                return F.linear(x, W, b)

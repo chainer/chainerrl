@@ -29,6 +29,7 @@ from gym import spaces
 import gym.wrappers
 import numpy as np
 
+sys.path.insert(0, ".")
 import chainerrl
 from chainerrl.agents.dqn import DQN
 from chainerrl import experiments
@@ -56,6 +57,7 @@ def main():
     parser.add_argument('--start-epsilon', type=float, default=1.0)
     parser.add_argument('--end-epsilon', type=float, default=0.1)
     parser.add_argument('--noisy-net-sigma', type=float, default=None)
+    parser.add_argument('--noise-constant', type=float, default=-1)
     parser.add_argument('--demo', action='store_true', default=False)
     parser.add_argument('--load', type=str, default=None)
     parser.add_argument('--steps', type=int, default=10 ** 5)
@@ -135,7 +137,7 @@ def main():
             action_space.sample)
 
     if args.noisy_net_sigma is not None:
-        links.to_factorized_noisy(q_func)
+        links.to_factorized_noisy(q_func, constant=args.noise_constant)
         # Turn off explorer
         explorer = explorers.Greedy()
 
