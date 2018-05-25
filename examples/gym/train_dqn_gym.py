@@ -142,9 +142,9 @@ def main():
         explorer = explorers.Greedy()
 
     # Draw the computational graph and save it in the output directory.
-    chainerrl.misc.draw_computational_graph(
-        [q_func(np.zeros_like(obs_space.low, dtype=np.float32)[None])],
-        os.path.join(args.outdir, 'model'))
+    #chainerrl.misc.draw_computational_graph(
+    #    [q_func(np.zeros_like(obs_space.low, dtype=np.float32)[None])],
+    #    os.path.join(args.outdir, 'model'))
 
     opt = optimizers.Adam()
     opt.setup(q_func)
