@@ -101,8 +101,8 @@ def main():
     action_space = env.action_space
 
     n_atoms = 51
-    v_max = 500
-    v_min = 0
+    v_max = 0
+    v_min = -100
 
     n_actions = action_space.n
     q_func = q_functions.DistributionalFCStateQFunctionWithDiscreteAction(
