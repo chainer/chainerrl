@@ -71,6 +71,7 @@ def main():
     parser.add_argument('--monitor', action='store_true')
     parser.add_argument('--reward-scale-factor',
                         type=float, default=1.0)
+    parser.add_argument('--action-repeat', type=int, default=1)
     args = parser.parse_args()
 
     # Set a random seed used in ChainerRL
@@ -89,6 +90,7 @@ def main():
         if not test:
             misc.env_modifiers.make_reward_filtered(
                 env, lambda x: x * args.reward_scale_factor)
+        misc.env_modifiers.make_action_repeated(env, args.action_repeat)
         if ((args.render_eval and test) or
                 (args.render_train and not test)):
             misc.env_modifiers.make_rendered(env)
