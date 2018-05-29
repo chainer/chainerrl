@@ -3,6 +3,7 @@ autopep8
 atari_py
 hacking
 mock
+opencv-python
 pytest
 sphinx
 sphinx_rtd_theme
