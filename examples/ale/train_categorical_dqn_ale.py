@@ -9,7 +9,7 @@ import argparse
 import os
 
 import gym
-gym.undo_logger_setup()
+gym.undo_logger_setup()  # NOQA
 import chainer
 import numpy as np
 
