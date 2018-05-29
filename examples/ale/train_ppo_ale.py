@@ -8,7 +8,7 @@ standard_library.install_aliases()  # NOQA
 import argparse
 
 import gym
-gym.undo_logger_setup()
+gym.undo_logger_setup()  # NOQA
 import chainer
 import numpy as np
 

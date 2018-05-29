@@ -12,7 +12,7 @@ import os
 os.environ['OMP_NUM_THREADS'] = '1'  # NOQA
 
 import gym
-gym.undo_logger_setup()
+gym.undo_logger_setup()  # NOQA
 import chainer
 from chainer import links as L
 import numpy as np
