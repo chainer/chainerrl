@@ -369,7 +369,7 @@ class PrioritizedEpisodicReplayBuffer (
                 self.capacity_left -= len(self.current_episode)
             self.current_episode = []
             while self.capacity_left is not None and self.capacity_left < 0:
-                discarded_episode = self.episodic_memory.pop()
+                discarded_episode = self.episodic_memory.popleft()
                 self.capacity_left += len(discarded_episode)
         assert not self.current_episode
 

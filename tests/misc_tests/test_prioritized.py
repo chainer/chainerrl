@@ -23,24 +23,23 @@ class TestPrioritizedBuffer(unittest.TestCase):
         for x in range(size):
             buf.append(x)
 
-        priority_init = list(range(size))
+        priority_init = list([(i + 1) / size for i in range(size)])
         random.shuffle(priority_init)
         count_sampled = [0] * size
 
         def priority(x, n):
-            return priority_init[x] + 1 / count_sampled[x]
+            if n == 0:
+                return 1.0
+            else:
+                return priority_init[x] / count_sampled[x]
 
-        count_none = 0
         for t in range(200):
             sampled, probabilities = buf.sample(16)
-            if all([p is not None for p in probabilities]):
-                priority_old = [priority(x, count_sampled[x]) for x in sampled]
-                # assert: probabilities \propto priority_old
-                qs = [x / y for x, y in zip(probabilities, priority_old)]
-                for q in qs:
-                    self.assertAlmostEqual(q, qs[0])
-            else:
-                count_none += 1
+            priority_old = [priority(x, count_sampled[x]) for x in sampled]
+            # assert: probabilities \propto priority_old
+            qs = [x / y for x, y in zip(probabilities, priority_old)]
+            for q in qs:
+                self.assertAlmostEqual(q, qs[0])
             for x in sampled:
                 count_sampled[x] += 1
             priority_new = [priority(x, count_sampled[x]) for x in sampled]
@@ -48,7 +47,6 @@ class TestPrioritizedBuffer(unittest.TestCase):
 
         for cnt in count_sampled:
             self.assertGreaterEqual(cnt, 1)
-        self.assertLessEqual(count_none, size // 16 + 1)
 
         corr = np.corrcoef(np.array([priority_init, count_sampled]))[0, 1]
         self.assertGreater(corr, 0.8)
