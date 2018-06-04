@@ -41,33 +41,31 @@ class PrioritizedBuffer (object):
         self.data_priority.popleft()
         return self.data.popleft()
 
-    def _prioritized_sample_indices_and_probabilities(self, n):
-        assert 0 <= n <= len(self)
-        indices, probabilities = self.data_priority.prioritized_sample(
-            n,
-            remove=self.wait_priority_after_sampling)
-        return indices, probabilities
-
     def _sample_indices_and_probabilities(self, n, uniform_ratio):
+        total_priority = self.data_priority.sum()
+        indices = []
+        priorities = []
         if uniform_ratio > 0:
             # Mix uniform samples and prioritized samples
             n_uniform = np.random.binomial(n, uniform_ratio)
-            n_prioritized = n - n_uniform
-            pr_indices, pr_probs = \
-                self._prioritized_sample_indices_and_probabilities(
-                    n_prioritized)
-            un_indices, un_probs = \
-                self._uniform_sample_indices_and_probabilities(
-                    n_uniform)
-            indices = pr_indices + un_indices
-            # Note: when uniform samples and prioritized samples are mixed,
-            # resulting probabilities are not the true probabilities for each
-            # entry to be sampled.
-            probabilities = pr_probs + un_probs
-            return indices, probabilities
-        else:
-            # Only prioritized samples
-            return self._prioritized_sample_indices_and_probabilities(n)
+            un_indices, un_priorities = \
+                self.data_priority.uniform_sample(
+                    n_uniform, remove=self.wait_priority_after_sampling)
+            indices.extend(un_indices)
+            priorities.extend(un_priorities)
+            n -= n_uniform
+
+        pr_indices, pr_priorities = \
+            self.data_priority.prioritized_sample(
+                n, remove=self.wait_priority_after_sampling)
+        indices.extend(pr_indices)
+        priorities.extend(pr_priorities)
+
+        return indices, [
+            uniform_ratio / len(self)
+            + (1 - uniform_ratio) * pri / total_priority
+            for pri in priorities
+        ]
 
     def sample(self, n, uniform_ratio=0):
         """Sample data along with their corresponding probabilities.
@@ -221,27 +219,47 @@ class SumTreeQueue(object):
         self.bounds = ixl, ixr
         return ret
 
-    def prioritized_sample(self, n, remove):
+    def sum(self):
+        if self.length == 0:
+            return 0.0
+        else:
+            return self.root[2]
+
+    def uniform_sample(self, n, remove):
         assert n >= 0
-        ixs = []
+        ixs = list(sample_n_k(self.length, n))
         vals = []
-        probabilities = []
         if n > 0:
             root = self.root
             ixl, ixr = self.bounds
-            total_val = root[2]  # save this before it changes by removing
-            for _ in range(n):
-                ix = _find(ixl, ixr, root, np.random.uniform(0.0, root[2]))
+            for ix in ixs:
                 val = _write(ixl, ixr, root, ix, 0.0)
-                ixs.append(ix)
                 vals.append(val)
-                probabilities.append(val / total_val)
 
         if not remove:
             for ix, val in zip(ixs, vals):
                 _write(ixl, ixr, root, ix, val)
 
-        return ixs, probabilities
+        return ixs, vals
+
+    def prioritized_sample(self, n, remove):
+        assert n >= 0
+        ixs = []
+        vals = []
+        if n > 0:
+            root = self.root
+            ixl, ixr = self.bounds
+            for _ in range(n):
+                ix = _find(ixl, ixr, root, np.random.uniform(0.0, root[2]))
+                val = _write(ixl, ixr, root, ix, 0.0)
+                ixs.append(ix)
+                vals.append(val)
+
+        if not remove:
+            for ix, val in zip(ixs, vals):
+                _write(ixl, ixr, root, ix, val)
+
+        return ixs, vals
 
 
 # Deprecated

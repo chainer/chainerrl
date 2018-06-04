@@ -10,12 +10,19 @@ import numpy as np
 import random
 
 from chainer import testing
+from chainer.testing import condition
 
 from chainerrl.misc import prioritized
 
 
+@testing.parameterize(
+    {'uniform_ratio': 0, 'expected_corr_range': (0.9, 1)},
+    {'uniform_ratio': 0.7, 'expected_corr_range': (0.5, 0.85)},
+    {'uniform_ratio': 1, 'expected_corr_range': (-0.3, 0.3)},
+)
 class TestPrioritizedBuffer(unittest.TestCase):
 
+    @condition.retry(2)
     def test_convergence(self):
         size = 100
 
@@ -34,12 +41,17 @@ class TestPrioritizedBuffer(unittest.TestCase):
                 return priority_init[x] / count_sampled[x]
 
         for t in range(200):
-            sampled, probabilities = buf.sample(16)
+            sampled, probabilities = buf.sample(16, uniform_ratio=self.uniform_ratio)
             priority_old = [priority(x, count_sampled[x]) for x in sampled]
-            # assert: probabilities \propto priority_old
-            qs = [x / y for x, y in zip(probabilities, priority_old)]
-            for q in qs:
-                self.assertAlmostEqual(q, qs[0])
+            if self.uniform_ratio == 0:
+                # assert: probabilities \propto priority_old
+                qs = [x / y for x, y in zip(probabilities, priority_old)]
+                for q in qs:
+                    self.assertAlmostEqual(q, qs[0])
+            elif self.uniform_ratio == 1:
+                # assert: uniform
+                for p in probabilities:
+                    self.assertAlmostEqual(p, probabilities[0])
             for x in sampled:
                 count_sampled[x] += 1
             priority_new = [priority(x, count_sampled[x]) for x in sampled]
@@ -49,7 +61,9 @@ class TestPrioritizedBuffer(unittest.TestCase):
             self.assertGreaterEqual(cnt, 1)
 
         corr = np.corrcoef(np.array([priority_init, count_sampled]))[0, 1]
-        self.assertGreater(corr, 0.8)
+        corr_lb, corr_ub = self.expected_corr_range
+        self.assertGreater(corr, corr_lb)
+        self.assertLess(corr, corr_ub)
 
 
 @testing.parameterize(
