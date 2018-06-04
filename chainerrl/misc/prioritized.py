@@ -162,7 +162,8 @@ def _find(index_left, index_right, node, pos):
         if pos < left_value:
             return _find(index_left, index_center, node_left, pos)
         else:
-            return _find(index_center, index_right, node_right, pos - left_value)
+            return _find(
+                index_center, index_right, node_right, pos - left_value)
 
 
 class SumTreeQueue(object):
@@ -211,13 +212,14 @@ class SumTreeQueue(object):
         if self.length == 0:
             del self.root
             del self.bounds
-            return
+            return ret
 
         ixc = (ixl + ixr) // 2
         if ixc == 0:
             ixl = ixc
             _, self.root, _ = self.root
         self.bounds = ixl, ixr
+        return ret
 
     def prioritized_sample(self, n, remove):
         assert n >= 0
