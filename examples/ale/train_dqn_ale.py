@@ -15,6 +15,9 @@ from chainer import links as L
 from chainer import optimizers
 import numpy as np
 
+import sys
+sys.path.insert(0, ".")
+
 import chainerrl
 from chainerrl.action_value import DiscreteActionValue
 from chainerrl import agents
@@ -104,13 +107,16 @@ def main():
     parser.add_argument('--monitor', action='store_true', default=False,
                         help='Monitor env. Videos and additional information'
                              ' are saved as output files.')
+
+    parser.add_argument('--noisy-net-sigma', type=float, default=None)
+    parser.add_argument('--noise-constant', type=float, default=-1)
     args = parser.parse_args()
 
     import logging
     logging.basicConfig(level=args.logging_level)
 
     # Set a random seed used in ChainerRL.
-    misc.set_random_seed(args.seed, gpus=(args.gpu,))
+    misc.set_random_seed(args.seed)
 
     # Set different random seeds for train and test envs.
     train_seed = args.seed
@@ -176,6 +182,11 @@ def main():
     if args.load:
         agent.load(args.load)
 
+    if args.noisy_net_sigma is not None:
+        links.to_factorized_noisy(q_func, sigma_scale=args.noisy_net_sigma, constant=args.noise_constant)
+        # Turn off explorer
+        explorer = explorers.Greedy()
+
     if args.demo:
         eval_stats = experiments.eval_performance(
             env=eval_env,
@@ -192,7 +203,6 @@ def main():
             agent=agent, env=env, steps=args.steps,
             eval_n_runs=args.eval_n_runs, eval_interval=args.eval_interval,
             outdir=args.outdir, eval_explorer=eval_explorer,
-            save_best_so_far_agent=False,
             max_episode_len=args.max_episode_len,
             eval_env=eval_env,
         )
