@@ -166,6 +166,11 @@ def main():
         args.final_exploration_frames,
         lambda: np.random.randint(n_actions))
 
+    if args.noisy_net_sigma is not None:
+        links.to_factorized_noisy(q_func, sigma_scale=args.noisy_net_sigma, constant=args.noise_constant)
+        # Turn off explorer
+        explorer = explorers.Greedy()
+
     def phi(x):
         # Feature extractor
         return np.asarray(x, dtype=np.float32) / 255
@@ -181,11 +186,6 @@ def main():
 
     if args.load:
         agent.load(args.load)
-
-    if args.noisy_net_sigma is not None:
-        links.to_factorized_noisy(q_func, sigma_scale=args.noisy_net_sigma, constant=args.noise_constant)
-        # Turn off explorer
-        explorer = explorers.Greedy()
 
     if args.demo:
         eval_stats = experiments.eval_performance(
