@@ -80,6 +80,7 @@ def main():
     parser.add_argument('--monitor', action='store_true')
     parser.add_argument('--reward-scale-factor', type=float, default=1e-3)
     parser.add_argument('--lr', type=float, default=1e-3)
+    parser.add_argument('--rbuf', type=int, default=5 * 10 ** 5)    
     args = parser.parse_args()
 
     # Set a random seed used in ChainerRL
@@ -152,7 +153,7 @@ def main():
     opt = optimizers.Adam(args.lr)
     opt.setup(q_func)
 
-    rbuf_capacity = 5 * 10 ** 5
+    rbuf_capacity = args.rbuf
     if args.episodic_replay:
         if args.minibatch_size is None:
             args.minibatch_size = 4
