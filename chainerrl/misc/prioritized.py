@@ -18,7 +18,8 @@ class PrioritizedBuffer (object):
                  initial_max_priority=1.0):
         self.capacity = capacity
         self.data = collections.deque()
-        self.data_priority = SumTreeQueue()
+        self.priority_sums = SumTreeQueue()
+        self.priority_mins = MinTreeQueue()
         self.max_priority = initial_max_priority
         self.wait_priority_after_sampling = wait_priority_after_sampling
         self.flag_wait_priority = False
@@ -34,38 +35,44 @@ class PrioritizedBuffer (object):
             priority = self.max_priority
 
         self.data.append(value)
-        self.data_priority.append(priority)
+        self.priority_sums.append(priority)
+        self.priority_mins.append(priority)
 
     def popleft(self):
         assert len(self) > 0
-        self.data_priority.popleft()
+        self.priority_sums.popleft()
+        self.priority_mins.popleft()
         return self.data.popleft()
 
     def _sample_indices_and_probabilities(self, n, uniform_ratio):
-        total_priority = self.data_priority.sum()
+        total_priority = self.priority_sums.sum()
+        min_prob = self.priority_mins.min() / total_priority
         indices = []
         priorities = []
         if uniform_ratio > 0:
             # Mix uniform samples and prioritized samples
             n_uniform = np.random.binomial(n, uniform_ratio)
             un_indices, un_priorities = \
-                self.data_priority.uniform_sample(
+                self.priority_sums.uniform_sample(
                     n_uniform, remove=self.wait_priority_after_sampling)
             indices.extend(un_indices)
             priorities.extend(un_priorities)
             n -= n_uniform
+            min_prob = uniform_ratio / len(self) \
+                + (1 - uniform_ratio) * min_prob
 
         pr_indices, pr_priorities = \
-            self.data_priority.prioritized_sample(
+            self.priority_sums.prioritized_sample(
                 n, remove=self.wait_priority_after_sampling)
         indices.extend(pr_indices)
         priorities.extend(pr_priorities)
 
-        return indices, [
+        probs = [
             uniform_ratio / len(self)
             + (1 - uniform_ratio) * pri / total_priority
             for pri in priorities
         ]
+        return indices, probs, min_prob
 
     def sample(self, n, uniform_ratio=0):
         """Sample data along with their corresponding probabilities.
@@ -79,12 +86,13 @@ class PrioritizedBuffer (object):
         """
         assert (not self.wait_priority_after_sampling or
                 not self.flag_wait_priority)
-        indices, probabilities = self._sample_indices_and_probabilities(
-            n, uniform_ratio=uniform_ratio)
+        indices, probabilities, min_prob = \
+            self._sample_indices_and_probabilities(
+                n, uniform_ratio=uniform_ratio)
         sampled = [self.data[i] for i in indices]
         self.sampled_indices = indices
         self.flag_wait_priority = True
-        return sampled, probabilities
+        return sampled, probabilities, min_prob
 
     def set_last_priority(self, priority):
         assert (not self.wait_priority_after_sampling or
@@ -92,7 +100,8 @@ class PrioritizedBuffer (object):
         assert all([p > 0.0 for p in priority])
         assert len(self.sampled_indices) == len(priority)
         for i, p in zip(self.sampled_indices, priority):
-            self.data_priority[i] = p
+            self.priority_sums[i] = p
+            self.priority_mins[i] = p
             self.max_priority = max(self.max_priority, p)
         self.flag_wait_priority = False
         self.sampled_indices = []
@@ -275,6 +284,18 @@ class SumTreeQueue(TreeQueue):
                 self._write(ix, val)
 
         return ixs, vals
+
+
+class MinTreeQueue(TreeQueue):
+
+    def __init__(self):
+        super().__init__(op=min)
+
+    def min(self):
+        if self.length == 0:
+            return np.inf
+        else:
+            return self.root[2]
 
 
 # Deprecated

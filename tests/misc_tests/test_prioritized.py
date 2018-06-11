@@ -41,7 +41,7 @@ class TestPrioritizedBuffer(unittest.TestCase):
                 return priority_init[x] / count_sampled[x]
 
         for t in range(200):
-            sampled, probabilities = \
+            sampled, probabilities, _ = \
                 buf.sample(16, uniform_ratio=self.uniform_ratio)
             priority_old = [priority(x, count_sampled[x]) for x in sampled]
             if self.uniform_ratio == 0:

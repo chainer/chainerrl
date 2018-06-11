@@ -191,12 +191,10 @@ class PriorityWeightError(object):
     def priority_from_errors(self, errors):
         return [d ** self.alpha + self.eps for d in errors]
 
-    def weights_from_probabilities(self, probabilities):
-        tmp = [p for p in probabilities if p is not None]
-        minp = min(tmp) if tmp else 1.0
-        probabilities = [minp if p is None else p for p in probabilities]
+    def weights_from_probabilities(self, probabilities, min_probability):
         if self.normalize_by_max:
-            weights = [(p / minp) ** -self.beta for p in probabilities]
+            weights = [(p / min_probability) ** -self.beta
+                       for p in probabilities]
         else:
             weights = [(len(self.memory) * p) ** -self.beta
                        for p in probabilities]
@@ -225,8 +223,8 @@ class PrioritizedReplayBuffer(ReplayBuffer, PriorityWeightError):
 
     def sample(self, n):
         assert len(self.memory) >= n
-        sampled, probabilities = self.memory.sample(n)
-        weights = self.weights_from_probabilities(probabilities)
+        sampled, probabilities, min_prob = self.memory.sample(n)
+        weights = self.weights_from_probabilities(probabilities, min_prob)
         for e, w in zip(sampled, weights):
             e['weight'] = w
         return sampled
@@ -342,12 +340,12 @@ class PrioritizedEpisodicReplayBuffer (
     def sample_episodes(self, n_episodes, max_len=None):
         """Sample n unique samples from this replay buffer"""
         assert len(self.episodic_memory) >= n_episodes
-        episodes, probabilities = self.episodic_memory.sample(
+        episodes, probabilities, min_prob = self.episodic_memory.sample(
             n_episodes, uniform_ratio=self.uniform_ratio)
         if max_len is not None:
             episodes = [random_subseq(ep, max_len) for ep in episodes]
         if self.return_sample_weights:
-            weights = self.weights_from_probabilities(probabilities)
+            weights = self.weights_from_probabilities(probabilities, min_prob)
             return episodes, weights
         else:
             return episodes
