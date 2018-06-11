@@ -111,7 +111,7 @@ def _expand(node):
         node[:] = [], [], None
 
 
-def _reduce(node):
+def _reduce(node, op):
     assert node
     left_node, right_node, _ = node
     parent_value = []
@@ -120,12 +120,12 @@ def _reduce(node):
     if right_node:
         parent_value.append(right_node[2])
     if parent_value:
-        node[2] = sum(parent_value)
+        node[2] = op(parent_value)
     else:
         del node[:]
 
 
-def _write(index_left, index_right, node, key, value):
+def _write(index_left, index_right, node, key, value, op):
     if index_right - index_left == 1:
         if node:
             ret = node[2]
@@ -140,11 +140,72 @@ def _write(index_left, index_right, node, key, value):
         node_left, node_right, _ = node
         index_center = (index_left + index_right) // 2
         if key < index_center:
-            ret = _write(index_left, index_center, node_left, key, value)
+            ret = _write(index_left, index_center, node_left, key, value, op)
         else:
-            ret = _write(index_center, index_right, node_right, key, value)
-        _reduce(node)
+            ret = _write(index_center, index_right, node_right, key, value, op)
+        _reduce(node, op)
     return ret
+
+
+class TreeQueue(object):
+    """Queue with Binary Indexed Tree cache
+
+    queue-like data structure
+    append, update are O(log n)
+    reduction over an interval is O(log n) per query
+    """
+
+    # node = left_child, right_child, value
+
+    def __init__(self, op):
+        self.length = 0
+        self.op = op
+
+    def __setitem__(self, ix, val):
+        assert 0 <= ix < self.length
+        assert val is not None
+        self._write(ix, val)
+
+    def _write(self, ix, val):
+        ixl, ixr = self.bounds
+        return _write(ixl, ixr, self.root, ix, val, self.op)
+
+    def append(self, value):
+        if self.length == 0:
+            self.root = [None, None, value]
+            self.bounds = 0, 1
+            self.length = 1
+            return
+
+        ixl, ixr = self.bounds
+        root = self.root
+        if ixr == self.length:
+            _, _, root_value = root
+            self.root = [self.root, [], root_value]
+            ixr += ixr - ixl
+            self.bounds = ixl, ixr
+        ret = self._write(self.length, value)
+        assert ret is None
+        self.length += 1
+
+    def popleft(self):
+        assert self.length > 0
+        ret = self._write(0, None)
+        ixl, ixr = self.bounds
+        ixl -= 1
+        ixr -= 1
+        self.length -= 1
+        if self.length == 0:
+            del self.root
+            del self.bounds
+            return ret
+
+        ixc = (ixl + ixr) // 2
+        if ixc == 0:
+            ixl = ixc
+            _, self.root, _ = self.root
+        self.bounds = ixl, ixr
+        return ret
 
 
 def _find(index_left, index_right, node, pos):
@@ -164,7 +225,7 @@ def _find(index_left, index_right, node, pos):
                 index_center, index_right, node_right, pos - left_value)
 
 
-class SumTreeQueue(object):
+class SumTreeQueue(TreeQueue):
     """Fast weighted sampling.
 
     queue-like data structure
@@ -172,52 +233,8 @@ class SumTreeQueue(object):
     summation over an interval is O(log n) per query
     """
 
-    # node = left_child, right_child, value
-
     def __init__(self):
-        self.length = 0
-
-    def __setitem__(self, ix, val):
-        assert 0 <= ix < self.length
-        ixl, ixr = self.bounds
-        _write(ixl, ixr, self.root, ix, val)
-
-    def append(self, value):
-        if self.length == 0:
-            self.root = [None, None, value]
-            self.bounds = 0, 1
-            self.length = 1
-            return
-
-        ixl, ixr = self.bounds
-        root = self.root
-        if ixr == self.length:
-            _, _, root_value = root
-            self.root = [self.root, [], root_value]
-            ixr += ixr - ixl
-        ret = _write(ixl, ixr, self.root, self.length, value)
-        assert ret is None
-        self.bounds = ixl, ixr
-        self.length += 1
-
-    def popleft(self):
-        assert self.length > 0
-        ixl, ixr = self.bounds
-        ret = _write(ixl, ixr, self.root, 0, None)
-        ixl -= 1
-        ixr -= 1
-        self.length -= 1
-        if self.length == 0:
-            del self.root
-            del self.bounds
-            return ret
-
-        ixc = (ixl + ixr) // 2
-        if ixc == 0:
-            ixl = ixc
-            _, self.root, _ = self.root
-        self.bounds = ixl, ixr
-        return ret
+        super().__init__(op=sum)
 
     def sum(self):
         if self.length == 0:
@@ -230,15 +247,13 @@ class SumTreeQueue(object):
         ixs = list(sample_n_k(self.length, n))
         vals = []
         if n > 0:
-            root = self.root
-            ixl, ixr = self.bounds
             for ix in ixs:
-                val = _write(ixl, ixr, root, ix, 0.0)
+                val = self._write(ix, 0.0)
                 vals.append(val)
 
         if not remove:
             for ix, val in zip(ixs, vals):
-                _write(ixl, ixr, root, ix, val)
+                self._write(ix, val)
 
         return ixs, vals
 
@@ -251,13 +266,13 @@ class SumTreeQueue(object):
             ixl, ixr = self.bounds
             for _ in range(n):
                 ix = _find(ixl, ixr, root, np.random.uniform(0.0, root[2]))
-                val = _write(ixl, ixr, root, ix, 0.0)
+                val = self._write(ix, 0.0)
                 ixs.append(ix)
                 vals.append(val)
 
         if not remove:
             for ix, val in zip(ixs, vals):
-                _write(ixl, ixr, root, ix, val)
+                self._write(ix, val)
 
         return ixs, vals
 
