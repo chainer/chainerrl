@@ -84,7 +84,7 @@ def main():
     parser.add_argument('--eval-epsilon', type=float, default=0.05)
     parser.add_argument('--arch', type=str, default='nature',
                         choices=['nature', 'nips', 'dueling'])
-    parser.add_argument('--steps', type=int, default=10 ** 7)
+    parser.add_argument('--steps', type=int, default=10 ** 8)
     parser.add_argument('--max-episode-len', type=int,
                         default=5 * 60 * 60 // 4,  # 5 minutes with 60/4 fps
                         help='Maximum number of steps for each episode.')
@@ -166,7 +166,7 @@ def main():
         args.final_exploration_frames,
         lambda: np.random.randint(n_actions))
 
-    if args.noisy_net_sigma is not None:
+    if args.noisy_net_sigma is not None and args.noisy_net_sigma > 0:
         links.to_factorized_noisy(q_func, sigma_scale=args.noisy_net_sigma, constant=args.noise_constant)
         # Turn off explorer
         explorer = explorers.Greedy()
@@ -205,6 +205,7 @@ def main():
             outdir=args.outdir, eval_explorer=eval_explorer,
             max_episode_len=args.max_episode_len,
             eval_env=eval_env,
+            save_best_so_far_agent=False,
         )
 
 
