@@ -65,9 +65,9 @@ class FactorizedNoisyLinear(chainer.Chain):
                 b = self.mu.b# + self.sigma.b * eps_y
                 return F.linear(x, W, b)
         else:
-            W = self.mu.W + self.sigma.W * self.xp.outer(eps_y, eps_x)
+            W = self.mu.W# + self.sigma.W * self.xp.outer(eps_y, eps_x)
             if self.nobias:
                 return F.linear(x, W)
             else:
-                b = self.mu.b + self.sigma.b * eps_y
+                b = self.mu.b# + self.sigma.b * eps_y
                 return F.linear(x, W, b)
