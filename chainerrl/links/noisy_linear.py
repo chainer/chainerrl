@@ -1,6 +1,6 @@
 import chainer
 import chainer.functions as F
-from chainer.initializers import Constant
+from chainer.initializers import Constant, Uniform
 import chainer.links as L
 import numpy
 
@@ -24,16 +24,27 @@ class FactorizedNoisyLinear(chainer.Chain):
         W_data = mu_link.W.data
         in_size = None if W_data is None else W_data.shape[1]
 
+        self.device_id = mu_link._device_id
+
         with self.init_scope():
+            """
+            self.mu = L.Linear(
+                in_size=in_size, out_size=self.out_size, nobias=self.nobias,
+                initialW=Uniform(1 / numpy.sqrt(self.out_size)),
+                initial_bias=Uniform(1 / numpy.sqrt(self.out_size)))
+            """
             self.mu = mu_link
+            self.mu.W.initializer = Uniform(1 / numpy.sqrt(in_size))
+            self.mu.b.initializer = Uniform(1 / numpy.sqrt(in_size))
+            self.mu.W.initialize((self.out_size, in_size))
+            self.mu.b.initialize((self.out_size))
             self.sigma = L.Linear(
                 in_size=in_size, out_size=self.out_size, nobias=self.nobias,
-                initialW=VarianceScalingConstant(sigma_scale),
-                initial_bias=Constant(sigma_scale))
+                initialW=Constant(sigma_scale / numpy.sqrt(in_size)),
+                initial_bias=Constant(sigma_scale / numpy.sqrt(in_size)))
 
-        device_id = self.mu._device_id
-        if device_id is not None:
-            self.to_gpu(device_id)
+        if self.device_id is not None:
+            self.to_gpu(self.device_id)
 
         self.constant = constant
 
@@ -65,9 +76,9 @@ class FactorizedNoisyLinear(chainer.Chain):
                 b = self.mu.b# + self.sigma.b * eps_y
                 return F.linear(x, W, b)
         else:
-            W = self.mu.W# + self.sigma.W * self.xp.outer(eps_y, eps_x)
+            W = self.mu.W + self.sigma.W * self.xp.outer(eps_y, eps_x)
             if self.nobias:
                 return F.linear(x, W)
             else:
-                b = self.mu.b# + self.sigma.b * eps_y
+                b = self.mu.b + self.sigma.b * eps_y
                 return F.linear(x, W, b)

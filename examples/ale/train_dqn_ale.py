@@ -169,7 +169,7 @@ def main():
     if args.noisy_net_sigma is not None and args.noisy_net_sigma > 0:
         links.to_factorized_noisy(q_func, sigma_scale=args.noisy_net_sigma, constant=args.noise_constant)
         # Turn off explorer
-        #explorer = explorers.Greedy()
+        explorer = explorers.Greedy()
 
     def phi(x):
         # Feature extractor
