@@ -80,7 +80,7 @@ def main():
     parser.add_argument('--monitor', action='store_true')
     parser.add_argument('--reward-scale-factor', type=float, default=1e-3)
     parser.add_argument('--lr', type=float, default=1e-3)
-    parser.add_argument('--rbuf', type=int, default=5 * 10 ** 5)    
+    parser.add_argument('--rbuf', type=int, default=5 * 10 ** 5)
     args = parser.parse_args()
 
     # Set a random seed used in ChainerRL
@@ -140,7 +140,7 @@ def main():
             args.start_epsilon, args.end_epsilon, args.final_exploration_steps,
             action_space.sample)
 
-    if args.noisy_net_sigma is not None:
+    if args.noisy_net_sigma is not None and args.noisy_net_sigma > 0:
         links.to_factorized_noisy(q_func, sigma_scale=args.noisy_net_sigma, constant=args.noise_constant)
         # Turn off explorer
         explorer = explorers.Greedy()
