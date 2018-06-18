@@ -7,6 +7,7 @@ from builtins import *  # NOQA
 standard_library.install_aliases()  # NOQA
 import unittest
 
+from chainer import testing
 import numpy as np
 
 import basetest_dqn_like as base
@@ -53,45 +54,60 @@ def _huber_loss_1(a):
         return abs(a) - 0.5
 
 
-class TestComputeWeightedValueLoss(unittest.TestCase):
+@testing.parameterize(
+    *testing.product({
+        'batch_accumulator': ['mean', 'sum'],
+        'clip_delta': [True, False],
+    })
+)
+class TestComputeValueLoss(unittest.TestCase):
 
     def setUp(self):
-        pass
+        self.y = np.asarray([1.0, 2.0, 3.0, 4.0], dtype='f')
+        self.t = np.asarray([2.1, 2.2, 2.3, 2.4], dtype='f')
+        if self.clip_delta:
+            self.gt_losses = np.asarray(
+                [_huber_loss_1(a) for a in self.y - self.t])
+        else:
+            self.gt_losses = np.asarray(
+                [0.5 * a ** 2 for a in self.y - self.t])
 
-    def test(self):
-        y = np.asarray([1.0, 2.0, 3.0], dtype='f')
-        t = np.asarray([2.1, 2.2, 2.3], dtype='f')
-        gt_huber_losses = np.asarray([_huber_loss_1(a) for a in y - t])
+    def test_not_weighted(self):
+        loss = compute_value_loss(
+            self.y, self.t, clip_delta=self.clip_delta,
+            batch_accumulator=self.batch_accumulator).data
+        if self.batch_accumulator == 'mean':
+            gt_loss = self.gt_losses.mean()
+        else:
+            gt_loss = self.gt_losses.sum()
+        self.assertAlmostEqual(loss, gt_loss, places=5)
 
-        mean_loss = compute_value_loss(
-            y, t, clip_delta=True, batch_accumulator='mean').data
-        self.assertAlmostEqual(mean_loss, gt_huber_losses.mean(), places=5)
+    def test_uniformly_weighted(self):
 
-        sum_loss = compute_value_loss(
-            y, t, clip_delta=True, batch_accumulator='sum').data
-        self.assertAlmostEqual(sum_loss, gt_huber_losses.sum(), places=5)
+        # Uniform weights
+        w1 = np.ones(self.y.size, dtype='f')
 
-        w1 = np.asarray([1, 1, 1])
-
-        mean_loss_w1 = compute_weighted_value_loss(
-            y, t, clip_delta=True, batch_accumulator='mean',
+        loss_w1 = compute_weighted_value_loss(
+            self.y, self.t, clip_delta=self.clip_delta,
+            batch_accumulator=self.batch_accumulator,
             weights=w1).data
-        self.assertAlmostEqual(mean_loss_w1, mean_loss, places=5)
+        if self.batch_accumulator == 'mean':
+            gt_loss = self.gt_losses.mean()
+        else:
+            gt_loss = self.gt_losses.sum()
+        self.assertAlmostEqual(loss_w1, gt_loss, places=5)
 
-        sum_loss_w1 = compute_weighted_value_loss(
-            y, t, clip_delta=True, batch_accumulator='sum',
-            weights=w1).data
-        self.assertAlmostEqual(sum_loss_w1, sum_loss, places=5)
+    def test_randomly_weighted(self):
 
-        wu = np.random.uniform(low=0, high=2, size=3).astype('f')
-        mean_loss_wu = compute_weighted_value_loss(
-            y, t, clip_delta=True, batch_accumulator='mean',
+        # Random weights
+        wu = np.random.uniform(low=0, high=2, size=self.y.size).astype('f')
+
+        loss_wu = compute_weighted_value_loss(
+            self.y, self.t, clip_delta=self.clip_delta,
+            batch_accumulator=self.batch_accumulator,
             weights=wu).data
-        self.assertAlmostEqual(
-            mean_loss_wu, (gt_huber_losses * wu).mean(), places=5)
-
-        sum_loss_wu = compute_weighted_value_loss(
-            y, t, clip_delta=True, batch_accumulator='sum',
-            weights=wu).data
-        self.assertAlmostEqual(
-            sum_loss_wu, (gt_huber_losses * wu).sum(), places=5)
+        if self.batch_accumulator == 'mean':
+            gt_loss = (self.gt_losses * wu).mean()
+        else:
+            gt_loss = (self.gt_losses * wu).sum()
+        self.assertAlmostEqual(loss_wu, gt_loss, places=5)
