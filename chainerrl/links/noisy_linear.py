@@ -33,6 +33,7 @@ class FactorizedNoisyLinear(chainer.Chain):
                 initialW=Uniform(1 / numpy.sqrt(self.out_size)),
                 initial_bias=Uniform(1 / numpy.sqrt(self.out_size)))
             """
+            """
             self.mu = mu_link
             self.mu.W.initializer = Uniform(1 / numpy.sqrt(in_size))
             self.mu.b.initializer = Uniform(1 / numpy.sqrt(in_size))
@@ -42,6 +43,12 @@ class FactorizedNoisyLinear(chainer.Chain):
                 in_size=in_size, out_size=self.out_size, nobias=self.nobias,
                 initialW=Constant(sigma_scale / numpy.sqrt(in_size)),
                 initial_bias=Constant(sigma_scale / numpy.sqrt(in_size)))
+            """
+            self.mu = mu_link
+            self.sigma = L.Linear(
+                in_size=in_size, out_size=self.out_size, nobias=self.nobias,
+                initialW=VarianceScalingConstant(sigma_scale),
+                initial_bias=Constant(sigma_scale))
 
         if self.device_id is not None:
             self.to_gpu(self.device_id)
