@@ -7,7 +7,7 @@ import numpy
 from chainerrl.initializers import VarianceScalingConstant
 
 
-class FactorizedNoisyLinear(chainer.Chain):
+class FactorizedNoisyLinear2(chainer.Chain):
     """Linear layer in Factorized Noisy Network
 
     Args:
@@ -17,7 +17,7 @@ class FactorizedNoisyLinear(chainer.Chain):
     """
 
     def __init__(self, mu_link, sigma_scale=0.4, constant=-1):
-        super(FactorizedNoisyLinear, self).__init__()
+        super(FactorizedNoisyLinear2, self).__init__()
         self.out_size = mu_link.out_size
         self.nobias = not ('/b' in [name for name, _ in mu_link.namedparams()])
 
@@ -27,21 +27,9 @@ class FactorizedNoisyLinear(chainer.Chain):
         self.device_id = mu_link._device_id
 
         with self.init_scope():
-            """
-            self.mu = L.Linear(
-                in_size=in_size, out_size=self.out_size, nobias=self.nobias,
-                initialW=Uniform(1 / numpy.sqrt(self.out_size)),
-                initial_bias=Uniform(1 / numpy.sqrt(self.out_size)))
-            """
             self.mu = mu_link
-            self.mu.W.initializer = Uniform(1 / numpy.sqrt(in_size))
-            self.mu.b.initializer = Uniform(1 / numpy.sqrt(in_size))
-            self.mu.W.initialize((self.out_size, in_size))
-            self.mu.b.initialize((self.out_size))
             self.sigma = L.Linear(
-                in_size=in_size, out_size=self.out_size, nobias=self.nobias,
-                initialW=Constant(sigma_scale / numpy.sqrt(in_size)),
-                initial_bias=Constant(sigma_scale / numpy.sqrt(in_size)))
+                in_size=10, out_size=self.out_size*in_size, nobias=True)
 
         if self.device_id is not None:
             self.to_gpu(self.device_id)
@@ -65,20 +53,12 @@ class FactorizedNoisyLinear(chainer.Chain):
         dtype = self.sigma.W.dtype
         out_size, in_size = self.sigma.W.shape
 
-        eps_x = self._eps(in_size, dtype)
-        eps_y = self._eps(out_size, dtype)
+        z = self._eps(in_size*out_size, dtype)
+        noise = F.linear(z, self.sigma.W)
 
-        if self.constant > 0:
-            W = self.mu.W + self.constant * self.xp.outer(eps_y, eps_x)
-            if self.nobias:
-                return F.linear(x, W)
-            else:
-                b = self.mu.b# + self.sigma.b * eps_y
-                return F.linear(x, W, b)
+        W = self.mu.W + noise
+        if self.nobias:
+            return F.linear(x, W)
         else:
-            W = self.mu.W + self.sigma.W * self.xp.outer(eps_y, eps_x)
-            if self.nobias:
-                return F.linear(x, W)
-            else:
-                b = self.mu.b + self.sigma.b * eps_y
-                return F.linear(x, W, b)
+            b = self.mu.b# + self.sigma.b * eps_y
+            return F.linear(x, W, b)

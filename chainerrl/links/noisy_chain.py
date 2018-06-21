@@ -7,6 +7,22 @@ import chainer
 from chainer.links import Linear
 
 from chainerrl.links.noisy_linear import FactorizedNoisyLinear
+from chainerrl.links.noisy_linear2 import FactorizedNoisyLinear2
+
+
+def to_factorized_noisy2(link, *args, **kwargs):
+    """Add noisiness to components of given link
+
+    Currently this function supports L.Linear (with and without bias)
+    """
+
+    def func_to_factorized_noisy(link):
+        if isinstance(link, Linear):
+            return FactorizedNoisyLinear2(link, *args, **kwargs)
+        else:
+            return link
+
+    _map_links(func_to_factorized_noisy, link)
 
 
 def to_factorized_noisy(link, *args, **kwargs):

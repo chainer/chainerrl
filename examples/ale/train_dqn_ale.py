@@ -110,6 +110,7 @@ def main():
 
     parser.add_argument('--noisy-net-sigma', type=float, default=None)
     parser.add_argument('--noise-constant', type=float, default=-1)
+    parser.add_argument('--prop', type=bool, action='store_true', default=False)
     args = parser.parse_args()
 
     import logging
@@ -167,7 +168,10 @@ def main():
         lambda: np.random.randint(n_actions))
 
     if args.noisy_net_sigma is not None and args.noisy_net_sigma > 0:
-        links.to_factorized_noisy(q_func, sigma_scale=args.noisy_net_sigma, constant=args.noise_constant)
+        if args.prop:
+            links.to_factorized_noisy2(q_func, sigma_scale=args.noisy_net_sigma, constant=args.noise_constant)
+        else:
+            links.to_factorized_noisy(q_func, sigma_scale=args.noisy_net_sigma, constant=args.noise_constant)
         # Turn off explorer
         explorer = explorers.Greedy()
 
