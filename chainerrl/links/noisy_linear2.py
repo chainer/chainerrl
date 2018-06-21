@@ -53,10 +53,10 @@ class FactorizedNoisyLinear2(chainer.Chain):
         dtype = self.sigma.W.dtype
         out_size, in_size = self.sigma.W.shape
 
-        z = self._eps(in_size*out_size, dtype)
-        noise = F.linear(z, self.sigma.W)
+        z = self._eps(10, dtype)
+        noise = F.linear(F.reshape(z, (1, -1)), self.sigma.W)
 
-        W = self.mu.W + noise
+        W = self.mu.W + F.reshape(noise, (self.mu.W.shape[0], self.mu.W.shape[1]))
         if self.nobias:
             return F.linear(x, W)
         else:

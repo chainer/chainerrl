@@ -110,7 +110,7 @@ def main():
 
     parser.add_argument('--noisy-net-sigma', type=float, default=None)
     parser.add_argument('--noise-constant', type=float, default=-1)
-    parser.add_argument('--prop', type=bool, action='store_true', default=False)
+    parser.add_argument('--prop', action='store_true', default=False)
     args = parser.parse_args()
 
     import logging
