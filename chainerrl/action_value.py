@@ -182,6 +182,51 @@ class DistributionalDiscreteActionValue(ActionValue):
         return (self.q_dist,)
 
 
+class QuantileDiscreteActionValue(DiscreteActionValue):
+    """Quantile action value for discrete actions.
+
+    Args:
+        quantiles (chainer.Variable): (batch_size, n_taus, n_actions)
+        q_values_formatter (callable):
+    """
+
+    def __init__(self, quantiles, q_values_formatter=lambda x: x):
+        assert quantiles.ndim == 3
+        self.quantiles = quantiles
+        self.xp = cuda.get_array_module(quantiles.data)
+        self.q_values_formatter = q_values_formatter
+
+    @cached_property
+    def q_values(self):
+        with chainer.force_backprop_mode():
+            return F.mean(self.quantiles, axis=1)
+
+    def evaluate_actions_as_quantiles(self, actions):
+        """Return the return quantiles of given actions.
+
+        Args:
+            actions (chainer.Variable or ndarray): Array of action indices.
+                Its shape must be (batch_size,).
+
+        Returns:
+            chainer.Variable: Return quantiles. Its shape will be
+                (batch_size, n_taus).
+        """
+        if isinstance(actions, chainer.Variable):
+            actions = actions.data
+        return self.quantiles[
+            self.xp.arange(self.quantiles.shape[0]), :, actions]
+
+    def __repr__(self):
+        return 'QuantileDiscreteActionValue greedy_actions:{} q_values:{}'.format(  # NOQA
+            self.greedy_actions.data,
+            self.q_values_formatter(self.q_values.data))
+
+    @property
+    def params(self):
+        return (self.quantiles,)
+
+
 class QuadraticActionValue(ActionValue):
     """Q-function output for continuous action space.
 
