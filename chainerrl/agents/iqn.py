@@ -22,6 +22,7 @@ class CosineBasisLinearReLU(chainer.Chain):
         with self.init_scope():
             self.linear = L.Linear(n_bases, out_size)
         self.n_bases = n_bases
+        self.out_size = out_size
 
     def __call__(self, taus):
         """Evaluate.
@@ -39,7 +40,7 @@ class CosineBasisLinearReLU(chainer.Chain):
         coef = xp.arange(self.n_bases, dtype=np.float32) * np.pi
         coef = xp.broadcast_to(coef, (batch_size * n_taus, self.n_bases))
         out = F.relu(self.linear(F.cos(coef * taus)))
-        return F.reshape(out, (batch_size, n_taus, self.n_bases))
+        return F.reshape(out, (batch_size, n_taus, self.out_size))
 
 
 class ImplicitQuantileQFunction(chainer.Chain):
