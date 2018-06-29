@@ -59,6 +59,8 @@ def main():
     parser.add_argument('--monitor', action='store_true', default=False,
                         help='Monitor env. Videos and additional information'
                              ' are saved as output files.')
+    parser.add_argument('--batch-accumulator', type=str, default='mean',
+                        choices=['mean', 'sum'])
     args = parser.parse_args()
 
     import logging
@@ -139,7 +141,7 @@ def main():
         explorer=explorer, replay_start_size=args.replay_start_size,
         target_update_interval=args.target_update_interval,
         update_interval=args.update_interval,
-        batch_accumulator='mean',
+        batch_accumulator=args.batch_accumulator,
         phi=phi,
     )
 
