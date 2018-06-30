@@ -55,6 +55,7 @@ class FactorizedNoisyLinear2(chainer.Chain):
 
         z = self._eps(10, dtype)
         noise = F.linear(F.reshape(z, (1, -1)), self.sigma.W)
+        #entropy = F.gaussian_kl_divergence()
 
         W = self.mu.W + F.reshape(noise, (self.mu.W.shape[0], self.mu.W.shape[1]))
         if self.nobias:

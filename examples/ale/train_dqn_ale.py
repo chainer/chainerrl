@@ -63,6 +63,7 @@ def parse_arch(arch, n_actions, activation):
 def parse_agent(agent):
     return {'DQN': agents.DQN,
             'DoubleDQN': agents.DoubleDQN,
+            'SARSA': agents.SARSA,
             'PAL': agents.PAL}[agent]
 
 
@@ -99,7 +100,7 @@ def main():
                         dest='clip_delta', action='store_false')
     parser.set_defaults(clip_delta=True)
     parser.add_argument('--agent', type=str, default='DQN',
-                        choices=['DQN', 'DoubleDQN', 'PAL'])
+                        choices=['DQN', 'DoubleDQN', 'PAL', 'SARSA'])
     parser.add_argument('--logging-level', type=int, default=20,
                         help='Logging level. 10:DEBUG, 20:INFO etc.')
     parser.add_argument('--render', action='store_true', default=False,
