@@ -112,6 +112,7 @@ def main():
     parser.add_argument('--noisy-net-sigma', type=float, default=None)
     parser.add_argument('--noise-constant', type=float, default=-1)
     parser.add_argument('--prop', action='store_true', default=False)
+    parser.add_argument('--entropy-coef', type=float, default=0)
     args = parser.parse_args()
 
     import logging
@@ -168,9 +169,10 @@ def main():
         args.final_exploration_frames,
         lambda: np.random.randint(n_actions))
 
+    entropy = None
     if args.noisy_net_sigma is not None and args.noisy_net_sigma > 0:
         if args.prop:
-            links.to_factorized_noisy2(q_func, sigma_scale=args.noisy_net_sigma, constant=args.noise_constant)
+            entropy = links.to_factorized_noisy2(q_func, sigma_scale=args.noisy_net_sigma, constant=args.noise_constant)
         else:
             links.to_factorized_noisy(q_func, sigma_scale=args.noisy_net_sigma, constant=args.noise_constant)
         # Turn off explorer
@@ -187,7 +189,7 @@ def main():
                   clip_delta=args.clip_delta,
                   update_interval=args.update_interval,
                   batch_accumulator='sum',
-                  phi=phi)
+                  phi=phi, entropy=entropy, entropy_coef=args.entropy_coef)
 
     if args.load:
         agent.load(args.load)

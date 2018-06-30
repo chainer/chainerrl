@@ -35,6 +35,7 @@ class FactorizedNoisyLinear2(chainer.Chain):
             self.to_gpu(self.device_id)
 
         self.constant = constant
+        self.entropy = None
 
     def _eps(self, shape, dtype):
         xp = self.xp
@@ -55,7 +56,7 @@ class FactorizedNoisyLinear2(chainer.Chain):
 
         z = self._eps(10, dtype)
         noise = F.linear(F.reshape(z, (1, -1)), self.sigma.W)
-        #entropy = F.gaussian_kl_divergence()
+        self.entropy = F.log(noise**2)#F.gaussian_kl_divergence(0, self.xp.log(self.xp.abs(noise)))
 
         W = self.mu.W + F.reshape(noise, (self.mu.W.shape[0], self.mu.W.shape[1]))
         if self.nobias:

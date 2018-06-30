@@ -128,7 +128,8 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
                  batch_accumulator='mean', episodic_update=False,
                  episodic_update_len=None,
                  logger=getLogger(__name__),
-                 batch_states=batch_states):
+                 batch_states=batch_states,
+                 entropy=None, entropy_coef=0):
         self.model = q_function
         self.q_function = q_function  # For backward compatibility
 
@@ -177,6 +178,9 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
         self.average_q_decay = average_q_decay
         self.average_loss = 0
         self.average_loss_decay = average_loss_decay
+
+        self.entropy = entropy
+        self.entropy_coef = entropy_coef
 
     def sync_target_network(self):
         """Synchronize target network with current network."""
@@ -336,6 +340,12 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
         """
         y, t = self._compute_y_and_t(exp_batch, gamma)
 
+        entropy_loss = 0
+
+        if self.entropy:
+            entropy_loss = -(sum([F.sum(m.entropy) for m in self.entropy]))
+            entropy_loss *= self.entropy_coef
+
         if errors_out is not None:
             del errors_out[:]
             delta = F.sum(abs(y - t), axis=1)
@@ -347,10 +357,10 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
             return compute_weighted_value_loss(
                 y, t, exp_batch['weights'],
                 clip_delta=self.clip_delta,
-                batch_accumulator=self.batch_accumulator)
+                batch_accumulator=self.batch_accumulator) + entropy_loss
         else:
             return compute_value_loss(y, t, clip_delta=self.clip_delta,
-                                      batch_accumulator=self.batch_accumulator)
+                                      batch_accumulator=self.batch_accumulator) + entropy_loss
 
     def act(self, obs):
         with chainer.using_config('train', False):

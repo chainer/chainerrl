@@ -15,15 +15,18 @@ def to_factorized_noisy2(link, *args, **kwargs):
 
     Currently this function supports L.Linear (with and without bias)
     """
+    links = []
 
     def func_to_factorized_noisy(link):
         if isinstance(link, Linear):
-            return FactorizedNoisyLinear2(link, *args, **kwargs)
+            a = FactorizedNoisyLinear2(link, *args, **kwargs)
+            links.append(a)
+            return a
         else:
             return link
 
     _map_links(func_to_factorized_noisy, link)
-
+    return links
 
 def to_factorized_noisy(link, *args, **kwargs):
     """Add noisiness to components of given link
@@ -41,6 +44,8 @@ def to_factorized_noisy(link, *args, **kwargs):
 
 
 def _map_links(func, link):
+    links = []
+
     if isinstance(link, chainer.Chain):
         children_names = link._children.copy()
         for name in children_names:
@@ -52,6 +57,7 @@ def _map_links(func, link):
                 delattr(link, name)
                 with link.init_scope():
                     setattr(link, name, new_child)
+                    links.append(new_child)
     elif isinstance(link, chainer.ChainList):
         children = link._children
         for i in range(len(children)):
@@ -63,3 +69,6 @@ def _map_links(func, link):
                 # mimic ChainList.add_link
                 children[i] = new_child
                 children[i].name = str(i)
+                links.append(new_child)
+
+    return links
