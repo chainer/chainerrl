@@ -174,7 +174,7 @@ def main():
         if args.prop:
             entropy = links.to_factorized_noisy2(q_func, sigma_scale=args.noisy_net_sigma, constant=args.noise_constant)
         else:
-            links.to_factorized_noisy(q_func, sigma_scale=args.noisy_net_sigma, constant=args.noise_constant)
+            entropy = links.to_factorized_noisy(q_func, sigma_scale=args.noisy_net_sigma, constant=args.noise_constant)
         # Turn off explorer
         explorer = explorers.Greedy()
 

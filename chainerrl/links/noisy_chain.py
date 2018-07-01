@@ -33,15 +33,18 @@ def to_factorized_noisy(link, *args, **kwargs):
 
     Currently this function supports L.Linear (with and without bias)
     """
+    links = []
 
     def func_to_factorized_noisy(link):
         if isinstance(link, Linear):
-            return FactorizedNoisyLinear(link, *args, **kwargs)
+            a = FactorizedNoisyLinear(link, *args, **kwargs)
+            links.append(a)
+            return a
         else:
             return link
 
     _map_links(func_to_factorized_noisy, link)
-
+    return links
 
 def _map_links(func, link):
     links = []

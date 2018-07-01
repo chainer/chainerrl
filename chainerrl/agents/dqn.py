@@ -343,7 +343,7 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
         entropy_loss = 0
 
         if self.entropy:
-            entropy_loss = -(sum([F.sum(m.entropy) for m in self.entropy]))
+            entropy_loss = -(sum([m.entropy for m in self.entropy]))
             entropy_loss *= self.entropy_coef
 
         if errors_out is not None:

@@ -78,7 +78,9 @@ class FactorizedNoisyLinear(chainer.Chain):
         else:
             W = self.mu.W + self.sigma.W * self.xp.outer(eps_y, eps_x)
             if self.nobias:
+                self.entropy = F.sum(F.log(self.sigma.W**2))
                 return F.linear(x, W)
             else:
+                self.entropy = F.sum(F.log(self.sigma.W**2)) + F.sum(F.log(self.sigma.b**2))
                 b = self.mu.b + self.sigma.b * eps_y
                 return F.linear(x, W, b)
