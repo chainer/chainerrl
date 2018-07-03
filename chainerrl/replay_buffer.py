@@ -166,14 +166,20 @@ class ReplayBuffer(AbstractReplayBuffer):
 class PriorityWeightError(object):
     """For propotional prioritization
 
+    alpha determines how much prioritization is used.
+
+    beta determines how much importance sampling weights are used. beta is
+    scheduled by ``beta0`` and ``betasteps``.
+
     Args:
-        alpha (float): A hyperparameter that determines how much
-            prioritization is used
-        beta0, betasteps (float): Schedule of beta.  beta determines how much
-            importance sampling weights are used.
+        alpha (float): Exponent of errors to compute probabilities to sample
+        beta0 (float): Initial value of beta
+        betasteps (float): Steps to anneal beta to 1
         eps (float): To revisit a step after its error becomes near zero
-        normalize_by_max (bool): normalize weights by maximum priority
-            of a batch.
+        normalize_by_max (str): Method to normalize weights. ``'batch'`` or
+            ``True`` (default): divide by the maximum weight in the sampled
+            batch. ``'memory'``: divide by the maximum weight in the memory.
+            ``False``: do not normalize.
     """
 
     def __init__(self, alpha, beta0, betasteps, eps, normalize_by_max):
@@ -186,12 +192,18 @@ class PriorityWeightError(object):
         else:
             self.beta_add = (1.0 - beta0) / betasteps
         self.eps = eps
+        if normalize_by_max is True:
+            normalize_by_max = 'batch'
+        assert normalize_by_max in [False, 'batch', 'memory']
         self.normalize_by_max = normalize_by_max
 
     def priority_from_errors(self, errors):
         return [d ** self.alpha + self.eps for d in errors]
 
     def weights_from_probabilities(self, probabilities, min_probability):
+        if self.normalize_by_max == 'batch':
+            # discard global min and compute batch min
+            min_probability = np.min(min_probability)
         if self.normalize_by_max:
             weights = [(p / min_probability) ** -self.beta
                        for p in probabilities]
