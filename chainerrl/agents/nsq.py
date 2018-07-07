@@ -16,7 +16,7 @@ import numpy as np
 
 from chainerrl.agent import AsyncAgent
 from chainerrl.agent import AttributeSavingMixin
-from chainerrl.misc import async
+from chainerrl.misc import async_
 from chainerrl.misc.batch_states import batch_states
 from chainerrl.misc import copy_param
 from chainerrl.recurrent import Recurrent
@@ -55,7 +55,7 @@ class NSQ(AttributeSavingMixin, AsyncAgent):
         self.target_q_function = copy.deepcopy(q_function)
         self.q_function = copy.deepcopy(self.shared_q_function)
 
-        async.assert_params_not_shared(self.shared_q_function, self.q_function)
+        async_.assert_params_not_shared(self.shared_q_function, self.q_function)
 
         self.optimizer = optimizer
 
