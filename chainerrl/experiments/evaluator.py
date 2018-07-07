@@ -50,6 +50,8 @@ def run_evaluation_episodes(env, agent, n_runs, max_episode_len=None,
     """
     logger = logger or logging.getLogger(__name__)
     scores = []
+    sigmas = []
+
     for i in range(n_runs):
         obs = env.reset()
         done = False
@@ -62,15 +64,18 @@ def run_evaluation_episodes(env, agent, n_runs, max_episode_len=None,
                 a = explorer.select_action(t, greedy_action_func)
             else:
                 a = greedy_action_func()
+
             obs, r, done, info = env.step(a)
             test_r += r
             t += 1
+
+        #sigmas.append([F.mean(F.abs(noise.sigma)) for noise in agent.entropy])
         agent.stop_episode()
         # As mixing float and numpy float causes errors in statistics
         # functions, here every score is cast to float.
         scores.append(float(test_r))
         logger.info('test episode: %s R: %s', i, test_r)
-    return scores
+    return scores#, sigmas
 
 
 def eval_performance(env, agent, n_runs, max_episode_len=None,

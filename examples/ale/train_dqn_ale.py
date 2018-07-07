@@ -160,8 +160,6 @@ def main():
     opt = optimizers.RMSpropGraves(
         lr=2.5e-4, alpha=0.95, momentum=0.0, eps=1e-2)
 
-    opt.setup(q_func)
-
     rbuf = replay_buffer.ReplayBuffer(10 ** 6)
 
     explorer = explorers.LinearDecayEpsilonGreedy(
@@ -177,6 +175,8 @@ def main():
             entropy = links.to_factorized_noisy(q_func, sigma_scale=args.noisy_net_sigma, constant=args.noise_constant)
         # Turn off explorer
         explorer = explorers.Greedy()
+
+    opt.setup(q_func)
 
     def phi(x):
         # Feature extractor

@@ -449,7 +449,17 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
         self.replay_buffer.stop_current_episode()
 
     def get_statistics(self):
-        return [
+        stats = [
             ('average_q', self.average_q),
             ('average_loss', self.average_loss),
         ]
+
+        if self.entropy is not None:
+            for i, noise in enumerate(self.entropy):
+                #stats.append(('entropy_' + str(i), noise.entropy))
+                #s = F.mean(F.absolute(noise.sigma.W.grad))
+                #stats.append(('entropy_grad_' + str(i), s))
+                s = F.mean(F.absolute(noise.sigma.W))
+                stats.append(('entropy_' + str(i), s))
+
+        return stats
