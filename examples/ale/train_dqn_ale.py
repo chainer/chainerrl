@@ -86,6 +86,8 @@ def main():
     parser.add_argument('--arch', type=str, default='nature',
                         choices=['nature', 'nips', 'dueling'])
     parser.add_argument('--steps', type=int, default=10 ** 8)
+    parser.add_argument('--buffer-size', type=int, default=10 ** 6)
+    parser.add_argument('--minibatch-size', type=int, default=32)
     parser.add_argument('--max-episode-len', type=int,
                         default=5 * 60 * 60 // 4,  # 5 minutes with 60/4 fps
                         help='Maximum number of steps for each episode.')
@@ -160,7 +162,7 @@ def main():
     opt = optimizers.RMSpropGraves(
         lr=2.5e-4, alpha=0.95, momentum=0.0, eps=1e-2)
 
-    rbuf = replay_buffer.ReplayBuffer(10 ** 6)
+    rbuf = replay_buffer.ReplayBuffer(args.buffer_size)
 
     explorer = explorers.LinearDecayEpsilonGreedy(
         1.0, args.final_epsilon,
@@ -189,6 +191,7 @@ def main():
                   clip_delta=args.clip_delta,
                   update_interval=args.update_interval,
                   batch_accumulator='sum',
+                  minibatch_size=args.minibatch_size,
                   phi=phi, entropy=entropy, entropy_coef=args.entropy_coef)
 
     if args.load:
