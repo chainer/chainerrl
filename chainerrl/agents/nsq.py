@@ -55,7 +55,8 @@ class NSQ(AttributeSavingMixin, AsyncAgent):
         self.target_q_function = copy.deepcopy(q_function)
         self.q_function = copy.deepcopy(self.shared_q_function)
 
-        async_.assert_params_not_shared(self.shared_q_function, self.q_function)
+        async_.assert_params_not_shared(
+            self.shared_q_function, self.q_function)
 
         self.optimizer = optimizer
 
