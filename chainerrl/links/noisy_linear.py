@@ -16,7 +16,7 @@ class FactorizedNoisyLinear(chainer.Chain):
             Scaling factor of the initial weights of noise-scaling parameters.
     """
 
-    def __init__(self, mu_link, sigma_scale=0.4, constant=-1):
+    def __init__(self, mu_link, sigma_scale=0.4, constant=-1, prev=False):
         super(FactorizedNoisyLinear, self).__init__()
         self.out_size = mu_link.out_size
         self.nobias = not ('/b' in [name for name, _ in mu_link.namedparams()])
@@ -28,21 +28,22 @@ class FactorizedNoisyLinear(chainer.Chain):
         self.device_id = mu_link._device_id
 
         with self.init_scope():
-            """
-            self.mu = L.Linear(
+            if prev:
+                self.mu = mu_link
+                self.sigma = L.Linear(
                 in_size=in_size, out_size=self.out_size, nobias=self.nobias,
-                initialW=Uniform(1 / numpy.sqrt(self.out_size)),
-                initial_bias=Uniform(1 / numpy.sqrt(self.out_size)))
-            """
-            self.mu = mu_link
-            self.mu.W.initializer = Uniform(1 / numpy.sqrt(in_size))
-            self.mu.b.initializer = Uniform(1 / numpy.sqrt(in_size))
-            self.mu.W.initialize((self.out_size, in_size))
-            self.mu.b.initialize((self.out_size))
-            self.sigma = L.Linear(
-                in_size=in_size, out_size=self.out_size, nobias=self.nobias,
-                initialW=Constant(sigma_scale / numpy.sqrt(in_size)),
-                initial_bias=Constant(sigma_scale / numpy.sqrt(in_size)))
+                initialW=VarianceScalingConstant(sigma_scale),
+                initial_bias=Constant(sigma_scale))
+            else:
+                self.mu = mu_link
+                self.mu.W.initializer = Uniform(1 / numpy.sqrt(in_size))
+                self.mu.b.initializer = Uniform(1 / numpy.sqrt(in_size))
+                self.mu.W.initialize((self.out_size, in_size))
+                self.mu.b.initialize((self.out_size))
+                self.sigma = L.Linear(
+                    in_size=in_size, out_size=self.out_size, nobias=self.nobias,
+                    initialW=Constant(sigma_scale / numpy.sqrt(in_size)),
+                    initial_bias=Constant(sigma_scale / numpy.sqrt(in_size)))
 
         if self.device_id is not None:
             self.to_gpu(self.device_id)
