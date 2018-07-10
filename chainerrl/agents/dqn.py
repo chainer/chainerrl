@@ -456,14 +456,15 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
 
         if self.entropy is not None:
             for i, noise in enumerate(self.entropy):
-                #stats.append(('entropy_' + str(i), noise.entropy))
-                #s = F.mean(F.absolute(noise.sigma.W.grad))
-                #stats.append(('entropy_grad_' + str(i), s))
-                s = F.mean(F.absolute(noise.sigma.W))
+                s = F.mean(F.absolute(noise.sigma.W.grad)).data
+                stats.append(('entropy_W_grad_' + str(i), s))
+                s = F.mean(F.absolute(noise.sigma.W)).data
                 stats.append(('entropy_W_' + str(i), s))
 
                 if not noise.nobias:
-                    s = F.mean(F.absolute(noise.sigma.b))
+                    s = F.mean(F.absolute(noise.sigma.b.grad))
+                    stats.append(('entropy_b_grad_' + str(i), s))
+                    s = F.mean(F.absolute(noise.sigma.b)).data
                     stats.append(('entropy_b_' + str(i), s))
 
         return stats
