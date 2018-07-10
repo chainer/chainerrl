@@ -260,13 +260,11 @@ def make_atari(env_id):
 
 
 def wrap_deepmind(env, episode_life=True, clip_rewards=True,
-                  frame_stack=True, scale=False, fire_reset=True,
+                  frame_stack=True, scale=False, fire_reset=False,
                   channel_order='chw'):
     """Configure environment for DeepMind-style Atari."""
     if episode_life:
         env = EpisodicLifeEnv(env)
-    env = NoopResetEnv(env, noop_max=30)
-    env = MaxAndSkipEnv(env, skip=4)
     if fire_reset and 'FIRE' in env.unwrapped.get_action_meanings():
         env = FireResetEnv(env)
     env = WarpFrame(env, channel_order=channel_order)
