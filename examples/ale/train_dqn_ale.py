@@ -114,6 +114,7 @@ def main():
     parser.add_argument('--noisy-net-sigma', type=float, default=None)
     parser.add_argument('--noise-constant', type=float, default=-1)
     parser.add_argument('--prop', action='store_true', default=False)
+    parser.add_argument('--adam', action='store_true', default=False)
     parser.add_argument('--orig-noise', action='store_true', default=False)
     parser.add_argument('--last-noise', type=int, default=0)
     parser.add_argument('--entropy-coef', type=float, default=0)
@@ -160,9 +161,12 @@ def main():
         [q_func(np.zeros((4, 84, 84), dtype=np.float32)[None])],
         os.path.join(args.outdir, 'model'))
 
-    # Use the same hyper parameters as the Nature paper's
-    opt = optimizers.RMSpropGraves(
-        lr=2.5e-4, alpha=0.95, momentum=0.0, eps=1e-2)
+    if args.adam:
+        opt = optimizers.Adam(1e-4)
+    else:
+        # Use the same hyper parameters as the Nature paper's
+        opt = optimizers.RMSpropGraves(
+            lr=2.5e-4, alpha=0.95, momentum=0.0, eps=1e-2)
 
     rbuf = replay_buffer.ReplayBuffer(args.buffer_size)
 
