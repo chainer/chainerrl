@@ -20,7 +20,7 @@ class FactorizedNoisyLinear(chainer.Chain):
         super(FactorizedNoisyLinear, self).__init__()
         self.out_size = mu_link.out_size
         self.nobias = not ('/b' in [name for name, _ in mu_link.namedparams()])
-        self.entropy = None
+        self.entropy = 0
         self.off = False
 
         W_data = mu_link.W.data
