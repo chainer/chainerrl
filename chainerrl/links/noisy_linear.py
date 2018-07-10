@@ -21,6 +21,7 @@ class FactorizedNoisyLinear(chainer.Chain):
         self.out_size = mu_link.out_size
         self.nobias = not ('/b' in [name for name, _ in mu_link.namedparams()])
         self.entropy = None
+        self.off = False
 
         W_data = mu_link.W.data
         in_size = None if W_data is None else W_data.shape[1]
@@ -62,6 +63,12 @@ class FactorizedNoisyLinear(chainer.Chain):
             self.mu.W.initialize((self.out_size, numpy.prod(x.shape[1:])))
         if self.sigma.W.data is None:
             self.sigma.W.initialize((self.out_size, numpy.prod(x.shape[1:])))
+
+        if self.off:
+            if self.nobias:
+                return F.linear(x, self.mu.W)
+            else:
+                return F.linear(x, self.mu.W, self.mu.b)
 
         # use info of sigma.W to avoid strange error messages
         dtype = self.sigma.W.dtype

@@ -115,6 +115,7 @@ def main():
     parser.add_argument('--noise-constant', type=float, default=-1)
     parser.add_argument('--prop', action='store_true', default=False)
     parser.add_argument('--orig-noise', action='store_true', default=False)
+    parser.add_argument('--last-noise', type=int, default=0)
     parser.add_argument('--entropy-coef', type=float, default=0)
     args = parser.parse_args()
 
@@ -179,6 +180,10 @@ def main():
                 prev=args.orig_noise)
         # Turn off explorer
         explorer = explorers.Greedy()
+
+        if args.last_noise > 0:
+            for e in entropy[:-args.last_noise]:
+                e.off = True
 
     opt.setup(q_func)
 

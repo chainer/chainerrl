@@ -462,7 +462,7 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
                 stats.append(('entropy_W_' + str(i), s))
 
                 if not noise.nobias:
-                    s = F.mean(F.absolute(noise.sigma.b.grad))
+                    s = F.mean(F.absolute(noise.sigma.b.grad)).data
                     stats.append(('entropy_b_grad_' + str(i), s))
                     s = F.mean(F.absolute(noise.sigma.b)).data
                     stats.append(('entropy_b_' + str(i), s))
