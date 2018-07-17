@@ -119,7 +119,7 @@ def main():
     parser.add_argument('--last-noise', type=int, default=0)
     parser.add_argument('--entropy-coef', type=float, default=0)
     parser.add_argument('--noise-coef', type=float, default=1)
-    parser.add_argument('--init-method', type=str, default='1/out')
+    parser.add_argument('--init-method', type=str, default='/out')
     args = parser.parse_args()
 
     import logging
