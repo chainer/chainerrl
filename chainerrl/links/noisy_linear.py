@@ -45,7 +45,7 @@ class FactorizedNoisyLinear(chainer.Chain):
                 self.sigma = L.Linear(
                     in_size=in_size, out_size=self.out_size, nobias=self.nobias,
                     initialW=Constant(sigma_scale / numpy.sqrt(in_size)),
-                    initial_bias=Constant(0.017))
+                    initial_bias=Constant(sigma_scale / numpy.sqrt(self.out_size)))
 
         if self.device_id is not None:
             self.to_gpu(self.device_id)
