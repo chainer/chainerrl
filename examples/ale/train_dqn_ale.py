@@ -140,7 +140,8 @@ def main():
         env = atari_wrappers.wrap_deepmind(
             atari_wrappers.make_atari(args.env),
             episode_life=not test,
-            clip_rewards=not test)
+            clip_rewards=not test,
+            fire_reset=True)
         env.seed(int(env_seed))
         if args.monitor:
             env = gym.wrappers.Monitor(
@@ -182,7 +183,7 @@ def main():
             entropy = links.to_factorized_noisy2(q_func, sigma_scale=args.noisy_net_sigma, constant=args.noise_constant)
         else:
             entropy = links.to_factorized_noisy(q_func, sigma_scale=args.noisy_net_sigma, constant=args.noise_constant,
-                prev=args.orig_noise, coef=args.noise_coef)
+                prev=args.orig_noise, noise_coef=args.noise_coef)
         # Turn off explorer
         explorer = explorers.Greedy()
 
