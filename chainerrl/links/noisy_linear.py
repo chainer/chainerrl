@@ -17,7 +17,7 @@ class FactorizedNoisyLinear(chainer.Chain):
     """
 
     def __init__(self, mu_link, sigma_scale=0.4, constant=-1, prev=False, noise_coef=1,
-        init_method='1/out'):
+        init_method='/out'):
         super(FactorizedNoisyLinear, self).__init__()
         self.out_size = mu_link.out_size
         self.nobias = not ('/b' in [name for name, _ in mu_link.namedparams()])
@@ -48,9 +48,9 @@ class FactorizedNoisyLinear(chainer.Chain):
                 self.mu.W.initialize((self.out_size, in_size))
                 self.mu.b.initialize((self.out_size))
 
-                if init_method == "1/out" or init_method == "mub":
+                if init_method == "/out" or init_method == "mub":
                     a = sigma_scale / numpy.sqrt(self.out_size)
-                elif init_method == "1/in":
+                elif init_method == "/in":
                     a = sigma_scale / numpy.sqrt(in_size)
                 elif init_method == "0.017":
                     a = 0.017
