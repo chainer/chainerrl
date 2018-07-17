@@ -16,7 +16,8 @@ class FactorizedNoisyLinear(chainer.Chain):
             Scaling factor of the initial weights of noise-scaling parameters.
     """
 
-    def __init__(self, mu_link, sigma_scale=0.4, constant=-1, prev=False, noise_coef=1):
+    def __init__(self, mu_link, sigma_scale=0.4, constant=-1, prev=False, noise_coef=1,
+        init_method='1/out'):
         super(FactorizedNoisyLinear, self).__init__()
         self.out_size = mu_link.out_size
         self.nobias = not ('/b' in [name for name, _ in mu_link.namedparams()])
@@ -39,13 +40,27 @@ class FactorizedNoisyLinear(chainer.Chain):
             else:
                 self.mu = mu_link
                 self.mu.W.initializer = Uniform(1 / numpy.sqrt(in_size))
-                self.mu.b.initializer = Uniform(1 / numpy.sqrt(self.out_size))
+                if init_method == "mub":
+                    self.mu.b.initializer = Uniform(1 / numpy.sqrt(self.out_size))
+                else:
+                    self.mu.b.initializer = Uniform(1 / numpy.sqrt(in_size))
+
                 self.mu.W.initialize((self.out_size, in_size))
                 self.mu.b.initialize((self.out_size))
+
+                if init_method == "1/out" or init_method == "mub":
+                    a = sigma_scale / numpy.sqrt(self.out_size)
+                elif init_method == "1/in":
+                    a = sigma_scale / numpy.sqrt(in_size)
+                elif init_method == "0.017":
+                    a = 0.017
+                elif init_method == "sigma":
+                    a = sigma_scale
+
                 self.sigma = L.Linear(
                     in_size=in_size, out_size=self.out_size, nobias=self.nobias,
                     initialW=Constant(sigma_scale / numpy.sqrt(in_size)),
-                    initial_bias=Constant(sigma_scale / numpy.sqrt(self.out_size)))
+                    initial_bias=Constant(a))
 
                 #self.sigma.W.initialize((self.out_size, in_size))
                 #self.sigma.b.initialize((self.out_size))
