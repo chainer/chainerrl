@@ -39,7 +39,7 @@ class FactorizedNoisyLinear(chainer.Chain):
             else:
                 self.mu = mu_link
                 self.mu.W.initializer = Uniform(1 / numpy.sqrt(in_size))
-                self.mu.b.initializer = Uniform(1 / numpy.sqrt(in_size))
+                self.mu.b.initializer = Uniform(1 / numpy.sqrt(self.out_size))
                 self.mu.W.initialize((self.out_size, in_size))
                 self.mu.b.initialize((self.out_size))
                 self.sigma = L.Linear(
