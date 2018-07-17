@@ -16,12 +16,13 @@ class FactorizedNoisyLinear(chainer.Chain):
             Scaling factor of the initial weights of noise-scaling parameters.
     """
 
-    def __init__(self, mu_link, sigma_scale=0.4, constant=-1, prev=False):
+    def __init__(self, mu_link, sigma_scale=0.4, constant=-1, prev=False, noise_coef=1):
         super(FactorizedNoisyLinear, self).__init__()
         self.out_size = mu_link.out_size
         self.nobias = not ('/b' in [name for name, _ in mu_link.namedparams()])
         self.entropy = 0
         self.off = False
+        self.noise_coef = noise_coef
 
         W_data = mu_link.W.data
         in_size = None if W_data is None else W_data.shape[1]
@@ -85,11 +86,12 @@ class FactorizedNoisyLinear(chainer.Chain):
                 b = self.mu.b# + self.sigma.b * eps_y
                 return F.linear(x, W, b)
         else:
-            W = self.mu.W + self.sigma.W * self.xp.outer(eps_y, eps_x)
+            W = self.mu.W + self.sigma.W * self.xp.outer(eps_y, eps_x) * self.noise_coef
             if self.nobias:
+                # gaussian entropy: 0.5 * log(2*pi*e*(sigma**2))
                 self.entropy = F.sum(F.log(self.sigma.W**2))
                 return F.linear(x, W)
             else:
                 self.entropy = F.sum(F.log(self.sigma.W**2)) + F.sum(F.log(self.sigma.b**2))
-                b = self.mu.b + self.sigma.b * eps_y
+                b = self.mu.b + self.sigma.b * eps_y * self.noise_coef
                 return F.linear(x, W, b)

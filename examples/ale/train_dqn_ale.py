@@ -118,6 +118,7 @@ def main():
     parser.add_argument('--orig-noise', action='store_true', default=False)
     parser.add_argument('--last-noise', type=int, default=0)
     parser.add_argument('--entropy-coef', type=float, default=0)
+    parser.add_argument('--noise-coef', type=float, default=1)
     args = parser.parse_args()
 
     import logging
@@ -181,7 +182,7 @@ def main():
             entropy = links.to_factorized_noisy2(q_func, sigma_scale=args.noisy_net_sigma, constant=args.noise_constant)
         else:
             entropy = links.to_factorized_noisy(q_func, sigma_scale=args.noisy_net_sigma, constant=args.noise_constant,
-                prev=args.orig_noise)
+                prev=args.orig_noise, coef=args.noise_coef)
         # Turn off explorer
         explorer = explorers.Greedy()
 
