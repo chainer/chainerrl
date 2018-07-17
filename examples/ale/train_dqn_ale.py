@@ -161,7 +161,7 @@ def main():
     # Draw the computational graph and save it in the output directory.
     chainerrl.misc.draw_computational_graph(
         [q_func(np.zeros((4, 84, 84), dtype=np.float32)[None])],
-        os.path.join(args.outdir, 'model'))
+        os.path.join(args.outdir, 'diagram'))
 
     if args.adam:
         opt = optimizers.Adam(1e-4)
@@ -190,6 +190,10 @@ def main():
         if args.last_noise > 0:
             for e in entropy[:-args.last_noise]:
                 e.off = True
+
+    chainerrl.misc.draw_computational_graph(
+        [q_func(np.zeros((4, 84, 84), dtype=np.float32)[None])],
+        os.path.join(args.outdir, 'diagram2'))
 
     opt.setup(q_func)
 

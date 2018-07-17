@@ -47,6 +47,9 @@ class FactorizedNoisyLinear(chainer.Chain):
                     initialW=Constant(sigma_scale / numpy.sqrt(in_size)),
                     initial_bias=Constant(sigma_scale / numpy.sqrt(self.out_size)))
 
+                #self.sigma.W.initialize((self.out_size, in_size))
+                #self.sigma.b.initialize((self.out_size))
+
         if self.device_id is not None:
             self.to_gpu(self.device_id)
 
@@ -60,16 +63,10 @@ class FactorizedNoisyLinear(chainer.Chain):
         return xp.copysign(xp.sqrt(xp.abs(r)), r)
 
     def __call__(self, x):
-        if self.mu.W.data is None:
-            self.mu.W.initialize((self.out_size, numpy.prod(x.shape[1:])))
-        if self.sigma.W.data is None:
-            self.sigma.W.initialize((self.out_size, numpy.prod(x.shape[1:])))
-
-        if self.off:
-            if self.nobias:
-                return F.linear(x, self.mu.W)
-            else:
-                return F.linear(x, self.mu.W, self.mu.b)
+        #if self.mu.W.data is None:
+        #    self.mu.W.initialize((self.out_size, numpy.prod(x.shape[1:])))
+        #if self.sigma.W.data is None:
+        #    self.sigma.W.initialize((self.out_size, numpy.prod(x.shape[1:])))
 
         # use info of sigma.W to avoid strange error messages
         dtype = self.sigma.W.dtype
@@ -78,20 +75,15 @@ class FactorizedNoisyLinear(chainer.Chain):
         eps_x = self._eps(in_size, dtype)
         eps_y = self._eps(out_size, dtype)
 
-        if self.constant > 0:
-            W = self.mu.W + self.constant * self.xp.outer(eps_y, eps_x)
-            if self.nobias:
-                return F.linear(x, W)
-            else:
-                b = self.mu.b# + self.sigma.b * eps_y
-                return F.linear(x, W, b)
+        self.entropy = F.sum(F.log(self.sigma.W**2)) + F.sum(F.log(self.sigma.b**2))
+        b = self.mu.b + self.sigma.b * eps_y * self.noise_coef
+
+        W = self.mu.W + self.sigma.W * self.xp.outer(eps_y, eps_x) * self.noise_coef
+        if self.nobias:
+            # gaussian entropy: 0.5 * log(2*pi*e*(sigma**2))
+            self.entropy = F.sum(F.log(self.sigma.W**2))
+            return F.linear(x, W)
         else:
-            W = self.mu.W + self.sigma.W * self.xp.outer(eps_y, eps_x) * self.noise_coef
-            if self.nobias:
-                # gaussian entropy: 0.5 * log(2*pi*e*(sigma**2))
-                self.entropy = F.sum(F.log(self.sigma.W**2))
-                return F.linear(x, W)
-            else:
-                self.entropy = F.sum(F.log(self.sigma.W**2)) + F.sum(F.log(self.sigma.b**2))
-                b = self.mu.b + self.sigma.b * eps_y * self.noise_coef
-                return F.linear(x, W, b)
+            self.entropy = F.sum(F.log(self.sigma.W**2)) + F.sum(F.log(self.sigma.b**2))
+            b = self.mu.b + self.sigma.b * eps_y * self.noise_coef
+            return F.linear(x, W, b)

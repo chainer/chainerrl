@@ -236,6 +236,8 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
 
         self.model.cleargrads()
         loss.backward()
+        #self.logger.info("%s" % self.entropy[-1].sigma.W)
+        #self.logger.info("%s" % self.entropy[-1].sigma.W.grad);
         self.optimizer.update()
 
     def input_initial_batch_to_target_model(self, batch):

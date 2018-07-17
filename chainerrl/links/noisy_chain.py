@@ -8,7 +8,8 @@ from chainer.links import Linear
 
 from chainerrl.links.noisy_linear import FactorizedNoisyLinear
 from chainerrl.links.noisy_linear2 import FactorizedNoisyLinear2
-
+from logging import getLogger
+from chainerrl import links
 
 def to_factorized_noisy2(link, *args, **kwargs):
     """Add noisiness to components of given link
@@ -47,7 +48,7 @@ def to_factorized_noisy(link, *args, **kwargs):
     return links
 
 def _map_links(func, link):
-    links = []
+    logger = getLogger(__name__)
 
     if isinstance(link, chainer.Chain):
         children_names = link._children.copy()
@@ -63,6 +64,7 @@ def _map_links(func, link):
                     links.append(new_child)
     elif isinstance(link, chainer.ChainList):
         children = link._children
+        logger.info(children)
         for i in range(len(children)):
             child = children[i]
             new_child = func(child)
@@ -70,8 +72,9 @@ def _map_links(func, link):
                 _map_links(func, child)
             else:
                 # mimic ChainList.add_link
+                # logger.info("replace {}, {}".format(child.W.shape, new_child))
                 children[i] = new_child
                 children[i].name = str(i)
-                links.append(new_child)
 
-    return links
+                if isinstance(link, links.Sequence):
+                    link.layers[i] = new_child
