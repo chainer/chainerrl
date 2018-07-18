@@ -26,10 +26,16 @@ class FactorizedNoisyLinear(chainer.Chain):
 
         with self.init_scope():
             self.mu = mu_link
+            self.mu.W.initializer = Uniform(1 / numpy.sqrt(in_size))  
+            if not self.nobias:
+                self.mu.b.initializer = Uniform(1 / numpy.sqrt(in_size))
+
+            self.mu.W.initialize((self.out_size, in_size))
+            self.mu.b.initialize((self.out_size))
             self.sigma = L.Linear(
                 in_size=in_size, out_size=self.out_size, nobias=self.nobias,
                 initialW=VarianceScalingConstant(sigma_scale),
-                initial_bias=Constant(sigma_scale))
+                initial_bias=Constant(sigma_scale / numpy.sqrt(self.out_size)))
 
         device_id = self.mu._device_id
         if device_id is not None:
