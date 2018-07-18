@@ -1,6 +1,6 @@
 import chainer
 import chainer.functions as F
-from chainer.initializers import Constant
+from chainer.initializers import Constant, Uniform
 import chainer.links as L
 import numpy
 
