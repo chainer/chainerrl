@@ -5,6 +5,7 @@ See http://arxiv.org/abs/1706.10295
 
 import chainer
 from chainer.links import Linear
+from chainer.links import Sequence
 
 from chainerrl.links.noisy_linear import FactorizedNoisyLinear
 
@@ -47,3 +48,7 @@ def _map_links(func, link):
                 # mimic ChainList.add_link
                 children[i] = new_child
                 children[i].name = str(i)
+
+                if isinstance(link, Sequence):
+                    # assumes i-th layer corresponds with i-th child
+                    link.layers[i] = new_child
