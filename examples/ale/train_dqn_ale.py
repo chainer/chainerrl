@@ -79,6 +79,7 @@ def main():
                         type=int, default=10 ** 6)
     parser.add_argument('--final-epsilon', type=float, default=0.1)
     parser.add_argument('--eval-epsilon', type=float, default=0.05)
+    parser.add_argument('--noisy-net-sigma', type=float, default=None)
     parser.add_argument('--arch', type=str, default='nature',
                         choices=['nature', 'nips', 'dueling'])
     parser.add_argument('--steps', type=int, default=10 ** 7)
@@ -141,6 +142,11 @@ def main():
     n_actions = env.action_space.n
     activation = parse_activation(args.activation)
     q_func = parse_arch(args.arch, n_actions, activation)
+
+    if args.noisy_net_sigma is not None:
+        links.to_factorized_noisy(q_func)
+        # Turn off explorer
+        explorer = explorers.Greedy()
 
     # Draw the computational graph and save it in the output directory.
     chainerrl.misc.draw_computational_graph(
