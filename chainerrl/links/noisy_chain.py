@@ -5,7 +5,7 @@ See http://arxiv.org/abs/1706.10295
 
 import chainer
 from chainer.links import Linear
-from chainer.links import Sequence
+from chainerrl.links import Sequence
 
 from chainerrl.links.noisy_linear import FactorizedNoisyLinear
 
