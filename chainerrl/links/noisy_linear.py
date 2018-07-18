@@ -1,6 +1,7 @@
 import chainer
 import chainer.functions as F
-from chainer.initializers import Constant, Uniform
+from chainer.initializers import Constant
+from chainer.initializers import Uniform
 import chainer.links as L
 import numpy
 
@@ -26,7 +27,7 @@ class FactorizedNoisyLinear(chainer.Chain):
 
         with self.init_scope():
             self.mu = mu_link
-            self.mu.W.initializer = Uniform(1 / numpy.sqrt(in_size))  
+            self.mu.W.initializer = Uniform(1 / numpy.sqrt(in_size))
             if not self.nobias:
                 self.mu.b.initializer = Uniform(1 / numpy.sqrt(in_size))
 
