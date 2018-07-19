@@ -49,7 +49,7 @@ class FactorizedNoisyLinear(chainer.Chain):
             self.mu.W.initialize((self.out_size, numpy.prod(x.shape[1:])))
         if self.sigma.W.data is None:
             self.sigma.W.initialize((self.out_size, numpy.prod(x.shape[1:])))
-        if self.sigma.b and self.sigma.b.data is None:
+        if not self.nobias:
             self.sigma.b.initialize((self.out_size))
 
         # use info of sigma.W to avoid strange error messages
