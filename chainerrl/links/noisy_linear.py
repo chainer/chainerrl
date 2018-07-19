@@ -6,6 +6,7 @@ import chainer.links as L
 import numpy
 
 from chainerrl.initializers import VarianceScalingConstant
+from chainerrl.initializers import VarianceScalingUniform
 
 
 class FactorizedNoisyLinear(chainer.Chain):
@@ -27,16 +28,22 @@ class FactorizedNoisyLinear(chainer.Chain):
 
         with self.init_scope():
             self.mu = mu_link
-            self.mu.W.initializer = Uniform(1 / numpy.sqrt(in_size))
+            self.mu.W.initializer = VarianceScalingUniform(1)
             if not self.nobias:
-                self.mu.b.initializer = Uniform(1 / numpy.sqrt(in_size))
+                self.mu.b.initializer = VarianceScalingUniform(1)
 
-            self.mu.W.initialize((self.out_size, in_size))
-            self.mu.b.initialize((self.out_size))
+            # assure weight reinitialization
+            if in_size is None:
+                self.mu.W = None
+                self.mu.b = None
+            else:
+                self.mu.W.initialize((self.out_size, in_size))
+                self.mu.b.initialize((self.out_size))
+
             self.sigma = L.Linear(
                 in_size=in_size, out_size=self.out_size, nobias=self.nobias,
                 initialW=VarianceScalingConstant(sigma_scale),
-                initial_bias=Constant(sigma_scale / numpy.sqrt(self.out_size)))
+                initial_bias=VarianceScalingConstant(sigma_scale, fan='out'))
 
         device_id = self.mu._device_id
         if device_id is not None:
@@ -52,8 +59,12 @@ class FactorizedNoisyLinear(chainer.Chain):
     def __call__(self, x):
         if self.mu.W.data is None:
             self.mu.W.initialize((self.out_size, numpy.prod(x.shape[1:])))
+        if self.mu.b.data is None:
+            self.mu.b.initialize((numpy.prod(x.shape[1:])))
         if self.sigma.W.data is None:
             self.sigma.W.initialize((self.out_size, numpy.prod(x.shape[1:])))
+        if self.sigma.b.data is None:
+            self.sigma.b.initialize((numpy.prod(x.shape[1:])))
 
         # use info of sigma.W to avoid strange error messages
         dtype = self.sigma.W.dtype
