@@ -1,12 +1,10 @@
 import chainer
 import chainer.functions as F
-from chainer.initializers import Constant
-from chainer.initializers import Uniform
+from chainer.initializers import LeCunUniform
 import chainer.links as L
 import numpy
 
 from chainerrl.initializers import VarianceScalingConstant
-from chainerrl.initializers import VarianceScalingUniform
 
 
 class FactorizedNoisyLinear(chainer.Chain):
@@ -27,23 +25,13 @@ class FactorizedNoisyLinear(chainer.Chain):
         in_size = None if W_data is None else W_data.shape[1]
 
         with self.init_scope():
-            self.mu = mu_link
-            self.mu.W.initializer = VarianceScalingUniform(1)
-            if not self.nobias:
-                self.mu.b.initializer = VarianceScalingUniform(1)
+            self.mu = L.Linear(in_size, self.out_size, self.nobias,
+                               initialW=LeCunUniform(1 / numpy.sqrt(3)))
 
-            # assure weight reinitialization
-            if in_size is None:
-                self.mu.W.data = None
-                self.mu.b.data = None
-            else:
-                self.mu.W.initialize((self.out_size, in_size))
-                self.mu.b.initialize((self.out_size))
-
-            self.sigma = L.Linear(
-                in_size=in_size, out_size=self.out_size, nobias=self.nobias,
-                initialW=VarianceScalingConstant(sigma_scale),
-                initial_bias=VarianceScalingConstant(sigma_scale, fan='out'))
+            self.sigma = L.Linear(in_size, self.out_size, self.nobias,
+                                  initialW=VarianceScalingConstant(
+                                      sigma_scale),
+                                  initial_bias=VarianceScalingConstant(sigma_scale, fan='out'))
 
         device_id = self.mu._device_id
         if device_id is not None:
@@ -59,8 +47,6 @@ class FactorizedNoisyLinear(chainer.Chain):
     def __call__(self, x):
         if self.mu.W.data is None:
             self.mu.W.initialize((self.out_size, numpy.prod(x.shape[1:])))
-        if self.mu.b.data is None:
-            self.mu.b.initialize((self.out_size))
         if self.sigma.W.data is None:
             self.sigma.W.initialize((self.out_size, numpy.prod(x.shape[1:])))
         if self.sigma.b.data is None:
