@@ -34,8 +34,8 @@ class FactorizedNoisyLinear(chainer.Chain):
 
             # assure weight reinitialization
             if in_size is None:
-                self.mu.W = None
-                self.mu.b = None
+                self.mu.W.data = None
+                self.mu.b.data = None
             else:
                 self.mu.W.initialize((self.out_size, in_size))
                 self.mu.b.initialize((self.out_size))
