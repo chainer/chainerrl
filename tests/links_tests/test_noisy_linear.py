@@ -60,7 +60,7 @@ class TestFactorizedNoisyLinear(unittest.TestCase):
         if self.nobias:
             target *= 2 / numpy.pi
         else:
-            target *= 2 / numpy.pi + numpy.sqrt(2 / numpy.pi)
+            target *= 2 / numpy.pi + numpy.sqrt(2 / numpy.pi) / y1.shape[1]
 
         self.assertGreater(d, target / 3.)
         self.assertLess(d, target * 3.)
