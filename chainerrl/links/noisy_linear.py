@@ -32,7 +32,8 @@ class FactorizedNoisyLinear(chainer.Chain):
             self.sigma = L.Linear(in_size, self.out_size, self.nobias,
                                   initialW=VarianceScalingConstant(
                                       sigma_scale),
-                                  initial_bias=VarianceScalingConstant(sigma_scale))
+                                  initial_bias=VarianceScalingConstant(
+                                      sigma_scale))
 
         if device_id is not None:
             self.to_gpu(device_id)
