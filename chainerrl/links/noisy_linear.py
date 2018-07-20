@@ -23,6 +23,7 @@ class FactorizedNoisyLinear(chainer.Chain):
 
         W_data = mu_link.W.data
         in_size = None if W_data is None else W_data.shape[1]
+        device_id = mu_link._device_id
 
         with self.init_scope():
             self.mu = L.Linear(in_size, self.out_size, self.nobias,
@@ -33,7 +34,6 @@ class FactorizedNoisyLinear(chainer.Chain):
                                       sigma_scale),
                                   initial_bias=VarianceScalingConstant(sigma_scale))
 
-        device_id = self.mu._device_id
         if device_id is not None:
             self.to_gpu(device_id)
 
