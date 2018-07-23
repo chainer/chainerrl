@@ -7,6 +7,7 @@ import chainer
 from chainer.links import Linear
 
 from chainerrl.links.noisy_linear import FactorizedNoisyLinear
+from chainerrl.links.sequence import Sequence
 
 
 def to_factorized_noisy(link, *args, **kwargs):
@@ -47,3 +48,7 @@ def _map_links(func, link):
                 # mimic ChainList.add_link
                 children[i] = new_child
                 children[i].name = str(i)
+
+                if isinstance(link, Sequence):
+                    # assumes i-th layer corresponds with i-th child
+                    link.layers[i] = new_child
