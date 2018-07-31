@@ -11,6 +11,14 @@ from chainerrl.links.noisy_linear2 import FactorizedNoisyLinear2
 from logging import getLogger
 from chainerrl import links
 
+try:
+    # For Python 3.5 and later
+    from inspect import Parameter
+    from inspect import signature
+except Exception:
+    from funcsigs import Parameter
+    from funcsigs import signature
+
 def to_factorized_noisy2(link, *args, **kwargs):
     """Add noisiness to components of given link
 
@@ -61,7 +69,6 @@ def _map_links(func, link):
                 delattr(link, name)
                 with link.init_scope():
                     setattr(link, name, new_child)
-                    links.append(new_child)
     elif isinstance(link, chainer.ChainList):
         children = link._children
         logger.info(children)
@@ -78,3 +85,4 @@ def _map_links(func, link):
 
                 if isinstance(link, links.Sequence):
                     link.layers[i] = new_child
+                    link.argnames[i] = set(signature(new_child).parameters)

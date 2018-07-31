@@ -1,11 +1,29 @@
 import chainer
 import chainer.functions as F
 from chainer.initializers import Constant, Uniform
+from chainer.initializers import LeCunUniform
 import chainer.links as L
 import numpy
 
 from chainerrl.initializers import VarianceScalingConstant
 
+from chainer import initializer
+class VarianceScalingUniform(initializer.Initializer):
+    def __init__(self, scale=1.0, dtype=None):
+        super(VarianceScalingUniform, self).__init__(dtype)
+        self.scale = scale
+
+    def __call__(self, array):
+        if self.dtype is not None:
+            assert array.dtype == self.dtype
+
+        if len(array.shape) == 1:
+            Uniform(self.scale / numpy.sqrt(array.shape[0]))(array)
+        else:
+            fan_in, _ = initializer.get_fans(array.shape)
+            Uniform(self.scale / numpy.sqrt(fan_in))(array)
+
+PARA = True
 
 class FactorizedNoisyLinear(chainer.Chain):
     """Linear layer in Factorized Noisy Network
@@ -31,44 +49,21 @@ class FactorizedNoisyLinear(chainer.Chain):
         self.device_id = mu_link._device_id
 
         with self.init_scope():
-            if prev:
-                self.mu = mu_link
-                self.sigma = L.Linear(
-                in_size=in_size, out_size=self.out_size, nobias=self.nobias,
-                initialW=VarianceScalingConstant(sigma_scale),
-                initial_bias=Constant(sigma_scale))
-            else:
-                self.mu = mu_link
-                self.mu.W.initializer = Uniform(1 / numpy.sqrt(in_size))
-                if init_method == "mub":
-                    self.mu.b.initializer = Uniform(1 / numpy.sqrt(self.out_size))
-                else:
-                    self.mu.b.initializer = Uniform(1 / numpy.sqrt(in_size))
+            self.mu = L.Linear(in_size, self.out_size, self.nobias,
+                               initialW=LeCunUniform(1 / numpy.sqrt(3)))
 
-                self.mu.W.initialize((self.out_size, in_size))
-                self.mu.b.initialize((self.out_size))
-
-                if init_method == "/out" or init_method == "mub":
-                    a = sigma_scale / numpy.sqrt(self.out_size)
-                elif init_method == "/in":
-                    a = sigma_scale / numpy.sqrt(in_size)
-                elif init_method == "0.017":
-                    a = 0.017
-                elif init_method == "sigma":
-                    a = sigma_scale
-
-                self.sigma = L.Linear(
-                    in_size=in_size, out_size=self.out_size, nobias=self.nobias,
-                    initialW=Constant(sigma_scale / numpy.sqrt(in_size)),
-                    initial_bias=Constant(a))
-
-                #self.sigma.W.initialize((self.out_size, in_size))
-                #self.sigma.b.initialize((self.out_size))
+            self.sigma = L.Linear(in_size, self.out_size, self.nobias,
+                                  initialW=VarianceScalingConstant(
+                                      sigma_scale),
+                                  initial_bias=VarianceScalingConstant(
+                                      sigma_scale))
 
         if self.device_id is not None:
             self.to_gpu(self.device_id)
 
         self.constant = constant
+
+        self.reset_noise()
 
     def _eps(self, shape, dtype):
         xp = self.xp
@@ -77,27 +72,48 @@ class FactorizedNoisyLinear(chainer.Chain):
         # apply the function f
         return xp.copysign(xp.sqrt(xp.abs(r)), r)
 
-    def __call__(self, x):
-        #if self.mu.W.data is None:
-        #    self.mu.W.initialize((self.out_size, numpy.prod(x.shape[1:])))
-        #if self.sigma.W.data is None:
-        #    self.sigma.W.initialize((self.out_size, numpy.prod(x.shape[1:])))
-
-        # use info of sigma.W to avoid strange error messages
+    def reset_noise(self):
         dtype = self.sigma.W.dtype
         out_size, in_size = self.sigma.W.shape
 
-        eps_x = self._eps(in_size, dtype)
-        eps_y = self._eps(out_size, dtype)
+        if PARA:
+            self.eps_x = self._eps(in_size, dtype)
+            self.eps_y = self._eps(out_size, dtype)
 
-        b = self.mu.b + self.sigma.b * eps_y * self.noise_coef
+    def __call__(self, x, noise=False, act=False):
+        if self.mu.W.data is None:
+            self.mu.W.initialize((self.out_size, numpy.prod(x.shape[1:])))
+        if self.mu.b.data is None:
+            self.mu.b.initialize((self.out_size,))
+        if self.sigma.W.data is None:
+            self.sigma.W.initialize((self.out_size, numpy.prod(x.shape[1:])))
 
-        W = self.mu.W + self.sigma.W * self.xp.outer(eps_y, eps_x) * self.noise_coef
+        if not PARA:
+            noise = True
+            dtype = self.sigma.W.dtype
+            out_size, in_size = self.sigma.W.shape
+            self.eps_x = self._eps(in_size, dtype)
+            self.eps_y = self._eps(out_size, dtype)
+
+        if noise and not act:
+            if PARA:
+                W = self.mu.W + self.xp.outer(self.eps_y, self.eps_x) * self.noise_coef
+            else:
+                W = self.mu.W + self.sigma.W * self.xp.outer(self.eps_y, self.eps_x)# * self.noise_coef
+        else:
+            W = self.mu.W
+
         if self.nobias:
             # gaussian entropy: 0.5 * log(2*pi*e*(sigma**2))
             self.entropy = F.sum(F.log(self.sigma.W**2+1e-5))
             return F.linear(x, W)
         else:
             self.entropy = F.sum(F.log(self.sigma.W**2+1e-5)) + F.sum(F.log(self.sigma.b**2+1e-5))
-            b = self.mu.b + self.sigma.b * eps_y * self.noise_coef
+            if noise and not act:
+                if PARA:
+                    b = self.mu.b + self.eps_y * self.noise_coef
+                else:
+                    b = self.mu.b + self.sigma.b * self.eps_y# * self.noise_coef
+            else:
+                b = self.mu.b
             return F.linear(x, W, b)

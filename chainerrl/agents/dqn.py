@@ -21,6 +21,8 @@ from chainerrl.recurrent import state_reset
 from chainerrl.replay_buffer import batch_experiences
 from chainerrl.replay_buffer import ReplayUpdater
 
+import cv2
+
 
 def compute_value_loss(y, t, clip_delta=True, batch_accumulator='mean'):
     """Compute a loss for value prediction problem.
@@ -136,6 +138,7 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
         if gpu is not None and gpu >= 0:
             cuda.get_device(gpu).use()
             self.model.to_gpu(device=gpu)
+            self.model.reset_noise()
 
         self.xp = self.model.xp
         self.replay_buffer = replay_buffer
@@ -181,6 +184,8 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
 
         self.entropy = entropy
         self.entropy_coef = entropy_coef
+
+        cv2.namedWindow("values", cv2.WINDOW_NORMAL)
 
     def sync_target_network(self):
         """Synchronize target network with current network."""
@@ -303,7 +308,7 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
     def _compute_target_values(self, exp_batch, gamma):
         batch_next_state = exp_batch['next_state']
 
-        target_next_qout = self.target_model(batch_next_state)
+        target_next_qout = self.target_model(batch_next_state, **{'noise': False})
         next_q_max = target_next_qout.max
 
         batch_rewards = exp_batch['reward']
@@ -317,7 +322,7 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
         # Compute Q-values for current states
         batch_state = exp_batch['state']
 
-        qout = self.model(batch_state)
+        qout = self.model(batch_state, **{'noise': False})
 
         batch_actions = exp_batch['action']
         batch_q = F.reshape(qout.evaluate_actions(
@@ -368,7 +373,7 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
         with chainer.using_config('train', False):
             with chainer.no_backprop_mode():
                 action_value = self.model(
-                    self.batch_states([obs], self.xp, self.phi))
+                    self.batch_states([obs], self.xp, self.phi), **{'noise': True, 'act': True})
                 q = float(action_value.max.data)
                 action = cuda.to_cpu(action_value.greedy_actions.data)[0]
 
@@ -379,12 +384,94 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
         self.logger.debug('t:%s q:%s action_value:%s', self.t, q, action_value)
         return action
 
+    def update_noise_std(self, s):
+        noisy = self.model(
+            self.batch_states([s], self.xp, self.phi), **{'noise': True}).q_values
+        clean = self.model(
+            self.batch_states([s], self.xp, self.phi), **{'noise': False}).q_values
+        noisy, clean = F.softmax(noisy), F.softmax(clean)
+        div = -F.sum(clean * F.log(noisy / clean))
+        delta = 0.05
+        if div.data <= delta:
+            self.model.scale_noise_coef(1.01)
+        else:
+            self.model.scale_noise_coef(1/1.01)
+
+    def plot_values(self, obs_space):
+        import numpy as np
+        v = []
+
+        for i in range(obs_space):
+            s = np.zeros(obs_space)
+            s[i] = 1
+            vals = self.model(
+                self.batch_states([s], self.xp, self.phi), **{'noise': False}).q_values
+            vals = vals.data[0]
+            vals = chainer.cuda.to_cpu(vals)
+            v.append(np.asarray(vals))
+
+        v = np.array(v).flatten()
+        #v -= v.mean()
+        #v /= max(abs(v.min()), v.max())
+        norm_v = v.copy()
+        norm_v -= norm_v.min()
+        norm_v /= norm_v.max()
+        #v = v * 2.0 - 1.0
+
+        def get_color(v):
+            if float(v) >= 0:
+                return (0, float(v), 0)
+            else:
+                return (0, 0, float(abs(v)))
+
+        canvas = []
+        size = 256
+
+        for i in range(obs_space):
+            cell = np.zeros((size, size, 3), dtype=np.float32)
+
+            val = v[i*2+0]
+            pts = np.array([[0,0],[size//2, size//2],[0, size]], np.int32)
+            pts = pts.reshape((-1,1,2))
+            cv2.fillPoly(cell, [pts], get_color(norm_v[i*2+0]))
+            cv2.putText(cell, '%.2f' % val, (int(size*0.1), int(size*0.55)),
+                cv2.FONT_HERSHEY_SIMPLEX, size/128*0.5, (1, 1, 1), size//128)
+
+            val = v[i*2+1]
+            pts = np.array([[size, 0],[size//2,size//2],[size,size]], np.int32)
+            pts = pts.reshape((-1,1,2))
+            cv2.fillPoly(cell, [pts], get_color(norm_v[i*2+1]))
+            cv2.putText(cell, '%.2f' % val, (int(size*0.6), int(size*0.55)),
+                cv2.FONT_HERSHEY_SIMPLEX, size/128*0.5, (1, 1, 1), size//128)
+
+            cv2.rectangle(cell, (0, 0), (size-5, size-5), (1, 1, 1), 5)
+
+            canvas.append(cell)
+
+        width = len(canvas)*size
+        info = np.zeros((size, width, 3))
+
+        text = ''
+
+        text += 't: %s   ' % self.t
+
+        try:
+            text += 'epsilon: %.2f' % self.explorer.epsilon
+        except:
+            pass
+
+        cv2.putText(info, text, (100, size//2),
+            cv2.FONT_HERSHEY_SIMPLEX, size/128*0.5, (1, 1, 1), size//128)
+
+        cv2.imshow("values", np.vstack([np.hstack(canvas), info]))
+        cv2.waitKey(1)
+
     def act_and_train(self, obs, reward):
 
         with chainer.using_config('train', False):
             with chainer.no_backprop_mode():
                 action_value = self.model(
-                    self.batch_states([obs], self.xp, self.phi))
+                    self.batch_states([obs], self.xp, self.phi), **{'noise': True})
                 q = float(action_value.max.data)
                 greedy_action = cuda.to_cpu(action_value.greedy_actions.data)[
                     0]
@@ -398,6 +485,12 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
         action = self.explorer.select_action(
             self.t, lambda: greedy_action, action_value=action_value)
         self.t += 1
+
+        if self.t % 50 == 0:
+            self.update_noise_std(obs)
+
+        if self.t % 100 == 0:
+            self.plot_values(len(obs))
 
         # Update the target network
         if self.t % self.target_update_interval == 0:
@@ -444,6 +537,7 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
         self.stop_episode()
 
     def stop_episode(self):
+        self.model.reset_noise()
         self.last_state = None
         self.last_action = None
         if isinstance(self.model, Recurrent):
@@ -458,15 +552,11 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
 
         if self.entropy is not None:
             for i, noise in enumerate(self.entropy):
-                s = F.mean(F.absolute(noise.sigma.W.grad)).data
-                stats.append(('entropy_W_grad_' + str(i), s))
                 s = F.mean(F.absolute(noise.sigma.W)).data
                 stats.append(('entropy_W_' + str(i), s))
 
-                if not noise.nobias:
-                    s = F.mean(F.absolute(noise.sigma.b.grad)).data
-                    stats.append(('entropy_b_grad_' + str(i), s))
-                    s = F.mean(F.absolute(noise.sigma.b)).data
-                    stats.append(('entropy_b_' + str(i), s))
+                #if not noise.nobias:
+                #    s = F.mean(F.absolute(noise.sigma.b)).data
+                #    stats.append(('entropy_b_' + str(i), s))
 
         return stats
