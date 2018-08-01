@@ -2,6 +2,8 @@ import gym
 from gym import spaces, logger
 from gym.utils import seeding
 import numpy as np
+import cv2
+import chainer
 
 class ChainEnv(gym.Env):
     def __init__(self, N=10):
@@ -56,3 +58,74 @@ class ChainEnv(gym.Env):
 
     def close(self):
         pass
+
+    def init_plot(self):
+        cv2.namedWindow("values", cv2.WINDOW_NORMAL)
+
+    def plot_values(self, obs_space, agent):
+        import numpy as np
+        v = []
+
+        for i in range(obs_space):
+            s = np.zeros(obs_space)
+            s[i] = 1
+            vals = agent.model(
+                agent.batch_states([s], agent.xp, agent.phi), **{'noise': False}).q_values
+            vals = vals.data[0]
+            vals = chainer.cuda.to_cpu(vals)
+            v.append(np.asarray(vals))
+
+        v = np.array(v).flatten()
+        #v -= v.mean()
+        #v /= max(abs(v.min()), v.max())
+        norm_v = v.copy()
+        norm_v -= norm_v.min()
+        norm_v /= norm_v.max()
+        #v = v * 2.0 - 1.0
+
+        def get_color(v):
+            if float(v) >= 0:
+                return (0, float(v), 0)
+            else:
+                return (0, 0, float(abs(v)))
+
+        canvas = []
+        size = 256
+
+        for i in range(obs_space):
+            cell = np.zeros((size, size, 3), dtype=np.float32)
+
+            val = v[i*2+0]
+            pts = np.array([[0,0],[size//2, size//2],[0, size]], np.int32)
+            pts = pts.reshape((-1,1,2))
+            cv2.fillPoly(cell, [pts], get_color(norm_v[i*2+0]))
+            cv2.putText(cell, '%.2f' % val, (int(size*0.1), int(size*0.55)),
+                cv2.FONT_HERSHEY_SIMPLEX, size/128*0.5, (1, 1, 1), size//128)
+
+            val = v[i*2+1]
+            pts = np.array([[size, 0],[size//2,size//2],[size,size]], np.int32)
+            pts = pts.reshape((-1,1,2))
+            cv2.fillPoly(cell, [pts], get_color(norm_v[i*2+1]))
+            cv2.putText(cell, '%.2f' % val, (int(size*0.6), int(size*0.55)),
+                cv2.FONT_HERSHEY_SIMPLEX, size/128*0.5, (1, 1, 1), size//128)
+
+            cv2.rectangle(cell, (0, 0), (size-5, size-5), (1, 1, 1), 5)
+
+            canvas.append(cell)
+
+        width = len(canvas)*size
+        info = np.zeros((size, width, 3))
+
+        text = ''
+        text += 't: %s   ' % agent.t
+
+        try:
+            text += 'epsilon: %.2f' % agent.explorer.epsilon
+        except:
+            pass
+
+        cv2.putText(info, text, (100, size//2),
+            cv2.FONT_HERSHEY_SIMPLEX, size/128*0.5, (1, 1, 1), size//128)
+
+        cv2.imshow("values", np.vstack([np.hstack(canvas), info]))
+        cv2.waitKey(1)

@@ -29,6 +29,7 @@ from chainerrl.q_functions import DuelingDQN
 from chainerrl import replay_buffer
 
 from chain_env import ChainEnv
+from grid_env import GridEnv
 from myseq import MySequence
 
 def parse_activation(activation_str):
@@ -84,8 +85,8 @@ def main():
     parser.add_argument('--eval-epsilon', type=float, default=0.05)
     parser.add_argument('--arch', type=str, default='nature',
                         choices=['nature', 'nips', 'dueling'])
-    parser.add_argument('--steps', type=int, default=10000)
-    parser.add_argument('--buffer-size', type=int, default=10 ** 6)
+    parser.add_argument('--steps', type=int, default=100000)
+    parser.add_argument('--buffer-size', type=int, default=1000)
     parser.add_argument('--minibatch-size', type=int, default=32)
     parser.add_argument('--max-episode-len', type=int,
                         default=5 * 60 * 60 // 4,  # 5 minutes with 60/4 fps
@@ -114,7 +115,7 @@ def main():
     parser.add_argument('--noisy-net-sigma', type=float, default=None)
     parser.add_argument('--noise-constant', type=float, default=-1)
     parser.add_argument('--prop', action='store_true', default=False)
-    parser.add_argument('--adam', action='store_true', default=False)
+    parser.add_argument('--adam', action='store_true', default=True)
     parser.add_argument('--orig-noise', action='store_true', default=False)
     parser.add_argument('--last-noise', type=int, default=0)
     parser.add_argument('--entropy-coef', type=float, default=0)
@@ -142,19 +143,21 @@ def main():
     def make_env(test):
         # Use different random seeds for train and test envs
         env_seed = test_seed if test else train_seed
-        env = ChainEnv(chain_len)
+        #env = ChainEnv(chain_len)
+        env = GridEnv(chain_len)
         return env
 
     env = make_env(test=False)
     eval_env = make_env(test=True)
 
     n_actions = env.action_space.n
+    n_obs = env.observation_space.n
     activation = parse_activation(args.activation)
     q_func = MySequence(env.observation_space.n, n_actions)
 
     # Draw the computational graph and save it in the output directory.
     chainerrl.misc.draw_computational_graph(
-        [q_func(np.zeros((chain_len), dtype=np.float32)[None])],
+        [q_func(np.zeros((n_obs), dtype=np.float32)[None])],
         os.path.join(args.outdir, 'diagram'))
 
     if args.adam:
@@ -183,7 +186,7 @@ def main():
                 e.off = True
 
     chainerrl.misc.draw_computational_graph(
-        [q_func(np.zeros((chain_len), dtype=np.float32)[None])],
+        [q_func(np.zeros((n_obs), dtype=np.float32)[None])],
         os.path.join(args.outdir, 'diagram2'))
 
     opt.setup(q_func)
@@ -200,7 +203,8 @@ def main():
                   update_interval=args.update_interval,
                   batch_accumulator='sum',
                   minibatch_size=args.minibatch_size,
-                  phi=phi, entropy=entropy, entropy_coef=args.entropy_coef)
+                  phi=phi, entropy=entropy, entropy_coef=args.entropy_coef,
+                  vis=env)
 
     if args.load:
         agent.load(args.load)

@@ -2,7 +2,7 @@
 
 run()
 {
-  dmux test-run -- python3 examples/ale/train_dqn_ale.py --env AsterixNoFrameskip-v4 --steps 10000000 --outdir results --arch nature $1 --seed $2 --final-exploration-frames 500000 --target-update-interval 1000 --replay-start-size 10000 --adam --eval-interval 10000 --noise-coef 1 --init-method /out
+  dmux run -- python3 examples/ale/train_dqn_ale.py --env AsterixNoFrameskip-v4 --steps 10000000 --outdir results --arch nature $1 --seed $2 --final-exploration-frames 500000 --target-update-interval 1000 --replay-start-size 10000 --adam --eval-interval 10000 --noise-coef 1 --init-method /out
 }
 
 for num in {1..3}

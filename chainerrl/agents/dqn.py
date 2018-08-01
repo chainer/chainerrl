@@ -131,14 +131,18 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
                  episodic_update_len=None,
                  logger=getLogger(__name__),
                  batch_states=batch_states,
-                 entropy=None, entropy_coef=0):
+                 entropy=None, entropy_coef=0,
+                 vis=None):
         self.model = q_function
         self.q_function = q_function  # For backward compatibility
 
         if gpu is not None and gpu >= 0:
             cuda.get_device(gpu).use()
             self.model.to_gpu(device=gpu)
-            self.model.reset_noise()
+            try:
+                self.model.reset_noise()
+            except:
+                pass
 
         self.xp = self.model.xp
         self.replay_buffer = replay_buffer
@@ -185,7 +189,8 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
         self.entropy = entropy
         self.entropy_coef = entropy_coef
 
-        cv2.namedWindow("values", cv2.WINDOW_NORMAL)
+        self.vis = vis
+        self.vis.init_plot()
 
     def sync_target_network(self):
         """Synchronize target network with current network."""
@@ -397,75 +402,6 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
         else:
             self.model.scale_noise_coef(1/1.01)
 
-    def plot_values(self, obs_space):
-        import numpy as np
-        v = []
-
-        for i in range(obs_space):
-            s = np.zeros(obs_space)
-            s[i] = 1
-            vals = self.model(
-                self.batch_states([s], self.xp, self.phi), **{'noise': False}).q_values
-            vals = vals.data[0]
-            vals = chainer.cuda.to_cpu(vals)
-            v.append(np.asarray(vals))
-
-        v = np.array(v).flatten()
-        #v -= v.mean()
-        #v /= max(abs(v.min()), v.max())
-        norm_v = v.copy()
-        norm_v -= norm_v.min()
-        norm_v /= norm_v.max()
-        #v = v * 2.0 - 1.0
-
-        def get_color(v):
-            if float(v) >= 0:
-                return (0, float(v), 0)
-            else:
-                return (0, 0, float(abs(v)))
-
-        canvas = []
-        size = 256
-
-        for i in range(obs_space):
-            cell = np.zeros((size, size, 3), dtype=np.float32)
-
-            val = v[i*2+0]
-            pts = np.array([[0,0],[size//2, size//2],[0, size]], np.int32)
-            pts = pts.reshape((-1,1,2))
-            cv2.fillPoly(cell, [pts], get_color(norm_v[i*2+0]))
-            cv2.putText(cell, '%.2f' % val, (int(size*0.1), int(size*0.55)),
-                cv2.FONT_HERSHEY_SIMPLEX, size/128*0.5, (1, 1, 1), size//128)
-
-            val = v[i*2+1]
-            pts = np.array([[size, 0],[size//2,size//2],[size,size]], np.int32)
-            pts = pts.reshape((-1,1,2))
-            cv2.fillPoly(cell, [pts], get_color(norm_v[i*2+1]))
-            cv2.putText(cell, '%.2f' % val, (int(size*0.6), int(size*0.55)),
-                cv2.FONT_HERSHEY_SIMPLEX, size/128*0.5, (1, 1, 1), size//128)
-
-            cv2.rectangle(cell, (0, 0), (size-5, size-5), (1, 1, 1), 5)
-
-            canvas.append(cell)
-
-        width = len(canvas)*size
-        info = np.zeros((size, width, 3))
-
-        text = ''
-
-        text += 't: %s   ' % self.t
-
-        try:
-            text += 'epsilon: %.2f' % self.explorer.epsilon
-        except:
-            pass
-
-        cv2.putText(info, text, (100, size//2),
-            cv2.FONT_HERSHEY_SIMPLEX, size/128*0.5, (1, 1, 1), size//128)
-
-        cv2.imshow("values", np.vstack([np.hstack(canvas), info]))
-        cv2.waitKey(1)
-
     def act_and_train(self, obs, reward):
 
         with chainer.using_config('train', False):
@@ -490,7 +426,8 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
             self.update_noise_std(obs)
 
         if self.t % 100 == 0:
-            self.plot_values(len(obs))
+            if self.vis:
+                self.vis.plot_values(len(obs), self)
 
         # Update the target network
         if self.t % self.target_update_interval == 0:

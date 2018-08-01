@@ -23,7 +23,7 @@ class VarianceScalingUniform(initializer.Initializer):
             fan_in, _ = initializer.get_fans(array.shape)
             Uniform(self.scale / numpy.sqrt(fan_in))(array)
 
-PARA = True
+PARA = False
 
 class FactorizedNoisyLinear(chainer.Chain):
     """Linear layer in Factorized Noisy Network
