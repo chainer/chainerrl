@@ -4,5 +4,6 @@ chainerrl.egg-info
 build/
 dist/
 .idea/
+venv/
 results/
 examples/gym/results/
