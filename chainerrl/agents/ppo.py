@@ -188,6 +188,9 @@ class PPO(agent.AttributeSavingMixin, agent.Agent):
             + self.entropy_coef * loss_entropy
         )
 
+    def batch_act(self):
+        pass
+
     def update(self):
         xp = self.xp
 

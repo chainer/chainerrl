@@ -3,6 +3,7 @@
 chainerrl.egg-info
 build/
 dist/
+.cache/
 .idea/
 results/
 examples/gym/results/
