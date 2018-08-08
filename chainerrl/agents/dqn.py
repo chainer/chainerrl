@@ -132,7 +132,10 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
                  logger=getLogger(__name__),
                  batch_states=batch_states,
                  entropy=None, entropy_coef=0,
-                 vis=None):
+                 vis=None,
+                 noisy_y=False,
+                 noisy_t=False,
+                 plot=False):
         self.model = q_function
         self.q_function = q_function  # For backward compatibility
 
@@ -159,6 +162,8 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
         assert batch_accumulator in ('mean', 'sum')
         self.logger = logger
         self.batch_states = batch_states
+        self.noisy_y = noisy_y
+        self.noisy_t = noisy_t
         if episodic_update:
             update_func = self.update_from_episodes
         else:
@@ -191,6 +196,7 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
 
         self.vis = vis
         self.vis.init_plot()
+        self.plot = plot
 
     def sync_target_network(self):
         """Synchronize target network with current network."""
@@ -313,7 +319,66 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
     def _compute_target_values(self, exp_batch, gamma):
         batch_next_state = exp_batch['next_state']
 
-        target_next_qout = self.target_model(batch_next_state, **{'noise': False})
+        if self.t % 100 == 0 and self.plot:
+            import matplotlib.pyplot as plt
+            import numpy as np
+            g = 0.9
+            trueq = [
+                g**6, g**5, g**6, g**6,
+                -g, -1, -g, -1,
+                g**4, g**3, -g, -1,
+                -1, g**2, g, 1]
+            sample_state = self.xp.array(np.identity(16), dtype=self.xp.float32)
+
+            samples = 0
+            pts = []
+
+            for i in range(100):
+                target_next_qout = self.target_model(sample_state, **{'noise': False})
+                samples += target_next_qout.q_values
+                pts.append(target_next_qout.q_values.data)
+                #samples.append(target_next_qout.q_values)
+
+            pts2 = []
+
+            for i in range(100):
+                target_next_qout = self.model(sample_state, **{'noise': False})
+                pts2.append(target_next_qout.q_values.data)
+
+            nonoise = self.target_model(sample_state, **{'noise': False, 'target': True}).q_values
+            samples /= 100
+
+            plt.title("Q(S, right) @ step: %s" % self.t)
+            plt.xlim((-1, 1))
+
+            pts = np.array(pts)[:, :, 1].T
+            pts = pts.flatten()
+
+            plt.plot(pts, np.repeat(-np.arange(16), 100), "x", c="blue")
+
+            pts2 = np.array(pts2)[:, :, 1].T
+            pts2 = pts2.flatten()
+            plt.plot(pts2, np.repeat(-np.arange(16), 100), ".", c="red")
+
+            plt.plot(nonoise[:, 1].data, -np.arange(16), "o", label="no noise")
+            plt.plot(samples[:, 1].data, -np.arange(16), "v", label="sample mean")
+
+            nonoise = self.model(sample_state, **{'noise': False, 'target': True}).q_values
+            plt.plot(nonoise[:, 1].data, -np.arange(16), "o", label="model mean")
+
+            plt.plot(trueq, -np.arange(16), "^", label="true Q")
+
+            plt.legend()
+            #plt.show()
+            plt.savefig(self.vis.outdir + "/plots/" + "%06d" % self.t + ".png")
+            plt.clf()
+
+        target_next_qout = self.target_model(batch_next_state, **{'noise': False, 'target': not self.noisy_t})
+        #mean = F.mean(self.xp.array(samples), axis=0)
+
+        #print(nonoise)
+        #print(samples)
+
         next_q_max = target_next_qout.max
 
         batch_rewards = exp_batch['reward']
@@ -327,7 +392,7 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
         # Compute Q-values for current states
         batch_state = exp_batch['state']
 
-        qout = self.model(batch_state, **{'noise': False})
+        qout = self.model(batch_state, **{'noise': False, 'target': not self.noisy_y})
 
         batch_actions = exp_batch['action']
         batch_q = F.reshape(qout.evaluate_actions(
@@ -356,7 +421,7 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
 
         if self.entropy:
             entropy_loss = -(sum([m.entropy for m in self.entropy]))
-            entropy_loss *= self.entropy_coef
+            entropy_loss *= self.entropy_coef# / self.t
 
         if errors_out is not None:
             del errors_out[:]

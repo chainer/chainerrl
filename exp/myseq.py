@@ -8,9 +8,9 @@ class MySequence(links.Sequence):
         super().__init__(
             #links.MLP(obs, 32, [32]),
             L.Linear(obs, 32),
-            LayerNormalization(),
+            #LayerNormalization(),
             L.Linear(32, 32),
-            LayerNormalization(),
+            #LayerNormalization(),
             L.Linear(32, acts),
             DiscreteActionValue)
 

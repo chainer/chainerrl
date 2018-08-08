@@ -85,7 +85,7 @@ def main():
     parser.add_argument('--eval-epsilon', type=float, default=0.05)
     parser.add_argument('--arch', type=str, default='nature',
                         choices=['nature', 'nips', 'dueling'])
-    parser.add_argument('--steps', type=int, default=100000)
+    parser.add_argument('--steps', type=int, default=15000)
     parser.add_argument('--buffer-size', type=int, default=1000)
     parser.add_argument('--minibatch-size', type=int, default=32)
     parser.add_argument('--max-episode-len', type=int,
@@ -95,7 +95,7 @@ def main():
     parser.add_argument('--target-update-interval',
                         type=int, default=100)
     parser.add_argument('--eval-interval', type=int, default=100)
-    parser.add_argument('--update-interval', type=int, default=4)
+    parser.add_argument('--update-interval', type=int, default=1)
     parser.add_argument('--activation', type=str, default='relu')
     parser.add_argument('--eval-n-runs', type=int, default=10)
     parser.add_argument('--no-clip-delta',
@@ -122,6 +122,12 @@ def main():
     parser.add_argument('--noise-coef', type=float, default=1)
     parser.add_argument('--init-method', type=str, default='/out')
 
+    parser.add_argument('--noisy-y', action='store_true', default=False)
+    parser.add_argument('--noisy-t', action='store_true', default=False)
+    parser.add_argument('--save-img', action='store_true', default=False)
+
+    parser.add_argument('--env', type=str, default='grid')
+
     parser.add_argument('--len', type=int, default=20)
     args = parser.parse_args()
 
@@ -143,8 +149,10 @@ def main():
     def make_env(test):
         # Use different random seeds for train and test envs
         env_seed = test_seed if test else train_seed
-        #env = ChainEnv(chain_len)
-        env = GridEnv(chain_len)
+        if args.env == "chain":
+            env = ChainEnv(chain_len)
+        elif args.env == "grid":
+            env = GridEnv(args.outdir, chain_len, save_img=args.save_img,)
         return env
 
     env = make_env(test=False)
@@ -155,10 +163,12 @@ def main():
     activation = parse_activation(args.activation)
     q_func = MySequence(env.observation_space.n, n_actions)
 
+    """
     # Draw the computational graph and save it in the output directory.
     chainerrl.misc.draw_computational_graph(
         [q_func(np.zeros((n_obs), dtype=np.float32)[None])],
         os.path.join(args.outdir, 'diagram'))
+    """
 
     if args.adam:
         opt = optimizers.Adam(args.lr)
@@ -185,9 +195,12 @@ def main():
             for e in entropy[:-args.last_noise]:
                 e.off = True
 
+    """
+    print(n_obs)
     chainerrl.misc.draw_computational_graph(
         [q_func(np.zeros((n_obs), dtype=np.float32)[None])],
         os.path.join(args.outdir, 'diagram2'))
+    """
 
     opt.setup(q_func)
 
@@ -204,7 +217,8 @@ def main():
                   batch_accumulator='sum',
                   minibatch_size=args.minibatch_size,
                   phi=phi, entropy=entropy, entropy_coef=args.entropy_coef,
-                  vis=env)
+                  vis=env, noisy_y=args.noisy_y, noisy_t=args.noisy_t,
+                  plot=args.save_img)
 
     if args.load:
         agent.load(args.load)
@@ -219,8 +233,9 @@ def main():
             eval_stats['stdev']))
     else:
         # In testing DQN, randomly select 5% of actions
-        eval_explorer = explorers.ConstantEpsilonGreedy(
-            args.eval_epsilon, lambda: np.random.randint(n_actions))
+        eval_explorer = explorers.Greedy()
+        #explorers.ConstantEpsilonGreedy(
+        #    args.eval_epsilon, lambda: np.random.randint(n_actions))
         experiments.train_agent_with_evaluation(
             agent=agent, env=env, steps=args.steps,
             eval_n_runs=args.eval_n_runs, eval_interval=args.eval_interval,

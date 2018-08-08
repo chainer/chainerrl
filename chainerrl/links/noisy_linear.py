@@ -80,7 +80,7 @@ class FactorizedNoisyLinear(chainer.Chain):
             self.eps_x = self._eps(in_size, dtype)
             self.eps_y = self._eps(out_size, dtype)
 
-    def __call__(self, x, noise=False, act=False):
+    def __call__(self, x, noise=False, act=False, target=False):
         if self.mu.W.data is None:
             self.mu.W.initialize((self.out_size, numpy.prod(x.shape[1:])))
         if self.mu.b.data is None:
@@ -95,7 +95,7 @@ class FactorizedNoisyLinear(chainer.Chain):
             self.eps_x = self._eps(in_size, dtype)
             self.eps_y = self._eps(out_size, dtype)
 
-        if noise and not act:
+        if noise and not act and not target:
             if PARA:
                 W = self.mu.W + self.xp.outer(self.eps_y, self.eps_x) * self.noise_coef
             else:
@@ -109,7 +109,7 @@ class FactorizedNoisyLinear(chainer.Chain):
             return F.linear(x, W)
         else:
             self.entropy = F.sum(F.log(self.sigma.W**2+1e-5)) + F.sum(F.log(self.sigma.b**2+1e-5))
-            if noise and not act:
+            if noise and not act and not target:
                 if PARA:
                     b = self.mu.b + self.eps_y * self.noise_coef
                 else:
