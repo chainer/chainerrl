@@ -15,6 +15,11 @@ python examples/ale/train_dqn_ale.py --env PongNoFrameskip-v4 --steps 100 --repl
 model=$(find $outdir/ale/dqn -name "*_finish")
 python examples/ale/train_dqn_ale.py --env PongNoFrameskip-v4 --demo --load $model --eval-n-runs 1 --outdir $outdir/temp --gpu $gpu
 
+# ale/a2c
+python examples/ale/train_a2c_ale.py 4 pong --steps 100 --update-steps 50 --outdir $outdir/ale/a2c
+model=$(find $outdir/ale/a2c -name "*_finish")
+python examples/ale/train_a2c_ale.py 1 pong --demo --load $model --eval-n-runs 1
+
 # ale/a3c
 if [[ $gpu -lt 0 ]]; then
   python examples/ale/train_a3c_ale.py 4 --env PongNoFrameskip-v4 --steps 100 --outdir $outdir/ale/a3c
@@ -50,6 +55,11 @@ python examples/ale/train_categorical_dqn_ale.py --env PongNoFrameskip-v4 --demo
 python examples/gym/train_dqn_gym.py --steps 100 --replay-start-size 50 --outdir $outdir/gym/dqn --gpu $gpu
 model=$(find $outdir/gym/dqn -name "*_finish")
 python examples/gym/train_dqn_gym.py --demo --load $model --eval-n-runs 1 --outdir $outdir/temp --gpu $gpu
+
+# gym/a2c
+python examples/gym/train_a2c_gym.py 4 --steps 100 --update-steps 50 --outdir $outdir/gym/a2c --gpu $gpu
+model=$(find $outdir/gym/a2c -name "*_finish")
+python examples/gym/train_a2c_gym.py 1 --demo --load $model --eval-n-runs 1 --gpu $gpu
 
 # gym/a3c
 python examples/gym/train_a3c_gym.py 4 --steps 100 --outdir $outdir/gym/a3c
