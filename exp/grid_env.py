@@ -43,6 +43,7 @@ class GridEnv(gym.Env):
         self.N = N
         self.outdir = outdir
         self.save_img = save_img
+        self.ep = 0
 
         self.seed()
 
@@ -93,6 +94,7 @@ class GridEnv(gym.Env):
         self.pos = np.array([0, 0])
         self.steps = 0
         state = self.one_hot(self.pos)
+        self.ep += 1
 
         return state
 
@@ -105,7 +107,7 @@ class GridEnv(gym.Env):
     def init_plot(self):
         if not self.save_img:
             return
-            
+
         cv2.namedWindow("values", cv2.WINDOW_NORMAL)
 
     def plot_sample(self, obs_space, agent, noise, ext, show=False):
@@ -118,10 +120,19 @@ class GridEnv(gym.Env):
         for i in range(obs_space):
             s = np.zeros(obs_space)
             s[i] = 1
-            vals = agent.model(
-                agent.batch_states([s], agent.xp, agent.phi), **{'noise': noise, 'act': True}).q_values
-            vals = vals.data[0]
-            vals = chainer.cuda.to_cpu(vals)
+            try:
+                vals = agent.model(
+                    agent.batch_states([s], agent.xp, agent.phi), **{'noise': noise, 'act': True}).q_values
+                vals = vals.data[0]
+            except:
+                vals = agent.q_mu[i]
+
+
+            try:
+                vals = chainer.cuda.to_cpu(vals)
+            except:
+                pass
+
             v.append(np.asarray(vals))
 
         v = np.array(v).flatten()
@@ -199,7 +210,7 @@ class GridEnv(gym.Env):
         info = np.zeros((size, width, 3))
 
         text = ''
-        text += 't: %s   ' % agent.t
+        text += 'ep: {} t: {}   '.format(self.ep, agent.t)
 
         try:
             text += 'epsilon: %.2f' % agent.explorer.epsilon

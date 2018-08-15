@@ -153,15 +153,20 @@ def main():
             env = ChainEnv(chain_len)
         elif args.env == "grid":
             env = GridEnv(args.outdir, chain_len, save_img=args.save_img,)
+        elif args.env == "car":
+            env = gym.make("MountainCar-v0")
         return env
 
     env = make_env(test=False)
     eval_env = make_env(test=True)
 
     n_actions = env.action_space.n
-    n_obs = env.observation_space.n
+    try:
+        n_obs = env.observation_space.n
+    except:
+        n_obs = env.observation_space.shape[0]
     activation = parse_activation(args.activation)
-    q_func = MySequence(env.observation_space.n, n_actions)
+    q_func = MySequence(n_obs, n_actions)
 
     """
     # Draw the computational graph and save it in the output directory.

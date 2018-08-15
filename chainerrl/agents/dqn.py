@@ -195,8 +195,13 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
         self.entropy_coef = entropy_coef
 
         self.vis = vis
-        self.vis.init_plot()
-        self.plot = plot
+
+        try:
+            self.vis.init_plot()
+            self.plot = plot
+        except:
+            self.plot = False
+
 
     def sync_target_network(self):
         """Synchronize target network with current network."""
@@ -231,6 +236,9 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
         Returns:
           None
         """
+
+        import traceback
+        #traceback.print_exc()
 
         has_weight = 'weight' in experiences[0]
         exp_batch = batch_experiences(experiences, xp=self.xp, phi=self.phi,
@@ -491,7 +499,7 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
             self.update_noise_std(obs)
 
         if self.t % 100 == 0:
-            if self.vis:
+            if self.vis and self.plot:
                 self.vis.plot_values(len(obs), self)
 
         # Update the target network
