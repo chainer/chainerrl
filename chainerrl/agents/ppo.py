@@ -285,6 +285,11 @@ class PPO(agent.AttributeSavingMixin, agent.Agent):
             vs_teacher = xp.array([b['v_teacher']
                                    for b in batch], dtype=xp.float32)
 
+            vs_pred_old = xp.array([b['v_pred']
+                                    for b in batch], dtype=xp.float32)
+            vs_teacher = xp.array([b['v_teacher']
+                                   for b in batch], dtype=xp.float32)
+
             self.optimizer.update(
                 self._lossfun,
                 distribs, vs_pred, distribs.log_prob(actions),
