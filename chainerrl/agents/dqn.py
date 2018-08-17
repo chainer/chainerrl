@@ -352,21 +352,6 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
             return compute_value_loss(y, t, clip_delta=self.clip_delta,
                                       batch_accumulator=self.batch_accumulator)
 
-    def act(self, obs):
-        with chainer.using_config('train', False):
-            with chainer.no_backprop_mode():
-                action_value = self.model(
-                    self.batch_states([obs], self.xp, self.phi))
-                q = float(action_value.max.data)
-                action = cuda.to_cpu(action_value.greedy_actions.data)[0]
-
-        # Update stats
-        self.average_q *= self.average_q_decay
-        self.average_q += (1 - self.average_q_decay) * q
-
-        self.logger.debug('t:%s q:%s action_value:%s', self.t, q, action_value)
-        return action
-
     def act_with_exploration(self, obs):
 
         with chainer.using_config('train', False):
@@ -374,12 +359,26 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
                 action_value = self.model(
                     self.batch_states([obs], self.xp, self.phi))
                 q = float(action_value.max.data)
-                greedy_action = cuda.to_cpu(
-                    action_value.greedy_actions.data)[0]
-                action = self.explorer.select_action(
-                    self.t,
+                greedy_action = cuda.to_cpu(action_value.greedy_actions.data)[0]
+                
+        action = self.explorer.select_action(self.t,
                     lambda: greedy_action,
                     action_value=action_value)
+        self.t += 1
+        # Update stats
+        self.average_q *= self.average_q_decay
+        self.average_q += (1 - self.average_q_decay) * q
+
+        self.logger.debug('t:%s q:%s action_value:%s', self.t, q, action_value)
+        return action
+        
+    def act(self, obs):
+        with chainer.using_config('train', False):
+            with chainer.no_backprop_mode():
+                action_value = self.model(
+                    self.batch_states([obs], self.xp, self.phi))
+                q = float(action_value.max.data)
+                action = cuda.to_cpu(action_value.greedy_actions.data)[0]
 
         # Update stats
         self.average_q *= self.average_q_decay
