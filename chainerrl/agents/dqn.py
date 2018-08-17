@@ -367,6 +367,26 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
         self.logger.debug('t:%s q:%s action_value:%s', self.t, q, action_value)
         return action
 
+    def act_with_exploration(self, obs):
+
+        with chainer.using_config('train', False):
+            with chainer.no_backprop_mode():
+                action_value = self.model(
+                    self.batch_states([obs], self.xp, self.phi))
+                q = float(action_value.max.data)
+                greedy_action = cuda.to_cpu(action_value.greedy_actions.data)[0]
+                action = self.explorer.select_action(
+                    self.t,
+                    lambda: greedy_action,
+                    action_value=action_value)
+
+        # Update stats
+        self.average_q *= self.average_q_decay
+        self.average_q += (1 - self.average_q_decay) * q
+
+        self.logger.debug('t:%s q:%s action_value:%s', self.t, q, action_value)
+        return action
+
     def act_and_train(self, obs, reward):
 
         with chainer.using_config('train', False):
