@@ -78,7 +78,7 @@ def main():
     parser.add_argument('--render-train', action='store_true')
     parser.add_argument('--render-eval', action='store_true')
     parser.add_argument('--monitor', action='store_true')
-    parser.add_argument('--reward-scale-factor', type=float, default=1e-3)
+    parser.add_argument('--reward-scale-factor', type=float, default=1)
     parser.add_argument('--lr', type=float, default=1e-3)
     parser.add_argument('--rbuf', type=int, default=5 * 10 ** 5)
     args = parser.parse_args()
