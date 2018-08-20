@@ -135,17 +135,18 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
                  vis=None,
                  noisy_y=False,
                  noisy_t=False,
-                 plot=False):
+                 plot=False,
+                 head=False):
         self.model = q_function
         self.q_function = q_function  # For backward compatibility
 
         if gpu is not None and gpu >= 0:
             cuda.get_device(gpu).use()
             self.model.to_gpu(device=gpu)
-            try:
-                self.model.reset_noise()
-            except:
-                pass
+            #try:
+            #    self.model.reset_noise()
+            #except:
+            #    pass
 
         self.xp = self.model.xp
         self.replay_buffer = replay_buffer
@@ -162,6 +163,7 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
         assert batch_accumulator in ('mean', 'sum')
         self.logger = logger
         self.batch_states = batch_states
+        print(">>>", batch_states)
         self.noisy_y = noisy_y
         self.noisy_t = noisy_t
         if episodic_update:
@@ -195,6 +197,7 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
         self.entropy_coef = entropy_coef
 
         self.vis = vis
+        self.head = head
 
         try:
             self.vis.init_plot()
@@ -338,44 +341,52 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
                 -1, g**2, g, 1]
             sample_state = self.xp.array(np.identity(16), dtype=self.xp.float32)
 
-            samples = 0
-            pts = []
-
-            for i in range(100):
+            if self.head:
                 target_next_qout = self.target_model(sample_state, **{'noise': False})
-                samples += target_next_qout.q_values
-                pts.append(target_next_qout.q_values.data)
-                #samples.append(target_next_qout.q_values)
+                #print(target_next_qout.sigmas)
+                plt.errorbar(target_next_qout.q_values.data[:, 1], -np.arange(16),
+                    xerr=target_next_qout.sigmas.data[:, 1], fmt='ok', lw=2)
+            else:
+                samples = 0
+                pts = []
 
-            pts2 = []
+                for i in range(100):
+                    target_next_qout = self.target_model(sample_state, **{'noise': False})
+                    samples += target_next_qout.q_values
+                    pts.append(target_next_qout.q_values.data)
+                    #samples.append(target_next_qout.q_values)
 
-            for i in range(100):
-                target_next_qout = self.model(sample_state, **{'noise': False})
-                pts2.append(target_next_qout.q_values.data)
+                pts2 = []
 
-            nonoise = self.target_model(sample_state, **{'noise': False, 'target': True}).q_values
-            samples /= 100
+                for i in range(100):
+                    target_next_qout = self.model(sample_state, **{'noise': False})
+                    pts2.append(target_next_qout.q_values.data)
 
-            plt.title("Q(S, right) @ step: %s" % self.t)
-            plt.xlim((-1, 1))
+                nonoise = self.target_model(sample_state, **{'noise': False, 'target': True}).q_values
+                samples /= 100
 
-            pts = np.array(pts)[:, :, 1].T
-            pts = pts.flatten()
+                plt.title("Q(S, right) @ step: %s" % self.t)
+                plt.xlim((-1, 1))
 
-            plt.plot(pts, np.repeat(-np.arange(16), 100), "x", c="blue")
+                pts = np.array(pts)[:, :, 1].T
+                pts = pts.flatten()
 
-            pts2 = np.array(pts2)[:, :, 1].T
-            pts2 = pts2.flatten()
-            plt.plot(pts2, np.repeat(-np.arange(16), 100), ".", c="red")
+                plt.plot(pts, np.repeat(-np.arange(16), 100), "x", c="blue")
 
-            plt.plot(nonoise[:, 1].data, -np.arange(16), "o", label="no noise")
-            plt.plot(samples[:, 1].data, -np.arange(16), "v", label="sample mean")
+                pts2 = np.array(pts2)[:, :, 1].T
+                pts2 = pts2.flatten()
+                plt.plot(pts2, np.repeat(-np.arange(16), 100), ".", c="red")
 
-            nonoise = self.model(sample_state, **{'noise': False, 'target': True}).q_values
-            plt.plot(nonoise[:, 1].data, -np.arange(16), "o", label="model mean")
+                plt.plot(nonoise[:, 1].data, -np.arange(16), "o", label="no noise")
+                plt.plot(samples[:, 1].data, -np.arange(16), "v", label="sample mean")
+
+                nonoise = self.model(sample_state, **{'noise': False, 'target': True}).q_values
+                plt.plot(nonoise[:, 1].data, -np.arange(16), "o", label="model mean")
+
 
             plt.plot(trueq, -np.arange(16), "^", label="true Q")
 
+            plt.xlim((-1, 1))
             plt.legend()
             #plt.show()
             plt.savefig(self.vis.outdir + "/plots/" + "%06d" % self.t + ".png")
@@ -392,7 +403,12 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
         batch_rewards = exp_batch['reward']
         batch_terminal = exp_batch['is_state_terminal']
 
-        return batch_rewards + self.gamma * (1.0 - batch_terminal) * next_q_max
+        if self.head:
+            mean = batch_rewards + self.gamma * (1.0 - batch_terminal) * next_q_max
+            sigma = self.gamma * target_next_qout.max_sigma
+            return mean, sigma[:, None]
+        else:
+            return batch_rewards + self.gamma * (1.0 - batch_terminal) * next_q_max
 
     def _compute_y_and_t(self, exp_batch, gamma):
         batch_size = exp_batch['reward'].shape[0]
@@ -405,13 +421,23 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
         batch_actions = exp_batch['action']
         batch_q = F.reshape(qout.evaluate_actions(
             batch_actions), (batch_size, 1))
+        if self.head:
+            batch_sigma = F.reshape(qout.evaluate_action_sigmas(
+                batch_actions), (batch_size, 1))
 
         with chainer.no_backprop_mode():
-            batch_q_target = F.reshape(
-                self._compute_target_values(exp_batch, gamma),
-                (batch_size, 1))
+            if self.head:
+                batch_q_target, batch_sigma_target = self._compute_target_values(exp_batch, gamma)
+                batch_q_target = F.reshape(batch_q_target, (batch_size, 1))
+            else:
+                batch_q_target = F.reshape(
+                    self._compute_target_values(exp_batch, gamma),
+                    (batch_size, 1))
 
-        return batch_q, batch_q_target
+        if self.head:
+            return F.concat([batch_q, batch_sigma], axis=1), F.concat([batch_q_target, batch_sigma_target], axis=1), qout.sigmas
+        else:
+            return batch_q, batch_q_target
 
     def _compute_loss(self, exp_batch, gamma, errors_out=None):
         """Compute the Q-learning loss for a batch of experiences
@@ -423,13 +449,20 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
         Returns:
           loss
         """
-        y, t = self._compute_y_and_t(exp_batch, gamma)
+        if self.head:
+            y, t, sigma = self._compute_y_and_t(exp_batch, gamma)
+        else:
+            y, t = self._compute_y_and_t(exp_batch, gamma)
 
         entropy_loss = 0
 
-        if self.entropy:
-            entropy_loss = -(sum([m.entropy for m in self.entropy]))
-            entropy_loss *= self.entropy_coef# / self.t
+        if self.entropy or self.entropy_coef > 0:
+            if self.head:
+                entropy_loss = -(F.sum(F.log(F.absolute(sigma)**2.0)))
+            else:
+                entropy_loss = -(sum([m.entropy for m in self.entropy]))
+            entropy_loss *= self.entropy_coef# * (1.0 - self.t/5000.0)
+            #print("EEEE" + entropy_loss)
 
         if errors_out is not None:
             del errors_out[:]
@@ -470,10 +503,10 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
         noisy, clean = F.softmax(noisy), F.softmax(clean)
         div = -F.sum(clean * F.log(noisy / clean))
         delta = 0.05
-        if div.data <= delta:
-            self.model.scale_noise_coef(1.01)
-        else:
-            self.model.scale_noise_coef(1/1.01)
+        #if div.data <= delta:
+        #    self.model.scale_noise_coef(1.01)
+        #else:
+        #    self.model.scale_noise_coef(1/1.01)
 
     def act_and_train(self, obs, reward):
 
@@ -482,8 +515,11 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
                 action_value = self.model(
                     self.batch_states([obs], self.xp, self.phi), **{'noise': True})
                 q = float(action_value.max.data)
-                greedy_action = cuda.to_cpu(action_value.greedy_actions.data)[
-                    0]
+
+                if self.head:
+                    greedy_action = cuda.to_cpu(action_value.sample_actions.data)[0]
+                else:
+                    greedy_action = cuda.to_cpu(action_value.greedy_actions.data)[0]
 
         # Update stats
         self.average_q *= self.average_q_decay
@@ -547,7 +583,7 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
         self.stop_episode()
 
     def stop_episode(self):
-        self.model.reset_noise()
+        #self.model.reset_noise()
         self.last_state = None
         self.last_action = None
         if isinstance(self.model, Recurrent):

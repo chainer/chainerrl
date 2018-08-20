@@ -45,7 +45,7 @@ class SingleModelStateQFunctionWithDiscreteAction(
     def __init__(self, model):
         super().__init__(model=model)
 
-    def __call__(self, x):
+    def __call__(self, x, **kwargs):
         h = self.model(x)
         return DiscreteActionValue(h)
 

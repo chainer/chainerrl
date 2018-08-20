@@ -2,17 +2,27 @@ from chainerrl import links
 from chainer import links as L
 from chainer.links.normalization.layer_normalization import LayerNormalization
 from chainerrl.action_value import DiscreteActionValue
+from chainerrl.action_value import DiscreteActionValueWithSigma
 
 class MySequence(links.Sequence):
-    def __init__(self, obs, acts):
-        super().__init__(
-            #links.MLP(obs, 32, [32]),
-            L.Linear(obs, 32),
-            #LayerNormalization(),
-            L.Linear(32, 32),
-            #LayerNormalization(),
-            L.Linear(32, acts),
-            DiscreteActionValue)
+    def __init__(self, obs, acts, head=False):
+        if head:
+            super().__init__(
+                L.Linear(obs, 32),
+                L.Linear(32, 32),
+                L.Linear(32, acts*2),
+                )
+        else:
+            super().__init__(
+                #links.MLP(obs, 32, [32]),
+                L.Linear(obs, 32),
+                #LayerNormalization(),
+                L.Linear(32, 32),
+                #LayerNormalization(),
+                L.Linear(32, acts),
+                DiscreteActionValue)
+        self.head = head
+        self.acts = acts
 
     def scale_noise_coef(self, scale):
         try:
@@ -32,4 +42,8 @@ class MySequence(links.Sequence):
             pass
 
     def __call__(self, x, **kwargs):
-        return super().__call__(x, **kwargs)
+        if self.head:
+            x = super().__call__(x, **kwargs)
+            return DiscreteActionValueWithSigma(x[:, :self.acts], x[:, self.acts:])
+        else:
+            return super().__call__(x, **kwargs)

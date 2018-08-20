@@ -122,6 +122,7 @@ def main():
     parser.add_argument('--noise-coef', type=float, default=1)
     parser.add_argument('--init-method', type=str, default='/out')
 
+    parser.add_argument('--head', action='store_true', default=False)
     parser.add_argument('--noisy-y', action='store_true', default=False)
     parser.add_argument('--noisy-t', action='store_true', default=False)
     parser.add_argument('--save-img', action='store_true', default=False)
@@ -130,6 +131,8 @@ def main():
 
     parser.add_argument('--len', type=int, default=20)
     args = parser.parse_args()
+
+    head = args.head
 
     import logging
     logging.basicConfig(level=args.logging_level)
@@ -166,7 +169,7 @@ def main():
     except:
         n_obs = env.observation_space.shape[0]
     activation = parse_activation(args.activation)
-    q_func = MySequence(n_obs, n_actions)
+    q_func = MySequence(n_obs, n_actions, head)
 
     """
     # Draw the computational graph and save it in the output directory.
@@ -199,6 +202,8 @@ def main():
         if args.last_noise > 0:
             for e in entropy[:-args.last_noise]:
                 e.off = True
+    elif args.head:
+        explorer = explorers.Greedy()
 
     """
     print(n_obs)
@@ -214,6 +219,7 @@ def main():
         return np.asarray(x, dtype=np.float32)
 
     Agent = parse_agent(args.agent)
+
     agent = Agent(q_func, opt, rbuf, gpu=args.gpu, gamma=0.9,
                   explorer=explorer, replay_start_size=args.replay_start_size,
                   target_update_interval=args.target_update_interval,
@@ -223,7 +229,8 @@ def main():
                   minibatch_size=args.minibatch_size,
                   phi=phi, entropy=entropy, entropy_coef=args.entropy_coef,
                   vis=env, noisy_y=args.noisy_y, noisy_t=args.noisy_t,
-                  plot=args.save_img)
+                  plot=args.save_img,
+                  head=head)
 
     if args.load:
         agent.load(args.load)
