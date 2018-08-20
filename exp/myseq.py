@@ -9,15 +9,19 @@ class MySequence(links.Sequence):
         if head:
             super().__init__(
                 L.Linear(obs, 32),
+                F.relu,
                 L.Linear(32, 32),
+                F.relu,
                 L.Linear(32, acts*2),
-                )
+            )
         else:
             super().__init__(
                 #links.MLP(obs, 32, [32]),
                 L.Linear(obs, 32),
+                F.relu,
                 #LayerNormalization(),
                 L.Linear(32, 32),
+                F.relu,
                 #LayerNormalization(),
                 L.Linear(32, acts),
                 DiscreteActionValue)
