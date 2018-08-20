@@ -57,7 +57,7 @@ You passed: {}'.format(type(env)))
     try:
         while t < steps:
             # a_t : Make an action
-            action = agent.batch_act(obs)
+            action = agent.batch_act_and_train(obs)
             # o_{t+1}, r_{t+1} : Get observation and reward
             obs, r, done, info = env.step(action)
             logger.info('outdir:{}, step:{} episode:{}, R:{}'.format(
@@ -70,7 +70,7 @@ You passed: {}'.format(type(env)))
                 reset_mask = episode_idx == max_episode_len
             for i, reset in zip(info, reset_mask):
                 i['reset'] = reset
-            agent.batch_observe(obs, r, done, info)
+            agent.batch_observe_and_train(obs, r, done, info)
             # Update counters
             t += 1
             # Update episode reward

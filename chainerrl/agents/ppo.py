@@ -386,6 +386,19 @@ class PPO(agent.AttributeSavingMixin, agent.Agent):
         return action
 
     def batch_act(self, batch_obs):
+        """Takes a batch of observations and peforms a batch of actions
+
+        Args:
+            batch_obs (ndarray): a list containing the observations
+
+        Returns:
+            batch_action (ndarray): set of actions for each environment
+        """
+        batch_action, batch_v = self._batch_act(batch_obs)
+
+        return batch_action
+
+    def batch_act_and_train(self, batch_obs):
         """Takes a batch of observations and performs a batch of actions
 
         Args:
@@ -448,7 +461,19 @@ class PPO(agent.AttributeSavingMixin, agent.Agent):
         }
 
     def batch_observe(self, batch_obs, batch_reward, batch_done, batch_info):
-        """Observe model interaction with env and updates it.
+        """Proxy method during evaluation
+
+        Args:
+            batch_obs (ndarray): batch of observations
+            batch_reward (ndarray): batch of rewards
+            batch_done (ndarray): batch of done signals
+            batch_info (ndarray): additional information
+        """
+        pass
+
+    def batch_observe_and_train(self, batch_obs, batch_reward,
+                                batch_done, batch_info):
+        """Observe model interaction with env and updates it
 
         This method must be called after batch_act during training.
 
@@ -472,9 +497,6 @@ class PPO(agent.AttributeSavingMixin, agent.Agent):
                                          batch_reward,
                                          batch_obs))
 
-        # Compute next_v_pred for observations with reset=True
-        # For each transition, if it does not have next_v_pred
-        # entry, insert it as its next transition's v_pred.
         _, batch_v = self._batch_act(batch_obs)
 
         # Update stats

@@ -205,7 +205,7 @@ class TestBatchPPO(unittest.TestCase):
             reward = np.zeros(num_envs, dtype='f')
 
             while not done.all():
-                action = agent.batch_act(obs)
+                action = agent.batch_act_and_train(obs)
                 obs, reward, done, _ = test_env.step(action)
                 total_r += reward
                 success = np.isclose(total_r, successful_return)
