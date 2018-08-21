@@ -172,7 +172,10 @@ def main():
     except:
         n_obs = env.observation_space.shape[0]
     activation = parse_activation(args.activation)
-    q_func = MySequence(n_obs, n_actions, head)
+    q_func = q_functions.FCStateQFunctionWithDiscreteAction(
+        n_obs, n_actions,
+        n_hidden_channels=32,
+        n_hidden_layers=2)#MySequence(n_obs, n_actions, head)
 
     """
     # Draw the computational graph and save it in the output directory.
