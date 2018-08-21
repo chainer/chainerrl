@@ -1,5 +1,6 @@
 from chainerrl import links
 from chainer import links as L
+
 from chainer.links.normalization.layer_normalization import LayerNormalization
 from chainerrl.action_value import DiscreteActionValue
 from chainerrl.action_value import DiscreteActionValueWithSigma

@@ -14,10 +14,12 @@ from chainer import functions as F
 from chainer import links as L
 from chainer import optimizers
 import numpy as np
-from chainerrl import q_functions
 
 import sys
 sys.path.insert(0, ".")
+from chainerrl import q_functions
+
+
 
 import chainerrl
 from chainerrl.action_value import DiscreteActionValue
