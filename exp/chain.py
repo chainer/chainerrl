@@ -226,12 +226,12 @@ def main():
 
     Agent = parse_agent(args.agent)
 
-    agent = Agent(q_func, opt, rbuf, gpu=args.gpu, gamma=0.9,
+    agent = Agent(q_func, opt, rbuf, gpu=args.gpu, gamma=0.99,
                   explorer=explorer, replay_start_size=args.replay_start_size,
                   target_update_interval=args.target_update_interval,
-                  clip_delta=args.clip_delta,
+                  #clip_delta=args.clip_delta,
                   update_interval=args.update_interval,
-                  batch_accumulator='sum',
+                  #batch_accumulator='sum',
                   minibatch_size=args.minibatch_size,
                   phi=phi, entropy=entropy, entropy_coef=args.entropy_coef,
                   vis=env, noisy_y=args.noisy_y, noisy_t=args.noisy_t,
