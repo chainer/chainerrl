@@ -126,6 +126,7 @@ def main():
     parser.add_argument('--monitor', action='store_true')
 
     parser.add_argument('--update-interval', type=int, default=2048)
+    parser.add_argument('--log-interval', type=int, default=1000)
     parser.add_argument('--batchsize', type=int, default=64)
     parser.add_argument('--epochs', type=int, default=10)
     parser.add_argument('--entropy-coef', type=float, default=0.0)
@@ -222,6 +223,7 @@ def main():
             steps=args.steps,
             eval_n_runs=args.eval_n_runs,
             eval_interval=args.eval_interval,
+            log_interval=args.log_interval,
             max_episode_len=timestep_limit,
             step_hooks=[
                 lr_decay_hook,

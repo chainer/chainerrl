@@ -106,6 +106,7 @@ class PPO(agent.AttributeSavingMixin, agent.Agent):
 
         self.memory = []
         self.batch_memory = []
+        self.parallel = False
         self.last_episode = []
 
     def _act(self, state):
@@ -142,13 +143,13 @@ class PPO(agent.AttributeSavingMixin, agent.Agent):
 
         if interval >= self.update_interval:
             self._flush_last_episode()
-            self.batch_update() if self.num_envs > 1 else self.update()
+            self.batch_update() if self.parallel else self.update()
             self.batch_memory = []
             self.memory = []
 
     def _flush_last_episode(self):
         if self.last_episode:
-            if self.num_envs > 1:
+            if self.parallel:
                 self._batch_compute_teacher(self.last_episode)
                 self._batch_memory_append(self.last_episode)
             else:
@@ -410,6 +411,7 @@ class PPO(agent.AttributeSavingMixin, agent.Agent):
         """
         # Infer number of envs
         self.num_envs = len(batch_obs)
+        self.parallel = True
         if len(self.average_loss_policy) != self.num_envs:
             self._batch_init_loss_statistics(self.num_envs)
 
@@ -516,8 +518,9 @@ class PPO(agent.AttributeSavingMixin, agent.Agent):
         self._train()
 
     def get_statistics(self):
+        average_v = self.average_v.T if hasattr(self.average_v, '__iter__') else self.average_v
         return [
-            ('average_v', self.average_v),
+            ('average_v', average_v),
             ('average_loss_policy', self.average_loss_policy),
             ('average_loss_value_func', self.average_loss_value_func),
             ('average_loss_entropy', self.average_loss_entropy),

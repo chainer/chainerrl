@@ -5,6 +5,7 @@ from __future__ import absolute_import
 from future import standard_library
 standard_library.install_aliases()  # NOQA
 
+from collections import deque
 import logging
 import os
 
@@ -29,12 +30,26 @@ def ask_and_save_agent_replay_buffer(agent, t, outdir, suffix=''):
             ask_yes_no('Replay buffer has {} transitions. Do you save them to a file?'.format(len(agent.replay_buffer))):  # NOQA
         save_agent_replay_buffer(agent, t, outdir, suffix=suffix)
 
+def _get_mask(num_processes, info, done, episode_len, max_episode_len):
+    if max_episode_len is None:
+        reset_mask = np.zeros(num_processes, dtype=bool)
+    else:
+        reset_mask = episode_len == max_episode_len
 
-def train_agent_batch(agent, env, steps, outdir, max_episode_len=None,
+    for i, reset in zip(info, reset_mask):
+        i['reset'] = reset
+
+    mask = np.logical_not(np.logical_or(reset_mask, done))
+    return info, mask
+
+
+def train_agent_batch(agent, env, steps, outdir, log_interval=None, max_episode_len=None,
+                      eval_interval=None,
                       step_offset=0, evaluator=None, successful_score=None,
                       step_hooks=[], logger=None):
 
     logger = logger or logging.getLogger(__name__)
+    d = deque(maxlen=100)
 
     try:
         num_processes = env.num_envs
@@ -45,6 +60,7 @@ You passed: {}'.format(type(env)))
 
     episode_r = np.zeros(num_processes, dtype='f')
     episode_idx = np.zeros(num_processes, dtype='f')
+    episode_len = np.zeros(num_processes, dtype='f')
 
     # o_0, r_0
     obs = env.reset()
@@ -56,31 +72,44 @@ You passed: {}'.format(type(env)))
 
     try:
         while t < steps:
-            # a_t : Make an action
             action = agent.batch_act_and_train(obs)
-            # o_{t+1}, r_{t+1} : Get observation and reward
             obs, r, done, info = env.step(action)
-            logger.info('outdir:{}, step:{} episode:{}, R:{}'.format(
-                outdir, t, episode_idx, episode_r))
-            logger.info('statistics: {}'.format(agent.get_statistics()))
-            # Train model
+
+            # Prepare info dictionary to be sent to the agent,
+            # and the mask for resetting episodes
             if max_episode_len is None:
                 reset_mask = np.zeros(num_processes, dtype=bool)
             else:
-                reset_mask = episode_idx == max_episode_len
+                reset_mask = episode_len == max_episode_len
+
             for i, reset in zip(info, reset_mask):
                 i['reset'] = reset
+            # Make mask. 0 if done/reset, 1 if pass
+            masks = np.logical_not(np.logical_or(reset_mask, done))
+            # Train agent
             agent.batch_observe_and_train(obs, r, done, info)
-            # Update counters
-            t += 1
-            # Update episode reward
+            # Update reward for current episode
             episode_r += r
-            # Reset episode reward whenever done or reset signal
-            # is given
-            mask = np.logical_or(reset_mask, done)
-            episode_r_ = np.ma.array(episode_r, mask=mask)
-            episode_idx[episode_r_.mask] += 1
-            episode_r = episode_r_.filled(0)
+            episode_len += 1
+            episode_idx += 1 - masks
+            # Add to deque whenever done/reset
+            episode_r_ = np.ma.masked_array(episode_r, masks)
+            d.extend(episode_r_.compressed())
+
+            # Then apply mask to episode_r and episode_len
+            episode_r *= masks
+            episode_len *= masks
+
+            t += 1
+
+            for hook in step_hooks:
+                hook(env, agent, t)
+
+            if eval_interval is not None and t % log_interval == 0:
+                logger.info('outdir:{}, step:{}, mean_r: {}, episode: {}'.format(
+                        outdir, t, np.mean(d), episode_idx))
+                logger.info('statistics: {}'.format(agent.get_statistics()))
+
     except (Exception, KeyboardInterrupt):
         # Save the current model before being killed
         save_agent(agent, t, outdir, logger, suffix='_except')
@@ -103,6 +132,7 @@ def train_agent_batch_with_evaluation(agent,
                                       eval_explorer=None,
                                       eval_max_episode_len=None,
                                       eval_env=None,
+                                      log_interval=None,
                                       successful_score=None,
                                       step_hooks=[],
                                       save_best_so_far_agent=True,
@@ -159,7 +189,9 @@ def train_agent_batch_with_evaluation(agent,
         agent, env, steps, outdir,
         max_episode_len=max_episode_len,
         step_offset=step_offset,
+        eval_interval=eval_interval,
         evaluator=evaluator,
         successful_score=successful_score,
+        log_interval=log_interval,
         step_hooks=step_hooks,
         logger=logger)
