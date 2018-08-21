@@ -14,6 +14,7 @@ from chainer import functions as F
 from chainer import links as L
 from chainer import optimizers
 import numpy as np
+from chainerrl import q_functions
 
 import sys
 sys.path.insert(0, ".")
@@ -169,7 +170,10 @@ def main():
     except:
         n_obs = env.observation_space.shape[0]
     activation = parse_activation(args.activation)
-    q_func = MySequence(n_obs, n_actions, head)
+    q_func = q_functions.FCStateQFunctionWithDiscreteAction(
+        n_obs, n_actions,
+        n_hidden_channels=16,
+        n_hidden_layers=2)#MySequence(n_obs, n_actions, head)
 
     """
     # Draw the computational graph and save it in the output directory.
