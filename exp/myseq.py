@@ -19,13 +19,13 @@ class MySequence(links.Sequence):
         else:
             super().__init__(
                 #links.MLP(obs, 32, [32]),
-                L.Linear(obs, 32),
+                L.Linear(obs, 16),
                 F.relu,
                 #LayerNormalization(),
-                L.Linear(32, 32),
+                L.Linear(16, 16),
                 F.relu,
                 #LayerNormalization(),
-                L.Linear(32, acts),
+                L.Linear(16, acts),
                 DiscreteActionValue)
         self.head = head
         self.acts = acts

@@ -84,5 +84,6 @@ def _map_links(func, link):
                 children[i].name = str(i)
 
                 if isinstance(link, links.Sequence):
-                    link.layers[i] = new_child
-                    link.argnames[i] = set(signature(new_child).parameters)
+                    seq_i = link.layers.index(child)
+                    link.layers[seq_i] = new_child
+                    link.argnames[seq_i] = set(signature(new_child).parameters)
