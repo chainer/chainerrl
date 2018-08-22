@@ -7,7 +7,7 @@ from chainerrl.action_value import DiscreteActionValue
 from chainerrl.action_value import DiscreteActionValueWithSigma
 from chainer import functions as F
 
-class MySequence(chainer.ChainList):#links.Sequence):
+class MySequence(chainer.Chain):#links.Sequence):
     def __init__(self, obs, acts, head=False):
         """
         if head:
@@ -30,12 +30,18 @@ class MySequence(chainer.ChainList):#links.Sequence):
                 L.Linear(32, acts),
                 DiscreteActionValue)
         """
-        self.l1 = L.Linear(obs, 16)
-        self.l2 = L.Linear(16, 16)
-        self.l3 = L.Linear(16, acts*2 if head else acts)
+        super().__init__()
         self.head = head
         self.acts = acts
-        super().__init__(self.l1, self.l2, self.l3)
+
+        with self.init_scope():
+            self.l1 = L.Linear(obs, 16)
+            self.l2 = L.Linear(16, 16)
+            self.l3 = L.Linear(16, acts*2 if head else acts)
+
+        #self.add_link(self.l1)
+        #self.add_link(self.l2)
+        #self.add_link(self.l3)
 
     def scale_noise_coef(self, scale):
         try:
@@ -55,6 +61,7 @@ class MySequence(chainer.ChainList):#links.Sequence):
             pass
 
     def __call__(self, x, **kwargs):
+        links = self.children()
         x = F.relu(self.l1(x))
         x = F.relu(self.l2(x))
         x = self.l3(x)

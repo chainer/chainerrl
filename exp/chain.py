@@ -83,7 +83,7 @@ def main():
     parser.add_argument('--load', type=str, default=None)
     parser.add_argument('--use-sdl', action='store_true', default=False)
     parser.add_argument('--final-exploration-frames',
-                        type=int, default=10 ** 4)
+                        type=int, default=1000)
     parser.add_argument('--final-epsilon', type=float, default=0.1)
     parser.add_argument('--eval-epsilon', type=float, default=0.05)
     parser.add_argument('--arch', type=str, default='nature',
@@ -234,10 +234,10 @@ def main():
                   update_interval=args.update_interval,
                   #batch_accumulator='sum',
                   minibatch_size=args.minibatch_size,
-                  phi=phi)#, entropy=entropy, entropy_coef=args.entropy_coef,
-                  #vis=env, noisy_y=args.noisy_y, noisy_t=args.noisy_t,
-                  #plot=args.save_img,
-                  #head=head)
+                  phi=phi, entropy=entropy, entropy_coef=args.entropy_coef,
+                  vis=env, noisy_y=args.noisy_y, noisy_t=args.noisy_t,
+                  plot=args.save_img,
+                  head=head)
 
     if args.load:
         agent.load(args.load)
