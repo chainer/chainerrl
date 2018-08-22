@@ -143,9 +143,9 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
 
         if gpu is not None and gpu >= 0:
             cuda.get_device(gpu).use()
-            print(type(self.model.l1.W.data))
+            #print(type(self.model.l1.W.data))
             self.model.to_gpu(device=gpu)
-            print(type(self.model.l1.W.data))
+            #print(type(self.model.l1.W.data))
             #try:
             #    self.model.reset_noise()
             #except:
