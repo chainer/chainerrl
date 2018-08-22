@@ -1,12 +1,9 @@
 """An example of training DQN against OpenAI Gym Envs.
-
 This script is an example of training a DQN agent against OpenAI Gym envs.
 Both discrete and continuous action spaces are supported. For continuous action
 spaces, A NAF (Normalized Advantage Function) is used to approximate Q-values.
-
 To solve CartPole-v0, run:
     python train_dqn_gym.py --env CartPole-v0
-
 To solve Pendulum-v0, run:
     python train_dqn_gym.py --env Pendulum-v0
 """
@@ -29,7 +26,9 @@ from gym import spaces
 import gym.wrappers
 import numpy as np
 
+import sys
 sys.path.insert(0, ".")
+
 import chainerrl
 from chainerrl.agents.dqn import DQN
 from chainerrl import experiments
@@ -39,6 +38,7 @@ from chainerrl import misc
 from chainerrl import q_functions
 from chainerrl import replay_buffer
 
+from exp.myseq import MySequence
 
 def main():
     import logging
@@ -57,10 +57,9 @@ def main():
     parser.add_argument('--start-epsilon', type=float, default=1.0)
     parser.add_argument('--end-epsilon', type=float, default=0.1)
     parser.add_argument('--noisy-net-sigma', type=float, default=None)
-    parser.add_argument('--noise-constant', type=float, default=-1)
     parser.add_argument('--demo', action='store_true', default=False)
     parser.add_argument('--load', type=str, default=None)
-    parser.add_argument('--steps', type=int, default=10 ** 8)
+    parser.add_argument('--steps', type=int, default=10 ** 5)
     parser.add_argument('--prioritized-replay', action='store_true')
     parser.add_argument('--episodic-replay', action='store_true')
     parser.add_argument('--replay-start-size', type=int, default=1000)
@@ -70,21 +69,21 @@ def main():
     parser.add_argument('--update-interval', type=int, default=1)
     parser.add_argument('--eval-n-runs', type=int, default=100)
     parser.add_argument('--eval-interval', type=int, default=10 ** 4)
-    parser.add_argument('--n-hidden-channels', type=int, default=12)
-    parser.add_argument('--n-hidden-layers', type=int, default=3)
-    parser.add_argument('--gamma', type=float, default=0.95)
+    parser.add_argument('--n-hidden-channels', type=int, default=16)
+    parser.add_argument('--n-hidden-layers', type=int, default=2)
+    parser.add_argument('--gamma', type=float, default=0.99)
     parser.add_argument('--minibatch-size', type=int, default=None)
-    parser.add_argument('--action-repeat', type=int, default=1)
     parser.add_argument('--render-train', action='store_true')
     parser.add_argument('--render-eval', action='store_true')
     parser.add_argument('--monitor', action='store_true')
     parser.add_argument('--reward-scale-factor', type=float, default=1)
-    parser.add_argument('--lr', type=float, default=1e-3)
-    parser.add_argument('--rbuf', type=int, default=5 * 10 ** 5)
+
+    parser.add_argument('--entropy-coef', type=float, default=0)
+    parser.add_argument('--head', action='store_true', default=False)
     args = parser.parse_args()
 
     # Set a random seed used in ChainerRL
-    misc.set_random_seed(args.seed, gpus=(args.gpu,))
+    misc.set_random_seed(args.seed)
 
     args.outdir = experiments.prepare_output_dir(
         args, args.outdir, argv=sys.argv)
@@ -105,7 +104,6 @@ def main():
         if not test:
             misc.env_modifiers.make_reward_filtered(
                 env, lambda x: x * args.reward_scale_factor)
-        misc.env_modifiers.make_action_repeated(env, args.action_repeat)
         if ((args.render_eval and test) or
                 (args.render_train and not test)):
             misc.env_modifiers.make_rendered(env)
@@ -131,29 +129,27 @@ def main():
         explorer = explorers.AdditiveOU(sigma=ou_sigma)
     else:
         n_actions = action_space.n
-        q_func = q_functions.FCStateQFunctionWithDiscreteAction(
-            obs_size, n_actions,
-            n_hidden_channels=args.n_hidden_channels,
-            n_hidden_layers=args.n_hidden_layers)
+        q_func = MySequence(obs_size, n_actions, args.head)
         # Use epsilon-greedy for exploration
-        explorer = explorers.LinearDecayEpsilonGreedy(
-            args.start_epsilon, args.end_epsilon, args.final_exploration_steps,
-            action_space.sample)
+        explorer = explorers.LinearDecayEpsilonGreedy(args.start_epsilon, args.end_epsilon, args.final_exploration_steps, action_space.sample)
 
-    if args.noisy_net_sigma is not None and args.noisy_net_sigma > 0:
-        links.to_factorized_noisy(q_func, sigma_scale=args.noisy_net_sigma, constant=args.noise_constant)
+    entropy = None
+    if args.noisy_net_sigma is not None:
+        entropy = links.to_factorized_noisy(q_func, sigma_scale=args.noisy_net_sigma, prev=True, noise_coef=1, init_method='/out')
         # Turn off explorer
+        explorer = explorers.Greedy()
+    elif args.head:
         explorer = explorers.Greedy()
 
     # Draw the computational graph and save it in the output directory.
-    #chainerrl.misc.draw_computational_graph(
-    #    [q_func(np.zeros_like(obs_space.low, dtype=np.float32)[None])],
-    #    os.path.join(args.outdir, 'model'))
+    chainerrl.misc.draw_computational_graph(
+        [q_func(np.zeros_like(obs_space.low, dtype=np.float32)[None])],
+        os.path.join(args.outdir, 'model'))
 
-    opt = optimizers.Adam(args.lr)
+    opt = optimizers.Adam()
     opt.setup(q_func)
 
-    rbuf_capacity = args.rbuf
+    rbuf_capacity = 10000#5 * 10 ** 5
     if args.episodic_replay:
         if args.minibatch_size is None:
             args.minibatch_size = 4
@@ -185,7 +181,11 @@ def main():
                 phi=phi, minibatch_size=args.minibatch_size,
                 target_update_method=args.target_update_method,
                 soft_update_tau=args.soft_update_tau,
-                episodic_update=args.episodic_replay, episodic_update_len=16)
+                episodic_update=args.episodic_replay, episodic_update_len=16,)
+                #entropy=entropy, entropy_coef=args.entropy_coef,
+                #vis=env, noisy_y=args.noisy_y, noisy_t=args.noisy_t,
+                #plot=args.save_img,
+                #head=head)
 
     if args.load:
         agent.load(args.load)
