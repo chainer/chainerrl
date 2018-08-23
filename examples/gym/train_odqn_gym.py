@@ -44,7 +44,7 @@ from chainerrl import replay_buffer
 
 def main():
     import logging
-    logging.basicConfig(level=logging.DEBUG)
+    logging.basicConfig(level=logging.INFO)
 
     parser = argparse.ArgumentParser()
     parser.add_argument('--outdir', type=str, default='results',
@@ -55,7 +55,7 @@ def main():
                         help='Random seed [0, 2 ** 32)')
     parser.add_argument('--gpu', type=int, default=0)
     parser.add_argument('--final-exploration-steps',
-                        type=int, default=10 ** 4)
+                        type=int, default=10000)
     parser.add_argument('--start-epsilon', type=float, default=1.0)
     parser.add_argument('--end-epsilon', type=float, default=0.1)
     parser.add_argument('--noisy-net-sigma', type=float, default=None)
@@ -78,7 +78,7 @@ def main():
     parser.add_argument('--render-train', action='store_true')
     parser.add_argument('--render-eval', action='store_true')
     parser.add_argument('--monitor', action='store_true')
-    parser.add_argument('--reward-scale-factor', type=float, default=1e-3)
+    parser.add_argument('--reward-scale-factor', type=float, default=1)
     args = parser.parse_args()
 
     # Set a random seed used in ChainerRL
@@ -150,7 +150,7 @@ def main():
     opt = optimizers.Adam()
     opt.setup(q_func)
 
-    rbuf_capacity = 5 * 10 ** 5
+    rbuf_capacity = 100000#5 * 10 ** 5
     if args.episodic_replay:
         if args.minibatch_size is None:
             args.minibatch_size = 4
