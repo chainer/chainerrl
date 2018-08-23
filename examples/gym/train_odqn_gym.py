@@ -29,6 +29,9 @@ from gym import spaces
 import gym.wrappers
 import numpy as np
 
+import sys
+sys.path.insert(0, ".")
+
 import chainerrl
 from chainerrl.agents.odqn import DQN
 from chainerrl import experiments
