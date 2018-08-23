@@ -42,9 +42,9 @@ class MySequence(chainer.Chain):#links.Sequence):
                     L.Linear(512, acts*2 if head else acts))
         else:
             with self.init_scope():
-                self.l1 = L.Linear(obs, 16)
-                self.l2 = L.Linear(16, 16)
-                self.l3 = L.Linear(16, acts*2 if head else acts)
+                self.l1 = L.Linear(obs, 100)
+                self.l2 = L.Linear(100, 100)
+                self.l3 = L.Linear(100, acts*2 if head else acts)
 
         #self.add_link(self.l1)
         #self.add_link(self.l2)
@@ -72,7 +72,7 @@ class MySequence(chainer.Chain):#links.Sequence):
     def __call__(self, x, **kwargs):
         if self.obs is None:
             x = self.q_func(x)
-            
+
             if self.head:
                 return DiscreteActionValueWithSigma(x[:, :self.acts], x[:, self.acts:])
             else:
