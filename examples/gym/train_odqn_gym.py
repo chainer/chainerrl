@@ -33,7 +33,7 @@ import sys
 sys.path.insert(0, ".")
 
 import chainerrl
-from chainerrl.agents.odqn import DQN
+from chainerrl.agents.dqn import DQN
 from chainerrl import experiments
 from chainerrl import explorers
 from chainerrl import links
