@@ -41,6 +41,7 @@ from chainerrl import misc
 from chainerrl import q_functions
 from chainerrl import replay_buffer
 
+from exp.myseq import MySequence
 
 def main():
     import logging
@@ -128,10 +129,11 @@ def main():
         explorer = explorers.AdditiveOU(sigma=ou_sigma)
     else:
         n_actions = action_space.n
-        q_func = q_functions.FCStateQFunctionWithDiscreteAction(
-            obs_size, n_actions,
-            n_hidden_channels=args.n_hidden_channels,
-            n_hidden_layers=args.n_hidden_layers)
+        q_func = MySequence(obs_size, n_actions, False)
+        #q_func = q_functions.FCStateQFunctionWithDiscreteAction(
+        #    obs_size, n_actions,
+        #    n_hidden_channels=args.n_hidden_channels,
+        #    n_hidden_layers=args.n_hidden_layers)
         # Use epsilon-greedy for exploration
         explorer = explorers.LinearDecayEpsilonGreedy(
             args.start_epsilon, args.end_epsilon, args.final_exploration_steps,
