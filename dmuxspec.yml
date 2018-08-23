@@ -13,6 +13,6 @@ features:
 - pip:future==0.16.0
 hardware:
 - cpu==2
-- ram==4000
+- ram==20000
 - disk==5000
 - gpu==1
