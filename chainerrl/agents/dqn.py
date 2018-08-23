@@ -199,6 +199,8 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
         self.entropy = entropy
         self.entropy_coef = entropy_coef
 
+        self.last_entropy = 0
+
         self.vis = vis
         self.head = head
 
@@ -464,6 +466,8 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
                 entropy_loss = -(F.sum(F.log(F.absolute(sigma)**2.0)))
             else:
                 entropy_loss = -(sum([m.entropy for m in self.entropy]))
+
+            self.last_entropy = entropy_loss
             entropy_loss *= self.entropy_coef# * (1.0 - self.t/5000.0)
             #print("EEEE" + entropy_loss)
 
@@ -607,5 +611,6 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
                 #if not noise.nobias:
                 #    s = F.mean(F.absolute(noise.sigma.b)).data
                 #    stats.append(('entropy_b_' + str(i), s))
+            stats.append(('entropy_loss', self.last_entropy))
 
         return stats
