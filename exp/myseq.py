@@ -7,9 +7,10 @@ from chainerrl.action_value import DiscreteActionValue
 from chainerrl.action_value import DiscreteActionValueWithSigma
 from chainer import functions as F
 from chainerrl import links
+import numpy as np
 
 class MySequence(chainer.Chain):#links.Sequence):
-    def __init__(self, obs, acts, head=False):
+    def __init__(self, obs, acts, head=False, mean=1):
         """
         if head:
             super().__init__(
@@ -34,17 +35,18 @@ class MySequence(chainer.Chain):#links.Sequence):
         super().__init__()
         self.head = head
         self.acts = acts
+        self.mean = mean
 
         if obs is None:
             with self.init_scope():
                 self.q_func = links.Sequence(
                     links.NatureDQNHead(activation=F.relu),
-                    L.Linear(512, acts*2 if head else acts))
+                    L.Linear(512, acts*(1+self.mean) if head else acts))
         else:
             with self.init_scope():
                 self.l1 = L.Linear(obs, 100)
                 self.l2 = L.Linear(100, 100)
-                self.l3 = L.Linear(100, acts*2 if head else acts)
+                self.l3 = L.Linear(100, acts*(1+self.mean) if head else acts)
 
         #self.add_link(self.l1)
         #self.add_link(self.l2)
@@ -72,17 +74,25 @@ class MySequence(chainer.Chain):#links.Sequence):
     def __call__(self, x, **kwargs):
         if self.obs is None:
             x = self.q_func(x)
-
-            if self.head:
-                return DiscreteActionValueWithSigma(x[:, :self.acts], x[:, self.acts:])
-            else:
-                return DiscreteActionValue(x)
         else:
             x = F.relu(self.l1(x))
             x = F.relu(self.l2(x))
             x = self.l3(x)
 
-            if self.head:
-                return DiscreteActionValueWithSigma(x[:, :self.acts], x[:, self.acts:])
+        if self.head:
+            qval = x[:, :self.acts]
+
+            if self.mean > 1:
+                if kwargs['avg']:
+                    sigma = x[:, self.acts:]
+                    sigma = F.reshape(sigma, (self.mean, self.acts))
+                    sigma = F.mean(sigma, axis=0)
+                    return DiscreteActionValueWithSigma(qval, sigma)
+                else:
+                    sigma_i = np.random.randint(self.mean)
+                    sigma = x[:, self.acts*(sigma_i+1):self.acts*(sigma_i+2)]
+                    return DiscreteActionValueWithSigma(qval, sigma)
             else:
-                return DiscreteActionValue(x)
+                return DiscreteActionValueWithSigma(qval, x[:, self.acts:])
+        else:
+            return DiscreteActionValue(x)

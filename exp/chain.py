@@ -116,6 +116,8 @@ def main():
                         help='Monitor env. Videos and additional information'
                              ' are saved as output files.')
 
+    parser.add_argument('--avg', type=int, default=1)
+
     parser.add_argument('--lr', type=float, default=1e-3)
     parser.add_argument('--noisy-net-sigma', type=float, default=None)
     parser.add_argument('--noise-constant', type=float, default=-1)
@@ -184,13 +186,13 @@ def main():
     #    n_hidden_layers=2)#
 
     if "-v" in args.env:
-        q_func = MySequence(None, n_actions, head)
+        q_func = MySequence(None, n_actions, head, args.avg)
     else:
         try:
             n_obs = env.observation_space.n
         except:
             n_obs = env.observation_space.shape[0]
-        q_func = MySequence(n_obs, n_actions, head)
+        q_func = MySequence(n_obs, n_actions, head, args.avg)
 
     """
     # Draw the computational graph and save it in the output directory.
@@ -237,7 +239,10 @@ def main():
 
     def phi(x):
         # Feature extractor
-        return np.asarray(x, dtype=np.float32)
+        if "-v" in args.env:
+            return np.asarray(x, dtype=np.float32) / 255.0
+        else:
+            return np.asarray(x, dtype=np.float32)
 
     Agent = parse_agent(args.agent)
 

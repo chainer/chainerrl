@@ -395,7 +395,7 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
             plt.savefig(self.vis.outdir + "/plots/" + "%06d" % self.t + ".png")
             plt.clf()
 
-        target_next_qout = self.target_model(batch_next_state, **{'noise': False, 'target': not self.noisy_t})
+        target_next_qout = self.target_model(batch_next_state, **{'noise': False, 'target': not self.noisy_t, 'avg': True})
         #mean = F.mean(self.xp.array(samples), axis=0)
 
         #print(nonoise)
@@ -419,7 +419,7 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
         # Compute Q-values for current states
         batch_state = exp_batch['state']
 
-        qout = self.model(batch_state, **{'noise': False, 'target': not self.noisy_y})
+        qout = self.model(batch_state, **{'noise': False, 'target': not self.noisy_y, 'avg': False})
 
         batch_actions = exp_batch['action']
         batch_q = F.reshape(qout.evaluate_actions(
@@ -487,7 +487,7 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
         with chainer.using_config('train', False):
             with chainer.no_backprop_mode():
                 action_value = self.model(
-                    self.batch_states([obs], self.xp, self.phi), **{'noise': True, 'act': True})
+                    self.batch_states([obs], self.xp, self.phi), **{'noise': True, 'act': True, 'avg': False})
                 q = float(action_value.max.data)
                 action = cuda.to_cpu(action_value.greedy_actions.data)[0]
 
@@ -500,9 +500,9 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
 
     def update_noise_std(self, s):
         noisy = self.model(
-            self.batch_states([s], self.xp, self.phi), **{'noise': True}).q_values
+            self.batch_states([s], self.xp, self.phi), **{'noise': True, 'avg': True}).q_values
         clean = self.model(
-            self.batch_states([s], self.xp, self.phi), **{'noise': False}).q_values
+            self.batch_states([s], self.xp, self.phi), **{'noise': False, 'avg': True}).q_values
         noisy, clean = F.softmax(noisy), F.softmax(clean)
         div = -F.sum(clean * F.log(noisy / clean))
         delta = 0.05
@@ -516,7 +516,7 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
         with chainer.using_config('train', False):
             with chainer.no_backprop_mode():
                 action_value = self.model(
-                    self.batch_states([obs], self.xp, self.phi), **{'noise': True})
+                    self.batch_states([obs], self.xp, self.phi), **{'noise': True, 'avg': False})
                 q = float(action_value.max.data)
 
                 if self.head:
