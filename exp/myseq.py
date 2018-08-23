@@ -6,6 +6,7 @@ from chainer.links.normalization.layer_normalization import LayerNormalization
 from chainerrl.action_value import DiscreteActionValue
 from chainerrl.action_value import DiscreteActionValueWithSigma
 from chainer import functions as F
+from chainerrl import links
 
 class MySequence(chainer.Chain):#links.Sequence):
     def __init__(self, obs, acts, head=False):
@@ -34,14 +35,22 @@ class MySequence(chainer.Chain):#links.Sequence):
         self.head = head
         self.acts = acts
 
-        with self.init_scope():
-            self.l1 = L.Linear(obs, 16)
-            self.l2 = L.Linear(16, 16)
-            self.l3 = L.Linear(16, acts*2 if head else acts)
+        if obs is None:
+            with self.init_scope():
+                self.q_func = links.Sequence(
+                    links.NatureDQNHead(activation=F.relu),
+                    L.Linear(512, acts*2 if head else acts))
+        else:
+            with self.init_scope():
+                self.l1 = L.Linear(obs, 16)
+                self.l2 = L.Linear(16, 16)
+                self.l3 = L.Linear(16, acts*2 if head else acts)
 
         #self.add_link(self.l1)
         #self.add_link(self.l2)
         #self.add_link(self.l3)
+
+        self.obs = obs
 
     def scale_noise_coef(self, scale):
         try:
@@ -61,13 +70,19 @@ class MySequence(chainer.Chain):#links.Sequence):
             pass
 
     def __call__(self, x, **kwargs):
-        links = self.children()
-        x = F.relu(self.l1(x))
-        x = F.relu(self.l2(x))
-        x = self.l3(x)
-
-        if self.head:
-            return DiscreteActionValueWithSigma(x[:, :self.acts], x[:, self.acts:])
+        if self.obs is None:
+            x = self.q_func(x)
+            
+            if self.head:
+                return DiscreteActionValueWithSigma(x[:, :self.acts], x[:, self.acts:])
+            else:
+                return DiscreteActionValue(x)
         else:
+            x = F.relu(self.l1(x))
+            x = F.relu(self.l2(x))
+            x = self.l3(x)
 
-            return DiscreteActionValue(x)
+            if self.head:
+                return DiscreteActionValueWithSigma(x[:, :self.acts], x[:, self.acts:])
+            else:
+                return DiscreteActionValue(x)

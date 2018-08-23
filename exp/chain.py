@@ -35,6 +35,8 @@ from chain_env import ChainEnv
 from grid_env import GridEnv
 from myseq import MySequence
 
+import examples.ale.atari_wrappers as atari_wrappers
+
 def parse_activation(activation_str):
     if activation_str == 'relu':
         return F.relu
@@ -161,22 +163,34 @@ def main():
             env = GridEnv(args.outdir, chain_len, save_img=args.save_img,)
         elif args.env == "car":
             env = gym.make("MountainCar-v0")
+        elif "-v" in args.env:
+            env = atari_wrappers.wrap_deepmind(
+                atari_wrappers.make_atari(args.env),
+                episode_life=not test,
+                clip_rewards=not test,
+                fire_reset=True)
+            env.seed(int(env_seed))
         return env
 
     env = make_env(test=False)
     eval_env = make_env(test=True)
 
     n_actions = env.action_space.n
-    try:
-        n_obs = env.observation_space.n
-    except:
-        n_obs = env.observation_space.shape[0]
+
     activation = parse_activation(args.activation)
     #q_func = q_functions.FCStateQFunctionWithDiscreteAction(
     #    n_obs, n_actions,
     #    n_hidden_channels=32,
     #    n_hidden_layers=2)#
-    q_func = MySequence(n_obs, n_actions, head)
+
+    if "-v" in args.env:
+        q_func = MySequence(None, n_actions, head)
+    else:
+        try:
+            n_obs = env.observation_space.n
+        except:
+            n_obs = env.observation_space.shape[0]
+        q_func = MySequence(n_obs, n_actions, head)
 
     """
     # Draw the computational graph and save it in the output directory.
