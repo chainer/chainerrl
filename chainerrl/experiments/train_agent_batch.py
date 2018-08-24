@@ -30,6 +30,7 @@ def ask_and_save_agent_replay_buffer(agent, t, outdir, suffix=''):
             ask_yes_no('Replay buffer has {} transitions. Do you save them to a file?'.format(len(agent.replay_buffer))):  # NOQA
         save_agent_replay_buffer(agent, t, outdir, suffix=suffix)
 
+
 def _get_mask(num_processes, info, done, episode_len, max_episode_len):
     if max_episode_len is None:
         reset_mask = np.zeros(num_processes, dtype=bool)
@@ -43,13 +44,17 @@ def _get_mask(num_processes, info, done, episode_len, max_episode_len):
     return info, mask
 
 
-def train_agent_batch(agent, env, steps, outdir, log_interval=None, max_episode_len=None,
-                      eval_interval=None,
+def _get_obs(env, obs, mask, num_processes):
+    return np.vstack([env.reset()[i] if not mask[i] else obs[i] for i in range(num_processes)])  # NOQA
+
+
+def train_agent_batch(agent, env, steps, outdir, log_interval=None,
+                      max_episode_len=None, eval_interval=None,
                       step_offset=0, evaluator=None, successful_score=None,
-                      step_hooks=[], logger=None):
+                      step_hooks=[], deque_maxlen=100, logger=None):
 
     logger = logger or logging.getLogger(__name__)
-    d = deque(maxlen=100)
+    d = deque(maxlen=deque_maxlen)
 
     try:
         num_processes = env.num_envs
@@ -72,22 +77,24 @@ You passed: {}'.format(type(env)))
 
     try:
         while t < steps:
+            # a_t
             action = agent.batch_act_and_train(obs)
+            # o_{t+1}, r_{t+1}
             obs, r, done, info = env.step(action)
-
-            # Prepare info dictionary to be sent to the agent,
-            # and the mask for resetting episodes
+            # Compute mask for done and reset
             if max_episode_len is None:
                 reset_mask = np.zeros(num_processes, dtype=bool)
             else:
                 reset_mask = episode_len == max_episode_len
-
+            # Package mask inside info dict
             for i, reset in zip(info, reset_mask):
                 i['reset'] = reset
             # Make mask. 0 if done/reset, 1 if pass
             masks = np.logical_not(np.logical_or(reset_mask, done))
+            # Reset environment whenever done/reset
+            obs_ = _get_obs(env, obs, masks, num_processes)
             # Train agent
-            agent.batch_observe_and_train(obs, r, done, info)
+            agent.batch_observe_and_train(obs_, r, done, info)
             # Update reward for current episode
             episode_r += r
             episode_len += 1
@@ -95,19 +102,17 @@ You passed: {}'.format(type(env)))
             # Add to deque whenever done/reset
             episode_r_ = np.ma.masked_array(episode_r, masks)
             d.extend(episode_r_.compressed())
-
-            # Then apply mask to episode_r and episode_len
+            # Start new episode for those with mask
             episode_r *= masks
             episode_len *= masks
-
             t += 1
 
             for hook in step_hooks:
                 hook(env, agent, t)
 
             if eval_interval is not None and t % log_interval == 0:
-                logger.info('outdir:{}, step:{}, mean_r: {}, episode: {}'.format(
-                        outdir, t, np.mean(d), episode_idx))
+                logger.info('outdir:{}, step:{}, avg_r:{}, episode:{}'.format(
+                    outdir, t, np.mean(d), episode_idx))
                 logger.info('statistics: {}'.format(agent.get_statistics()))
 
     except (Exception, KeyboardInterrupt):
@@ -131,6 +136,7 @@ def train_agent_batch_with_evaluation(agent,
                                       step_offset=0,
                                       eval_explorer=None,
                                       eval_max_episode_len=None,
+                                      deque_maxlen=100,
                                       eval_env=None,
                                       log_interval=None,
                                       successful_score=None,
@@ -192,6 +198,7 @@ def train_agent_batch_with_evaluation(agent,
         eval_interval=eval_interval,
         evaluator=evaluator,
         successful_score=successful_score,
+        deque_maxlen=deque_maxlen,
         log_interval=log_interval,
         step_hooks=step_hooks,
         logger=logger)

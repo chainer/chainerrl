@@ -191,7 +191,7 @@ class TestBatchPPO(unittest.TestCase):
         train_agent_batch_with_evaluation(
             agent=agent, env=env, steps=steps, outdir=self.tmpdir,
             eval_interval=200, eval_n_runs=50, successful_score=1,
-            eval_env=test_env)
+            eval_env=test_env, log_interval=100)
 
         agent.stop_episode()
 

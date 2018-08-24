@@ -124,6 +124,7 @@ def main():
     parser.add_argument('--load', type=str, default='')
     parser.add_argument('--logger-level', type=int, default=logging.DEBUG)
     parser.add_argument('--monitor', action='store_true')
+    parser.add_argument('--max-deque', type=int, default=100)
 
     parser.add_argument('--update-interval', type=int, default=2048)
     parser.add_argument('--log-interval', type=int, default=1000)
@@ -224,6 +225,7 @@ def main():
             eval_n_runs=args.eval_n_runs,
             eval_interval=args.eval_interval,
             log_interval=args.log_interval,
+            deque_maxlen=args.max_deque,
             max_episode_len=timestep_limit,
             step_hooks=[
                 lr_decay_hook,

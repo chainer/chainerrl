@@ -106,8 +106,11 @@ class PPO(agent.AttributeSavingMixin, agent.Agent):
 
         self.memory = []
         self.batch_memory = []
-        self.parallel = False
         self.last_episode = []
+        self._accumulator = []
+        self._accumulator_memory = []
+        self._done_memory = None
+        self._reset_memory = None
 
     def _act(self, state):
         xp = self.xp
@@ -139,26 +142,89 @@ class PPO(agent.AttributeSavingMixin, agent.Agent):
 
     def _train(self):
 
-        interval = (len(self.memory) + len(self.last_episode)) / self.num_envs
+        interval = len(self.memory) + len(self.last_episode)
 
         if interval >= self.update_interval:
             self._flush_last_episode()
-            self.batch_update() if self.parallel else self.update()
-            self.batch_memory = []
+            self.update()
             self.memory = []
+
+    def _batch_train(self, terminal):
+
+        if self.batch_memory:
+
+            mem_length = [len(mem) for mem in self.batch_memory]
+            eps_length = [len(acc) for acc in self._accumulator_memory]
+            interval = np.sum(mem_length) + np.sum(eps_length)
+
+            if interval >= self.update_interval:
+                self._batch_flush_last_episode(terminal, mem_length)
+                self.batch_update()
+                self.batch_memory = []
 
     def _flush_last_episode(self):
         if self.last_episode:
-            if self.parallel:
-                self._batch_compute_teacher(self.last_episode)
-                self._batch_memory_append(self.last_episode)
-            else:
-                self._compute_teacher(self.last_episode)
-
+            self._compute_teacher(self.last_episode)
             self.memory.extend(self.last_episode)
             self.last_episode = []
 
-    def _batch_memory_append(self, last_episode):
+    def _batch_flush_last_episode(self, terminal, mem_length=None):
+        """Appends to accumulator and batch_memory
+
+        The main idea is that the accumulator obtains the value
+        of the previous episode, and appends it to batch_memory on the
+        next timestep.
+        """
+        if mem_length is not None and np.any(np.array(mem_length) == 0):
+            terminal = np.ones(self.num_envs, dtype=bool)
+            if self._accumulator:
+                self._batch_compute_teacher(self._accumulator_memory, terminal)
+                self._batch_memory_append(self._accumulator_memory, terminal)
+                self._clear_accum_memory(self._accumulator_memory, terminal)
+
+        if self.last_episode:
+            if self._accumulator:
+                self._accumulator_memory_append(self._accumulator)
+                self._batch_compute_teacher(self._accumulator_memory, terminal)
+                self._batch_memory_append(self._accumulator_memory, terminal)
+                self._clear_accum_memory(self._accumulator_memory, terminal)
+                self._accumulator = []
+
+            self._accumulator_append(self.last_episode)
+            self.last_episode = []
+
+    def _clear_accum_memory(self, accum_mem, terminal):
+        for env, sig in enumerate(terminal):
+            if sig:
+                accum_mem[env] = []
+
+    def _accumulator_memory_append(self, accum):
+        """Appends to accumulator_memory before compute_teacher"""
+        if not self._accumulator_memory:
+            self._accumulator_memory.extend(accum)
+        else:
+            for env in range(self.num_envs):
+                self._accumulator_memory[env].extend(accum[env])
+
+    def _accumulator_append(self, last_episode):
+        """Appends to self._accumulator for next_v_pred updates
+
+        The type signature of batch_memory is:
+            batch_memory :: [[dict, dict, ...], [dict, dict, ...]]
+            where len(batch_memory) == self.num_envs
+
+        Args:
+            last_episode (list): a list of dictionaries with statistics
+                from the last episode
+        """
+        if not self._accumulator:
+            self._accumulator.extend(last_episode)
+        else:
+            assert len(self._accumulator) == self.num_envs
+            for env in range(self.num_envs):
+                self._accumulator[env].extend(last_episode[env])
+
+    def _batch_memory_append(self, last_episode, terminal):
         """Appends to self.batch_memory
 
         The type signature of batch_memory is:
@@ -169,11 +235,8 @@ class PPO(agent.AttributeSavingMixin, agent.Agent):
             last_episode (list): a list of dictionaries with statistics
                 from the last episode
         """
-        if not self.batch_memory:
-            self.batch_memory.extend(self.last_episode)
-        else:
-            assert len(self.batch_memory) == self.num_envs
-            for env in range(self.num_envs):
+        for env, sig in enumerate(terminal):
+            if sig:
                 self.batch_memory[env].extend(last_episode[env])
 
     def _compute_teacher(self, last_episode):
@@ -193,14 +256,14 @@ class PPO(agent.AttributeSavingMixin, agent.Agent):
             transition['adv'] = adv
             transition['v_teacher'] = adv + transition['v_pred']
 
-    def _batch_compute_teacher(self, last_episode):
+    def _batch_compute_teacher(self, last_episode, terminal):
         """Estimate state values and advantages of self.last_episode
 
         TD(lambda) estimation
         """
-        assert len(last_episode) == self.num_envs
-        for env in range(self.num_envs):
-            self._compute_teacher(last_episode[env])
+        for env, sig in enumerate(terminal):
+            if sig:
+                self._compute_teacher(last_episode[env])
 
     def _batch_init_loss_statistics(self, num_envs):
         """Initialize loss statistics when batch"""
@@ -330,9 +393,10 @@ class PPO(agent.AttributeSavingMixin, agent.Agent):
         # Set-up advantages
         if self.standardize_advantages:
             all_advs = xp.array([[e['adv'] for e in env]
-                                 for env in self.batch_memory], dtype='f')
-            mean_advs = xp.mean(all_advs, axis=1)
-            std_advs = xp.std(all_advs, axis=1)
+                                 for env in self.batch_memory])
+            mean_advs = xp.array([xp.mean(env) for env in all_advs])
+            std_advs = xp.array([xp.std(env) for env in all_advs])
+
         else:
             mean_advs, std_advs = (None,) * 2
 
@@ -411,9 +475,13 @@ class PPO(agent.AttributeSavingMixin, agent.Agent):
         """
         # Infer number of envs
         self.num_envs = len(batch_obs)
-        self.parallel = True
+
+        # Initialize loss stats
         if len(self.average_loss_policy) != self.num_envs:
             self._batch_init_loss_statistics(self.num_envs)
+        # Initialize batch memory
+        if not self.batch_memory:
+            self.batch_memory = [[] for i in range(self.num_envs)]
 
         batch_action, batch_v = self._batch_act(batch_obs)
 
@@ -485,43 +553,64 @@ class PPO(agent.AttributeSavingMixin, agent.Agent):
             batch_done (ndarray): batch of done signals
             batch_info (ndarray): additional information
         """
+        batch_reset = np.array([info['reset'] for info in batch_info])
+
+        # Initialize reset memory at first iteration
+        if self._reset_memory is None:
+            self._reset_memory = np.zeros((1, self.num_envs), dtype=bool)
+        if self._done_memory is None:
+            self._done_memory = np.zeros((1, self.num_envs), dtype=bool)
 
         if not self.last_episode:
+            # Fill-in initial values first
             for i, done in enumerate(batch_done):
                 self.last_episode.append([
                     self._last_ep_append(i, done,
                                          batch_reward,
                                          batch_obs)])
         else:
+            # Then fill-in each list in envs
             for i, done in enumerate(batch_done):
                 self.last_episode[i].append(
                     self._last_ep_append(i, done,
                                          batch_reward,
                                          batch_obs))
 
-        _, batch_v = self._batch_act(batch_obs)
+        if np.any(np.logical_or(batch_reset, batch_done)):
+            # Call model whenever there is reset
 
-        # Update stats
-        self.average_v += (
-            (1 - self.average_v_decay) *
-            (batch_v - self.average_v))
+            _, batch_v = self._batch_act(batch_obs)
+            self.average_v += (
+                (1 - self.average_v_decay) *
+                (batch_v - self.average_v))
 
-        try:
-            for i, info in enumerate(batch_info):
-                reset = info['reset']
-                self.last_episode[i][-1]['next_v_pred'] = batch_v[i] if reset \
-                    else self.last_episode[i][-1]['v_pred']
-        except KeyError:
-            raise
+        for i, (reset, prev_reset) in enumerate(zip(batch_reset, self._reset_memory[-1])):  # NOQA
+            # This episode's next_v_pred is new batch_v whenever reset
+            self.last_episode[i][-1]['next_v_pred'] = batch_v[i] if reset else None  # NOQA
+            try:
+                # Previous episode's next_v_pred is this episode's
+                # batch_v from batch_act() (lookback step)
+                if not prev_reset:
+                    # If not reset previously, use last_v
+                    self._accumulator[i][-1]['next_v_pred'] = self.last_v[i]
+            except IndexError:
+                pass
 
-        self._flush_last_episode()
-        self._train()
+        self._reset_memory = np.append(self._reset_memory,
+                                       batch_reset[np.newaxis],
+                                       axis=0)
+        terminal = np.logical_or(self._done_memory[-1], self._reset_memory[-1])
+        self._done_memory = np.append(self._done_memory,
+                                      batch_done[np.newaxis],
+                                      axis=0)
+
+        self._batch_flush_last_episode(terminal)
+        self._batch_train(terminal)
 
     def get_statistics(self):
-        average_v = self.average_v.T if hasattr(self.average_v, '__iter__') else self.average_v
         return [
-            ('average_v', average_v),
-            ('average_loss_policy', self.average_loss_policy),
-            ('average_loss_value_func', self.average_loss_value_func),
-            ('average_loss_entropy', self.average_loss_entropy),
+            ('average_v', np.mean(self.average_v)),
+            ('average_loss_policy', np.mean(self.average_loss_policy)),
+            ('average_loss_value_func', np.mean(self.average_loss_value_func)),
+            ('average_loss_entropy', np.mean(self.average_loss_entropy)),
         ]
