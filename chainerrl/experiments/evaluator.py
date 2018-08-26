@@ -57,6 +57,8 @@ def run_evaluation_episodes(env, agent, n_runs, max_episode_len=None,
         done = False
         test_r = 0
         t = 0
+        acts = []
+
         while not (done or t == max_episode_len):
             def greedy_action_func():
                 return agent.act(obs)
@@ -65,9 +67,14 @@ def run_evaluation_episodes(env, agent, n_runs, max_episode_len=None,
             else:
                 a = greedy_action_func()
 
+            acts.append(a)
+
             obs, r, done, info = env.step(a)
             test_r += r
             t += 1
+
+        if i == 0:
+            logger.info(str(acts))
 
         #sigmas.append([F.mean(F.abs(noise.sigma)) for noise in agent.entropy])
         agent.stop_episode()

@@ -416,6 +416,8 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
             return batch_rewards + self.gamma * (1.0 - batch_terminal) * next_q_max
 
     def _compute_y_and_t(self, exp_batch, gamma):
+        #print(self.model.q_func.layers[0][0].W[0, 0])
+
         batch_size = exp_batch['reward'].shape[0]
 
         # Compute Q-values for current states
@@ -536,6 +538,7 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
 
         action = self.explorer.select_action(
             self.t, lambda: greedy_action, action_value=action_value)
+        #self.logger.info('a:%s', action)
         self.t += 1
 
         if self.t % 50 == 0:
