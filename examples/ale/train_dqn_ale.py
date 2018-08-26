@@ -61,9 +61,9 @@ def parse_arch(arch, n_actions, activation):
 
 
 def parse_agent(agent):
-    return {'DQN': agents.DQN,
+    from chainerrl.agents.odqn import DQN
+    return {'DQN': DQN,
             'DoubleDQN': agents.DoubleDQN,
-            'SARSA': agents.SARSA,
             'PAL': agents.PAL}[agent]
 
 
@@ -83,11 +83,10 @@ def main():
                         type=int, default=10 ** 6)
     parser.add_argument('--final-epsilon', type=float, default=0.1)
     parser.add_argument('--eval-epsilon', type=float, default=0.05)
+    parser.add_argument('--noisy-net-sigma', type=float, default=None)
     parser.add_argument('--arch', type=str, default='nature',
                         choices=['nature', 'nips', 'dueling'])
-    parser.add_argument('--steps', type=int, default=10 ** 8)
-    parser.add_argument('--buffer-size', type=int, default=10 ** 6)
-    parser.add_argument('--minibatch-size', type=int, default=32)
+    parser.add_argument('--steps', type=int, default=10 ** 7)
     parser.add_argument('--max-episode-len', type=int,
                         default=5 * 60 * 60 // 4,  # 5 minutes with 60/4 fps
                         help='Maximum number of steps for each episode.')
@@ -102,7 +101,7 @@ def main():
                         dest='clip_delta', action='store_false')
     parser.set_defaults(clip_delta=True)
     parser.add_argument('--agent', type=str, default='DQN',
-                        choices=['DQN', 'DoubleDQN', 'PAL', 'SARSA'])
+                        choices=['DQN', 'DoubleDQN', 'PAL'])
     parser.add_argument('--logging-level', type=int, default=20,
                         help='Logging level. 10:DEBUG, 20:INFO etc.')
     parser.add_argument('--render', action='store_true', default=False,
@@ -110,16 +109,6 @@ def main():
     parser.add_argument('--monitor', action='store_true', default=False,
                         help='Monitor env. Videos and additional information'
                              ' are saved as output files.')
-
-    parser.add_argument('--noisy-net-sigma', type=float, default=None)
-    parser.add_argument('--noise-constant', type=float, default=-1)
-    parser.add_argument('--prop', action='store_true', default=False)
-    parser.add_argument('--adam', action='store_true', default=False)
-    parser.add_argument('--orig-noise', action='store_true', default=False)
-    parser.add_argument('--last-noise', type=int, default=0)
-    parser.add_argument('--entropy-coef', type=float, default=0)
-    parser.add_argument('--noise-coef', type=float, default=1)
-    parser.add_argument('--init-method', type=str, default='/out')
     args = parser.parse_args()
 
     import logging
@@ -141,8 +130,7 @@ def main():
         env = atari_wrappers.wrap_deepmind(
             atari_wrappers.make_atari(args.env),
             episode_life=not test,
-            clip_rewards=not test,
-            fire_reset=True)
+            clip_rewards=not test)
         env.seed(int(env_seed))
         if args.monitor:
             env = gym.wrappers.Monitor(
@@ -159,44 +147,27 @@ def main():
     activation = parse_activation(args.activation)
     q_func = parse_arch(args.arch, n_actions, activation)
 
+    if args.noisy_net_sigma is not None:
+        links.to_factorized_noisy(q_func)
+        # Turn off explorer
+        explorer = explorers.Greedy()
+
     # Draw the computational graph and save it in the output directory.
     chainerrl.misc.draw_computational_graph(
         [q_func(np.zeros((4, 84, 84), dtype=np.float32)[None])],
-        os.path.join(args.outdir, 'diagram'))
+        os.path.join(args.outdir, 'model'))
 
-    if args.adam:
-        opt = optimizers.Adam(1e-4)
-    else:
-        # Use the same hyper parameters as the Nature paper's
-        opt = optimizers.RMSpropGraves(
-            lr=2.5e-4, alpha=0.95, momentum=0.0, eps=1e-2)
+    # Use the same hyper parameters as the Nature paper's
+    opt = optimizers.Adam(1e-4)
 
-    rbuf = replay_buffer.ReplayBuffer(args.buffer_size)
+    opt.setup(q_func)
+
+    rbuf = replay_buffer.ReplayBuffer(10 ** 5)
 
     explorer = explorers.LinearDecayEpsilonGreedy(
         1.0, args.final_epsilon,
         args.final_exploration_frames,
         lambda: np.random.randint(n_actions))
-
-    entropy = None
-    if args.noisy_net_sigma is not None and args.noisy_net_sigma > 0:
-        if args.prop:
-            entropy = links.to_factorized_noisy2(q_func, sigma_scale=args.noisy_net_sigma, constant=args.noise_constant)
-        else:
-            entropy = links.to_factorized_noisy(q_func, sigma_scale=args.noisy_net_sigma, constant=args.noise_constant,
-                prev=args.orig_noise, noise_coef=args.noise_coef, init_method=args.init_method)
-        # Turn off explorer
-        explorer = explorers.Greedy()
-
-        if args.last_noise > 0:
-            for e in entropy[:-args.last_noise]:
-                e.off = True
-
-    chainerrl.misc.draw_computational_graph(
-        [q_func(np.zeros((4, 84, 84), dtype=np.float32)[None])],
-        os.path.join(args.outdir, 'diagram2'))
-
-    opt.setup(q_func)
 
     def phi(x):
         # Feature extractor
@@ -209,8 +180,7 @@ def main():
                   clip_delta=args.clip_delta,
                   update_interval=args.update_interval,
                   batch_accumulator='sum',
-                  minibatch_size=args.minibatch_size,
-                  phi=phi, entropy=entropy, entropy_coef=args.entropy_coef)
+                  phi=phi)
 
     if args.load:
         agent.load(args.load)
@@ -231,9 +201,9 @@ def main():
             agent=agent, env=env, steps=args.steps,
             eval_n_runs=args.eval_n_runs, eval_interval=args.eval_interval,
             outdir=args.outdir, eval_explorer=eval_explorer,
+            save_best_so_far_agent=False,
             max_episode_len=args.max_episode_len,
             eval_env=eval_env,
-            save_best_so_far_agent=False,
         )
 
 
