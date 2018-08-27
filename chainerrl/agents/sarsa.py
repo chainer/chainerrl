@@ -29,4 +29,9 @@ class SARSA(dqn.DQN):
         batch_rewards = exp_batch['reward']
         batch_terminal = exp_batch['is_state_terminal']
 
-        return batch_rewards + self.gamma * (1.0 - batch_terminal) * next_q
+        if self.head:
+            mean = batch_rewards + self.gamma * (1.0 - batch_terminal) * next_q
+            sigma = self.gamma * next_target_action_value.max_sigma
+            return mean, sigma[:, None]
+        else:
+            return batch_rewards + self.gamma * (1.0 - batch_terminal) * next_q
