@@ -83,7 +83,7 @@ class MySequence(chainer.Chain):#links.Sequence):
             qval = x[:, :self.acts]
 
             if self.mean > 1:
-                if kwargs['avg']:
+                if True:#kwargs['avg']:
                     sigma = x[:, self.acts:]
                     sigma = F.reshape(sigma, (x.shape[0], self.mean, self.acts))
                     sigma = F.mean(sigma, axis=1)

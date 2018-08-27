@@ -210,6 +210,8 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
         except:
             self.plot = False
 
+        self.conv = False
+
 
     def sync_target_network(self):
         """Synchronize target network with current network."""
@@ -615,5 +617,23 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
                 #    s = F.mean(F.absolute(noise.sigma.b)).data
                 #    stats.append(('entropy_b_' + str(i), s))
             stats.append(('entropy_loss', self.last_entropy))
+
+        xp = self.xp
+
+        def eval_vals(x, name):
+            vals = self.model(x).q_values.data
+            stats.append((name + '_q_mean', xp.mean(vals)))
+            stats.append((name + '_q_std', xp.mean(xp.std(vals, axis=1))))
+
+            vals = xp.exp(vals) / xp.exp(vals).sum(axis=1)[:, None]
+            ent = -xp.sum(vals * xp.log(vals), axis=1)
+            stats.append((name + '_q_ent', xp.mean(ent)))
+
+        if not self.conv:
+            try:
+                eval_vals(self.xp.asarray([[0, 0], [0, 1], [1, -1], [1, 1]], dtype=self.xp.float32), 'custom')
+                eval_vals(self.xp.random.uniform(-5, 5, (32, 2), dtype=self.xp.float32), 'random')
+            except:
+                self.conv = True
 
         return stats
