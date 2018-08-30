@@ -61,7 +61,7 @@ def parse_arch(arch, n_actions, activation):
 
 
 def parse_agent(agent):
-    from chainerrl.agents.odqn import DQN
+    from chainerrl.agents.dqn import DQN
     return {'DQN': DQN,
             'DoubleDQN': agents.DoubleDQN,
             'PAL': agents.PAL}[agent]
