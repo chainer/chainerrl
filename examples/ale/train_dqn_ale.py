@@ -100,7 +100,7 @@ def main():
                         help='Maximum number of steps for each episode.')
     parser.add_argument('--replay-start-size', type=int, default=5 * 10 ** 4)
     parser.add_argument('--target-update-interval',
-                        type=int, default=10 ** 4)
+                        type=int, default=3 * 10 ** 4)
     parser.add_argument('--eval-interval', type=int, default=10 ** 5)
     parser.add_argument('--update-interval', type=int, default=4)
     parser.add_argument('--eval-n-runs', type=int, default=10)
