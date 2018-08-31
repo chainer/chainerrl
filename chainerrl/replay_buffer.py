@@ -182,7 +182,8 @@ class PriorityWeightError(object):
             ``False``: do not normalize.
     """
 
-    def __init__(self, alpha, beta0, betasteps, eps, normalize_by_max):
+    def __init__(self, alpha, beta0, betasteps, eps, normalize_by_max,
+                 error_min, error_max):
         assert 0.0 <= alpha
         assert 0.0 <= beta0 <= 1.0
         self.alpha = alpha
@@ -196,9 +197,19 @@ class PriorityWeightError(object):
             normalize_by_max = 'batch'
         assert normalize_by_max in [False, 'batch', 'memory']
         self.normalize_by_max = normalize_by_max
+        self.error_min = error_min
+        self.error_max = error_max
 
     def priority_from_errors(self, errors):
-        return [d ** self.alpha + self.eps for d in errors]
+
+        def _clip_error(error):
+            if self.error_min is not None:
+                error = max(self.error_min, error)
+            if self.error_max is not None:
+                error = min(self.error_max, error)
+            return error
+
+        return [(_clip_error(d) + self.eps) ** self.alpha for d in errors]
 
     def weights_from_probabilities(self, probabilities, min_probability):
         if self.normalize_by_max == 'batch':
@@ -227,11 +238,12 @@ class PrioritizedReplayBuffer(ReplayBuffer, PriorityWeightError):
     """
 
     def __init__(self, capacity=None,
-                 alpha=0.6, beta0=0.4, betasteps=2e5, eps=1e-8,
-                 normalize_by_max=True):
+                 alpha=0.6, beta0=0.4, betasteps=2e5, eps=0.01,
+                 normalize_by_max=True, error_min=0, error_max=1):
         self.memory = PrioritizedBuffer(capacity=capacity)
         PriorityWeightError.__init__(
-            self, alpha, beta0, betasteps, eps, normalize_by_max)
+            self, alpha, beta0, betasteps, eps, normalize_by_max,
+            error_min=error_min, error_max=error_max)
 
     def sample(self, n):
         assert len(self.memory) >= n
@@ -336,7 +348,10 @@ class PrioritizedEpisodicReplayBuffer (
                  default_priority_func=None,
                  uniform_ratio=0,
                  wait_priority_after_sampling=True,
-                 return_sample_weights=True):
+                 return_sample_weights=True,
+                 error_min=None,
+                 error_max=None,
+                 ):
         self.current_episode = []
         self.episodic_memory = PrioritizedBuffer(
             capacity=None,
@@ -347,7 +362,8 @@ class PrioritizedEpisodicReplayBuffer (
         self.uniform_ratio = uniform_ratio
         self.return_sample_weights = return_sample_weights
         PriorityWeightError.__init__(
-            self, alpha, beta0, betasteps, eps, normalize_by_max)
+            self, alpha, beta0, betasteps, eps, normalize_by_max,
+            error_min=error_min, error_max=error_max)
 
     def sample_episodes(self, n_episodes, max_len=None):
         """Sample n unique samples from this replay buffer"""

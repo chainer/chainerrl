@@ -205,7 +205,8 @@ class TestPrioritizedReplayBuffer(unittest.TestCase):
         capacity = self.capacity
         rbuf = replay_buffer.PrioritizedReplayBuffer(
             capacity,
-            normalize_by_max=self.normalize_by_max)
+            normalize_by_max=self.normalize_by_max,
+            error_max=5)
 
         self.assertEqual(len(rbuf), 0)
 
@@ -241,9 +242,14 @@ class TestPrioritizedReplayBuffer(unittest.TestCase):
         # Weights should be different for different TD-errors
         s3 = rbuf.sample(2)
         self.assertNotAlmostEqual(s3[0]['weight'], s3[1]['weight'])
-        rbuf.update_errors([3.14, 3.14])
+
+        # Weights should be equal for different but clipped TD-errors
+        rbuf.update_errors([5, 10])
+        s3 = rbuf.sample(2)
+        self.assertAlmostEqual(s3[0]['weight'], s3[1]['weight'])
 
         # Weights should be equal for the same TD-errors
+        rbuf.update_errors([3.14, 3.14])
         s4 = rbuf.sample(2)
         self.assertAlmostEqual(s4[0]['weight'], s4[1]['weight'])
 
