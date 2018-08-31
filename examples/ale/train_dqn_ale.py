@@ -116,6 +116,8 @@ def main():
     parser.add_argument('--monitor', action='store_true', default=False,
                         help='Monitor env. Videos and additional information'
                              ' are saved as output files.')
+    parser.add_argument('--prioritized', action='store_true', default=False,
+                        help='Use prioritized experience replay.')
     args = parser.parse_args()
 
     import logging
@@ -169,7 +171,14 @@ def main():
 
     opt.setup(q_func)
 
-    rbuf = replay_buffer.ReplayBuffer(10 ** 6)
+    # Select a replay buffer to use
+    if args.prioritized:
+        # Anneal beta from beta0 to 1 throughout training
+        betasteps = args.steps / args.update_interval
+        rbuf = replay_buffer.PrioritizedReplayBuffer(
+            10 ** 6, alpha=0.6, beta0=0.4, betasteps=betasteps)
+    else:
+        rbuf = replay_buffer.ReplayBuffer(10 ** 6)
 
     explorer = explorers.LinearDecayEpsilonGreedy(
         1.0, args.final_epsilon,
