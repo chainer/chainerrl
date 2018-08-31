@@ -116,6 +116,8 @@ def main():
     parser.add_argument('--monitor', action='store_true', default=False,
                         help='Monitor env. Videos and additional information'
                              ' are saved as output files.')
+    parser.add_argument('--lr', type=float, default=2.5e-4,
+                        help='Learning rate')
     parser.add_argument('--prioritized', action='store_true', default=False,
                         help='Use prioritized experience replay.')
     args = parser.parse_args()
@@ -167,7 +169,7 @@ def main():
 
     # Use the same hyper parameters as the Nature paper's
     opt = optimizers.RMSpropGraves(
-        lr=2.5e-4, alpha=0.95, momentum=0.0, eps=1e-2)
+        lr=args.lr, alpha=0.95, momentum=0.0, eps=1e-2)
 
     opt.setup(q_func)
 
