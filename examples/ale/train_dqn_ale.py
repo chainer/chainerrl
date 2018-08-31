@@ -89,14 +89,14 @@ def main():
     parser.add_argument('--load', type=str, default=None)
     parser.add_argument('--final-exploration-frames',
                         type=int, default=10 ** 6)
-    parser.add_argument('--final-epsilon', type=float, default=0.1)
-    parser.add_argument('--eval-epsilon', type=float, default=0.05)
+    parser.add_argument('--final-epsilon', type=float, default=0.01)
+    parser.add_argument('--eval-epsilon', type=float, default=0.001)
     parser.add_argument('--noisy-net-sigma', type=float, default=None)
-    parser.add_argument('--arch', type=str, default='nature',
+    parser.add_argument('--arch', type=str, default='doubledqn',
                         choices=['nature', 'nips', 'dueling', 'doubledqn'])
-    parser.add_argument('--steps', type=int, default=10 ** 7)
+    parser.add_argument('--steps', type=int, default=5 * 10 ** 7)
     parser.add_argument('--max-episode-len', type=int,
-                        default=5 * 60 * 60 // 4,  # 5 minutes with 60/4 fps
+                        default=30 * 60 * 60 // 4,  # 30 minutes with 60/4 fps
                         help='Maximum number of steps for each episode.')
     parser.add_argument('--replay-start-size', type=int, default=5 * 10 ** 4)
     parser.add_argument('--target-update-interval',
@@ -107,7 +107,7 @@ def main():
     parser.add_argument('--no-clip-delta',
                         dest='clip_delta', action='store_false')
     parser.set_defaults(clip_delta=True)
-    parser.add_argument('--agent', type=str, default='DQN',
+    parser.add_argument('--agent', type=str, default='DoubleDQN',
                         choices=['DQN', 'DoubleDQN', 'PAL'])
     parser.add_argument('--logging-level', type=int, default=20,
                         help='Logging level. 10:DEBUG, 20:INFO etc.')
