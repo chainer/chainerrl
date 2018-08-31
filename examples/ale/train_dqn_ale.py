@@ -32,7 +32,7 @@ import atari_wrappers
 class SingleSharedBias(chainer.Chain):
     """Single shared bias used in the Double DQN paper.
 
-    You can add this link after a Linear layer with nobias=True implement a
+    You can add this link after a Linear layer with nobias=True to implement a
     Linear layer with a single shared bias parameter.
 
     See http://arxiv.org/abs/1509.06461.
