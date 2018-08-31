@@ -196,13 +196,17 @@ class TestEpisodicReplayBuffer(unittest.TestCase):
 @testing.parameterize(*testing.product(
     {
         'capacity': [100, None],
+        'normalize_by_max': ['batch', 'memory'],
     }
 ))
 class TestPrioritizedReplayBuffer(unittest.TestCase):
 
     def test_append_and_sample(self):
         capacity = self.capacity
-        rbuf = replay_buffer.PrioritizedReplayBuffer(capacity, error_max=5)
+        rbuf = replay_buffer.PrioritizedReplayBuffer(
+            capacity,
+            normalize_by_max=self.normalize_by_max,
+            error_max=5)
 
         self.assertEqual(len(rbuf), 0)
 
@@ -322,6 +326,7 @@ def exp_return_of_episode(episode):
 @testing.parameterize(*(
     testing.product({
         'capacity': [100],
+        'normalize_by_max': ['batch', 'memory'],
         'wait_priority_after_sampling': [False],
         'default_priority_func': [exp_return_of_episode],
         'uniform_ratio': [0, 0.1, 1.0],
@@ -329,6 +334,7 @@ def exp_return_of_episode(episode):
     }) +
     testing.product({
         'capacity': [100],
+        'normalize_by_max': ['batch', 'memory'],
         'wait_priority_after_sampling': [True],
         'default_priority_func': [None, exp_return_of_episode],
         'uniform_ratio': [0, 0.1, 1.0],
@@ -340,6 +346,7 @@ class TestPrioritizedEpisodicReplayBuffer(unittest.TestCase):
     def test_append_and_sample(self):
         rbuf = replay_buffer.PrioritizedEpisodicReplayBuffer(
             capacity=self.capacity,
+            normalize_by_max=self.normalize_by_max,
             default_priority_func=self.default_priority_func,
             uniform_ratio=self.uniform_ratio,
             wait_priority_after_sampling=self.wait_priority_after_sampling,
