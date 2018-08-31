@@ -10,6 +10,7 @@ import os
 
 import gym
 gym.undo_logger_setup()  # NOQA
+import chainer
 from chainer import functions as F
 from chainer import links as L
 from chainer import optimizers
@@ -28,6 +29,22 @@ from chainerrl import replay_buffer
 import atari_wrappers
 
 
+class SingleSharedBias(chainer.Chain):
+    """Single shared bias used in the Double DQN paper.
+
+    You can add this link after a Linear layer with nobias=True implement a
+    Linear layer with a single shared bias parameter.
+
+    See http://arxiv.org/abs/1509.06461.
+    """
+
+    def __init__(self):
+        super().__init__()
+        with self.init_scope():
+            self.bias = chainer.Parameter(0, shape=1)
+
+    def __call__(self, x):
+        return x + F.broadcast_to(self.bias, x.shape)
 
 
 def parse_arch(arch, n_actions):
@@ -35,6 +52,12 @@ def parse_arch(arch, n_actions):
         return links.Sequence(
             links.NatureDQNHead(),
             L.Linear(512, n_actions),
+            DiscreteActionValue)
+    elif arch == 'doubledqn':
+        return links.Sequence(
+            links.NatureDQNHead(),
+            L.Linear(512, n_actions, nobias=True),
+            SingleSharedBias(),
             DiscreteActionValue)
     elif arch == 'nips':
         return links.Sequence(
@@ -70,7 +93,7 @@ def main():
     parser.add_argument('--eval-epsilon', type=float, default=0.05)
     parser.add_argument('--noisy-net-sigma', type=float, default=None)
     parser.add_argument('--arch', type=str, default='nature',
-                        choices=['nature', 'nips', 'dueling'])
+                        choices=['nature', 'nips', 'dueling', 'doubledqn'])
     parser.add_argument('--steps', type=int, default=10 ** 7)
     parser.add_argument('--max-episode-len', type=int,
                         default=5 * 60 * 60 // 4,  # 5 minutes with 60/4 fps
