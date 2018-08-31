@@ -28,27 +28,17 @@ from chainerrl import replay_buffer
 import atari_wrappers
 
 
-def parse_activation(activation_str):
-    if activation_str == 'relu':
-        return F.relu
-    elif activation_str == 'elu':
-        return F.elu
-    elif activation_str == 'lrelu':
-        return F.leaky_relu
-    else:
-        raise RuntimeError(
-            'Not supported activation: {}'.format(activation_str))
 
 
-def parse_arch(arch, n_actions, activation):
+def parse_arch(arch, n_actions):
     if arch == 'nature':
         return links.Sequence(
-            links.NatureDQNHead(activation=activation),
+            links.NatureDQNHead(),
             L.Linear(512, n_actions),
             DiscreteActionValue)
     elif arch == 'nips':
         return links.Sequence(
-            links.NIPSDQNHead(activation=activation),
+            links.NIPSDQNHead(),
             L.Linear(256, n_actions),
             DiscreteActionValue)
     elif arch == 'dueling':
@@ -90,7 +80,6 @@ def main():
                         type=int, default=10 ** 4)
     parser.add_argument('--eval-interval', type=int, default=10 ** 5)
     parser.add_argument('--update-interval', type=int, default=4)
-    parser.add_argument('--activation', type=str, default='relu')
     parser.add_argument('--eval-n-runs', type=int, default=10)
     parser.add_argument('--no-clip-delta',
                         dest='clip_delta', action='store_false')
@@ -139,8 +128,7 @@ def main():
     eval_env = make_env(test=True)
 
     n_actions = env.action_space.n
-    activation = parse_activation(args.activation)
-    q_func = parse_arch(args.arch, n_actions, activation)
+    q_func = parse_arch(args.arch, n_actions)
 
     if args.noisy_net_sigma is not None:
         links.to_factorized_noisy(q_func)
