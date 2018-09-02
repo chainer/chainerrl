@@ -21,6 +21,7 @@ import gym
 gym.undo_logger_setup()  # NOQA
 import gym.wrappers
 
+import chainerrl
 from chainerrl.agents import a3c
 from chainerrl.agents import PPO
 from chainerrl import experiments

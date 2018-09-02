@@ -23,6 +23,7 @@ import chainer
 import gym
 gym.undo_logger_setup()  # NOQA
 import gym.wrappers
+import numpy as np
 
 import chainerrl
 from chainerrl import experiments

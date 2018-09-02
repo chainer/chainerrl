@@ -28,6 +28,7 @@ from chainer import links as L
 import gym
 gym.undo_logger_setup()  # NOQA
 import gym.wrappers
+import numpy as np
 
 import chainerrl
 from chainerrl.agents import a3c
