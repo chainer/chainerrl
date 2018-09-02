@@ -6,11 +6,11 @@ from future import standard_library
 from builtins import *  # NOQA
 standard_library.install_aliases()  # NOQA
 
-import chainer
 import chainer.functions as F
 import chainer.links as L
 
 import basetest_dqn_like as base
+import chainerrl
 from chainerrl.agents import iqn
 
 
@@ -20,7 +20,7 @@ class TestIQNOnDiscreteABC(base._TestDQNOnDiscreteABC):
         obs_size = env.observation_space.low.size
         hidden_size = 64
         return iqn.ImplicitQuantileQFunction(
-            psi=chainer.Sequential(
+            psi=chainerrl.links.Sequence(
                 L.Linear(obs_size, hidden_size),
                 F.relu,
             ),
