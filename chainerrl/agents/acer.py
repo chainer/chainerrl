@@ -4,7 +4,7 @@ from __future__ import unicode_literals
 from __future__ import absolute_import
 from builtins import *  # NOQA
 from future import standard_library
-standard_library.install_aliases()
+standard_library.install_aliases()  # NOQA
 
 import contextlib
 import copy
@@ -18,7 +18,7 @@ from chainerrl.action_value import SingleActionValue
 from chainerrl import agent
 from chainerrl import distribution
 from chainerrl import links
-from chainerrl.misc import async
+from chainerrl.misc import async_
 from chainerrl.misc import copy_param
 from chainerrl.recurrent import Recurrent
 from chainerrl.recurrent import RecurrentChainMixin
@@ -322,7 +322,7 @@ class ACER(agent.AttributeSavingMixin, agent.AsyncAgent):
 
         # Thread specific model
         self.model = copy.deepcopy(self.shared_model)
-        async.assert_params_not_shared(self.shared_model, self.model)
+        async_.assert_params_not_shared(self.shared_model, self.model)
 
         self.optimizer = optimizer
 

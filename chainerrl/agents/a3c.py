@@ -4,7 +4,7 @@ from __future__ import unicode_literals
 from __future__ import absolute_import
 from builtins import *  # NOQA
 from future import standard_library
-standard_library.install_aliases()
+standard_library.install_aliases()  # NOQA
 
 import copy
 from logging import getLogger
@@ -14,7 +14,7 @@ from chainer import functions as F
 import numpy as np
 
 from chainerrl import agent
-from chainerrl.misc import async
+from chainerrl.misc import async_
 from chainerrl.misc.batch_states import batch_states
 from chainerrl.misc import copy_param
 from chainerrl.recurrent import Recurrent
@@ -119,7 +119,7 @@ class A3C(agent.AttributeSavingMixin, agent.AsyncAgent):
 
         # Thread specific model
         self.model = copy.deepcopy(self.shared_model)
-        async.assert_params_not_shared(self.shared_model, self.model)
+        async_.assert_params_not_shared(self.shared_model, self.model)
 
         self.optimizer = optimizer
 

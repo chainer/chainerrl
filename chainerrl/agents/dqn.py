@@ -4,7 +4,7 @@ from __future__ import unicode_literals
 from __future__ import absolute_import
 from builtins import *  # NOQA
 from future import standard_library
-standard_library.install_aliases()
+standard_library.install_aliases()  # NOQA
 
 import copy
 from logging import getLogger
@@ -295,7 +295,6 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
             self.replay_buffer.update_errors(errors_out)
 
     def _compute_target_values(self, exp_batch, gamma):
-
         batch_next_state = exp_batch['next_state']
 
         target_next_qout = self.target_model(batch_next_state)
@@ -335,7 +334,6 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
         Returns:
           loss
         """
-
         y, t = self._compute_y_and_t(exp_batch, gamma)
 
         if errors_out is not None:
@@ -353,22 +351,6 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
         else:
             return compute_value_loss(y, t, clip_delta=self.clip_delta,
                                       batch_accumulator=self.batch_accumulator)
-
-    def compute_q_values(self, states):
-        """Compute Q-values
-
-        Args:
-          states (list of cupy.ndarray or numpy.ndarray)
-        Returns:
-          list of numpy.ndarray
-        """
-        with chainer.using_config('train', False):
-            if not states:
-                return []
-            batch_x = self.batch_states(states, self.xp, self.phi)
-            q_values = list(cuda.to_cpu(
-                self.model(batch_x).q_values))
-            return q_values
 
     def act(self, obs):
         with chainer.using_config('train', False):

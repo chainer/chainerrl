@@ -3,7 +3,7 @@ from __future__ import unicode_literals
 from __future__ import division
 from __future__ import absolute_import
 from future import standard_library
-standard_library.install_aliases()
+standard_library.install_aliases()  # NOQA
 
 import logging
 import os
@@ -39,7 +39,6 @@ def train_agent(agent, env, steps, outdir, max_episode_len=None,
     # o_0, r_0
     obs = env.reset()
     r = 0
-    done = False
 
     t = step_offset
     if hasattr(agent, 't'):
@@ -79,7 +78,6 @@ def train_agent(agent, env, steps, outdir, max_episode_len=None,
                 episode_len = 0
                 obs = env.reset()
                 r = 0
-                done = False
 
     except (Exception, KeyboardInterrupt):
         # Save the current model before being killed

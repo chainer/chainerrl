@@ -4,7 +4,7 @@ from __future__ import division
 from __future__ import absolute_import
 from builtins import *  # NOQA
 from future import standard_library
-standard_library.install_aliases()
+standard_library.install_aliases()  # NOQA
 
 import chainer
 
@@ -31,7 +31,7 @@ class Sequence(chainer.ChainList, RecurrentChainMixin):
     """Sequential callable Link that consists of other Links."""
 
     def __init__(self, *layers):
-        self.layers = layers
+        self.layers = list(layers)
         links = [layer for layer in layers if isinstance(layer, chainer.Link)]
         # Cache the signatures because it might be slow
         self.argnames = [set(signature(layer).parameters)

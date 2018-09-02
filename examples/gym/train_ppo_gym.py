@@ -12,13 +12,13 @@ from __future__ import unicode_literals
 from __future__ import absolute_import
 from builtins import *  # NOQA
 from future import standard_library
-standard_library.install_aliases()
+standard_library.install_aliases()  # NOQA
 import argparse
 
 import chainer
 from chainer import functions as F
 import gym
-gym.undo_logger_setup()
+gym.undo_logger_setup()  # NOQA
 import gym.wrappers
 
 from chainerrl.agents import a3c
@@ -216,8 +216,8 @@ def main():
             step_hooks=[
                 lr_decay_hook,
                 clip_eps_decay_hook,
-                ],
-            )
+            ],
+        )
 
 
 if __name__ == '__main__':

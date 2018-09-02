@@ -15,16 +15,16 @@ from __future__ import unicode_literals
 from __future__ import absolute_import
 from builtins import *  # NOQA
 from future import standard_library
-standard_library.install_aliases()
+standard_library.install_aliases()  # NOQA
 import argparse
 import os
 
 # This prevents numpy from using multiple threads
-os.environ['OMP_NUM_THREADS'] = '1'
+os.environ['OMP_NUM_THREADS'] = '1'  # NOQA
 
 import chainer
 import gym
-gym.undo_logger_setup()
+gym.undo_logger_setup()  # NOQA
 import gym.wrappers
 import numpy as np
 

@@ -10,57 +10,16 @@ import os
 
 import gym
 gym.undo_logger_setup()  # NOQA
-from chainer import functions as F
-from chainer import links as L
-from chainer import optimizers
+import chainer
 import numpy as np
 
 import chainerrl
-from chainerrl.action_value import DiscreteActionValue
-from chainerrl import agents
 from chainerrl import experiments
 from chainerrl import explorers
-from chainerrl import links
 from chainerrl import misc
-from chainerrl.q_functions import DuelingDQN
 from chainerrl import replay_buffer
 
 import atari_wrappers
-
-
-def parse_activation(activation_str):
-    if activation_str == 'relu':
-        return F.relu
-    elif activation_str == 'elu':
-        return F.elu
-    elif activation_str == 'lrelu':
-        return F.leaky_relu
-    else:
-        raise RuntimeError(
-            'Not supported activation: {}'.format(activation_str))
-
-
-def parse_arch(arch, n_actions, activation):
-    if arch == 'nature':
-        return links.Sequence(
-            links.NatureDQNHead(activation=activation),
-            L.Linear(512, n_actions),
-            DiscreteActionValue)
-    elif arch == 'nips':
-        return links.Sequence(
-            links.NIPSDQNHead(activation=activation),
-            L.Linear(256, n_actions),
-            DiscreteActionValue)
-    elif arch == 'dueling':
-        return DuelingDQN(n_actions)
-    else:
-        raise RuntimeError('Not supported architecture: {}'.format(arch))
-
-
-def parse_agent(agent):
-    return {'DQN': agents.DQN,
-            'DoubleDQN': agents.DoubleDQN,
-            'PAL': agents.PAL}[agent]
 
 
 def main():
@@ -79,9 +38,6 @@ def main():
                         type=int, default=10 ** 6)
     parser.add_argument('--final-epsilon', type=float, default=0.1)
     parser.add_argument('--eval-epsilon', type=float, default=0.05)
-    parser.add_argument('--noisy-net-sigma', type=float, default=None)
-    parser.add_argument('--arch', type=str, default='nature',
-                        choices=['nature', 'nips', 'dueling'])
     parser.add_argument('--steps', type=int, default=10 ** 7)
     parser.add_argument('--max-episode-len', type=int,
                         default=5 * 60 * 60 // 4,  # 5 minutes with 60/4 fps
@@ -91,13 +47,8 @@ def main():
                         type=int, default=10 ** 4)
     parser.add_argument('--eval-interval', type=int, default=10 ** 5)
     parser.add_argument('--update-interval', type=int, default=4)
-    parser.add_argument('--activation', type=str, default='relu')
     parser.add_argument('--eval-n-runs', type=int, default=10)
-    parser.add_argument('--no-clip-delta',
-                        dest='clip_delta', action='store_false')
-    parser.set_defaults(clip_delta=True)
-    parser.add_argument('--agent', type=str, default='DQN',
-                        choices=['DQN', 'DoubleDQN', 'PAL'])
+    parser.add_argument('--batch-size', type=int, default=32)
     parser.add_argument('--logging-level', type=int, default=20,
                         help='Logging level. 10:DEBUG, 20:INFO etc.')
     parser.add_argument('--render', action='store_true', default=False,
@@ -140,23 +91,24 @@ def main():
     eval_env = make_env(test=True)
 
     n_actions = env.action_space.n
-    activation = parse_activation(args.activation)
-    q_func = parse_arch(args.arch, n_actions, activation)
 
-    if args.noisy_net_sigma is not None:
-        links.to_factorized_noisy(q_func)
-        # Turn off explorer
-        explorer = explorers.Greedy()
+    n_atoms = 51
+    v_max = 10
+    v_min = -10
+    q_func = chainerrl.links.Sequence(
+        chainerrl.links.NatureDQNHead(),
+        chainerrl.q_functions.DistributionalFCStateQFunctionWithDiscreteAction(
+            None, n_actions, n_atoms, v_min, v_max,
+            n_hidden_channels=0, n_hidden_layers=0),
+    )
 
     # Draw the computational graph and save it in the output directory.
     chainerrl.misc.draw_computational_graph(
         [q_func(np.zeros((4, 84, 84), dtype=np.float32)[None])],
         os.path.join(args.outdir, 'model'))
 
-    # Use the same hyper parameters as the Nature paper's
-    opt = optimizers.RMSpropGraves(
-        lr=2.5e-4, alpha=0.95, momentum=0.0, eps=1e-2)
-
+    # Use the same hyper parameters as https://arxiv.org/abs/1707.06887
+    opt = chainer.optimizers.Adam(2.5e-4, eps=1e-2 / args.batch_size)
     opt.setup(q_func)
 
     rbuf = replay_buffer.ReplayBuffer(10 ** 6)
@@ -170,14 +122,14 @@ def main():
         # Feature extractor
         return np.asarray(x, dtype=np.float32) / 255
 
-    Agent = parse_agent(args.agent)
-    agent = Agent(q_func, opt, rbuf, gpu=args.gpu, gamma=0.99,
-                  explorer=explorer, replay_start_size=args.replay_start_size,
-                  target_update_interval=args.target_update_interval,
-                  clip_delta=args.clip_delta,
-                  update_interval=args.update_interval,
-                  batch_accumulator='sum',
-                  phi=phi)
+    agent = chainerrl.agents.CategoricalDQN(
+        q_func, opt, rbuf, gpu=args.gpu, gamma=0.99,
+        explorer=explorer, replay_start_size=args.replay_start_size,
+        target_update_interval=args.target_update_interval,
+        update_interval=args.update_interval,
+        batch_accumulator='mean',
+        phi=phi,
+    )
 
     if args.load:
         agent.load(args.load)

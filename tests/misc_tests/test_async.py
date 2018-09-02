@@ -4,7 +4,7 @@ from __future__ import division
 from __future__ import absolute_import
 from builtins import *  # NOQA
 from future import standard_library
-standard_library.install_aliases()
+standard_library.install_aliases()  # NOQA
 
 import multiprocessing as mp
 import os
@@ -19,7 +19,7 @@ from chainer import optimizers
 import copy
 import numpy as np
 
-from chainerrl.misc import async
+from chainerrl.misc import async_
 
 
 class TestAsync(unittest.TestCase):
@@ -34,13 +34,13 @@ class TestAsync(unittest.TestCase):
 
         model_a = L.Linear(2, 2)
 
-        arrays = async.share_params_as_shared_arrays(model_a)
+        arrays = async_.share_params_as_shared_arrays(model_a)
 
         model_b = L.Linear(2, 2)
         model_c = L.Linear(2, 2)
 
-        async.set_shared_params(model_b, arrays)
-        async.set_shared_params(model_c, arrays)
+        async_.set_shared_params(model_b, arrays)
+        async_.set_shared_params(model_c, arrays)
 
         a_params = dict(model_a.namedparams())
         b_params = dict(model_b.namedparams())
@@ -70,7 +70,7 @@ class TestAsync(unittest.TestCase):
         model = L.Linear(2, 2)
         opt_a = optimizers.RMSprop()
         opt_a.setup(model)
-        arrays = async.share_states_as_shared_arrays(opt_a)
+        arrays = async_.share_states_as_shared_arrays(opt_a)
         opt_b = optimizers.RMSprop()
         opt_b.setup(copy.deepcopy(model))
         # In Chainer v2, a model cannot be set up by two optimizers or more.
@@ -83,8 +83,8 @@ class TestAsync(unittest.TestCase):
         since they are trivial now.
         """
 
-        async.set_shared_states(opt_b, arrays)
-        async.set_shared_states(opt_c, arrays)
+        async_.set_shared_states(opt_b, arrays)
+        async_.set_shared_states(opt_c, arrays)
 
         def assert_same_pointers(a, b):
             a = a.target
@@ -114,9 +114,9 @@ class TestAsync(unittest.TestCase):
         model_a = chainer.ChainList(head.copy(), L.Linear(2, 3))
         model_b = chainer.ChainList(head.copy(), L.Linear(2, 4))
 
-        a_arrays = async.extract_params_as_shared_arrays(
+        a_arrays = async_.extract_params_as_shared_arrays(
             chainer.ChainList(model_a))
-        b_arrays = async.extract_params_as_shared_arrays(
+        b_arrays = async_.extract_params_as_shared_arrays(
             chainer.ChainList(model_b))
 
         print(('model_a shared_arrays', a_arrays))
@@ -126,8 +126,8 @@ class TestAsync(unittest.TestCase):
         model_a = chainer.ChainList(head.copy(), L.Linear(2, 3))
         model_b = chainer.ChainList(head.copy(), L.Linear(2, 4))
 
-        async.set_shared_params(model_a, a_arrays)
-        async.set_shared_params(model_b, b_arrays)
+        async_.set_shared_params(model_a, a_arrays)
+        async_.set_shared_params(model_b, b_arrays)
 
         print('model_a replaced')
         a_params = dict(model_a.namedparams())
@@ -190,7 +190,7 @@ class TestAsync(unittest.TestCase):
             for _ in range(1000):
                 with counter.get_lock():
                     counter.value += 1
-        async.run_async(4, run_func)
+        async_.run_async(4, run_func)
         self.assertEqual(counter.value, 4000)
 
     def test_run_async_exit_code(self):
@@ -202,11 +202,11 @@ class TestAsync(unittest.TestCase):
             os.kill(os.getpid(), signal.SIGSEGV)
 
         with warnings.catch_warnings(record=True) as w:
-            async.run_async(4, run_with_exit_code_0)
+            async_.run_async(4, run_with_exit_code_0)
             # There should be no warnings
             assert len(w) == 0
 
         with warnings.catch_warnings(record=True) as w:
-            async.run_async(4, run_with_exit_code_11)
+            async_.run_async(4, run_with_exit_code_11)
             # There should be 4 warnings
             assert len(w) == 4
