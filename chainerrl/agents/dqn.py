@@ -567,6 +567,11 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
         vals = self.model(self.xp.asarray(vecs.astype(np.float32)))
         import cv2
 
+        if self.gpu > 0:
+            arr = self.xp.asnumpy
+        else:
+            arr = np.asarray
+
         def get_row(act):
             def normalize(data, min=None, max=None):
                 if min is None:
@@ -587,13 +592,13 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
 
                 return img
 
-            data = self.xp.asnumpy(vals.q_values.data)[:, act]
+            data = arr(vals.q_values.data)[:, act]
             means = normalize(data, -100, 0)
 
             divider = np.zeros((128, 30, 3))
             divider[:, :, 0] = 0.7
 
-            data = self.xp.asnumpy(vals.sigmas.data)[:, act]
+            data = arr(vals.sigmas.data)[:, act]
             sigmas = normalize(data, 0)
 
             counts = self.counts[:,:,act] / self.counts[:,:,act].max()
@@ -602,10 +607,10 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
             counts2 = self.counts2[:,:,act] / self.counts2[:,:,act].max()
             counts2 = normalize(counts2)
 
-            table_mean = self.xp.asnumpy(self.q_table_mu[:, act])
+            table_mean = arr(self.q_table_mu[:, act])
             table_mean = normalize(table_mean, -100, 0)
 
-            table_sigma = self.xp.asnumpy(self.q_table_sigma[:, act])
+            table_sigma = arr(self.q_table_sigma[:, act])
             table_sigma = normalize(table_sigma, 0)
 
             canvas = np.hstack([means, divider, sigmas, divider, counts, divider, counts2, divider,
@@ -620,7 +625,7 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
 
         header = np.zeros((70, row1.shape[1], 3))
         header[:, :, 0] = 0.7
-        header = cv2.putText(header, 'NN_Q_mu   NN_Q_sigma   state_visits   state_visits_recent   table_Q_mu   table_Q_sigma', (10, 50),
+        header = cv2.putText(header, 'NN_Q_mu       NN_Q_sigma       state_visits       state_visits_recent       table_Q_mu       table_Q_sigma', (10, 50),
             cv2.FONT_HERSHEY_SIMPLEX, 0.5, (1,1,1), 1)
 
         bottom = np.zeros((70, row1.shape[1], 3))
@@ -638,13 +643,13 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
         def get_max(data):
             acts = np.zeros((20, 20, 3))
             #print(xv.flatten(), yv.flatten())
-            acts[yv.flatten(), xv.flatten(), self.xp.asnumpy(data).argmax(axis=1)] = 1
+            acts[yv.flatten(), xv.flatten(), arr(data).argmax(axis=1)] = 1
             acts = cv2.resize(acts, (128, 128), interpolation=cv2.INTER_NEAREST)
 
             return acts
 
         def get_softmax(data):
-            acts = self.xp.asnumpy(data).reshape((20, 20, 3))
+            acts = arr(data).reshape((20, 20, 3))
             acts = np.exp(acts) / np.exp(acts).sum(axis=2)[:,:,None]
             acts = cv2.resize(acts, (128, 128), interpolation=cv2.INTER_NEAREST)
 
@@ -669,7 +674,7 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
         #print(canvas.shape)
         #cv2.imshow('test', )
         #cv2.waitKey(1)
-        cv2.imwrite('frames2/%06d.png' % self.t, canvas*255.0)
+        #cv2.imwrite('frames2/%06d.png' % self.t, canvas*255.0)
 
         self.vid.write((canvas*255.0).astype(np.uint8))
 
