@@ -222,7 +222,7 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
         self.last_score = ""
 
         fourcc = cv2.VideoWriter_fourcc(*'XVID')
-        self.vid = cv2.VideoWriter('results/output.avi',fourcc, 20.0, (918,514+128+30))
+        self.vid = cv2.VideoWriter('results/output.avi',fourcc, 20.0, (742,918))
 
     def save(self, dirname):
         self.vid.release()
@@ -618,6 +618,10 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
         row2 = get_row(1)
         row3 = get_row(2)
 
+        header = np.zeros((70, row1.shape[1], 3))
+        header[:, :, 0] = 0.7
+        header = cv2.putText(header, 'NN_Q_mu   NN_Q_sigma   state_visits   state_visits_recent   table_Q_mu   table_Q_sigma', (10, 50),
+            cv2.FONT_HERSHEY_SIMPLEX, 0.5, (1,1,1), 1)
 
         bottom = np.zeros((70, row1.shape[1], 3))
         bottom[:, :, 0] = 0.7
@@ -661,7 +665,7 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
         divider[:, :, 0] = 0.7
 
         #print(row1.shape, acts.shape)
-        canvas = np.vstack([row1, divider, row2, divider, row3, divider, acts, bottom])
+        canvas = np.vstack([header, row1, divider, row2, divider, row3, divider, acts, bottom])
         #print(canvas.shape)
         #cv2.imshow('test', )
         #cv2.waitKey(1)
