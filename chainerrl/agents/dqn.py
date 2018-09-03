@@ -580,6 +580,7 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
                 else:
                     data /= (max-min)
 
+                data = np.clip(data, 0, 1)
                 data = data.reshape((20, 20))
                 data = cv2.resize(data, (128, 128), interpolation=cv2.INTER_NEAREST)
                 img = np.dstack([data] * 3)
