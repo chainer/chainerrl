@@ -639,14 +639,23 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
 
             return acts
 
+        def get_softmax(data):
+            acts = self.xp.asnumpy(data).reshape((20, 20, 3))
+            acts = np.exp(acts) / np.exp(acts).sum(axis=2)[:,:,None]
+            acts = cv2.resize(acts, (128, 128), interpolation=cv2.INTER_NEAREST)
+
+            return acts
+
         divider = np.zeros((128, 30, 3))
         divider[:, :, 0] = 0.7
         acts = get_max(vals.q_values.data)
         acts2 = get_max(self.q_table_mu)
+        acts_soft = get_softmax(vals.q_values.data)
+        acts2_soft = get_softmax(self.q_table_mu)
 
         #print(acts.shape, divider.shape, empty.shape)
-        acts = np.hstack([acts, divider, empty, divider, empty, divider, empty, divider,
-            acts2, divider, empty])
+        acts = np.hstack([acts, divider, acts_soft, divider, empty, divider, empty, divider,
+            acts2, divider, acts2_soft])
 
         divider = np.zeros((30, row1.shape[1], 3))
         divider[:, :, 0] = 0.7
