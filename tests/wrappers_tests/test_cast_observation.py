@@ -41,13 +41,12 @@ class TestCastObservation(unittest.TestCase):
 
 @testing.parameterize(*testing.product({
     'env_id': ['CartPole-v1', 'Pendulum-v0'],
-    'dtype': [np.float32]
 }))
 class TestCastObservationToFloat32(unittest.TestCase):
 
     def test_cast_observation(self):
-        env = chainerrl.wrappers.CastObservation(
-            gym.make(self.env_id), dtype=self.dtype)
+        env = chainerrl.wrappers.CastObservationToFloat32(
+            gym.make(self.env_id))
 
         obs = env.reset()
         self.assertEqual(env.original_observation.dtype, np.float64)
