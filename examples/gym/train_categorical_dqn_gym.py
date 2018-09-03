@@ -84,8 +84,8 @@ def main():
         if args.monitor:
             env = gym.wrappers.Monitor(env, args.outdir)
         if not test:
-            misc.env_modifiers.make_reward_filtered(
-                env, lambda x: x * args.reward_scale_factor)
+            # Scale rewards observed by an agent to facilitate training
+            env = chainerrl.wrappers.ScaleReward(env, args.reward_scale_factor)
         if ((args.render_eval and test) or
                 (args.render_train and not test)):
             misc.env_modifiers.make_rendered(env)

@@ -90,7 +90,8 @@ def main():
         if isinstance(env.action_space, spaces.Box):
             misc.env_modifiers.make_action_filtered(env, clip_action_filter)
         if not test:
-            misc.env_modifiers.make_reward_filtered(env, reward_filter)
+            # Scale rewards observed by an agent to facilitate training
+            env = chainerrl.wrappers.ScaleReward(env, args.reward_scale_factor)
         if args.render and not test:
             misc.env_modifiers.make_rendered(env)
         return env
