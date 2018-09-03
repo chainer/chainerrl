@@ -310,7 +310,7 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
     def discretize(self, state):
         pos = (20 * (state[:, 0] + 1.3) / 2.0).astype(np.int32)
         vel = (20 * (state[:, 1] + 0.08) / 0.16).astype(np.int32)
-        states = vel+pos*20
+        states = vel*20+pos
 
         return states
 
