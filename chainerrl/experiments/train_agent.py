@@ -60,6 +60,7 @@ def train_agent(agent, env, steps, outdir, max_episode_len=None,
 
             if done or episode_len == max_episode_len or t == steps:
                 agent.stop_episode_and_train(obs, r, done=done)
+                agent.last_score = str(episode_r)
                 logger.info('outdir:%s step:%s episode:%s R:%s',
                             outdir, t, episode_idx, episode_r)
                 logger.info('statistics:%s', agent.get_statistics())

@@ -22,7 +22,7 @@ from chainerrl.replay_buffer import batch_experiences
 from chainerrl.replay_buffer import ReplayUpdater
 
 import cv2
-
+import numpy as np
 
 def compute_value_loss(y, t, clip_delta=True, batch_accumulator='mean'):
     """Compute a loss for value prediction problem.
@@ -211,6 +211,23 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
             self.plot = False
 
         self.conv = False
+        #cv2.namedWindow('test', cv2.WINDOW_NORMAL)
+
+        self.counts = np.zeros((20, 20, 3))
+        self.counts2 = np.zeros((20, 20, 3))
+
+        self.table = True
+        self.q_table_mu = self.xp.asarray(np.ones((20*20, 3)) * 0)
+        self.q_table_sigma = self.xp.asarray(np.ones((20*20, 3)))
+        self.last_score = ""
+
+        fourcc = cv2.VideoWriter_fourcc(*'XVID')
+        self.vid = cv2.VideoWriter('results/output.avi',fourcc, 20.0, (918,514+128+30))
+
+    def save(self, dirname):
+        self.vid.release()
+        """Save internal states."""
+        super(DQN, self).save(dirname)
 
 
     def sync_target_network(self):
@@ -273,6 +290,29 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
         #self.logger.info("%s" % self.entropy[-1].sigma.W)
         #self.logger.info("%s" % self.entropy[-1].sigma.W.grad);
         self.optimizer.update()
+
+        # table
+        lr = 0.01
+        gamma = self.gamma
+
+        s = self.discretize(exp_batch['state'])
+        s_n = self.discretize(exp_batch['next_state'])
+        term = exp_batch['is_state_terminal']
+        a = exp_batch['action']
+
+        mu_target = exp_batch['reward'] + gamma * (1-term) * self.q_table_mu[s_n].max(axis=1)
+        sigma_target = gamma * self.q_table_sigma[s_n, self.q_table_mu[s_n].argmax(axis=1)]
+        #sigma_entropy_grad = ent * 2.0 / np.sum(self.q_table_sigma)
+        self.q_table_sigma[s, a] += lr * (sigma_target - self.q_table_sigma[s, a])
+        #self.q_table_sigma += sigma_entropy_grad
+        self.q_table_mu[s, a] += lr * (mu_target - self.q_table_mu[s, a])
+
+    def discretize(self, state):
+        pos = (20 * (state[:, 0] + 1.3) / 2.0).astype(np.int32)
+        vel = (20 * (state[:, 1] + 0.08) / 0.16).astype(np.int32)
+        states = vel+pos*20
+
+        return states
 
     def input_initial_batch_to_target_model(self, batch):
         self.target_model(batch['state'])
@@ -519,6 +559,107 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
         #else:
         #    self.model.scale_noise_coef(1/1.01)
 
+    def plot_values2(self):
+        x = np.linspace(-1.3, 0.7, 20)
+        y = np.linspace(-0.08, 0.08, 20)
+        xv, yv = np.meshgrid(x, y)
+        vecs = np.stack([xv.flatten(), yv.flatten()]).T
+        vals = self.model(self.xp.asarray(vecs.astype(np.float32)))
+        import cv2
+
+        def get_row(act):
+            def normalize(data, min=None, max=None):
+                if min is None:
+                    min = data.min()
+
+                data -= min
+
+                if max is None and data.max() != 0:
+                    max = data.max()
+                    data /= max
+                else:
+                    data /= (max-min)
+
+                data = data.reshape((20, 20))
+                data = cv2.resize(data, (128, 128), interpolation=cv2.INTER_NEAREST)
+                img = np.dstack([data] * 3)
+
+                return img
+
+            data = self.xp.asnumpy(vals.q_values.data)[:, act]
+            means = normalize(data, -100, 0)
+
+            divider = np.zeros((128, 30, 3))
+            divider[:, :, 0] = 0.7
+
+            data = self.xp.asnumpy(vals.sigmas.data)[:, act]
+            sigmas = normalize(data, 0)
+
+            counts = self.counts[:,:,act] / self.counts[:,:,act].max()
+            counts = normalize(counts)
+
+            counts2 = self.counts2[:,:,act] / self.counts2[:,:,act].max()
+            counts2 = normalize(counts2)
+
+            table_mean = self.xp.asnumpy(self.q_table_mu[:, act])
+            table_mean = normalize(table_mean, -100, 0)
+
+            table_sigma = self.xp.asnumpy(self.q_table_sigma[:, act])
+            table_sigma = normalize(table_sigma, 0)
+
+            canvas = np.hstack([means, divider, sigmas, divider, counts, divider, counts2, divider,
+                table_mean, divider, table_sigma])
+
+            return canvas
+
+        #print(self.q_table_mu, self.q_table_mu.max())
+        row1 = get_row(0)
+        row2 = get_row(1)
+        row3 = get_row(2)
+
+
+        bottom = np.zeros((70, row1.shape[1], 3))
+        bottom[:, :, 0] = 0.7
+        bottom = cv2.putText(bottom, 'step:' + str(self.t) + ' last score:' + self.last_score, (10, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (1,1,1), 2)
+
+        x = np.arange(20)
+        y = np.arange(20)
+        xv, yv = np.meshgrid(x, y)
+        xv = xv.astype(np.int32)
+        yv = yv.astype(np.int32)
+
+        empty = np.zeros((128, 128, 3))
+
+        def get_max(data):
+            acts = np.zeros((20, 20, 3))
+            #print(xv.flatten(), yv.flatten())
+            acts[yv.flatten(), xv.flatten(), self.xp.asnumpy(data).argmax(axis=1)] = 1
+            acts = cv2.resize(acts, (128, 128), interpolation=cv2.INTER_NEAREST)
+
+            return acts
+
+        divider = np.zeros((128, 30, 3))
+        divider[:, :, 0] = 0.7
+        acts = get_max(vals.q_values.data)
+        acts2 = get_max(self.q_table_mu)
+
+        #print(acts.shape, divider.shape, empty.shape)
+        acts = np.hstack([acts, divider, empty, divider, empty, divider, empty, divider,
+            acts2, divider, empty])
+
+        divider = np.zeros((30, row1.shape[1], 3))
+        divider[:, :, 0] = 0.7
+
+        #print(row1.shape, acts.shape)
+        canvas = np.vstack([row1, divider, row2, divider, row3, divider, acts, bottom])
+        #print(canvas.shape)
+        #cv2.imshow('test', )
+        #cv2.waitKey(1)
+        cv2.imwrite('frames2/%06d.png' % self.t, canvas*255.0)
+
+        self.vid.write((canvas*255.0).astype(np.uint8))
+
+
     def act_and_train(self, obs, reward):
 
         with chainer.using_config('train', False):
@@ -541,6 +682,13 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
         action = self.explorer.select_action(
             self.t, lambda: greedy_action, action_value=action_value)
         #self.logger.info('a:%s', action)
+
+        pos = int(20 * (obs[0] + 1.3) / 2.0)
+        vel = int(20 * (obs[1] + 0.08) / 0.16)
+        self.counts *= 0.9999
+        self.counts[vel, pos, action] += 0.0001
+        self.counts2 *= 0.99
+        self.counts2[vel, pos, action] += 0.01
         self.t += 1
 
         if self.t % 50 == 0:
@@ -549,6 +697,9 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
         if self.t % 100 == 0:
             if self.vis and self.plot:
                 self.vis.plot_values(len(obs), self)
+
+        if self.t % 100 == 0:
+            self.plot_values2()
 
         # Update the target network
         if self.t % self.target_update_interval == 0:
