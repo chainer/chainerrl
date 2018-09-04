@@ -215,6 +215,7 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
 
         self.counts = np.zeros((20, 20, 3))
         self.counts2 = np.zeros((20, 20, 3))
+        self.visited = np.zeros((20, 20, 3))
 
         self.table = True
         self.q_table_mu = self.xp.asarray(np.ones((20*20, 3)) * 0)
@@ -665,8 +666,10 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
         acts_soft = get_softmax(vals.q_values.data)
         acts2_soft = get_softmax(self.q_table_mu)
 
+        visits = cv2.resize(self.visited, (128, 128), interpolation=cv2.INTER_NEAREST)
+
         #print(acts.shape, divider.shape, empty.shape)
-        acts = np.hstack([acts, divider, acts_soft, divider, empty, divider, empty, divider,
+        acts = np.hstack([acts, divider, acts_soft, divider, visits, divider, empty, divider,
             acts2, divider, acts2_soft])
 
         divider = np.zeros((30, row1.shape[1], 3))
@@ -706,12 +709,13 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
             self.t, lambda: greedy_action, action_value=action_value)
         #self.logger.info('a:%s', action)
 
-        pos = int(20 * (obs[0] + 1.3) / 2.0)
-        vel = int(20 * (obs[1] + 0.08) / 0.16)
+        pos = int(20 * (float(obs[0]) + 1.3) / 2.0)
+        vel = int(20 * (float(obs[1]) + 0.08) / 0.16)
         self.counts *= 0.9999
         self.counts[vel, pos, action] += 0.0001
         self.counts2 *= 0.99
         self.counts2[vel, pos, action] += 0.01
+        self.visited[vel, pos, :] = 1
         self.t += 1
 
         if self.t % 50 == 0:
