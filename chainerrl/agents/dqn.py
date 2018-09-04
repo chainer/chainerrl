@@ -222,7 +222,7 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
         self.last_score = ""
 
         fourcc = cv2.VideoWriter_fourcc(*'XVID')
-        self.vid = cv2.VideoWriter('results/output.avi',fourcc, 20.0, (742,918))
+        self.vid = cv2.VideoWriter('results/output.avi',fourcc, 20.0, (918, 742))
 
     def save(self, dirname):
         self.vid.release()
@@ -676,6 +676,7 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
         #cv2.waitKey(1)
         #cv2.imwrite('frames2/%06d.png' % self.t, canvas*255.0)
 
+        #print('writing vid')
         self.vid.write((canvas*255.0).astype(np.uint8))
 
 
