@@ -567,7 +567,7 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
         vals = self.model(self.xp.asarray(vecs.astype(np.float32)))
         import cv2
 
-        if self.gpu > 0:
+        if self.gpu >= 0:
             arr = self.xp.asnumpy
         else:
             arr = np.asarray
@@ -598,8 +598,11 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
             divider = np.zeros((128, 30, 3))
             divider[:, :, 0] = 0.7
 
-            data = arr(vals.sigmas.data)[:, act]
-            sigmas = normalize(data, 0)
+            try:
+                data = arr(vals.sigmas.data)[:, act]
+                sigmas = normalize(data, 0)
+            except:
+                sigmas = np.zeros((128, 128, 3))
 
             counts = self.counts[:,:,act] / self.counts[:,:,act].max()
             counts = normalize(counts)
