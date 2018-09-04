@@ -29,7 +29,6 @@ policy.FCDeterministicPolicy = policies.FCDeterministicPolicy
 policy.FCBNDeterministicPolicy = policies.FCBNDeterministicPolicy
 policy.FCLSTMDeterministicPolicy = policies.FCLSTMDeterministicPolicy
 policy.FCLSTMDeterministicPolicy = policies.FCLSTMDeterministicPolicy
-policy.GaussianPolicy = policies.GaussianPolicy
 policy.FCGaussianPolicy = policies.FCGaussianPolicy
 policy.MellowmaxPolicy = policies.MellowmaxPolicy
 
