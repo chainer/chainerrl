@@ -19,6 +19,7 @@ from chainerrl import recurrent  # NOQA
 from chainerrl import replay_buffer  # NOQA
 from chainerrl import v_function  # NOQA
 from chainerrl import v_functions  # NOQA
+from chainerrl import wrappers  # NOQA
 
 # For backward compatibility while avoiding circular import
 policy.SoftmaxPolicy = policies.SoftmaxPolicy
