@@ -132,11 +132,7 @@ class PPO(agent.AttributeSavingMixin, agent.Agent):
                 values = [self.model(b)[1] for b in b_state]
                 actions_ = [a.sample() for a in action_distrib]
 
-            batch_actions = xp.hstack([action.data[0] for action in actions_])
-            act_length = int(len(batch_actions) / self.num_envs)
-            if act_length != 1:
-                batch_actions = batch_actions.reshape(
-                    self.num_envs, act_length)
+            batch_actions = xp.array([action.data[0] for action in actions_])
             batch_v = xp.vstack([value.data[0] for value in values])
             return cuda.to_cpu(batch_actions), cuda.to_cpu(batch_v)
 
