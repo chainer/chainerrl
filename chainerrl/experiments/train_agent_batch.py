@@ -12,7 +12,7 @@ import os
 import numpy as np
 
 
-from chainerrl.experiments.evaluator import Evaluator
+from chainerrl.experiments.evaluator import BatchEvaluator
 from chainerrl.experiments.evaluator import save_agent
 from chainerrl.misc.ask_yes_no import ask_yes_no
 from chainerrl.misc.makedirs import makedirs
@@ -114,6 +114,12 @@ You passed: {}'.format(type(env)))
                 logger.info('outdir:{}, step:{}, avg_r:{}, episode:{}'.format(
                     outdir, t, np.mean(d), episode_idx))
                 logger.info('statistics: {}'.format(agent.get_statistics()))
+                if evaluator is not None:
+                    evaluator.evaluate_if_necessary(
+                        t=t, episodes=episode_idx + 1)
+                    if (successful_score is not None and
+                            evaluator.max_score >= successful_score):
+                        break
 
     except (Exception, KeyboardInterrupt):
         # Save the current model before being killed
@@ -160,7 +166,7 @@ def train_agent_batch_with_evaluation(agent,
             evaluation runs. If set to None, max_episode_len is used instead.
         eval_env: Environment used for evaluation.
         successful_score (float): Finish training if the mean score is greater
-            or equal to this value if not None
+            or equal to thisvalue if not None
         step_hooks (list): List of callable objects that accepts
             (env, agent, step) as arguments. They are called every step.
             See chainerrl.experiments.hooks.
@@ -180,16 +186,16 @@ def train_agent_batch_with_evaluation(agent,
     if eval_max_episode_len is None:
         eval_max_episode_len = max_episode_len
 
-    evaluator = Evaluator(agent=agent,
-                          n_runs=eval_n_runs,
-                          eval_interval=eval_interval, outdir=outdir,
-                          max_episode_len=eval_max_episode_len,
-                          explorer=eval_explorer,
-                          env=eval_env,
-                          step_offset=step_offset,
-                          save_best_so_far_agent=save_best_so_far_agent,
-                          logger=logger,
-                          )
+    evaluator = BatchEvaluator(agent=agent,
+                               n_runs=eval_n_runs,
+                               eval_interval=eval_interval, outdir=outdir,
+                               max_episode_len=eval_max_episode_len,
+                               explorer=eval_explorer,
+                               env=eval_env,
+                               step_offset=step_offset,
+                               save_best_so_far_agent=save_best_so_far_agent,
+                               logger=logger,
+                               )
 
     train_agent_batch(
         agent, env, steps, outdir,
