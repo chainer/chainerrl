@@ -122,6 +122,7 @@ def main():
     parser.add_argument('--weight-decay', type=float, default=0.0)
     parser.add_argument('--demo', action='store_true', default=False)
     parser.add_argument('--load', type=str, default='')
+    parser.add_argument('--save-training', action='store_true')
     parser.add_argument('--logger-level', type=int, default=logging.DEBUG)
     parser.add_argument('--monitor', action='store_true')
     parser.add_argument('--max-deque', type=int, default=100)
@@ -220,6 +221,7 @@ def main():
             agent=agent,
             env=make_batch_env(False),
             eval_env=make_batch_env(True),
+            save_training_r=args.save_training,
             outdir=args.outdir,
             steps=args.steps,
             eval_n_runs=args.eval_n_runs,

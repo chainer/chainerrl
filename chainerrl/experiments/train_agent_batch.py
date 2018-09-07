@@ -48,10 +48,16 @@ def _get_obs(env, obs, mask, num_processes):
     return np.vstack([env.reset()[i] if not mask[i] else obs[i] for i in range(num_processes)])  # NOQA
 
 
+def _write_to_file(outdir, step, avg_r):
+    with open(os.path.join(outdir, 'training_r.txt'), 'a+') as f:
+        print('\t'.join(str(x) for x in [step, avg_r]), file=f)
+
+
 def train_agent_batch(agent, env, steps, outdir, log_interval=None,
                       max_episode_len=None, eval_interval=None,
                       step_offset=0, evaluator=None, successful_score=None,
-                      step_hooks=[], deque_maxlen=100, logger=None):
+                      step_hooks=[], deque_maxlen=100, logger=None,
+                      save_training_r=False):
 
     logger = logger or logging.getLogger(__name__)
     d = deque(maxlen=deque_maxlen)
@@ -110,10 +116,14 @@ You passed: {}'.format(type(env)))
             for hook in step_hooks:
                 hook(env, agent, t)
 
+            if save_training_r and t % log_interval == 0:
+                _write_to_file(outdir, t, np.mean(d))
+
             if eval_interval is not None and t % log_interval == 0:
                 logger.info('outdir:{}, step:{}, avg_r:{}, episode:{}'.format(
                     outdir, t, np.mean(d), episode_idx))
                 logger.info('statistics: {}'.format(agent.get_statistics()))
+
                 if evaluator is not None:
                     evaluator.evaluate_if_necessary(
                         t=t, episodes=episode_idx + 1)
@@ -149,6 +159,7 @@ def train_agent_batch_with_evaluation(agent,
                                       step_hooks=[],
                                       save_best_so_far_agent=True,
                                       logger=None,
+                                      save_training_r=False,
                                       ):
     """Train an agent while regularly evaluating it.
 
@@ -207,4 +218,5 @@ def train_agent_batch_with_evaluation(agent,
         deque_maxlen=deque_maxlen,
         log_interval=log_interval,
         step_hooks=step_hooks,
+        save_training_r=save_training_r,
         logger=logger)
