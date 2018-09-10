@@ -136,6 +136,8 @@ def main():
     parser.add_argument('--noisy-t', action='store_true', default=False)
     parser.add_argument('--save-img', action='store_true', default=False)
 
+    parser.add_argument('--use-table', action='store_true', default=False)
+
     parser.add_argument('--env', type=str, default='grid')
 
     parser.add_argument('--len', type=int, default=20)
@@ -284,7 +286,7 @@ def main():
                   phi=phi, entropy=entropy, entropy_coef=args.entropy_coef,
                   vis=env, noisy_y=args.noisy_y, noisy_t=args.noisy_t,
                   plot=args.save_img,
-                  head=head)
+                  head=head, use_table=args.use_table)
 
     if args.load:
         agent.load(args.load)

@@ -136,7 +136,8 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
                  noisy_y=False,
                  noisy_t=False,
                  plot=False,
-                 head=False):
+                 head=False,
+                 use_table=False):
         self.model = q_function
         self.q_function = q_function  # For backward compatibility
 
@@ -217,10 +218,10 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
         self.counts2 = np.zeros((20, 20, 3))
         self.visited = np.zeros((20, 20, 3))
 
-        self.table = True
         self.q_table_mu = self.xp.asarray(np.ones((20*20, 3)) * 0)
         self.q_table_sigma = self.xp.asarray(np.ones((20*20, 3)))
         self.last_score = ""
+        self.use_table = use_table
 
         fourcc = cv2.VideoWriter_fourcc(*'XVID')
         self.vid = cv2.VideoWriter('results/output.avi',fourcc, 20.0, (918, 742))
@@ -533,12 +534,20 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
                                       batch_accumulator=self.batch_accumulator) + entropy_loss
 
     def act(self, obs):
+        pos = int(20 * (float(obs[0]) + 1.3) / 2.0)
+        vel = int(20 * (float(obs[1]) + 0.08) / 0.16)
+        
         with chainer.using_config('train', False):
             with chainer.no_backprop_mode():
-                action_value = self.model(
-                    self.batch_states([obs], self.xp, self.phi), **{'noise': True, 'act': True, 'avg': False})
-                q = float(action_value.max.data)
-                action = cuda.to_cpu(action_value.greedy_actions.data)[0]
+                if self.use_table:
+                    action_value = self.q_table_mu[vel*20+pos, :]
+                    q = action_value.max()
+                    action = action_value.argmax()
+                else:
+                    action_value = self.model(
+                        self.batch_states([obs], self.xp, self.phi), **{'noise': True, 'act': True, 'avg': False})
+                    q = float(action_value.max.data)
+                    action = cuda.to_cpu(action_value.greedy_actions.data)[0]
 
         # Update stats
         self.average_q *= self.average_q_decay
@@ -687,17 +696,25 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
 
 
     def act_and_train(self, obs, reward):
+        pos = int(20 * (float(obs[0]) + 1.3) / 2.0)
+        vel = int(20 * (float(obs[1]) + 0.08) / 0.16)
 
         with chainer.using_config('train', False):
             with chainer.no_backprop_mode():
-                action_value = self.model(
-                    self.batch_states([obs], self.xp, self.phi), **{'noise': True, 'avg': False})
-                q = float(action_value.max.data)
 
-                if self.head:
-                    greedy_action = cuda.to_cpu(action_value.sample_actions.data)[0]
+                if self.use_table:
+                    action_value = self.q_table_mu[vel*20+pos, :]
+                    q = action_value.max()
+                    greedy_action = action_value.argmax()
                 else:
-                    greedy_action = cuda.to_cpu(action_value.greedy_actions.data)[0]
+                    action_value = self.model(
+                        self.batch_states([obs], self.xp, self.phi), **{'noise': True, 'avg': False})
+                    q = float(action_value.max.data)
+
+                    if self.head:
+                        greedy_action = cuda.to_cpu(action_value.sample_actions.data)[0]
+                    else:
+                        greedy_action = cuda.to_cpu(action_value.greedy_actions.data)[0]
 
         # Update stats
         self.average_q *= self.average_q_decay
@@ -709,8 +726,6 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
             self.t, lambda: greedy_action, action_value=action_value)
         #self.logger.info('a:%s', action)
 
-        pos = int(20 * (float(obs[0]) + 1.3) / 2.0)
-        vel = int(20 * (float(obs[1]) + 0.08) / 0.16)
         self.counts *= 0.9999
         self.counts[vel, pos, action] += 0.0001
         self.counts2 *= 0.99
