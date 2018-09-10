@@ -129,6 +129,8 @@ def main():
     parser.add_argument('--noise-coef', type=float, default=1)
     parser.add_argument('--init-method', type=str, default='/out')
 
+    parser.add_argument('--force', type=float, default=0.001)
+
     parser.add_argument('--head', action='store_true', default=False)
     parser.add_argument('--noisy-y', action='store_true', default=False)
     parser.add_argument('--noisy-t', action='store_true', default=False)
@@ -165,6 +167,28 @@ def main():
             env = GridEnv(args.outdir, chain_len, save_img=args.save_img,)
         elif args.env == "car":
             env = gym.make("MountainCar-v0")
+            import math
+
+            e = env.unwrapped
+
+            def step(action):
+                assert e.action_space.contains(action), "%r (%s) invalid" % (action, type(action))
+
+                position, velocity = e.state
+                velocity += (action-1)*args.force + math.cos(3*position)*(-0.0025)
+                velocity = np.clip(velocity, -e.max_speed, e.max_speed)
+                position += velocity
+                position = np.clip(position, e.min_position, e.max_position)
+                if (position==e.min_position and velocity<0): velocity = 0
+
+                done = bool(position >= e.goal_position)
+                reward = -1.0
+
+                e.state = (position, velocity)
+                return np.array(e.state), reward, done, {}
+
+            e.step = step
+
         elif "-v" in args.env:
             env = atari_wrappers.wrap_deepmind(
                 atari_wrappers.make_atari(args.env),
@@ -172,6 +196,10 @@ def main():
                 clip_rewards=not test,
                 fire_reset=True)
             env.seed(int(env_seed))
+
+        if args.render:
+            misc.env_modifiers.make_rendered(env, mode='rgb_array')
+
         return env
 
     env = make_env(test=False)
