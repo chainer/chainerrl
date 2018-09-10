@@ -536,7 +536,7 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
     def act(self, obs):
         pos = int(20 * (float(obs[0]) + 1.3) / 2.0)
         vel = int(20 * (float(obs[1]) + 0.08) / 0.16)
-        
+
         with chainer.using_config('train', False):
             with chainer.no_backprop_mode():
                 if self.use_table:
@@ -705,7 +705,7 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
                 if self.use_table:
                     action_value = self.q_table_mu[vel*20+pos, :]
                     q = action_value.max()
-                    greedy_action = action_value.argmax()
+                    greedy_action = cuda.to_cpu(action_value.argmax())
                 else:
                     action_value = self.model(
                         self.batch_states([obs], self.xp, self.phi), **{'noise': True, 'avg': False})
