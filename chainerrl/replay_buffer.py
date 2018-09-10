@@ -229,7 +229,7 @@ class PrioritizedReplayBuffer(ReplayBuffer, PriorityWeightError):
     """Stochastic Prioritization
 
     https://arxiv.org/pdf/1511.05952.pdf \S3.3
-    propotional prioritization
+    proportional prioritization
 
     Args:
         capacity (int)
