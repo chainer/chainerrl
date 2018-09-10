@@ -137,7 +137,8 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
                  noisy_t=False,
                  plot=False,
                  head=False,
-                 use_table=False):
+                 use_table=False,
+                 table_lr=0.01):
         self.model = q_function
         self.q_function = q_function  # For backward compatibility
 
@@ -222,6 +223,7 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
         self.q_table_sigma = self.xp.asarray(np.ones((20*20, 3)))
         self.last_score = ""
         self.use_table = use_table
+        self.table_lr = table_lr
 
         fourcc = cv2.VideoWriter_fourcc(*'XVID')
         self.vid = cv2.VideoWriter('results/output.avi',fourcc, 20.0, (918, 742))
@@ -294,7 +296,7 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
         self.optimizer.update()
 
         # table
-        lr = 0.01
+        lr = self.table_lr
         gamma = self.gamma
 
         s = self.discretize(exp_batch['state'])

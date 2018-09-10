@@ -19,26 +19,25 @@ class ExpectedSARSA(dqn.DQN):
     def _compute_target_values(self, exp_batch, gamma):
 
         batch_next_state = exp_batch['next_state']
-        batch_next_action = exp_batch['next_action']
 
         next_target_action_value = self.target_q_function(
             batch_next_state)
-        next_q = next_target_action_value.evaluate_actions(
-            batch_next_action)
         greedy = next_target_action_value.greedy_actions
         values = next_target_action_value.q_values
 
         batch_rewards = exp_batch['reward']
         batch_terminal = exp_batch['is_state_terminal']
 
-        max_prob = 1-self.explorer.epsilon
-        pi_dist = self.xp.ones_like(values) * (self.explorer.epsilon/values.shape[1])
-        pi_dist[self.xp.arange(pi_dist.shape[0]), greedy.data] += max_prob
-
         if self.head:
+            # normal distribution values + thompson sampling
             mean = batch_rewards + self.gamma * (1.0 - batch_terminal) * next_q
             sigma = self.gamma * next_target_action_value.max_sigma
             return mean, sigma[:, None]
         else:
+            # epsilon-greedy expectation
+            max_prob = 1-self.explorer.epsilon
+            pi_dist = self.xp.ones_like(values) * (self.explorer.epsilon/values.shape[1])
+            pi_dist[self.xp.arange(pi_dist.shape[0]), greedy.data] += max_prob
+
             expected_q = F.sum(pi_dist * values, 1)
             return batch_rewards + self.gamma * (1.0 - batch_terminal) * expected_q

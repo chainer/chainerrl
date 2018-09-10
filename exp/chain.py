@@ -120,6 +120,7 @@ def main():
     parser.add_argument('--avg', type=int, default=1)
 
     parser.add_argument('--lr', type=float, default=1e-3)
+    parser.add_argument('--table-lr', type=float, default=0.01)
     parser.add_argument('--noisy-net-sigma', type=float, default=None)
     parser.add_argument('--noise-constant', type=float, default=-1)
     parser.add_argument('--prop', action='store_true', default=False)
@@ -287,7 +288,8 @@ def main():
                   phi=phi, entropy=entropy, entropy_coef=args.entropy_coef,
                   vis=env, noisy_y=args.noisy_y, noisy_t=args.noisy_t,
                   plot=args.save_img,
-                  head=head, use_table=args.use_table)
+                  head=head, use_table=args.use_table,
+                  table_lr=args.table_lr)
 
     if args.load:
         agent.load(args.load)
