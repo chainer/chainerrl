@@ -542,7 +542,7 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
                 if self.use_table:
                     action_value = self.q_table_mu[vel*20+pos, :]
                     q = action_value.max()
-                    action = action_value.argmax()
+                    action = cuda.to_cpu(action_value.argmax())
                 else:
                     action_value = self.model(
                         self.batch_states([obs], self.xp, self.phi), **{'noise': True, 'act': True, 'avg': False})
