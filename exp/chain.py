@@ -129,6 +129,7 @@ def main():
     parser.add_argument('--last-noise', type=int, default=0)
     parser.add_argument('--entropy-coef', type=float, default=0)
     parser.add_argument('--noise-coef', type=float, default=1)
+    parser.add_argument('--reward-scale-factor', type=float, default=1)
     parser.add_argument('--init-method', type=str, default='/out')
 
     parser.add_argument('--force', type=float, default=0.001)
@@ -200,6 +201,10 @@ def main():
                 clip_rewards=not test,
                 fire_reset=True)
             env.seed(int(env_seed))
+
+        if not test:
+            misc.env_modifiers.make_reward_filtered(
+                env, lambda x: x * args.reward_scale_factor)
 
         if args.render:
             misc.env_modifiers.make_rendered(env, mode='rgb_array')
