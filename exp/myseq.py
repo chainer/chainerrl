@@ -37,20 +37,41 @@ class MySequence(chainer.Chain):#links.Sequence):
         self.acts = acts
         self.mean = mean
 
+        self.sigma_nets = []
+
         if obs is None:
             with self.init_scope():
                 self.q_func = links.Sequence(
                     links.NatureDQNHead(activation=F.relu),
-                    L.Linear(512, acts*(1+self.mean) if head else acts))
+                    L.Linear(512, acts))
+
+                for n in range(mean):
+                    q_func = links.Sequence(
+                        links.NatureDQNHead(activation=F.relu),
+                        L.Linear(512, acts))
+                    self.sigma_nets.append(q_func)
         else:
             with self.init_scope():
                 self.l1 = L.Linear(obs, 100)
                 self.l2 = L.Linear(100, 100)
-                self.l3 = L.Linear(100, acts*(1+self.mean) if head else acts)
+                self.l3 = L.Linear(100, acts)
 
-        #self.add_link(self.l1)
-        #self.add_link(self.l2)
-        #self.add_link(self.l3)
+            for n in range(mean):
+                l1 = L.Linear(obs, 100)
+                l2 = L.Linear(100, 100)
+                l3 = L.Linear(100, acts)
+
+                self.add_link(str(n)+'_l1', l1)
+                self.add_link(str(n)+'_l2', l2)
+                self.add_link(str(n)+'_l3', l3)
+
+                def net(x):
+                    x = F.relu(l1(x))
+                    x = F.relu(l2(x))
+                    x = l3(x)
+                    return x
+
+                self.sigma_nets.append(net)
 
         self.obs = obs
 
@@ -71,23 +92,26 @@ class MySequence(chainer.Chain):#links.Sequence):
         except:
             pass
 
-    def __call__(self, x, **kwargs):
+    def __call__(self, input, **kwargs):
         if self.obs is None:
-            x = self.q_func(x)
+            x = self.q_func(input)
         else:
-            x = F.relu(self.l1(x))
+            x = F.relu(self.l1(input))
             x = F.relu(self.l2(x))
             x = self.l3(x)
 
         if self.head:
-            qval = x[:, :self.acts]
-
             if self.mean > 1:
-                sigma = x[:, self.acts:]
-                sigma = F.reshape(sigma, (x.shape[0], self.mean, self.acts))
-                sigma = F.mean(sigma, axis=1)
-                return DiscreteActionValueWithSigma(qval, sigma)
+                #sigma = x[:, self.acts:]
+                #sigma = F.reshape(sigma, (x.shape[0], self.mean, self.acts))
+                sigmas = []
+                for i in range(self.mean):
+                    sigma = self.sigma_nets[i](input)
+                    sigmas.append(sigma)
+                sigmas = F.stack(sigmas, axis=0)
+                sigma = F.mean(F.softplus(sigmas), axis=0)
+                return DiscreteActionValueWithSigma(x, sigma)
             else:
-                return DiscreteActionValueWithSigma(qval, F.softplus(x[:, self.acts:]))
+                return DiscreteActionValueWithSigma(x, F.softplus(self.sigma_nets[0](input)))
         else:
             return DiscreteActionValue(x)
