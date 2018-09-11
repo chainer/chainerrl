@@ -83,19 +83,11 @@ class MySequence(chainer.Chain):#links.Sequence):
             qval = x[:, :self.acts]
 
             if self.mean > 1:
-                if True:#kwargs['avg']:
-                    sigma = x[:, self.acts:]
-                    sigma = F.reshape(sigma, (x.shape[0], self.mean, self.acts))
-                    sigma = F.mean(sigma, axis=1)
-                    return DiscreteActionValueWithSigma(qval, sigma)
-                else:
-                    batch_size = x.shape[0]
-                    sigma_i = np.random.randint(0, self.mean)#, size=batch_size)
-                    #sigma_i = np.repeat(sigma_i, self.acts)
-                    #b = np.arange(batch_size)
-                    sigma = x[:, self.acts*(sigma_i+1):self.acts*(sigma_i+2)]
-                    return DiscreteActionValueWithSigma(qval, sigma)
+                sigma = x[:, self.acts:]
+                sigma = F.reshape(sigma, (x.shape[0], self.mean, self.acts))
+                sigma = F.mean(sigma, axis=1)
+                return DiscreteActionValueWithSigma(qval, sigma)
             else:
-                return DiscreteActionValueWithSigma(qval, x[:, self.acts:])
+                return DiscreteActionValueWithSigma(qval, F.softplus(x[:, self.acts:]))
         else:
             return DiscreteActionValue(x)

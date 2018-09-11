@@ -9,6 +9,19 @@ standard_library.install_aliases()  # NOQA
 from chainerrl.agents import dqn
 import chainer.functions as F
 
+from chainer.functions.math import ndtr
+from chainer.functions.math import exponential
+import math
+
+PROBC = 1. / (2 * math.pi) ** 0.5
+
+def prob(x, loc, scale):
+    return (PROBC / scale) * exponential.exp(
+        - 0.5 * (x - loc) ** 2 / scale ** 2)
+
+def cdf(x, loc, scale):
+    return ndtr.ndtr((x - loc) / scale)
+
 class ExpectedSARSA(dqn.DQN):
     """SARSA.
 
@@ -29,10 +42,54 @@ class ExpectedSARSA(dqn.DQN):
         batch_terminal = exp_batch['is_state_terminal']
 
         if self.head:
+            means = values
+            sigmas = next_target_action_value.sigmas
+
             # normal distribution values + thompson sampling
-            mean = batch_rewards + self.gamma * (1.0 - batch_terminal) * next_q
-            sigma = self.gamma * next_target_action_value.max_sigma
-            return mean, sigma[:, None]
+            start = values.data.min()
+            end = values.data.max()
+
+            def estimate(n):
+                interval = (end-start)/n
+
+                int_p = []
+                mean = 0
+                sigma = 0
+
+                for i in range(n):
+                    alpha = start + interval*i
+
+                    def get_prob(x):
+                        pdfs = prob(x, means.data.flatten(), sigmas.data.flatten()).reshape((means.shape[0], means.shape[1]))
+                        cdfs = cdf(x, means.data.flatten(), sigmas.data.flatten()).reshape((means.shape[0], means.shape[1]))
+
+                        print(sigmas.data)
+                        probs = 0
+
+                        for a in range(values.shape[1]):
+                            p = pdfs[:, a]
+                            for a2 in range(values.shape[1]):
+                                if a2 != a:
+                                    p *= cdfs[:, a]
+                            probs += p
+
+                        return probs
+
+                    p = get_prob(alpha)
+                    int_p.append(p)
+                    mean += alpha*(p*interval)
+
+                for i in range(n):
+                    diff = ((start + interval*i) - mean)**2.0
+                    sigma += diff*(int_p[i]*interval)
+
+                return mean, sigma
+
+            mean, sigma = estimate(10)
+
+            #mean = batch_rewards + self.gamma * (1.0 - batch_terminal) * next_q
+            #sigma = self.gamma * next_target_action_value.max_sigma
+            return mean[:, None], self.gamma * sigma[:, None]
         else:
             # epsilon-greedy expectation
             max_prob = 1-self.explorer.epsilon
