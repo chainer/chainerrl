@@ -63,7 +63,6 @@ class ExpectedSARSA(dqn.DQN):
                         pdfs = prob(x, means.data.flatten(), sigmas.data.flatten()).reshape((means.shape[0], means.shape[1]))
                         cdfs = cdf(x, means.data.flatten(), sigmas.data.flatten()).reshape((means.shape[0], means.shape[1]))
 
-                        print(sigmas.data)
                         probs = 0
 
                         for a in range(values.shape[1]):
