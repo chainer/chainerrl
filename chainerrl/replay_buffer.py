@@ -131,6 +131,7 @@ class AbstractEpisodicReplayBuffer(AbstractReplayBuffer):
 class ReplayBuffer(AbstractReplayBuffer):
 
     def __init__(self, capacity=None, num_steps=1):
+        assert num_steps > 0
         self.memory = RandomAccessQueue(maxlen=capacity)
         self.last_n_transitions = collections.deque([], maxlen=num_steps)
 
@@ -140,10 +141,12 @@ class ReplayBuffer(AbstractReplayBuffer):
                           next_state=next_state, next_action=next_action,
                           is_state_terminal=is_state_terminal)
         self.last_n_transitions.append(experience)
-        if len(last_n_transitions) > 1:
-            self.memory.append(self.last_n_transitions)
-        else:
-            self.memory.append(experience)
+        if len(self.last_n_transitions) == self.last_n_transitions.maxlen:  
+            if len(last_n_transitions) > 1:
+                self.memory.append(self.last_n_transitions)
+            else:
+                '''for backwards compatibility purposes, if n=1'''
+                self.memory.append(experience)
 
     def sample(self, num_experiences):
         assert len(self.memory) >= num_experiences
