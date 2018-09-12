@@ -130,19 +130,24 @@ class AbstractEpisodicReplayBuffer(AbstractReplayBuffer):
 
 class ReplayBuffer(AbstractReplayBuffer):
 
-    def __init__(self, capacity=None):
+    def __init__(self, capacity=None, num_steps=1):
         self.memory = RandomAccessQueue(maxlen=capacity)
+        self.last_n_transitions = collections.deque([], maxlen=num_steps)
 
     def append(self, state, action, reward, next_state=None, next_action=None,
                is_state_terminal=False):
         experience = dict(state=state, action=action, reward=reward,
                           next_state=next_state, next_action=next_action,
                           is_state_terminal=is_state_terminal)
-        self.memory.append(experience)
+        self.last_n_transitions.append(experience)
+        if len(last_n_transitions) > 1:
+            self.memory.append(self.last_n_transitions)
+        else:
+            self.memory.append(experience)
 
-    def sample(self, n):
-        assert len(self.memory) >= n
-        return self.memory.sample(n)
+    def sample(self, num_experiences):
+        assert len(self.memory) >= num_experiences
+        return self.memory.sample(num_experiences)
 
     def __len__(self):
         return len(self.memory)
