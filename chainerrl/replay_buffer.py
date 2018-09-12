@@ -142,7 +142,7 @@ class ReplayBuffer(AbstractReplayBuffer):
                           is_state_terminal=is_state_terminal)
         self.last_n_transitions.append(experience)
         if len(self.last_n_transitions) == self.last_n_transitions.maxlen:  
-            if len(last_n_transitions) > 1:
+            if len(self.last_n_transitions) > 1:
                 self.memory.append(self.last_n_transitions)
             else:
                 '''for backwards compatibility purposes, if n=1'''
