@@ -111,7 +111,7 @@ You passed: {}'.format(type(env)))
             # Start new episode for those with mask
             episode_r *= masks
             episode_len *= masks
-            t += 1
+            t += num_processes
 
             for hook in step_hooks:
                 hook(env, agent, t)
