@@ -57,6 +57,9 @@ class VectorEnv(env.Env):
         self.remotes[0].send(('get_spaces', None))
         self.action_space, self.observation_space = self.remotes[0].recv()
 
+    def __del__(self):
+        self.close()
+
     @cached_property
     def spec(self):
         self.remotes[0].send(('spec', None))

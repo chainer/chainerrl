@@ -134,12 +134,12 @@ You passed: {}'.format(type(env)))
     except (Exception, KeyboardInterrupt):
         # Save the current model before being killed
         save_agent(agent, t, outdir, logger, suffix='_except')
-        env.close()
         raise
-
-    # Save the final model
-    save_agent(agent, t, outdir, logger, suffix='_finish')
-    env.close()
+    else:
+        # Save the final model
+        save_agent(agent, t, outdir, logger, suffix='_finish')
+    finally:
+        env.close()
 
 
 def train_agent_batch_with_evaluation(agent,

@@ -144,7 +144,7 @@ def main():
     # Set different random seeds for different subprocesses.
     # If seed=0 and processes=4, subprocess seeds are [0, 1, 2, 3].
     # If seed=1 and processes=4, subprocess seeds are [4, 5, 6, 7].
-    process_seeds = np.arange(args.processes) + args.seed * args.processes
+    process_seeds = np.arange(args.num_envs) + args.seed * args.num_envs
     assert process_seeds.max() < 2 ** 32
 
     args.outdir = experiments.prepare_output_dir(args, args.outdir)
