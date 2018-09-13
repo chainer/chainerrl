@@ -605,7 +605,8 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
                 return img
 
             data = arr(vals.q_values.data)[:, act]
-            means = normalize(data, -100, 0)
+            #means = normalize(data, -100, 0)
+            means = normalize(data, -10, 0)
 
             divider = np.zeros((128, 30, 3))
             divider[:, :, 0] = 0.7
@@ -623,7 +624,8 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
             counts2 = normalize(counts2)
 
             table_mean = arr(self.q_table_mu[:, act])
-            table_mean = normalize(table_mean, -100, 0)
+            #table_mean = normalize(table_mean, -100, 0)
+            table_mean = normalize(table_mean, -10, 0)
 
             table_sigma = arr(self.q_table_sigma[:, act])
             table_sigma = normalize(table_sigma, 0)
