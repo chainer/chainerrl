@@ -296,7 +296,7 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
         self.optimizer.update()
 
         # table
-        lr = self.table_lr * (0.1**int(self.t/100000))
+        lr = self.table_lr# * (0.1**int(self.t/100000))
         gamma = self.gamma
 
         s = self.discretize(exp_batch['state'])
