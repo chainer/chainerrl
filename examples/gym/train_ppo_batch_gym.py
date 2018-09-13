@@ -149,10 +149,10 @@ def main():
 
     args.outdir = experiments.prepare_output_dir(args, args.outdir)
 
-    def make_env(test):
+    def make_env(process_idx, test):
         env = gym.make(args.env)
         # Use different random seeds for train and test envs
-        proccess_seed = int(process_seeds[process_idx])
+        process_seed = int(process_seeds[process_idx])
         env_seed = 2 ** 32 - 1 - process_seed if test else process_seed
         env.seed(env_seed)
         if args.monitor:
@@ -166,7 +166,8 @@ def main():
         return env
 
     def make_batch_env(test):
-        return VectorEnv([make_env(test) for env in range(args.num_envs)])
+        return VectorEnv([make_env(idx, test)
+                          for idx, env in enumerate(range(args.num_envs))])
 
     # Only for getting timesteps, and obs-action spaces
     sample_env = gym.make(args.env)
