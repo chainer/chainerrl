@@ -27,7 +27,6 @@ from chainerrl import replay_buffer
 
 import atari_wrappers
 
-
 def parse_activation(activation_str):
     if activation_str == 'relu':
         return F.relu
@@ -95,7 +94,7 @@ def main():
     parser.add_argument('--eval-n-runs', type=int, default=10)
     parser.add_argument('--no-clip-delta',
                         dest='clip_delta', action='store_false')
-    parser.add_argument('--num-step-returns', type=int, default=1)
+    parser.add_argument('--num-step-return', type=int, default=1)
     parser.set_defaults(clip_delta=True)
     parser.add_argument('--agent', type=str, default='DQN',
                         choices=['DQN', 'DoubleDQN', 'PAL'])
@@ -160,7 +159,7 @@ def main():
 
     opt.setup(q_func)
 
-    rbuf = replay_buffer.ReplayBuffer(10 ** 6)
+    rbuf = replay_buffer.ReplayBuffer(10 ** 6, num_steps=args.num_step_return)
 
     explorer = explorers.LinearDecayEpsilonGreedy(
         1.0, args.final_epsilon,

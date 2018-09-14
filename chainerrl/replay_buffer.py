@@ -244,9 +244,10 @@ class PrioritizedReplayBuffer(ReplayBuffer, PriorityWeightError):
         normalize_by_max (bool)
     """
 
-    def __init__(self, capacity=None,
-                 alpha=0.6, beta0=0.4, betasteps=2e5, eps=0.01,
-                 normalize_by_max=True, error_min=0, error_max=1):
+    def __init__(self, capacity=None, alpha=0.6, 
+                beta0=0.4, betasteps=2e5, eps=0.01,
+                normalize_by_max=True, error_min=0, error_max=1, 
+                num_steps=1):
         self.memory = PrioritizedBuffer(capacity=capacity)
         PriorityWeightError.__init__(
             self, alpha, beta0, betasteps, eps, normalize_by_max,
