@@ -76,6 +76,7 @@ The following papers have been implemented in ChainerRL:
 - [Proximal Policy Optimization Algorithms](https://arxiv.org/pdf/1707.06347.pdf)
 - [Trust Region Policy Optimization](https://arxiv.org/pdf/1502.05477.pdf)
 - [Sample Efficient Actor-Critic with Experience Replay](https://arxiv.org/pdf/1611.01224.pdf)
+- [Bridging the Gap Between Value and Policy Based Reinforcement Learning](https://arxiv.org/pdf/1702.08892.pdf)
 
 ## Environments
 
