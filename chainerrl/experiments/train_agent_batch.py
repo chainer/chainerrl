@@ -138,9 +138,6 @@ You passed: {}'.format(type(env)))
     else:
         # Save the final model
         save_agent(agent, t, outdir, logger, suffix='_finish')
-    finally:
-        env.close()
-
 
 def train_agent_batch_with_evaluation(agent,
                                       env,
