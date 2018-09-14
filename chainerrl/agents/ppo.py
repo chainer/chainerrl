@@ -157,7 +157,7 @@ class PPO(agent.AttributeSavingMixin, agent.Agent):
             self.memory.extend(self.last_episode)
             self.last_episode = []
 
-    def _batch_flush_last_episode(self, terminal, mem_length=None):
+    def lush_last_episode(self, terminal, mem_length=None):
         """Appends to accumulator and batch_memory
 
         The main idea is that the accumulator obtains the value
@@ -165,6 +165,8 @@ class PPO(agent.AttributeSavingMixin, agent.Agent):
         next timestep.
         """
         if mem_length is not None and np.any(np.array(mem_length) == 0):
+            # terminal: flush all the complete transitions. Indicates the
+            # split between complete and incomplete.
             terminal = np.ones(self.num_envs, dtype=bool)
             if self._accumulator:
                 self._batch_compute_teacher(self._accumulator_memory, terminal)
@@ -557,15 +559,15 @@ class PPO(agent.AttributeSavingMixin, agent.Agent):
             for i, done in enumerate(batch_done):
                 self.last_episode.append([
                     self._create_last_transition(i, done,
-                                         batch_reward,
-                                         batch_obs)])
+                                                 batch_reward,
+                                                 batch_obs)])
         else:
             # Then fill-in each list in envs
             for i, done in enumerate(batch_done):
                 self.last_episode[i].append(
                     self._create_last_transition(i, done,
-                                         batch_reward,
-                                         batch_obs))
+                                                 batch_reward,
+                                                 batch_obs))
 
         if np.any(batch_reset):
             # Call model whenever there is reset
@@ -576,7 +578,6 @@ class PPO(agent.AttributeSavingMixin, agent.Agent):
                     self.average_v[i] += (
                         (1 - self.average_v_decay) *
                         (v - self.average_v[i]))
-
 
         for i, (reset, prev_reset) in enumerate(zip(batch_reset, self._prev_reset)):  # NOQA
             # This episode's next_v_pred is new batch_v whenever reset
