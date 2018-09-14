@@ -331,7 +331,7 @@ class PPO(agent.AttributeSavingMixin, agent.Agent):
             batch = dataset_iter.__next__()
             states = self.batch_states(
                 [b['state'] for b in batch], xp, self.phi)
-            actions = xp.stack([b['action'] for b in batch])
+            actions = xp.array([b['action'] for b in batch])
             distribs, vs_pred = self.model(states)
             with chainer.no_backprop_mode():
                 target_distribs, _ = target_model(states)
@@ -388,7 +388,7 @@ class PPO(agent.AttributeSavingMixin, agent.Agent):
 
         # Set-up advantages
         if self.standardize_advantages:
-            all_advs = xp.stack([e['adv']
+            all_advs = xp.array([e['adv']
                                  for env in self.batch_memory for e in env])
             mean_advs = xp.mean(all_advs)
             std_advs = xp.std(all_advs)
