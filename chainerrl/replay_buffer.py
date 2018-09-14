@@ -19,7 +19,6 @@ from chainerrl.misc.batch_states import batch_states
 from chainerrl.misc.collections import RandomAccessQueue
 from chainerrl.misc.prioritized import PrioritizedBuffer
 
-
 class AbstractReplayBuffer(with_metaclass(ABCMeta, object)):
     """Defines a common interface of replay buffer.
 

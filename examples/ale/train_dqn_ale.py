@@ -95,6 +95,7 @@ def main():
     parser.add_argument('--eval-n-runs', type=int, default=10)
     parser.add_argument('--no-clip-delta',
                         dest='clip_delta', action='store_false')
+    parser.add_argument('--num-step-returns', type=int, default=1)
     parser.set_defaults(clip_delta=True)
     parser.add_argument('--agent', type=str, default='DQN',
                         choices=['DQN', 'DoubleDQN', 'PAL'])
