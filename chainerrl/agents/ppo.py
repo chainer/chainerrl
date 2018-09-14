@@ -132,7 +132,7 @@ class PPO(agent.AttributeSavingMixin, agent.Agent):
                 values = [self.model(b)[1] for b in b_state]
                 actions_ = [a.sample() for a in action_distrib]
 
-            batch_actions = xp.array([action.data[0] for action in actions_])
+            batch_actions = xp.stack([action.data[0] for action in actions_])
             batch_v = xp.vstack([value.data[0] for value in values])
             return cuda.to_cpu(batch_actions), cuda.to_cpu(batch_v)
 
@@ -331,7 +331,7 @@ class PPO(agent.AttributeSavingMixin, agent.Agent):
             batch = dataset_iter.__next__()
             states = self.batch_states(
                 [b['state'] for b in batch], xp, self.phi)
-            actions = xp.array([b['action'] for b in batch])
+            actions = xp.stack([b['action'] for b in batch])
             distribs, vs_pred = self.model(states)
             with chainer.no_backprop_mode():
                 target_distribs, _ = target_model(states)
@@ -388,7 +388,7 @@ class PPO(agent.AttributeSavingMixin, agent.Agent):
 
         # Set-up advantages
         if self.standardize_advantages:
-            all_advs = xp.array([e['adv'] for env in self.batch_memory for e in env])
+            all_advs = xp.stack([e['adv'] for env in self.batch_memory for e in env])
             mean_advs = xp.mean(all_advs)
             std_advs = xp.std(all_advs)
 
