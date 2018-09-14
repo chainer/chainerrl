@@ -245,14 +245,14 @@ class PPO(agent.AttributeSavingMixin, agent.Agent):
             transition['adv'] = adv
             transition['v_teacher'] = adv + transition['v_pred']
 
-    def _batch_compute_teacher(self, last_episode, terminal):
+    def _batch_compute_teacher(self, batch_last_episode, terminal):
         """Estimate state values and advantages of self.last_episode
 
         TD(lambda) estimation
         """
         for env, sig in enumerate(terminal):
             if sig:
-                self._compute_teacher(last_episode[env])
+                self._compute_teacher(batch_last_episode[env])
 
     def _batch_init_loss_statistics(self, num_envs):
         """Initialize loss statistics when batch"""
