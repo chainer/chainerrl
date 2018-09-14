@@ -8,3 +8,4 @@ results/
 examples/gym/results/
 .coverage*
 .cache/
+.pytest_cache/
