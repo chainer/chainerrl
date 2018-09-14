@@ -109,32 +109,25 @@ class PPO(agent.AttributeSavingMixin, agent.Agent):
         self.last_episode = []
         self._accumulator = []
         self._accumulator_memory = []
-        self._done_memory = None
-        self._reset_memory = None
+        self._prev_reset = None
+        self._prev_done = None
 
     def _act(self, state):
         xp = self.xp
-        with chainer.using_config('train', False):
+        with chainer.using_config('train', False), chainer.no_backprop_mode():
             b_state = self.batch_states([state], xp, self.phi)
-            with chainer.no_backprop_mode():
-                action_distrib, v = self.model(b_state)
-                action = action_distrib.sample()
+            action_distrib, v = self.model(b_state)
+            action = action_distrib.sample()
             return cuda.to_cpu(action.data)[0], cuda.to_cpu(v.data)[0]
 
     def _batch_act(self, states):
         """Runs a single-env self.model on a VectorEnv set of observations"""
         xp = self.xp
-        states_ = [[state.astype('f')] for state in states]
-        with chainer.using_config('train', False):
-            b_state = self.batch_states(states_, xp, self.phi)
-            with chainer.no_backprop_mode():
-                action_distrib = [self.model(b)[0] for b in b_state]
-                values = [self.model(b)[1] for b in b_state]
-                actions_ = [a.sample() for a in action_distrib]
-
-            batch_actions = xp.stack([action.data[0] for action in actions_])
-            batch_v = xp.vstack([value.data[0] for value in values])
-            return cuda.to_cpu(batch_actions), cuda.to_cpu(batch_v)
+        with chainer.using_config('train', False), chainer.no_backprop_mode():
+            b_state = self.batch_states(states, xp, self.phi)
+            action_distrib, batch_v = self.model(b_state)
+            batch_actions = action_distrib.sample()
+            return cuda.to_cpu(batch_actions.data), cuda.to_cpu(batch_v.data)
 
     def _train(self):
 
@@ -517,7 +510,7 @@ class PPO(agent.AttributeSavingMixin, agent.Agent):
     def stop_episode(self):
         pass
 
-    def _last_ep_append(self, i, done, batch_reward, batch_obs):
+    def _create_last_transition(self, i, done, batch_reward, batch_obs):
         """Helper function to append in last_episode"""
         return {
             'state': self.last_state[i],
@@ -554,35 +547,38 @@ class PPO(agent.AttributeSavingMixin, agent.Agent):
         batch_reset = np.array([info['reset'] for info in batch_info])
 
         # Initialize reset memory at first iteration
-        if self._reset_memory is None:
-            self._reset_memory = np.zeros((1, self.num_envs), dtype=bool)
-        if self._done_memory is None:
-            self._done_memory = np.zeros((1, self.num_envs), dtype=bool)
+        if self._prev_reset is None:
+            self._prev_reset = np.zeros(self.num_envs, dtype=bool)
+        if self._prev_done is None:
+            self._prev_done = np.zeros(self.num_envs, dtype=bool)
 
         if not self.last_episode:
             # Fill-in initial values first
             for i, done in enumerate(batch_done):
                 self.last_episode.append([
-                    self._last_ep_append(i, done,
+                    self._create_last_transition(i, done,
                                          batch_reward,
                                          batch_obs)])
         else:
             # Then fill-in each list in envs
             for i, done in enumerate(batch_done):
                 self.last_episode[i].append(
-                    self._last_ep_append(i, done,
+                    self._create_last_transition(i, done,
                                          batch_reward,
                                          batch_obs))
 
-        if np.any(np.logical_or(batch_reset, batch_done)):
+        if np.any(batch_reset):
             # Call model whenever there is reset
-
             _, batch_v = self._batch_act(batch_obs)
-            self.average_v += (
-                (1 - self.average_v_decay) *
-                (batch_v - self.average_v))
 
-        for i, (reset, prev_reset) in enumerate(zip(batch_reset, self._reset_memory[-1])):  # NOQA
+            for i, v in enumerate(batch_v):
+                if batch_reset[i]:
+                    self.average_v[i] += (
+                        (1 - self.average_v_decay) *
+                        (v - self.average_v[i]))
+
+
+        for i, (reset, prev_reset) in enumerate(zip(batch_reset, self._prev_reset)):  # NOQA
             # This episode's next_v_pred is new batch_v whenever reset
             self.last_episode[i][-1]['next_v_pred'] = batch_v[i] if reset else None  # NOQA
             try:
@@ -594,13 +590,8 @@ class PPO(agent.AttributeSavingMixin, agent.Agent):
             except IndexError:
                 pass
 
-        self._reset_memory = np.append(self._reset_memory,
-                                       batch_reset[np.newaxis],
-                                       axis=0)
-        terminal = np.logical_or(self._done_memory[-1], self._reset_memory[-1])
-        self._done_memory = np.append(self._done_memory,
-                                      batch_done[np.newaxis],
-                                      axis=0)
+        self._prev_reset, self._prev_done = batch_reset, batch_done
+        terminal = np.logical_or(batch_reset, batch_done)
 
         self._batch_flush_last_episode(terminal)
         self._batch_train(terminal)
