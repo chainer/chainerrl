@@ -388,7 +388,8 @@ class PPO(agent.AttributeSavingMixin, agent.Agent):
 
         # Set-up advantages
         if self.standardize_advantages:
-            all_advs = xp.stack([e['adv'] for env in self.batch_memory for e in env])
+            all_advs = xp.stack([e['adv']
+                                 for env in self.batch_memory for e in env])
             mean_advs = xp.mean(all_advs)
             std_advs = xp.std(all_advs)
 
