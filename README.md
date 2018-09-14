@@ -53,7 +53,7 @@ Following algorithms have been implemented in ChainerRL:
 - Asynchronous N-step Q-learning
 - Categorical DQN
 - DQN (including Double DQN, Persistent Advantage Learning (PAL), Double PAL, Dynamic Policy Programming (DPP))
-- DDPG (Deep Deterministic Poilcy Gradients) (including SVG(0))
+- DDPG (Deep Deterministic Policy Gradients) (including SVG(0))
 - PGT (Policy Gradient Theorem)
 - PCL (Path Consistency Learning)
 - PPO (Proximal Policy Optimization)
