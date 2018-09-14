@@ -157,7 +157,7 @@ class PPO(agent.AttributeSavingMixin, agent.Agent):
             self.memory.extend(self.last_episode)
             self.last_episode = []
 
-    def lush_last_episode(self, terminal, mem_length=None):
+    def _batch_flush_last_episode(self, terminal, mem_length=None):
         """Appends to accumulator and batch_memory
 
         The main idea is that the accumulator obtains the value

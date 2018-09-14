@@ -54,6 +54,7 @@ class VectorEnv(env.Env):
         for p in self.ps:
             p.start()
 
+        self.last_obs = [None] * self.num_envs
         self.remotes[0].send(('get_spaces', None))
         self.action_space, self.observation_space = self.remotes[0].recv()
 
@@ -70,13 +71,20 @@ class VectorEnv(env.Env):
         for remote, action in zip(self.remotes, actions):
             remote.send(('step', action))
         results = [remote.recv() for remote in self.remotes]
-        obs, rews, dones, infos = zip(*results)
-        return np.stack(obs), np.stack(rews), np.stack(dones), infos
+        self.last_obs, rews, dones, infos = zip(*results)
+        return np.stack(self.last_obs), np.stack(rews), np.stack(dones), infos
 
-    def reset(self):
-        for remote in self.remotes:
-            remote.send(('reset', None))
-        return np.stack([remote.recv() for remote in self.remotes])
+    def reset(self, mask=None):
+        if mask is None:
+            mask = np.zeros(self.num_envs)
+        for m, remote in zip(mask, self.remotes):
+            if not m:
+                remote.send(('reset', None))
+
+        obs = [remote.recv() if not m else o for m, remote,
+               o in zip(mask, self.remotes, self.last_obs)]
+        self.last_obs = obs
+        return np.stack(obs)
 
     def close(self):
         for remote in self.remotes:

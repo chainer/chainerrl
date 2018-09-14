@@ -44,10 +44,6 @@ def _get_mask(num_processes, info, done, episode_len, max_episode_len):
     return info, mask
 
 
-def _get_obs(env, obs, mask, num_processes):
-    return np.vstack([env.reset()[i] if not mask[i] else obs[i] for i in range(num_processes)])  # NOQA
-
-
 def _write_to_file(outdir, step, avg_r):
     with open(os.path.join(outdir, 'training_r.txt'), 'a+') as f:
         print('\t'.join(str(x) for x in [step, avg_r]), file=f)
@@ -56,11 +52,31 @@ def _write_to_file(outdir, step, avg_r):
 def train_agent_batch(agent, env, steps, outdir, log_interval=None,
                       max_episode_len=None, eval_interval=None,
                       step_offset=0, evaluator=None, successful_score=None,
-                      step_hooks=[], deque_maxlen=100, logger=None,
+                      step_hooks=[], return_window_size=100, logger=None,
                       save_training_r=False):
+    """Train an agent in a batch environment.
+
+    Args:
+        agent: Agent to train.
+        env: Environment train the againt against.
+        steps (int): Number of total time steps for training.
+        eval_n_runs (int): Number of runs for each time of evaluation.
+        eval_interval (int): Interval of evaluation.
+        outdir (str): Path to the directory to output things.
+        max_episode_len (int): Maximum episode length.
+        step_offset (int): Time step from which training starts.
+        return_window_size(int): Size of reward array.
+        successful_score (float): Finish training if the mean score is greater
+            or equal to thisvalue if not None
+        step_hooks (list): List of callable objects that accepts
+            (env, agent, step) as arguments. They are called every step.
+            See chainerrl.experiments.hooks.
+        logger (logging.Logger): Logger used in this function.
+        save_training_r (bool): save training reward in outdir.
+    """
 
     logger = logger or logging.getLogger(__name__)
-    d = deque(maxlen=deque_maxlen)
+    d = deque(maxlen=return_window_size)
 
     try:
         num_processes = env.num_envs
@@ -98,7 +114,7 @@ You passed: {}'.format(type(env)))
             # Make mask. 0 if done/reset, 1 if pass
             masks = np.logical_not(np.logical_or(reset_mask, done))
             # Reset environment whenever done/reset
-            obs_ = _get_obs(env, obs, masks, num_processes)
+            obs_ = env.reset(masks)
             # Train agent
             agent.batch_observe_and_train(obs_, r, done, info)
             # Update reward for current episode
@@ -150,7 +166,7 @@ def train_agent_batch_with_evaluation(agent,
                                       step_offset=0,
                                       eval_explorer=None,
                                       eval_max_episode_len=None,
-                                      deque_maxlen=100,
+                                      return_window_size=100,
                                       eval_env=None,
                                       log_interval=None,
                                       successful_score=None,
@@ -170,6 +186,7 @@ def train_agent_batch_with_evaluation(agent,
         outdir (str): Path to the directory to output things.
         max_episode_len (int): Maximum episode length.
         step_offset (int): Time step from which training starts.
+        return_window_size(int): Size of reward array.
         eval_explorer: Explorer used for evaluation.
         eval_max_episode_len (int or None): Maximum episode length of
             evaluation runs. If set to None, max_episode_len is used instead.
@@ -183,6 +200,7 @@ def train_agent_batch_with_evaluation(agent,
             if the score (= mean return of evaluation episodes) exceeds
             the best-so-far score, the current agent is saved.
         logger (logging.Logger): Logger used in this function.
+        save_training_r (bool): save training reward in outdir.
     """
 
     logger = logger or logging.getLogger(__name__)
@@ -213,7 +231,7 @@ def train_agent_batch_with_evaluation(agent,
         eval_interval=eval_interval,
         evaluator=evaluator,
         successful_score=successful_score,
-        deque_maxlen=deque_maxlen,
+        return_window_size=return_window_size,
         log_interval=log_interval,
         step_hooks=step_hooks,
         save_training_r=save_training_r,
