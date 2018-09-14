@@ -397,9 +397,12 @@ class PPO(agent.AttributeSavingMixin, agent.Agent):
 
         target_model = copy.deepcopy(self.model)
 
+        # Flatten self.batch_memory
+        flat_batch_memory = [e for env in self.batch_memory for e in env]
+
         # Make an iterator
         dataset_iter = chainer.iterators.SerialIterator(
-            self.memory, self.minibatch_size)
+            flat_batch_memory, self.minibatch_size)
         dataset_iter.reset()
 
         # Call _update() function
