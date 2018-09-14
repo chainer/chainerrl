@@ -61,6 +61,22 @@ Following algorithms have been implemented in ChainerRL:
 
 Q-function based algorithms such as DQN can utilize a Normalized Advantage Function (NAF) to tackle continuous-action problems as well as DQN-like discrete output networks.
 
+## Paper Implementations
+The following papers have been implemented in ChainerRL:
+- [Playing Atari with Deep Reinforcement Learning](https://www.cs.toronto.edu/~vmnih/docs/dqn.pdf)
+- [Human-level control through Deep Reinforcement Learning](https://storage.googleapis.com/deepmind-media/dqn/DQNNaturePaper.pdf)
+- [Deep Reinforcement Learning with Double Q-learning](https://arxiv.org/pdf/1509.06461.pdf)
+- [Prioritized Experience Replay](https://arxiv.org/pdf/1511.05952.pdf)
+- [Dueling Network Architectures for Deep Reinforcement Learning](https://arxiv.org/pdf/1511.06581.pdf)
+- [Asynchronous Methods for Deep Reinforcement Learning](https://arxiv.org/pdf/1602.01783.pdf)
+- [A Distributional Perspective on Reinforcement Learning](https://arxiv.org/pdf/1707.06887.pdf)
+- [Increasing the Action Gap: New Operators for Reinforcement Learning](https://arxiv.org/pdf/1512.04860.pdf)
+- [Noisy Networks for Exploration](https://arxiv.org/pdf/1706.10295.pdf)
+- [Continuous control with deep reinforcement learning](https://arxiv.org/abs/1509.02971)
+- [Proximal Policy Optimization Algorithms](https://arxiv.org/pdf/1707.06347.pdf)
+- [Trust Region Policy Optimization](https://arxiv.org/pdf/1502.05477.pdf)
+- [Sample Efficient Actor-Critic with Experience Replay](https://arxiv.org/pdf/1611.01224.pdf)
+
 ## Environments
 
 Environments that support the subset of OpenAI Gym's interface (`reset` and `step` methods) can be used.
