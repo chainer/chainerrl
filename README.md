@@ -71,7 +71,7 @@ The following papers have been implemented in ChainerRL:
 - [Asynchronous Methods for Deep Reinforcement Learning](https://arxiv.org/pdf/1602.01783.pdf)
 - [A Distributional Perspective on Reinforcement Learning](https://arxiv.org/pdf/1707.06887.pdf)
 - [Increasing the Action Gap: New Operators for Reinforcement Learning](https://arxiv.org/pdf/1512.04860.pdf)
--[Noisy Networks for Exploration](https://arxiv.org/pdf/1706.10295.pdf)
+- [Noisy Networks for Exploration](https://arxiv.org/pdf/1706.10295.pdf)
 - [Continuous control with deep reinforcement learning](https://arxiv.org/abs/1509.02971)
 - [Proximal Policy Optimization Algorithms](https://arxiv.org/pdf/1707.06347.pdf)
 - [Trust Region Policy Optimization](https://arxiv.org/pdf/1502.05477.pdf)
