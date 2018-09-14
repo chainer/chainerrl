@@ -388,24 +388,22 @@ class PPO(agent.AttributeSavingMixin, agent.Agent):
 
         # Set-up advantages
         if self.standardize_advantages:
-            all_advs = xp.array([[e['adv'] for e in env]
-                                 for env in self.batch_memory])
-            mean_advs = xp.array([xp.mean(env) for env in all_advs])
-            std_advs = xp.array([xp.std(env) for env in all_advs])
+            all_advs = xp.array([e['adv'] for env in self.batch_memory for e in env])
+            mean_advs = xp.mean(all_advs)
+            std_advs = xp.std(all_advs)
 
         else:
             mean_advs, std_advs = (None,) * 2
 
         target_model = copy.deepcopy(self.model)
 
-        # Make a list of iterators
-        batch_dataset_iter = [chainer.iterators.SerialIterator(
-            env, self.minibatch_size) for env in self.batch_memory]
-        self._batch_iter_reset(batch_dataset_iter)
+        # Make an iterator
+        dataset_iter = chainer.iterators.SerialIterator(
+            self.memory, self.minibatch_size)
+        dataset_iter.reset()
 
         # Call _update() function
-        for idx, dataset_iter in enumerate(batch_dataset_iter):
-            self._update(dataset_iter, target_model, mean_advs, std_advs, idx)
+        self._update(dataset_iter, target_model, mean_advs, std_advs)
 
     def act_and_train(self, obs, reward):
         if hasattr(self.model, 'obs_filter'):
