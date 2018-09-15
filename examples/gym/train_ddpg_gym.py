@@ -15,6 +15,7 @@ from gym import spaces
 import gym.wrappers
 import numpy as np
 
+import chainerrl
 from chainerrl.agents.ddpg import DDPG
 from chainerrl.agents.ddpg import DDPGModel
 from chainerrl import experiments
@@ -82,6 +83,8 @@ def main():
         # Use different random seeds for train and test envs
         env_seed = 2 ** 32 - 1 - args.seed if test else args.seed
         env.seed(env_seed)
+        # Cast observations to float32 because our model uses float32
+        env = chainerrl.wrappers.CastObservationToFloat32(env)
         if args.monitor:
             env = gym.wrappers.Monitor(env, args.outdir)
         if isinstance(env.action_space, spaces.Box):
@@ -133,9 +136,6 @@ def main():
 
     rbuf = replay_buffer.ReplayBuffer(5 * 10 ** 5)
 
-    def phi(obs):
-        return obs.astype(np.float32)
-
     def random_action():
         a = action_space.sample()
         if isinstance(a, np.ndarray):
@@ -151,7 +151,7 @@ def main():
                  update_interval=args.update_interval,
                  soft_update_tau=args.soft_update_tau,
                  n_times_update=args.n_update_times,
-                 phi=phi, gpu=args.gpu, minibatch_size=args.minibatch_size)
+                 gpu=args.gpu, minibatch_size=args.minibatch_size)
 
     if len(args.load) > 0:
         agent.load(args.load)

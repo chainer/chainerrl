@@ -30,10 +30,6 @@ from chainerrl import experiments
 from chainerrl import misc
 
 
-def phi(obs):
-    return obs.astype(np.float32)
-
-
 def main():
     import logging
 
@@ -71,6 +67,8 @@ def main():
         # Use different random seeds for train and test envs
         env_seed = 2 ** 32 - 1 - args.seed if test else args.seed
         env.seed(env_seed)
+        # Cast observations to float32 because our model uses float32
+        env = chainerrl.wrappers.CastObservationToFloat32(env)
         if args.monitor:
             env = gym.wrappers.Monitor(env, args.outdir)
         # Scale rewards observed by agents
@@ -120,7 +118,7 @@ def main():
     opt.add_hook(chainer.optimizer.GradientClipping(1))
 
     agent = chainerrl.agents.REINFORCE(
-        model, opt, beta=args.beta, phi=phi, batchsize=args.batchsize)
+        model, opt, beta=args.beta, batchsize=args.batchsize)
     if args.load:
         agent.load(args.load)
 
