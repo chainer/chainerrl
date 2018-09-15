@@ -440,6 +440,29 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
             batch_argmax = cuda.to_cpu(batch_av.greedy_actions.data)
             return batch_argmax
 
+    def batch_observe_and_train(self, batch_obs, batch_reward,
+                                batch_done, batch_info):
+        batch_reset = np.array([info['reset'] for info in batch_info])
+        for i in range(len(batch_obs)):
+            self.t += 1
+            # Update the target network
+            if self.t % self.target_update_interval == 0:
+                self.sync_target_network()
+            if self.batch_last_obs[i] is not None:
+                assert self.batch_last_action[i] is not None
+                # Add a transition to the replay buffer
+                self.replay_buffer.append(
+                    state=self.batch_last_obs[i],
+                    action=self.batch_last_action[i],
+                    reward=batch_reward[i],
+                    next_state=batch_obs[i],
+                    next_action=None,
+                    is_state_terminal=batch_done[i],
+                )
+                if batch_reset[i] or batch_done[i]:
+                    self.batch_last_obs[i] = None
+            self.replay_updater.update_if_necessary(self.t)
+
     def batch_observe(self, batch_obs, batch_reward,
                       batch_done, batch_info):
         pass
