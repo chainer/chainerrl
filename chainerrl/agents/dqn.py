@@ -12,6 +12,7 @@ from logging import getLogger
 import chainer
 from chainer import cuda
 import chainer.functions as F
+import numpy as np
 
 from chainerrl import agent
 from chainerrl.misc.batch_states import batch_states
@@ -410,6 +411,38 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
         self.logger.debug('t:%s r:%s a:%s', self.t, reward, action)
 
         return self.last_action
+
+    def batch_act_and_train(self, batch_obs):
+        with chainer.using_config('train', False), chainer.no_backprop_mode():
+            batch_xs = self.batch_states(batch_obs, self.xp, self.phi)
+            batch_av = self.model(batch_xs)
+            # batch_maxq = batch_av.max.data
+            batch_argmax = cuda.to_cpu(batch_av.greedy_actions.data)
+        batch_action = [
+            self.explorer.select_action(
+                self.t, lambda: batch_argmax[i],
+                # action_value=batch_av[i:i + 1],
+            )
+            for i in range(len(batch_obs))]
+        for _ in range(len(batch_obs)):
+            self.t += 1
+            # Update the target network
+            if self.t % self.target_update_interval == 0:
+                self.sync_target_network()
+        self.batch_last_obs = list(batch_obs)
+        self.batch_last_action = list(batch_action)
+        return batch_action
+
+    def batch_act(self, batch_obs):
+        with chainer.using_config('train', False), chainer.no_backprop_mode():
+            batch_xs = self.batch_states(batch_obs, self.xp, self.phi)
+            batch_av = self.model(batch_xs)
+            batch_argmax = cuda.to_cpu(batch_av.greedy_actions.data)
+            return batch_argmax
+
+    def batch_observe(self, batch_obs, batch_reward,
+                      batch_done, batch_info):
+        pass
 
     def stop_episode_and_train(self, state, reward, done=False):
         """Observe a terminal state and a reward.
