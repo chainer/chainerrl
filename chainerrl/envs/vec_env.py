@@ -72,7 +72,7 @@ class VectorEnv(env.Env):
             remote.send(('step', action))
         results = [remote.recv() for remote in self.remotes]
         self.last_obs, rews, dones, infos = zip(*results)
-        return np.stack(self.last_obs), np.stack(rews), np.stack(dones), infos
+        return self.last_obs, rews, dones, infos
 
     def reset(self, mask=None):
         if mask is None:
@@ -84,7 +84,7 @@ class VectorEnv(env.Env):
         obs = [remote.recv() if not m else o for m, remote,
                o in zip(mask, self.remotes, self.last_obs)]
         self.last_obs = obs
-        return np.stack(obs)
+        return obs
 
     def close(self):
         for remote in self.remotes:
