@@ -54,7 +54,7 @@ class ExpectedSARSA(dqn.DQN):
 
                 mean = 0
                 sigma = 0
-                act_probs = self.xp.zeros((values.shape[0], values.shape[1]), dtype=self.xp.float32)
+                act_probs = self.xp.ones((values.shape[0], values.shape[1]), dtype=self.xp.float32) * 1e-5
 
                 for i in range(n):
                     alpha = start + interval*i
