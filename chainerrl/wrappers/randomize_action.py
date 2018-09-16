@@ -33,11 +33,12 @@ class RandomizeAction(gym.ActionWrapper):
         self.np_random = np.random.RandomState()
 
     def _action(self, action):
-        self.original_action = original_action
+        self.original_action = action
         if self.np_random.rand() < self.random_fraction:
             return self.np_random.randint(self.env.action_space.n)
         else:
             return self.original_action
 
-    def _seed(self, seed):
+    def seed(self, seed):
+        super().seed(seed)
         self.np_random.seed(seed)
