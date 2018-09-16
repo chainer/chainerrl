@@ -170,6 +170,8 @@ def main():
             env = ChainEnv(chain_len)
         elif args.env == "grid":
             env = GridEnv(args.outdir, chain_len, save_img=args.save_img,)
+        elif args.env == "pole":
+            env = gym.make("CartPole-v0")
         elif args.env == "car":
             env = gym.make("MountainCar-v0")
             import math
