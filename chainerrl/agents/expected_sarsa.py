@@ -42,12 +42,12 @@ class ExpectedSARSA(dqn.DQN):
         batch_terminal = exp_batch['is_state_terminal']
 
         if self.head:
-            means = values
-            sigmas = next_target_action_value.sigmas
+            means = values.data
+            sigmas = next_target_action_value.sigmas.data
 
             # normal distribution values + thompson sampling
-            start = values.data.min()
-            end = values.data.max()
+            start = means.min()-sigmas.max()
+            end = means.max()+sigmas.max()
 
             def estimate(n):
                 interval = (end-start)/n
@@ -60,27 +60,27 @@ class ExpectedSARSA(dqn.DQN):
                     alpha = start + interval*i
 
                     def get_prob(x):
-                        pdfs = prob(x, means.data.flatten(), sigmas.data.flatten()).reshape((means.shape[0], means.shape[1]))
-                        cdfs = cdf(x, means.data.flatten(), sigmas.data.flatten()).reshape((means.shape[0], means.shape[1]))
+                        pdfs = prob(x, means.flatten(), sigmas.flatten()).reshape((means.shape[0], means.shape[1]))
+                        cdfs = cdf(x, means.flatten(), sigmas.flatten()).reshape((means.shape[0], means.shape[1]))
 
-                        a_probs = []
+                        a_probs = self.xp.zeros_like(means)
 
                         for a in range(values.shape[1]):
                             p = pdfs[:, a]
                             for a2 in range(values.shape[1]):
                                 if a2 != a:
-                                    p *= cdfs[:, a]
+                                    p *= cdfs[:, a2]
 
-                            a_probs.append(p.data)
+                            a_probs[:, a] = p.data
 
-                        return self.xp.stack(a_probs, axis=1)
+                        return a_probs
 
                     est = get_prob(alpha)
                     act_probs += est
 
                 act_probs /= act_probs.sum(axis=1)[:, None]
-                mean = self.xp.sum(means.data * act_probs, axis=1)
-                sigma = (sigmas.data * act_probs).sum(1)
+                mean = (means * act_probs).sum(1)
+                sigma = (sigmas * act_probs).sum(1)
 
                 #for i in range(n):
                 #    diff = ((start + interval*i) - mean)**2.0
