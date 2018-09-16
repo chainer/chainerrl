@@ -52,9 +52,9 @@ class ExpectedSARSA(dqn.DQN):
             def estimate(n):
                 interval = (end-start)/n
 
-                int_p = []
                 mean = 0
                 sigma = 0
+                act_probs = self.xp.zeros((values.shape[0], values.shape[1]), dtype=self.xp.float32)
 
                 for i in range(n):
                     alpha = start + interval*i
@@ -63,24 +63,28 @@ class ExpectedSARSA(dqn.DQN):
                         pdfs = prob(x, means.data.flatten(), sigmas.data.flatten()).reshape((means.shape[0], means.shape[1]))
                         cdfs = cdf(x, means.data.flatten(), sigmas.data.flatten()).reshape((means.shape[0], means.shape[1]))
 
-                        probs = 0
+                        a_probs = []
 
                         for a in range(values.shape[1]):
                             p = pdfs[:, a]
                             for a2 in range(values.shape[1]):
                                 if a2 != a:
                                     p *= cdfs[:, a]
-                            probs += p
 
-                        return probs
+                            a_probs.append(p.data)
 
-                    p = get_prob(alpha)
-                    int_p.append(p)
-                    mean += alpha*(p*interval)
+                        return self.xp.stack(a_probs, axis=1)
 
-                for i in range(n):
-                    diff = ((start + interval*i) - mean)**2.0
-                    sigma += diff*(int_p[i]*interval)
+                    est = get_prob(alpha)
+                    act_probs += est
+
+                act_probs /= act_probs.sum(axis=1)[:, None]
+                mean = self.xp.sum(means.data * act_probs, axis=1)
+                sigma = (sigmas.data * act_probs).sum(1)
+
+                #for i in range(n):
+                #    diff = ((start + interval*i) - mean)**2.0
+                #    sigma += diff*(int_p[i]*interval)
 
                 return mean, sigma
 
