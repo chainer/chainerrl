@@ -90,8 +90,8 @@ class ExpectedSARSA(dqn.DQN):
 
             mean, sigma = estimate(10)
 
-            #mean = batch_rewards + self.gamma * (1.0 - batch_terminal) * next_q
-            #sigma = self.gamma * next_target_action_value.max_sigma
+            mean = batch_rewards + self.gamma * (1.0 - batch_terminal) * mean
+            sigma = self.gamma * sigma
             return mean[:, None], self.gamma * sigma[:, None]
         else:
             # epsilon-greedy expectation
