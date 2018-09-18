@@ -138,6 +138,7 @@ def main():
     parser.add_argument('--noisy-y', action='store_true', default=False)
     parser.add_argument('--noisy-t', action='store_true', default=False)
     parser.add_argument('--save-img', action='store_true', default=False)
+    parser.add_argument('--no-greedy', action='store_true', default=False)
 
     parser.add_argument('--use-table', action='store_true', default=False)
 
@@ -259,13 +260,15 @@ def main():
         entropy = links.to_factorized_noisy(q_func, sigma_scale=args.noisy_net_sigma, constant=args.noise_constant,
             prev=args.orig_noise, noise_coef=args.noise_coef, init_method=args.init_method)
         # Turn off explorer
-        explorer = explorers.Greedy()
+        if not args.no_greedy:
+            explorer = explorers.Greedy()
 
         if args.last_noise > 0:
             for e in entropy[:-args.last_noise]:
                 e.off = True
     elif args.head:
-        explorer = explorers.Greedy()
+        if not args.no_greedy:
+            explorer = explorers.Greedy()
 
     """
     print(n_obs)

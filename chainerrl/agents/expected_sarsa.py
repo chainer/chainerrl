@@ -46,8 +46,10 @@ class ExpectedSARSA(dqn.DQN):
             sigmas = next_target_action_value.sigmas.data
 
             # normal distribution values + thompson sampling
-            start = means.min()-sigmas.max()
-            end = means.max()+sigmas.max()
+            #starts = means.min(axis=1)-sigmas.max(axis=1)*3
+            start = means.min()-sigmas.max()*3
+            #ends = means.max(axis=1)+sigmas.max(axis=1)*3#means.max()+sigmas.max()*3
+            end = means.max()-sigmas.max()*3
 
             def estimate(n):
                 interval = (end-start)/n
