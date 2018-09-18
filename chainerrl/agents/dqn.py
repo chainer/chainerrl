@@ -818,7 +818,9 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
         xp = self.xp
 
         def eval_vals(x, name):
-            vals = self.model(x).q_values.data
+            mod = self.model(x)
+            vals = mod.q_values.data
+            sigs = mod.sigmas.data
             stats.append((name + '_q_mean', xp.mean(vals)))
             stats.append((name + '_q_std', xp.mean(xp.std(vals, axis=1))))
 
@@ -826,9 +828,11 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
             ent = -xp.sum(vals * xp.log(vals), axis=1)
             stats.append((name + '_q_ent', xp.mean(ent)))
 
+            stats.append((name + '_q_sigma_mean', xp.mean(sigs)))
+
         if not self.conv:
             try:
-                eval_vals(self.xp.asarray([[0, 0], [0, 1], [1, -1], [1, 1]], dtype=self.xp.float32), 'custom')
+                eval_vals(self.xp.asarray([[-1.5, -0.1], [-1.5, 0.1], [1.0, -0.1], [1.0, 0.1]], dtype=self.xp.float32), 'custom')
                 eval_vals(self.xp.random.uniform(-5, 5, (32, 2), dtype=self.xp.float32), 'random')
             except:
                 self.conv = True
