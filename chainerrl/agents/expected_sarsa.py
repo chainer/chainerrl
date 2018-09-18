@@ -92,7 +92,7 @@ class ExpectedSARSA(dqn.DQN):
 
             mean = batch_rewards + self.gamma * (1.0 - batch_terminal) * mean
             sigma = self.gamma * sigma
-            return mean[:, None], self.gamma * sigma[:, None]
+            return mean[:, None], sigma[:, None]
         else:
             # epsilon-greedy expectation
             max_prob = 1-self.explorer.epsilon
