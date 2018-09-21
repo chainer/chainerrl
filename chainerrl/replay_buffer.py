@@ -19,6 +19,8 @@ from chainerrl.misc.batch_states import batch_states
 from chainerrl.misc.collections import RandomAccessQueue
 from chainerrl.misc.prioritized import PrioritizedBuffer
 
+from pdb import set_trace
+
 class AbstractReplayBuffer(with_metaclass(ABCMeta, object)):
     """Defines a common interface of replay buffer.
 
@@ -131,6 +133,7 @@ class ReplayBuffer(AbstractReplayBuffer):
 
     def __init__(self, capacity=None, num_steps=1):
         assert num_steps > 0
+        self.num_steps = num_steps
         self.memory = RandomAccessQueue(maxlen=capacity)
         self.last_n_transitions = collections.deque([], maxlen=num_steps)
 
@@ -140,12 +143,20 @@ class ReplayBuffer(AbstractReplayBuffer):
                           next_state=next_state, next_action=next_action,
                           is_state_terminal=is_state_terminal)
         self.last_n_transitions.append(experience)
-        if len(self.last_n_transitions) == self.last_n_transitions.maxlen:  
-            if len(self.last_n_transitions) > 1:
-                self.memory.append(self.last_n_transitions)
-            else:
+        if is_state_terminal:
+            if self.num_steps == 1:
                 '''for backwards compatibility purposes, if n=1'''
                 self.memory.append(experience)
+            else:
+                self.memory.append(self.last_n_transitions)
+            self.last_n_transitions.clear()
+        else:
+            if len(self.last_n_transitions) == self.num_steps:  
+                if self.num_steps == 1:
+                    '''for backwards compatibility purposes, if n=1'''
+                    self.memory.append(experience)
+                else:
+                    self.memory.append(self.last_n_transitions)
 
     def sample(self, num_experiences):
         assert len(self.memory) >= num_experiences

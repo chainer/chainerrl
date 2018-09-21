@@ -26,6 +26,7 @@ from chainerrl.q_functions import DuelingDQN
 from chainerrl import replay_buffer
 
 import atari_wrappers
+from pdb import set_trace
 
 def parse_activation(activation_str):
     if activation_str == 'relu':
