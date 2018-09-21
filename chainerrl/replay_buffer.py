@@ -19,7 +19,7 @@ from chainerrl.misc.batch_states import batch_states
 from chainerrl.misc.collections import RandomAccessQueue
 from chainerrl.misc.prioritized import PrioritizedBuffer
 
-from pdb import set_trace
+import copy
 
 class AbstractReplayBuffer(with_metaclass(ABCMeta, object)):
     """Defines a common interface of replay buffer.
@@ -144,19 +144,11 @@ class ReplayBuffer(AbstractReplayBuffer):
                           is_state_terminal=is_state_terminal)
         self.last_n_transitions.append(experience)
         if is_state_terminal:
-            if self.num_steps == 1:
-                '''for backwards compatibility purposes, if n=1'''
-                self.memory.append(experience)
-            else:
-                self.memory.append(self.last_n_transitions)
+            self.memory.append(copy.copy(self.last_n_transitions))
             self.last_n_transitions.clear()
         else:
             if len(self.last_n_transitions) == self.num_steps:  
-                if self.num_steps == 1:
-                    '''for backwards compatibility purposes, if n=1'''
-                    self.memory.append(experience)
-                else:
-                    self.memory.append(self.last_n_transitions)
+                self.memory.append(copy.copy(self.last_n_transitions))
 
     def sample(self, num_experiences):
         assert len(self.memory) >= num_experiences
@@ -178,7 +170,7 @@ class ReplayBuffer(AbstractReplayBuffer):
                 self.memory, maxlen=self.memory.maxlen)
 
     def stop_current_episode(self):
-        pass
+        self.last_n_transitions.clear()
 
 
 class PriorityWeightError(object):
@@ -418,23 +410,39 @@ class PrioritizedEpisodicReplayBuffer (
                 self.capacity_left += len(discarded_episode)
         assert not self.current_episode
 
+def batch_experiences(experiences, xp, phi, gamma, batch_states=batch_states):
+    """Takes a batch of k experiences each of which contains j
+    consecutive transitions and vectorizes them, where j is between 1 and n.
 
-def batch_experiences(experiences, xp, phi, batch_states=batch_states):
+    Args:
+        experiences: list? of k experiences, each of which contains between 1
+        and n consecutive transitions. 
+        E.g. [(s_t, a_t r_t, s_(t+1), (s_(t+2), ..., s_(t+3)), ... , (s_(t+j),...,s_(t+j+1))]
+        xp : Matrix library? Find a better word.
+        phi : Preprocessing function (double check)
+        batch_states (int): Converts a list to a batch
+    Returns:
+        Returns a dictionary of vectors. State contains the k start states from
+        each set of experiences. The action is ... Reward is discounted reward.
+
+    """
 
     return {
         'state': batch_states(
-            [elem['state'] for elem in experiences], xp, phi),
-        'action': xp.asarray([elem['action'] for elem in experiences]),
-        'reward': xp.asarray(
-            [elem['reward'] for elem in experiences], dtype=np.float32),
+            [elem[0]['state'] for elem in experiences], xp, phi),
+        'action': xp.asarray([elem[0]['action'] for elem in experiences]),
+        'reward': xp.asarray([sum((gamma ** i) * exp[i]['reward'] for i in range(len(exp)))for exp in experiences], 
+            dtype=np.float32),
         'next_state': batch_states(
-            [elem['next_state'] for elem in experiences], xp, phi),
+            [elem[len(elem)-1]['next_state'] for elem in experiences], xp, phi),
         'next_action': xp.asarray(
-            [elem['next_action'] for elem in experiences]),
+            [elem[len(elem)-1]['next_action'] for elem in experiences]),
         'is_state_terminal': xp.asarray(
-            [elem['is_state_terminal'] for elem in experiences],
-
-            dtype=np.float32)}
+            [any(transition['is_state_terminal'] for transition in exp) for exp in experiences],
+            dtype=np.float32),
+        'discount':xp.asarray([(gamma ** len(elem))for elem in experiences], 
+            dtype=np.float32)
+        }
 
 
 class ReplayUpdater(object):
