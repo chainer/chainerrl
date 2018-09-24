@@ -12,6 +12,7 @@ import chainer.functions as F
 from chainer.functions.math import ndtr
 from chainer.functions.math import exponential
 import math
+import numpy as np
 
 PROBC = 1. / (2 * math.pi) ** 0.5
 
@@ -49,7 +50,7 @@ class ExpectedSARSA(dqn.DQN):
             #starts = means.min(axis=1)-sigmas.max(axis=1)*3
             start = means.min()-sigmas.max()*3
             #ends = means.max(axis=1)+sigmas.max(axis=1)*3#means.max()+sigmas.max()*3
-            end = means.max()-sigmas.max()*3
+            end = means.max()+sigmas.max()*3
 
             def estimate(n):
                 interval = (end-start)/n
@@ -81,6 +82,27 @@ class ExpectedSARSA(dqn.DQN):
                     act_probs += est
 
                 act_probs /= act_probs.sum(axis=1)[:, None]
+
+                test_means = self.xp.asnumpy(means[0])
+                test_sigmas = self.xp.asnumpy(sigmas[0])
+                counts = np.zeros(3)
+
+                for i in range(1000):
+                    samples = []
+
+                    for a in range(3):
+                        x = np.random.normal(test_means[a], test_sigmas[a])
+
+                        samples.append(x)
+
+                    win = np.argmax(np.asarray(samples))
+                    counts[win] += 1
+
+                #print("dist", test_means, test_sigmas)
+                #print("interval", start, end)
+                #print("sampled", counts / counts.sum())
+                #print("estimated", act_probs[0])
+
                 mean = (means * act_probs).sum(1)
                 sigma = (sigmas * act_probs).sum(1)
 
