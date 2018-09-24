@@ -85,27 +85,32 @@ class ExpectedSARSA(dqn.DQN):
 
                 act_probs /= act_probs.sum(axis=1)[:, None]
 
-                """
-                test_means = self.xp.asnumpy(means[0])
-                test_sigmas = self.xp.asnumpy(sigmas[0])
-                counts = np.zeros(3)
+                #temp = 0.1
+                #act_probs = self.xp.exp(act_probs/temp) / self.xp.sum(self.xp.exp(act_probs/temp), axis=1)[:, None]
 
-                for i in range(1000):
-                    samples = []
+                counts = np.zeros((p_means.shape[0], 3))
 
-                    for a in range(3):
-                        x = np.random.normal(test_means[a], test_sigmas[a])
+                np_p_means = self.xp.asnumpy(p_means)
+                np_p_sigmas = self.xp.asnumpy(p_sigmas)
+                for b in range(p_means.shape[0]):
+                    for i in range(1):
+                        samples = []
 
-                        samples.append(x)
+                        for a in range(3):
+                            x = np.random.normal(np_p_means[b, a], np_p_sigmas[b, a])
 
-                    win = np.argmax(np.asarray(samples))
-                    counts[win] += 1
-                """
+                            samples.append(x)
+
+                        win = np.argmax(np.asarray(samples))
+                        counts[b, win] += 1
 
                 #print("dist", test_means, test_sigmas)
                 #print("interval", start, end)
                 #print("sampled", counts / counts.sum())
                 #print("estimated", act_probs[0])
+
+                act_probs = self.xp.asarray(counts).astype(self.xp.float32)
+                act_probs /= act_probs.sum(axis=1)[:, None]
 
                 mean = (vs.q_values.data * act_probs).sum(1)
                 sigma = (vs.sigmas.data * act_probs).sum(1)
