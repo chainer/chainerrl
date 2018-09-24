@@ -50,9 +50,9 @@ class ExpectedSARSA(dqn.DQN):
 
             # normal distribution values + thompson sampling
             #starts = means.min(axis=1)-sigmas.max(axis=1)*3
-            start = p_means.min()-p_sigmas.max()*3
+            start = (p_means-p_sigmas*3).min(axis=1)
             #ends = means.max(axis=1)+sigmas.max(axis=1)*3#means.max()+sigmas.max()*3
-            end = p_means.max()+p_sigmas.max()*3
+            end = (p_means+p_sigmas*3).max(axis=1)
 
             def estimate(n):
                 interval = (end-start)/n
@@ -80,6 +80,7 @@ class ExpectedSARSA(dqn.DQN):
 
                         return a_probs
 
+                    alpha = self.xp.repeat(alpha, 3)
                     est = get_prob(alpha)
                     act_probs += est
 
@@ -88,12 +89,13 @@ class ExpectedSARSA(dqn.DQN):
                 #temp = 0.1
                 #act_probs = self.xp.exp(act_probs/temp) / self.xp.sum(self.xp.exp(act_probs/temp), axis=1)[:, None]
 
+                """
                 counts = np.zeros((p_means.shape[0], 3))
 
                 np_p_means = self.xp.asnumpy(p_means)
                 np_p_sigmas = self.xp.asnumpy(p_sigmas)
                 for b in range(p_means.shape[0]):
-                    for i in range(100):
+                    for i in range(1000):
                         samples = []
 
                         for a in range(3):
@@ -103,14 +105,15 @@ class ExpectedSARSA(dqn.DQN):
 
                         win = np.argmax(np.asarray(samples))
                         counts[b, win] += 1
+                """
 
-                #print("dist", test_means, test_sigmas)
-                #print("interval", start, end)
-                #print("sampled", counts / counts.sum())
+                #print("dist", p_means[0], p_sigmas[0])
+                #print("interval", start[0], end[0])
+                #print("sampled", (counts / counts.sum(axis=1)[:, None])[0])
                 #print("estimated", act_probs[0])
 
-                act_probs = self.xp.asarray(counts).astype(self.xp.float32)
-                act_probs /= act_probs.sum(axis=1)[:, None]
+                #act_probs = self.xp.asarray(counts).astype(self.xp.float32)
+                #act_probs /= act_probs.sum(axis=1)[:, None]
 
                 mean = (vs.q_values.data * act_probs).sum(1)
                 sigma = (vs.sigmas.data * act_probs).sum(1)
