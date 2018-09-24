@@ -37,40 +37,42 @@ class ExpectedSARSA(dqn.DQN):
         next_target_action_value = self.target_q_function(
             batch_next_state)
         greedy = next_target_action_value.greedy_actions
-        values = next_target_action_value.q_values
 
         batch_rewards = exp_batch['reward']
         batch_terminal = exp_batch['is_state_terminal']
 
         if self.head:
-            means = values.data
-            sigmas = next_target_action_value.sigmas.data
+            vs = next_target_action_value
+
+            pi_values = self.model(batch_next_state)
+            p_means = pi_values.q_values.data
+            p_sigmas = pi_values.sigmas.data
 
             # normal distribution values + thompson sampling
             #starts = means.min(axis=1)-sigmas.max(axis=1)*3
-            start = means.min()-sigmas.max()*3
+            start = p_means.min()-p_sigmas.max()*3
             #ends = means.max(axis=1)+sigmas.max(axis=1)*3#means.max()+sigmas.max()*3
-            end = means.max()+sigmas.max()*3
+            end = p_means.max()+p_sigmas.max()*3
 
             def estimate(n):
                 interval = (end-start)/n
 
                 mean = 0
                 sigma = 0
-                act_probs = self.xp.ones((values.shape[0], values.shape[1]), dtype=self.xp.float32) * 1e-5
+                act_probs = self.xp.ones((p_means.shape[0], p_means.shape[1]), dtype=self.xp.float32) * 1e-5
 
                 for i in range(n):
                     alpha = start + interval*i
 
                     def get_prob(x):
-                        pdfs = prob(x, means.flatten(), sigmas.flatten()).reshape((means.shape[0], means.shape[1]))
-                        cdfs = cdf(x, means.flatten(), sigmas.flatten()).reshape((means.shape[0], means.shape[1]))
+                        pdfs = prob(x, p_means.flatten(), p_sigmas.flatten()).reshape((p_means.shape[0], p_means.shape[1]))
+                        cdfs = cdf(x, p_means.flatten(), p_sigmas.flatten()).reshape((p_means.shape[0], p_means.shape[1]))
 
-                        a_probs = self.xp.zeros_like(means)
+                        a_probs = self.xp.zeros_like(p_means)
 
-                        for a in range(values.shape[1]):
+                        for a in range(p_means.shape[1]):
                             p = pdfs[:, a]
-                            for a2 in range(values.shape[1]):
+                            for a2 in range(p_means.shape[1]):
                                 if a2 != a:
                                     p *= cdfs[:, a2]
 
@@ -83,6 +85,7 @@ class ExpectedSARSA(dqn.DQN):
 
                 act_probs /= act_probs.sum(axis=1)[:, None]
 
+                """
                 test_means = self.xp.asnumpy(means[0])
                 test_sigmas = self.xp.asnumpy(sigmas[0])
                 counts = np.zeros(3)
@@ -97,14 +100,15 @@ class ExpectedSARSA(dqn.DQN):
 
                     win = np.argmax(np.asarray(samples))
                     counts[win] += 1
+                """
 
                 #print("dist", test_means, test_sigmas)
                 #print("interval", start, end)
                 #print("sampled", counts / counts.sum())
                 #print("estimated", act_probs[0])
 
-                mean = (means * act_probs).sum(1)
-                sigma = (sigmas * act_probs).sum(1)
+                mean = (vs.q_values.data * act_probs).sum(1)
+                sigma = (vs.sigmas.data * act_probs).sum(1)
 
                 #for i in range(n):
                 #    diff = ((start + interval*i) - mean)**2.0
@@ -114,21 +118,22 @@ class ExpectedSARSA(dqn.DQN):
 
             mean, sigma = estimate(10)
 
-            batch_next_action = exp_batch['next_action']
-            next_target_action_value = self.target_q_function(
-                batch_next_state)
-            next_q = next_target_action_value.evaluate_actions(
-                batch_next_action)
-            batch_rewards = exp_batch['reward']
+            #batch_next_action = exp_batch['next_action']
+            #next_target_action_value = self.target_q_function(
+            #    batch_next_state)
+            #next_q = next_target_action_value.evaluate_actions(
+            #    batch_next_action)
+            #batch_rewards = exp_batch['reward']
 
-            mean = batch_rewards + self.gamma * (1.0 - batch_terminal) * next_q
-            sigma = self.gamma * next_target_action_value.max_sigma
+            #mean = batch_rewards + self.gamma * (1.0 - batch_terminal) * next_q
+            #sigma = self.gamma * next_target_action_value.max_sigma
 
-            #mean = batch_rewards + self.gamma * (1.0 - batch_terminal) * mean
-            #sigma = self.gamma * sigma
+            mean = batch_rewards + self.gamma * (1.0 - batch_terminal) * mean
+            sigma = self.gamma * sigma
 
             return mean[:, None], sigma[:, None]
         else:
+            values = next_target_action_value.q_values
             # epsilon-greedy expectation
             max_prob = 1-self.explorer.epsilon
             pi_dist = self.xp.ones_like(values) * (self.explorer.epsilon/values.shape[1])
