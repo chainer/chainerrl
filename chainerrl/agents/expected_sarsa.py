@@ -124,7 +124,7 @@ class ExpectedSARSA(dqn.DQN):
 
                 return mean, sigma
 
-            mean, sigma = estimate(10)
+            mean, sigma = estimate(100)
 
             #batch_next_action = exp_batch['next_action']
             #next_target_action_value = self.target_q_function(
