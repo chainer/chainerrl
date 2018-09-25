@@ -24,7 +24,7 @@ from chainerrl.replay_buffer import ReplayUpdater
 import cv2
 import numpy as np
 
-cv2.namedWindow('test', cv2.WINDOW_NORMAL)
+#cv2.namedWindow('test', cv2.WINDOW_NORMAL)
 
 def compute_value_loss(y, t, clip_delta=True, batch_accumulator='mean'):
     """Compute a loss for value prediction problem.
@@ -709,8 +709,8 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
         else:
             canvas = np.vstack([header, row1, divider, row2, divider, row3, divider, acts, divider, bottom])
 
-        cv2.imshow('test', canvas)
-        cv2.waitKey(1)
+        #cv2.imshow('test', canvas)
+        #cv2.waitKey(1)
         #cv2.imwrite('frames2/%06d.png' % self.t, canvas*255.0)
 
         #print('writing vid')
