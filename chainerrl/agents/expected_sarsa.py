@@ -106,14 +106,14 @@ class ExpectedSARSA(dqn.DQN):
                         win = np.argmax(np.asarray(samples))
                         counts[b, win] += 1
 
-                #print("dist", p_means[0], p_sigmas[0])
-                #print("interval", start[0], end[0])
-                #print("sampled", (counts / counts.sum(axis=1)[:, None])[0])
-                #print("estimated", act_probs[0])
-
                 #print(counts)
                 act_probs = self.xp.asarray(counts).astype(self.xp.float32)
                 act_probs /= act_probs.sum(axis=1)[:, None]
+
+                print("dist", p_means[0], p_sigmas[0])
+                print("interval", start[0], end[0])
+                print("sampled", act_probs[0])
+                print("estimated", act_probs2[0])
 
                 #print(np_p_means, np_p_sigmas)
                 #print("samp", act_probs)
