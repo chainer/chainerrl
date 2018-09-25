@@ -108,13 +108,14 @@ class DiscreteActionValueWithSigma(ActionValue):
             Array of Q values whose shape is (batchsize, n_actions)
     """
 
-    def __init__(self, q_values, sigma_values, q_values_formatter=lambda x: x):
+    def __init__(self, q_values, sigma_values, all_sigmas=None, q_values_formatter=lambda x: x):
         assert isinstance(q_values, chainer.Variable)
         self.xp = cuda.get_array_module(q_values.data)
         self.q_values = q_values
         self.sigmas = sigma_values
         self.n_actions = q_values.data.shape[1]
         self.q_values_formatter = q_values_formatter
+        self.all_sigmas = all_sigmas
 
     @cached_property
     def greedy_actions(self):
