@@ -60,7 +60,6 @@ class ExpectedSARSA(dqn.DQN):
                 mean = 0
                 sigma = 0
 
-                """
                 act_probs = self.xp.ones((p_means.shape[0], p_means.shape[1]), dtype=self.xp.float32) * 1e-5
 
                 for i in range(n):
@@ -86,8 +85,7 @@ class ExpectedSARSA(dqn.DQN):
                     est = get_prob(alpha)
                     act_probs += est
 
-                act_probs /= act_probs.sum(axis=1)[:, None]
-                """
+                act_probs2 = act_probs / act_probs.sum(axis=1)[:, None]
 
                 #temp = 0.1
                 #act_probs = self.xp.exp(act_probs/temp) / self.xp.sum(self.xp.exp(act_probs/temp), axis=1)[:, None]
@@ -113,8 +111,14 @@ class ExpectedSARSA(dqn.DQN):
                 #print("sampled", (counts / counts.sum(axis=1)[:, None])[0])
                 #print("estimated", act_probs[0])
 
+                print(counts)
                 act_probs = self.xp.asarray(counts).astype(self.xp.float32)
                 act_probs /= act_probs.sum(axis=1)[:, None]
+
+                print(np_p_means, np_p_sigmas)
+                #print("samp", act_probs)
+                #print("est", act_probs2)
+                self.est_error = self.est_error * 0.99 + (1-0.99) * self.xp.asnumpy(((act_probs-act_probs2)**2).mean())
 
                 mean = (vs.q_values.data * act_probs).sum(1)
                 sigma = (vs.sigmas.data * act_probs).sum(1)

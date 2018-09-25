@@ -228,6 +228,7 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
         self.use_table = use_table
         self.table_lr = table_lr
 
+        self.est_error = 0
         self.samples = samples
 
         fourcc = cv2.VideoWriter_fourcc(*'XVID')
@@ -856,5 +857,7 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
                 eval_vals(self.xp.random.uniform(-5, 5, (32, 2), dtype=self.xp.float32), 'random')
             except:
                 self.conv = True
+
+        stats.append(('est_error', self.est_error))
 
         return stats
