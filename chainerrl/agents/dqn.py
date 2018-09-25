@@ -140,7 +140,8 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
                  plot=False,
                  head=False,
                  use_table=False,
-                 table_lr=0.01):
+                 table_lr=0.01,
+                 samples=1):
         self.model = q_function
         self.q_function = q_function  # For backward compatibility
 
@@ -226,6 +227,8 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
         self.last_score = ""
         self.use_table = use_table
         self.table_lr = table_lr
+
+        self.samples = samples
 
         fourcc = cv2.VideoWriter_fourcc(*'XVID')
         self.vid = cv2.VideoWriter('results/output.avi',fourcc, 20.0, (918, 742))

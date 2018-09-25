@@ -82,6 +82,7 @@ def main():
     parser.add_argument('--seed', type=int, default=0,
                         help='Random seed [0, 2 ** 31)')
     parser.add_argument('--gpu', type=int, default=0)
+    parser.add_argument('--samples', type=int, default=0)
     parser.add_argument('--demo', action='store_true', default=False)
     parser.add_argument('--load', type=str, default=None)
     parser.add_argument('--use-sdl', action='store_true', default=False)
@@ -299,7 +300,8 @@ def main():
                   vis=env, noisy_y=args.noisy_y, noisy_t=args.noisy_t,
                   plot=args.save_img,
                   head=head, use_table=args.use_table,
-                  table_lr=args.table_lr)
+                  table_lr=args.table_lr,
+                  samples=args.samples)
 
     if args.load:
         agent.load(args.load)

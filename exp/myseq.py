@@ -109,8 +109,9 @@ class MySequence(chainer.Chain):#links.Sequence):
                     sigma = self.sigma_nets[i](input)
                     sigmas.append(sigma)
                 sigmas = F.stack(sigmas, axis=0)
-                sigma = F.mean(F.softplus(sigmas), axis=0)
-                return DiscreteActionValueWithSigma(x, sigma)
+                sigmas = F.softplus(sigmas)
+                sigma = F.mean(sigmas, axis=0)
+                return DiscreteActionValueWithSigma(x, sigma, all_sigmas=sigmas)
             else:
                 return DiscreteActionValueWithSigma(x, F.softplus(self.sigma_nets[0](input)))
         else:

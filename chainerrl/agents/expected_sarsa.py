@@ -97,7 +97,7 @@ class ExpectedSARSA(dqn.DQN):
                 np_p_means = self.xp.asnumpy(p_means)
                 np_p_sigmas = self.xp.asnumpy(p_sigmas)
                 for b in range(p_means.shape[0]):
-                    for i in range(100):
+                    for i in range(self.samples):
                         samples = []
 
                         for a in range(3):
