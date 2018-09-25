@@ -692,21 +692,22 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
         divider = np.zeros((30, row1.shape[1], 3))
         divider[:, :, 0] = 0.7
 
-        all_sigmas = vals.all_sigmas.data
-        all_sigmas = all_sigmas.reshape((all_sigmas.shape[0], 20, 20, all_sigmas.shape[-1]))
-        norms = []
-        for i, m in enumerate(all_sigmas):
-            norm = get_softmax(m)
-            norms.append(norm)
-            norms.append(hdivider)
-        norms = np.hstack(norms)
-        nc = np.zeros((norms.shape[0], row1.shape[1], 3))
-        nc[:norms.shape[0], :norms.shape[1]] = norms
+        if vals.all_sigmas is not None:
+            all_sigmas = vals.all_sigmas.data
+            all_sigmas = all_sigmas.reshape((all_sigmas.shape[0], 20, 20, all_sigmas.shape[-1]))
+            norms = []
+            for i, m in enumerate(all_sigmas):
+                norm = get_softmax(m)
+                norms.append(norm)
+                norms.append(hdivider)
+            norms = np.hstack(norms)
+            nc = np.zeros((norms.shape[0], row1.shape[1], 3))
+            nc[:norms.shape[0], :norms.shape[1]] = norms
 
-        #print(row1.shape, acts.shape)
-        canvas = np.vstack([header, row1, divider, row2, divider, row3, divider, acts, divider,
-        nc, bottom])
-        #print(canvas.shape)
+            canvas = np.vstack([header, row1, divider, row2, divider, row3, divider, acts, divider,
+            nc, bottom])
+        else:
+            canvas = np.vstack([header, row1, divider, row2, divider, row3, divider, acts, divider, bottom])
 
         cv2.imshow('test', canvas)
         cv2.waitKey(1)
