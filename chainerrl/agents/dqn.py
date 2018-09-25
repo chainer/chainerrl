@@ -24,6 +24,8 @@ from chainerrl.replay_buffer import ReplayUpdater
 import cv2
 import numpy as np
 
+cv2.namedWindow('test', cv2.WINDOW_NORMAL)
+
 def compute_value_loss(y, t, clip_delta=True, batch_accumulator='mean'):
     """Compute a loss for value prediction problem.
 
@@ -584,6 +586,9 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
         else:
             arr = np.asarray
 
+        hdivider = np.zeros((128, 30, 3))
+        hdivider[:, :, 0] = 0.7
+
         def get_row(act):
             def normalize(data, min=None, max=None):
                 if min is None:
@@ -608,8 +613,7 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
             #means = normalize(data, -100, 0)
             means = normalize(data, -10, 0)
 
-            divider = np.zeros((128, 30, 3))
-            divider[:, :, 0] = 0.7
+
 
             try:
                 data = arr(vals.sigmas.data)[:, act]
@@ -630,8 +634,8 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
             table_sigma = arr(self.q_table_sigma[:, act])
             table_sigma = normalize(table_sigma, 0)
 
-            canvas = np.hstack([means, divider, sigmas, divider, counts, divider, counts2, divider,
-                table_mean, divider, table_sigma])
+            canvas = np.hstack([means, hdivider, sigmas, hdivider, counts, hdivider, counts2, hdivider,
+                table_mean, hdivider, table_sigma])
 
             return canvas
 
@@ -688,16 +692,28 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
         divider = np.zeros((30, row1.shape[1], 3))
         divider[:, :, 0] = 0.7
 
+        all_sigmas = vals.all_sigmas.data
+        all_sigmas = all_sigmas.reshape((all_sigmas.shape[0], 20, 20, all_sigmas.shape[-1]))
+        norms = []
+        for i, m in enumerate(all_sigmas):
+            norm = get_softmax(m)
+            norms.append(norm)
+            norms.append(hdivider)
+        norms = np.hstack(norms)
+        nc = np.zeros((norms.shape[0], row1.shape[1], 3))
+        nc[:norms.shape[0], :norms.shape[1]] = norms
+
         #print(row1.shape, acts.shape)
-        canvas = np.vstack([header, row1, divider, row2, divider, row3, divider, acts, bottom])
+        canvas = np.vstack([header, row1, divider, row2, divider, row3, divider, acts, divider,
+        nc, bottom])
         #print(canvas.shape)
-        #cv2.imshow('test', )
-        #cv2.waitKey(1)
+
+        cv2.imshow('test', canvas)
+        cv2.waitKey(1)
         #cv2.imwrite('frames2/%06d.png' % self.t, canvas*255.0)
 
         #print('writing vid')
         self.vid.write((canvas*255.0).astype(np.uint8))
-
 
     def act_and_train(self, obs, reward):
         pos = int(20 * (float(obs[0]) + 1.3) / 2.0)

@@ -59,6 +59,8 @@ class ExpectedSARSA(dqn.DQN):
 
                 mean = 0
                 sigma = 0
+
+                """
                 act_probs = self.xp.ones((p_means.shape[0], p_means.shape[1]), dtype=self.xp.float32) * 1e-5
 
                 for i in range(n):
@@ -85,17 +87,17 @@ class ExpectedSARSA(dqn.DQN):
                     act_probs += est
 
                 act_probs /= act_probs.sum(axis=1)[:, None]
+                """
 
                 #temp = 0.1
                 #act_probs = self.xp.exp(act_probs/temp) / self.xp.sum(self.xp.exp(act_probs/temp), axis=1)[:, None]
 
-                """
                 counts = np.zeros((p_means.shape[0], 3))
 
                 np_p_means = self.xp.asnumpy(p_means)
                 np_p_sigmas = self.xp.asnumpy(p_sigmas)
                 for b in range(p_means.shape[0]):
-                    for i in range(1000):
+                    for i in range(100):
                         samples = []
 
                         for a in range(3):
@@ -105,18 +107,17 @@ class ExpectedSARSA(dqn.DQN):
 
                         win = np.argmax(np.asarray(samples))
                         counts[b, win] += 1
-                """
 
                 #print("dist", p_means[0], p_sigmas[0])
                 #print("interval", start[0], end[0])
                 #print("sampled", (counts / counts.sum(axis=1)[:, None])[0])
                 #print("estimated", act_probs[0])
 
-                #act_probs = self.xp.asarray(counts).astype(self.xp.float32)
-                #act_probs /= act_probs.sum(axis=1)[:, None]
+                act_probs = self.xp.asarray(counts).astype(self.xp.float32)
+                act_probs /= act_probs.sum(axis=1)[:, None]
 
-                mean = (vs.q_values.data * act_probs.data).sum(1)
-                sigma = (vs.sigmas.data * act_probs.data).sum(1)
+                mean = (vs.q_values.data * act_probs).sum(1)
+                sigma = (vs.sigmas.data * act_probs).sum(1)
 
                 #for i in range(n):
                 #    diff = ((start + interval*i) - mean)**2.0
