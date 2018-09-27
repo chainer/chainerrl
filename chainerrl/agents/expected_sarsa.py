@@ -92,8 +92,13 @@ class ExpectedSARSA(dqn.DQN):
 
                 counts = np.zeros((p_means.shape[0], 3))
 
-                np_p_means = self.xp.asnumpy(p_means)
-                np_p_sigmas = self.xp.asnumpy(p_sigmas)
+                try:
+                    np_p_means = self.xp.asnumpy(p_means)
+                    np_p_sigmas = self.xp.asnumpy(p_sigmas)
+                except:
+                    np_p_means = p_means
+                    np_p_sigmas = p_sigmas
+
                 for b in range(p_means.shape[0]):
                     for i in range(self.samples):
                         samples = []
@@ -110,15 +115,21 @@ class ExpectedSARSA(dqn.DQN):
                 act_probs = self.xp.asarray(counts).astype(self.xp.float32)
                 act_probs /= act_probs.sum(axis=1)[:, None]
 
-                print("dist", p_means[0], p_sigmas[0])
-                print("interval", start[0], end[0])
-                print("sampled", act_probs[0])
-                print("estimated", act_probs2[0])
+                #print("dist", p_means[0], p_sigmas[0])
+                #print("interval", start[0], end[0])
+                #print("sampled", act_probs[0])
+                #print("estimated", act_probs2[0])
 
                 #print(np_p_means, np_p_sigmas)
                 #print("samp", act_probs)
                 #print("est", act_probs2)
-                self.est_error = self.est_error * 0.99 + (1-0.99) * self.xp.asnumpy(((act_probs-act_probs2)**2).mean())
+                try:
+                    self.est_error = self.est_error * 0.99 + (1-0.99) * self.xp.asnumpy(((act_probs-act_probs2)**2).mean())
+                except:
+                    self.est_error = self.est_error * 0.99 + (1-0.99) * ((act_probs-act_probs2)**2).mean()
+
+                self.pi[0] = act_probs[0]
+                self.pi[1] = act_probs2[0]
 
                 mean = (vs.q_values.data * act_probs).sum(1)
                 sigma = (vs.sigmas.data * act_probs).sum(1)

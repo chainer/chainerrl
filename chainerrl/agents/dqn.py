@@ -24,6 +24,13 @@ from chainerrl.replay_buffer import ReplayUpdater
 import cv2
 import numpy as np
 
+from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
+from matplotlib.figure import Figure
+
+pltfig = Figure(figsize=(1,1))
+pltcanvas = FigureCanvas(pltfig)
+pltax = pltfig.gca()
+
 #cv2.namedWindow('test', cv2.WINDOW_NORMAL)
 
 def compute_value_loss(y, t, clip_delta=True, batch_accumulator='mean'):
@@ -231,8 +238,9 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
         self.est_error = 0
         self.samples = samples
 
-        fourcc = cv2.VideoWriter_fourcc(*'XVID')
-        self.vid = cv2.VideoWriter('results/output.avi',fourcc, 20.0, (918, 742))
+        self.pi = [[0, 0, 0], [0, 0, 0]]
+
+        self.vid = None
 
     def save(self, dirname):
         self.vid.release()
@@ -718,7 +726,29 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
         #cv2.imwrite('frames2/%06d.png' % self.t, canvas*255.0)
 
         #print('writing vid')
+        if self.vid is None:
+            fourcc = cv2.VideoWriter_fourcc(*'XVID')
+            self.vid = cv2.VideoWriter('results/output.avi',fourcc, 20.0, (canvas.shape[1], canvas.shape[0]))
+
+        pltax.scatter([0, 1, 2], self.pi[0], c="red")
+        pltax.scatter([0, 1, 2], self.pi[1], c="blue")
+        pltcanvas.draw()
+
+        width, height = pltfig.get_size_inches() * pltfig.get_dpi()
+        #image = np.fromstring(pltcanvas.tostring_rgb(), dtype='uint8').reshape(height, width, 3)
+        image = np.array(pltfig.canvas.renderer._renderer)
+        c = np.ones_like(image[:,:,:3])
+
+        c += image[:,:,:3]*image[:,:,[-1,-1,-1]]
+        #w, h = c.shape[0], c.shape[1]
+        c = cv2.resize(c, (128, 128))
+        canvas[3*(128+30)+70:3*(128+30)+70+128, 128+30:128+30+128] = c
+
         self.vid.write((canvas*255.0).astype(np.uint8))
+
+        cv2.imwrite("results/debug.png", canvas*255.0)
+
+        #pltax.clear()
 
     def act_and_train(self, obs, reward):
         pos = int(20 * (float(obs[0]) + 1.3) / 2.0)
