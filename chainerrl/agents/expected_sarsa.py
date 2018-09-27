@@ -77,8 +77,8 @@ class ExpectedSARSA(dqn.DQN):
                         block = self.xp.repeat(x, 3, axis=1).flatten()
                         pdfs = prob(x.flatten(), p_means.flatten(), p_sigmas.flatten()).reshape((p_means.shape[0], p_means.shape[1]))
                         #cdfs = cdf(x, p_means.flatten(), p_sigmas.flatten()).reshape((p_means.shape[0], p_means.shape[1]))
-                        cdfs = cdf(block, np.tile(p_means, (1, p_means.shape[1])).flatten(),
-                            np.tile(p_sigmas, (1, p_means.shape[1])).flatten()).reshape((p_means.shape[0], p_means.shape[1], p_means.shape[1]))
+                        cdfs = cdf(block, self.xp.tile(p_means, (1, p_means.shape[1])).flatten(),
+                            self.xp.tile(p_sigmas, (1, p_means.shape[1])).flatten()).reshape((p_means.shape[0], p_means.shape[1], p_means.shape[1]))
 
                         a_probs = self.xp.zeros_like(p_means)
 
