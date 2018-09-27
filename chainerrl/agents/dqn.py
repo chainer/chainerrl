@@ -24,6 +24,9 @@ from chainerrl.replay_buffer import ReplayUpdater
 import cv2
 import numpy as np
 
+import matplotlib as mpl
+mpl.use('TkAgg')
+
 from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
 from matplotlib.figure import Figure
 
@@ -162,6 +165,7 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
             #    self.model.reset_noise()
             #except:
             #    pass
+        self.use_gpu = gpu is not None and gpu >= 0
 
         self.xp = self.model.xp
         self.replay_buffer = replay_buffer
@@ -704,7 +708,7 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
         divider = np.zeros((30, row1.shape[1], 3))
         divider[:, :, 0] = 0.7
 
-        if vals.all_sigmas is not None:
+        try:
             all_sigmas = vals.all_sigmas.data
             all_sigmas = all_sigmas.reshape((all_sigmas.shape[0], 20, 20, all_sigmas.shape[-1]))
             norms = []
@@ -718,7 +722,7 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
 
             canvas = np.vstack([header, row1, divider, row2, divider, row3, divider, acts, divider,
             nc, bottom])
-        else:
+        except:
             canvas = np.vstack([header, row1, divider, row2, divider, row3, divider, acts, divider, bottom])
 
         #cv2.imshow('test', canvas)
@@ -730,8 +734,20 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
             fourcc = cv2.VideoWriter_fourcc(*'XVID')
             self.vid = cv2.VideoWriter('results/output.avi',fourcc, 20.0, (canvas.shape[1], canvas.shape[0]))
 
-        pltax.scatter([0, 1, 2], self.pi[0], c="red")
-        pltax.scatter([0, 1, 2], self.pi[1], c="blue")
+        #try:
+
+        """
+        if self.use_gpu:
+            xp = self.xp.asnumpy
+        else:
+            xp = self.xp.asarray
+
+        pltax.scatter([0, 1, 2], xp(self.pi[0]), label="samples")
+        pltax.scatter([0, 1, 2], xp(self.pi[1]), label="estimate")
+        pltax.legend()
+        #except:
+        #    print('error')
+
         pltcanvas.draw()
 
         width, height = pltfig.get_size_inches() * pltfig.get_dpi()
@@ -743,10 +759,13 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
         #w, h = c.shape[0], c.shape[1]
         c = cv2.resize(c, (128, 128))
         canvas[3*(128+30)+70:3*(128+30)+70+128, 128+30:128+30+128] = c
+        """
 
         self.vid.write((canvas*255.0).astype(np.uint8))
 
-        cv2.imwrite("results/debug.png", canvas*255.0)
+        #cv2.imwrite("results/debug.png", canvas*255.0)
+        #cv2.imshow("vis", canvas)
+        #cv2.waitKey(1)
 
         #pltax.clear()
 

@@ -13,8 +13,16 @@ from chainer.functions.math import ndtr
 from chainer.functions.math import exponential
 import math
 import numpy as np
+import cv2
 
 PROBC = 1. / (2 * math.pi) ** 0.5
+
+from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
+from matplotlib.figure import Figure
+import matplotlib.pyplot as plt
+
+fig, (ax1, ax2) = plt.subplots(1, 2)
+pltcanvas = FigureCanvas(fig)
 
 def prob(x, loc, scale):
     return (PROBC / scale) * exponential.exp(
@@ -50,11 +58,11 @@ class ExpectedSARSA(dqn.DQN):
 
             # normal distribution values + thompson sampling
             #starts = means.min(axis=1)-sigmas.max(axis=1)*3
-            start = (p_means-p_sigmas*3).min(axis=1)
-            #ends = means.max(axis=1)+sigmas.max(axis=1)*3#means.max()+sigmas.max()*3
-            end = (p_means+p_sigmas*3).max(axis=1)
 
-            def estimate(n):
+            def estimate(n, std=3):
+                start = (p_means-p_sigmas*std)
+                end = (p_means+p_sigmas*std)
+
                 interval = (end-start)/n
 
                 mean = 0
@@ -66,8 +74,11 @@ class ExpectedSARSA(dqn.DQN):
                     alpha = start + interval*i
 
                     def get_prob(x):
-                        pdfs = prob(x, p_means.flatten(), p_sigmas.flatten()).reshape((p_means.shape[0], p_means.shape[1]))
-                        cdfs = cdf(x, p_means.flatten(), p_sigmas.flatten()).reshape((p_means.shape[0], p_means.shape[1]))
+                        block = self.xp.repeat(x, 3, axis=1).flatten()
+                        pdfs = prob(x.flatten(), p_means.flatten(), p_sigmas.flatten()).reshape((p_means.shape[0], p_means.shape[1]))
+                        #cdfs = cdf(x, p_means.flatten(), p_sigmas.flatten()).reshape((p_means.shape[0], p_means.shape[1]))
+                        cdfs = cdf(block, np.tile(p_means, (1, p_means.shape[1])).flatten(),
+                            np.tile(p_sigmas, (1, p_means.shape[1])).flatten()).reshape((p_means.shape[0], p_means.shape[1], p_means.shape[1]))
 
                         a_probs = self.xp.zeros_like(p_means)
 
@@ -75,21 +86,20 @@ class ExpectedSARSA(dqn.DQN):
                             p = pdfs[:, a]
                             for a2 in range(p_means.shape[1]):
                                 if a2 != a:
-                                    p *= cdfs[:, a2]
+                                    p *= cdfs[:, a, a2]
 
                             a_probs[:, a] = p.data
 
                         return a_probs
 
-                    alpha = self.xp.repeat(alpha, 3)
                     est = get_prob(alpha)
                     act_probs += est
 
                 act_probs2 = act_probs / act_probs.sum(axis=1)[:, None]
 
-                #temp = 0.1
-                #act_probs = self.xp.exp(act_probs/temp) / self.xp.sum(self.xp.exp(act_probs/temp), axis=1)[:, None]
+                return act_probs2
 
+            def sample(num_samples):
                 counts = np.zeros((p_means.shape[0], 3))
 
                 try:
@@ -100,7 +110,7 @@ class ExpectedSARSA(dqn.DQN):
                     np_p_sigmas = p_sigmas
 
                 for b in range(p_means.shape[0]):
-                    for i in range(self.samples):
+                    for i in range(num_samples):
                         samples = []
 
                         for a in range(3):
@@ -115,42 +125,55 @@ class ExpectedSARSA(dqn.DQN):
                 act_probs = self.xp.asarray(counts).astype(self.xp.float32)
                 act_probs /= act_probs.sum(axis=1)[:, None]
 
-                #print("dist", p_means[0], p_sigmas[0])
-                #print("interval", start[0], end[0])
-                #print("sampled", act_probs[0])
-                #print("estimated", act_probs2[0])
+                return act_probs
 
-                #print(np_p_means, np_p_sigmas)
-                #print("samp", act_probs)
-                #print("est", act_probs2)
-                try:
-                    self.est_error = self.est_error * 0.99 + (1-0.99) * self.xp.asnumpy(((act_probs-act_probs2)**2).mean())
-                except:
-                    self.est_error = self.est_error * 0.99 + (1-0.99) * ((act_probs-act_probs2)**2).mean()
+            act_probs = estimate(10, 3)
+            #act_probs2 = estimate(10, 5)
+            act_probs3 = sample(self.samples)
 
-                self.pi[0] = act_probs[0]
-                self.pi[1] = act_probs2[0]
+            #print("dist", p_means[0], p_sigmas[0])
+            #print("interval", start[0], end[0])
+            #print("sampled", act_probs[0])
+            #print("estimated", act_probs2[0])
 
-                mean = (vs.q_values.data * act_probs).sum(1)
-                sigma = (vs.sigmas.data * act_probs).sum(1)
+            try:
+                self.est_error = self.est_error * 0.99 + (1-0.99) * self.xp.asnumpy(((act_probs-act_probs3)**2).mean())
+            except:
+                self.est_error = self.est_error * 0.99 + (1-0.99) * ((act_probs-act_probs3)**2).mean()
 
-                #for i in range(n):
-                #    diff = ((start + interval*i) - mean)**2.0
-                #    sigma += diff*(int_p[i]*interval)
+            import matplotlib.pyplot as plt
+            gca = fig.gca()
+            edges = [0, 1, 1, 2, 2, 3]
 
-                return mean, sigma
+            #ax1.autoscale(axis='y')
+            ax1.set_title("p(Q|s) step: " + str(self.t))
+            ax1.scatter(range(3), p_means[0])
+            for i in range(3):
+                ax1.plot([i, i], [p_means[0][i]-p_sigmas[0][i], p_means[0][i]+p_sigmas[0][i]])
 
-            mean, sigma = estimate(10)
+            ax2.set_title("p(a|s)")
+            ax2.plot(edges, act_probs[0][[0, 0, 1, 1, 2, 2]], label="estimate 10")
+            #gca.plot(edges, act_probs2[0][[0, 0, 1, 1, 2, 2]], label="estimate 5")
+            ax2.plot(edges, act_probs3[0][[0, 0, 1, 1, 2, 2]], label="sample 100")
+            ax2.set_ylim((0, 1))
+            ax2.legend()
+            fig.canvas.draw()
 
-            #batch_next_action = exp_batch['next_action']
-            #next_target_action_value = self.target_q_function(
-            #    batch_next_state)
-            #next_q = next_target_action_value.evaluate_actions(
-            #    batch_next_action)
-            #batch_rewards = exp_batch['reward']
+            #image = np.array(pltfig.canvas.renderer._renderer)
+            data = np.fromstring(fig.canvas.tostring_rgb(), dtype=np.uint8, sep='')
+            data = data.reshape(fig.canvas.get_width_height()[::-1] + (3,))
+            cv2.imwrite("probs/probs2/%06d.png" % self.t, data)
+            
+            #fig.clf()
+            ax1.cla()
+            ax2.cla()
 
-            #mean = batch_rewards + self.gamma * (1.0 - batch_terminal) * next_q
-            #sigma = self.gamma * next_target_action_value.max_sigma
+            mean = (vs.q_values.data * act_probs).sum(1)
+            sigma = (vs.sigmas.data * act_probs).sum(1)
+
+            #for i in range(n):
+            #    diff = ((start + interval*i) - mean)**2.0
+            #    sigma += diff*(int_p[i]*interval)
 
             mean = batch_rewards + self.gamma * (1.0 - batch_terminal) * mean
             sigma = self.gamma * sigma

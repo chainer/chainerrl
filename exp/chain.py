@@ -19,7 +19,8 @@ import sys
 sys.path.insert(0, ".")
 from chainerrl import q_functions
 
-
+import matplotlib as mpl
+mpl.use('TkAgg')
 
 import chainerrl
 from chainerrl.action_value import DiscreteActionValue
