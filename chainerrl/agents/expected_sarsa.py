@@ -129,13 +129,14 @@ class ExpectedSARSA(dqn.DQN):
 
             act_probs = estimate(10, 3)
             #act_probs2 = estimate(10, 5)
-            act_probs3 = sample(self.samples)
+            #act_probs3 = sample(self.samples)
 
             #print("dist", p_means[0], p_sigmas[0])
             #print("interval", start[0], end[0])
             #print("sampled", act_probs[0])
             #print("estimated", act_probs2[0])
 
+            """
             try:
                 self.est_error = self.est_error * 0.99 + (1-0.99) * self.xp.asnumpy(((act_probs-act_probs3)**2).mean())
             except:
@@ -163,10 +164,11 @@ class ExpectedSARSA(dqn.DQN):
             data = np.fromstring(fig.canvas.tostring_rgb(), dtype=np.uint8, sep='')
             data = data.reshape(fig.canvas.get_width_height()[::-1] + (3,))
             cv2.imwrite("probs/probs2/%06d.png" % self.t, data)
-            
+
             #fig.clf()
             ax1.cla()
             ax2.cla()
+            """
 
             mean = (vs.q_values.data * act_probs).sum(1)
             sigma = (vs.sigmas.data * act_probs).sum(1)
