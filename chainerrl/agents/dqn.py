@@ -506,7 +506,17 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
                     (batch_size, 1))
 
         if self.head:
-            return F.concat([batch_q, batch_sigma], axis=1), F.concat([batch_q_target, batch_sigma_target], axis=1), qout.sigmas
+            if hasattr(qout, 'all_sigmas') and qout.all_sigmas is not None:
+                targets = [batch_q_target]
+                curr = [batch_q]
+                for sig in qout.all_sigmas:
+                    targets.append(batch_sigma_target)
+                    curr.append(F.reshape(F.select_item(sig, batch_actions), (batch_size, 1)))
+                return F.concat(curr, axis=1), F.concat(targets, axis=1), qout.sigmas
+            else:
+                return F.concat([batch_q, batch_sigma], axis=1),\
+                    F.concat([batch_q_target, batch_sigma_target], axis=1),\
+                    qout.sigmas
         else:
             return batch_q, batch_q_target
 
@@ -678,6 +688,7 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
         yv = yv.astype(np.int32)
 
         empty = np.zeros((128, 128, 3))
+        empty[:,:,0] = 1
 
         def get_max(data):
             acts = np.zeros((20, 20, 3))
@@ -710,7 +721,7 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
         divider = np.zeros((30, row1.shape[1], 3))
         divider[:, :, 0] = 0.7
 
-        if hasattr(vals, 'all_sigmas'):
+        if hasattr(vals, 'all_sigmas') and vals.all_sigmas is not None:
             all_sigmas = vals.all_sigmas.data
             all_sigmas = all_sigmas.reshape((all_sigmas.shape[0], 20, 20, all_sigmas.shape[-1]))
             norms = []
@@ -727,8 +738,8 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
 
             canvas = np.vstack([header, row1, divider, row2, divider, row3, divider, acts, divider,
             nc, bottom])
-        #except:
-        #    canvas = np.vstack([header, row1, divider, row2, divider, row3, divider, acts, divider, bottom])
+        else:
+            canvas = np.vstack([header, row1, divider, row2, divider, row3, divider, acts, divider, bottom])
 
         #cv2.imshow('test', canvas)
         #cv2.waitKey(1)
