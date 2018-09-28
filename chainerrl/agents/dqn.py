@@ -710,12 +710,14 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
         divider = np.zeros((30, row1.shape[1], 3))
         divider[:, :, 0] = 0.7
 
-        if True:
+        if hasattr(vals, 'all_sigmas'):
             all_sigmas = vals.all_sigmas.data
             all_sigmas = all_sigmas.reshape((all_sigmas.shape[0], 20, 20, all_sigmas.shape[-1]))
             norms = []
             for i, m in enumerate(all_sigmas):
                 #norm = get_softmax(m)
+                if self.use_gpu:
+                    m = self.xp.asnumpy(m)
                 norm = normalize(m[:,:,0], 0)
                 norms.append(norm)
                 norms.append(hdivider)
