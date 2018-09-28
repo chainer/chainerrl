@@ -136,7 +136,7 @@ class ExpectedSARSA(dqn.DQN):
             #print("sampled", act_probs[0])
             #print("estimated", act_probs2[0])
 
-
+            """
             try:
                 self.est_error = self.est_error * 0.99 + (1-0.99) * self.xp.asnumpy(((act_probs-act_probs3)**2).mean())
             except:
@@ -168,7 +168,7 @@ class ExpectedSARSA(dqn.DQN):
             #fig.clf()
             ax1.cla()
             ax2.cla()
-
+            """
 
             mean = (vs.q_values.data * act_probs).sum(1)
             sigma = (vs.sigmas.data * act_probs).sum(1)
