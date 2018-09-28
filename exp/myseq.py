@@ -57,19 +57,22 @@ class MySequence(chainer.Chain):#links.Sequence):
                 self.l3 = L.Linear(100, acts)
 
             for n in range(mean):
-                l1 = L.Linear(obs, 100)
-                l2 = L.Linear(100, 100)
-                l3 = L.Linear(100, acts)
+                nl1 = L.Linear(obs, 100)
+                nl2 = L.Linear(100, 100)
+                nl3 = L.Linear(100, acts)
 
-                self.add_link(str(n)+'_l1', l1)
-                self.add_link(str(n)+'_l2', l2)
-                self.add_link(str(n)+'_l3', l3)
+                self.add_link(str(n)+'_l1', nl1)
+                self.add_link(str(n)+'_l2', nl2)
+                self.add_link(str(n)+'_l3', nl3)
 
+                """
                 def net(x):
-                    x = F.relu(l1(x))
-                    x = F.relu(l2(x))
-                    x = l3(x)
+                    x = F.relu(nl1(x))
+                    x = F.relu(nl2(x))
+                    x = nl3(x)
                     return x
+                """
+                net = [nl1, nl2, nl3]
 
                 self.sigma_nets.append(net)
 
@@ -106,8 +109,11 @@ class MySequence(chainer.Chain):#links.Sequence):
                 #sigma = F.reshape(sigma, (x.shape[0], self.mean, self.acts))
                 sigmas = []
                 for i in range(self.mean):
-                    sigma = self.sigma_nets[i](input)
-                    sigmas.append(sigma)
+                    l1, l2, l3 = self.sigma_nets[i]
+                    x = F.relu(l1(input))
+                    x = F.relu(l2(x))
+                    x = l3(x)
+                    sigmas.append(x)
                 sigmas = F.stack(sigmas, axis=0)
                 sigmas = F.softplus(sigmas)
                 sigma = F.mean(sigmas, axis=0)

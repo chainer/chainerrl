@@ -34,8 +34,6 @@ pltfig = Figure(figsize=(1,1))
 pltcanvas = FigureCanvas(pltfig)
 pltax = pltfig.gca()
 
-#cv2.namedWindow('test', cv2.WINDOW_NORMAL)
-
 def compute_value_loss(y, t, clip_delta=True, batch_accumulator='mean'):
     """Compute a loss for value prediction problem.
 
@@ -155,6 +153,8 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
         self.model = q_function
         self.q_function = q_function  # For backward compatibility
 
+        #cv2.namedWindow("vis", cv2.WINDOW_NORMAL)
+        #cv2.namedWindow('test', cv2.WINDOW_NORMAL)
 
         if gpu is not None and gpu >= 0:
             cuda.get_device(gpu).use()
@@ -605,25 +605,27 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
         hdivider = np.zeros((128, 30, 3))
         hdivider[:, :, 0] = 0.7
 
+        def normalize(data, min=None, max=None):
+            if min is None:
+                min = data.min()
+
+            data -= min
+
+            if max is None and data.max() != 0:
+                max = data.max()
+                data /= max
+            else:
+                data /= (max-min)
+
+            data = np.clip(data, 0, 1)
+            data = data.reshape((20, 20))
+            data = cv2.resize(data, (128, 128), interpolation=cv2.INTER_NEAREST)
+            img = np.dstack([data] * 3)
+
+            return img
+
         def get_row(act):
-            def normalize(data, min=None, max=None):
-                if min is None:
-                    min = data.min()
 
-                data -= min
-
-                if max is None and data.max() != 0:
-                    max = data.max()
-                    data /= max
-                else:
-                    data /= (max-min)
-
-                data = np.clip(data, 0, 1)
-                data = data.reshape((20, 20))
-                data = cv2.resize(data, (128, 128), interpolation=cv2.INTER_NEAREST)
-                img = np.dstack([data] * 3)
-
-                return img
 
             data = arr(vals.q_values.data)[:, act]
             #means = normalize(data, -100, 0)
@@ -708,12 +710,13 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
         divider = np.zeros((30, row1.shape[1], 3))
         divider[:, :, 0] = 0.7
 
-        try:
+        if True:
             all_sigmas = vals.all_sigmas.data
             all_sigmas = all_sigmas.reshape((all_sigmas.shape[0], 20, 20, all_sigmas.shape[-1]))
             norms = []
             for i, m in enumerate(all_sigmas):
-                norm = get_softmax(m)
+                #norm = get_softmax(m)
+                norm = normalize(m[:,:,0], 0)
                 norms.append(norm)
                 norms.append(hdivider)
             norms = np.hstack(norms)
@@ -722,8 +725,8 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
 
             canvas = np.vstack([header, row1, divider, row2, divider, row3, divider, acts, divider,
             nc, bottom])
-        except:
-            canvas = np.vstack([header, row1, divider, row2, divider, row3, divider, acts, divider, bottom])
+        #except:
+        #    canvas = np.vstack([header, row1, divider, row2, divider, row3, divider, acts, divider, bottom])
 
         #cv2.imshow('test', canvas)
         #cv2.waitKey(1)
