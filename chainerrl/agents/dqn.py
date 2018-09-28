@@ -722,7 +722,7 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
         divider[:, :, 0] = 0.7
 
         if hasattr(vals, 'all_sigmas') and vals.all_sigmas is not None:
-            all_sigmas = vals.all_sigmas.data
+            all_sigmas = vals.all_sigmas.data[:5]
             all_sigmas = all_sigmas.reshape((all_sigmas.shape[0], 20, 20, all_sigmas.shape[-1]))
             norms = []
             for i, m in enumerate(all_sigmas):
