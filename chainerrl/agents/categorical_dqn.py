@@ -41,6 +41,8 @@ def _apply_categorical_projection(y, y_probs, z):
     # bj: (batch_size, n_atoms)
     bj = (y - v_min) / delta_z
     assert bj.shape == (batch_size, n_atoms)
+    # Avoid the error caused by inexact delta_z
+    bj = xp.clip(bj, 0, n_atoms - 1)
 
     # l, u: (batch_size, n_atoms)
     l, u = xp.floor(bj), xp.ceil(bj)
