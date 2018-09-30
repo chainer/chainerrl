@@ -149,12 +149,14 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
                  head=False,
                  use_table=False,
                  table_lr=0.01,
-                 samples=1):
+                 samples=1,
+                 env=None):
         self.model = q_function
         self.q_function = q_function  # For backward compatibility
 
         #cv2.namedWindow("vis", cv2.WINDOW_NORMAL)
         #cv2.namedWindow('test', cv2.WINDOW_NORMAL)
+        self.env = env
 
         if gpu is not None and gpu >= 0:
             cuda.get_device(gpu).use()
@@ -313,21 +315,22 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
         #self.logger.info("%s" % self.entropy[-1].sigma.W.grad);
         self.optimizer.update()
 
-        # table
-        lr = self.table_lr# * (0.1**int(self.t/100000))
-        gamma = self.gamma
+        if "MountainCar" in self.env:
+            # table
+            lr = self.table_lr# * (0.1**int(self.t/100000))
+            gamma = self.gamma
 
-        s = self.discretize(exp_batch['state'])
-        s_n = self.discretize(exp_batch['next_state'])
-        term = exp_batch['is_state_terminal']
-        a = exp_batch['action']
+            s = self.discretize(exp_batch['state'])
+            s_n = self.discretize(exp_batch['next_state'])
+            term = exp_batch['is_state_terminal']
+            a = exp_batch['action']
 
-        mu_target = exp_batch['reward'] + gamma * (1-term) * self.q_table_mu[s_n].max(axis=1)
-        sigma_target = gamma * self.q_table_sigma[s_n, self.q_table_mu[s_n].argmax(axis=1)]
-        #sigma_entropy_grad = ent * 2.0 / np.sum(self.q_table_sigma)
-        self.q_table_sigma[s, a] += lr * (sigma_target - self.q_table_sigma[s, a])
-        #self.q_table_sigma += sigma_entropy_grad
-        self.q_table_mu[s, a] += lr * (mu_target - self.q_table_mu[s, a])
+            mu_target = exp_batch['reward'] + gamma * (1-term) * self.q_table_mu[s_n].max(axis=1)
+            sigma_target = gamma * self.q_table_sigma[s_n, self.q_table_mu[s_n].argmax(axis=1)]
+            #sigma_entropy_grad = ent * 2.0 / np.sum(self.q_table_sigma)
+            self.q_table_sigma[s, a] += lr * (sigma_target - self.q_table_sigma[s, a])
+            #self.q_table_sigma += sigma_entropy_grad
+            self.q_table_mu[s, a] += lr * (mu_target - self.q_table_mu[s, a])
 
     def discretize(self, state):
         pos = (20 * (state[:, 0] + 1.3) / 2.0).astype(np.int32)
@@ -816,21 +819,22 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
             self.t, lambda: greedy_action, action_value=action_value)
         #self.logger.info('a:%s', action)
 
-        self.counts *= 0.9999
-        self.counts[vel, pos, action] += 0.0001
-        self.counts2 *= 0.99
-        self.counts2[vel, pos, action] += 0.01
-        self.visited[vel, pos, :] = 1
-        self.t += 1
+        if "MountainCar" in self.env:
+            self.counts *= 0.9999
+            self.counts[vel, pos, action] += 0.0001
+            self.counts2 *= 0.99
+            self.counts2[vel, pos, action] += 0.01
+            self.visited[vel, pos, :] = 1
+            self.t += 1
 
-        if self.t % 50 == 0:
-            self.update_noise_std(obs)
+        #if self.t % 50 == 0:
+        #    self.update_noise_std(obs)
 
         if self.t % 100 == 0:
-            if self.vis and self.plot:
+            if self.vis and self.plot and "MountainCar" in self.env:
                 self.vis.plot_values(len(obs), self)
 
-        if self.t % 100 == 0:
+        if self.t % 100 == 0 and "MountainCar" in self.env:
             self.plot_values2()
 
         # Update the target network
@@ -916,7 +920,7 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
 
             stats.append((name + '_q_sigma_mean', xp.mean(sigs)))
 
-        if not self.conv:
+        if not self.conv and "MountainCar" in self.env:
             try:
                 eval_vals(self.xp.asarray([[-1.5, -0.1], [-1.5, 0.1], [1.0, -0.1], [1.0, 0.1]], dtype=self.xp.float32), 'custom')
                 eval_vals(self.xp.random.uniform(-5, 5, (32, 2), dtype=self.xp.float32), 'random')
