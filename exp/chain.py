@@ -175,6 +175,8 @@ def main():
             env = GridEnv(args.outdir, chain_len, save_img=args.save_img,)
         elif args.env == "pole":
             env = gym.make("CartPole-v0")
+        elif args.env == "acrobot":
+            env = gym.make("Acrobot-v1")
         elif args.env == "car":
             env = gym.make("MountainCar-v0")
             import math
@@ -302,7 +304,8 @@ def main():
                   plot=args.save_img,
                   head=head, use_table=args.use_table,
                   table_lr=args.table_lr,
-                  samples=args.samples)
+                  samples=args.samples,
+                  env=args.env)
 
     if args.load:
         agent.load(args.load)
