@@ -27,7 +27,6 @@ from chainerrl.q_functions import DuelingDQN
 from chainerrl import replay_buffer
 
 import atari_wrappers
-from pdb import set_trace
 
 class SingleSharedBias(chainer.Chain):
     """Single shared bias used in the Double DQN paper.
@@ -73,8 +72,7 @@ def parse_arch(arch, n_actions):
 def parse_agent(agent):
     return {'DQN': agents.DQN,
             'DoubleDQN': agents.DoubleDQN,
-            'PAL': agents.PAL,
-            'SARSA': agents.SARSA}[agent]
+            'PAL': agents.PAL}[agent]
 
 
 def main():
