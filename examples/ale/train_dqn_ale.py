@@ -10,6 +10,7 @@ import os
 
 import gym
 gym.undo_logger_setup()  # NOQA
+import chainer
 from chainer import functions as F
 from chainer import links as L
 from chainer import optimizers
@@ -28,27 +29,39 @@ from chainerrl import replay_buffer
 import atari_wrappers
 from pdb import set_trace
 
-def parse_activation(activation_str):
-    if activation_str == 'relu':
-        return F.relu
-    elif activation_str == 'elu':
-        return F.elu
-    elif activation_str == 'lrelu':
-        return F.leaky_relu
-    else:
-        raise RuntimeError(
-            'Not supported activation: {}'.format(activation_str))
+class SingleSharedBias(chainer.Chain):
+    """Single shared bias used in the Double DQN paper.
+
+    You can add this link after a Linear layer with nobias=True to implement a
+    Linear layer with a single shared bias parameter.
+
+    See http://arxiv.org/abs/1509.06461.
+    """
+
+    def __init__(self):
+        super().__init__()
+        with self.init_scope():
+            self.bias = chainer.Parameter(0, shape=1)
+
+    def __call__(self, x):
+        return x + F.broadcast_to(self.bias, x.shape)
 
 
-def parse_arch(arch, n_actions, activation):
+def parse_arch(arch, n_actions):
     if arch == 'nature':
         return links.Sequence(
-            links.NatureDQNHead(activation=activation),
+            links.NatureDQNHead(),
             L.Linear(512, n_actions),
+            DiscreteActionValue)
+    elif arch == 'doubledqn':
+        return links.Sequence(
+            links.NatureDQNHead(),
+            L.Linear(512, n_actions, nobias=True),
+            SingleSharedBias(),
             DiscreteActionValue)
     elif arch == 'nips':
         return links.Sequence(
-            links.NIPSDQNHead(activation=activation),
+            links.NIPSDQNHead(),
             L.Linear(256, n_actions),
             DiscreteActionValue)
     elif arch == 'dueling':
@@ -75,31 +88,29 @@ def main():
     parser.add_argument('--gpu', type=int, default=0)
     parser.add_argument('--demo', action='store_true', default=False)
     parser.add_argument('--load', type=str, default=None)
-    parser.add_argument('--use-sdl', action='store_true', default=False)
     parser.add_argument('--final-exploration-frames',
                         type=int, default=10 ** 6)
-    parser.add_argument('--final-epsilon', type=float, default=0.1)
-    parser.add_argument('--eval-epsilon', type=float, default=0.05)
+    parser.add_argument('--final-epsilon', type=float, default=0.01)
+    parser.add_argument('--eval-epsilon', type=float, default=0.001)
     parser.add_argument('--noisy-net-sigma', type=float, default=None)
-    parser.add_argument('--arch', type=str, default='nature',
-                        choices=['nature', 'nips', 'dueling'])
-    parser.add_argument('--steps', type=int, default=10 ** 7)
+    parser.add_argument('--arch', type=str, default='doubledqn',
+                        choices=['nature', 'nips', 'dueling', 'doubledqn'])
+    parser.add_argument('--steps', type=int, default=5 * 10 ** 7)
     parser.add_argument('--max-episode-len', type=int,
-                        default=5 * 60 * 60 // 4,  # 5 minutes with 60/4 fps
+                        default=30 * 60 * 60 // 4,  # 30 minutes with 60/4 fps
                         help='Maximum number of steps for each episode.')
     parser.add_argument('--replay-start-size', type=int, default=5 * 10 ** 4)
     parser.add_argument('--target-update-interval',
-                        type=int, default=10 ** 4)
+                        type=int, default=3 * 10 ** 4)
     parser.add_argument('--eval-interval', type=int, default=10 ** 5)
     parser.add_argument('--update-interval', type=int, default=4)
-    parser.add_argument('--activation', type=str, default='relu')
     parser.add_argument('--eval-n-runs', type=int, default=10)
     parser.add_argument('--no-clip-delta',
                         dest='clip_delta', action='store_false')
     parser.add_argument('--num-step-return', type=int, default=1)
     parser.set_defaults(clip_delta=True)
-    parser.add_argument('--agent', type=str, default='DQN',
-                        choices=['DQN', 'DoubleDQN', 'PAL', 'SARSA'])
+    parser.add_argument('--agent', type=str, default='DoubleDQN',
+                        choices=['DQN', 'DoubleDQN', 'PAL'])
     parser.add_argument('--logging-level', type=int, default=20,
                         help='Logging level. 10:DEBUG, 20:INFO etc.')
     parser.add_argument('--render', action='store_true', default=False,
@@ -107,6 +118,10 @@ def main():
     parser.add_argument('--monitor', action='store_true', default=False,
                         help='Monitor env. Videos and additional information'
                              ' are saved as output files.')
+    parser.add_argument('--lr', type=float, default=2.5e-4,
+                        help='Learning rate')
+    parser.add_argument('--prioritized', action='store_true', default=False,
+                        help='Use prioritized experience replay.')
     args = parser.parse_args()
 
     import logging
@@ -142,8 +157,7 @@ def main():
     eval_env = make_env(test=True)
 
     n_actions = env.action_space.n
-    activation = parse_activation(args.activation)
-    q_func = parse_arch(args.arch, n_actions, activation)
+    q_func = parse_arch(args.arch, n_actions)
 
     if args.noisy_net_sigma is not None:
         links.to_factorized_noisy(q_func)
@@ -157,11 +171,19 @@ def main():
 
     # Use the same hyper parameters as the Nature paper's
     opt = optimizers.RMSpropGraves(
-        lr=2.5e-4, alpha=0.95, momentum=0.0, eps=1e-2)
+        lr=args.lr, alpha=0.95, momentum=0.0, eps=1e-2)
 
     opt.setup(q_func)
 
-    rbuf = replay_buffer.ReplayBuffer(10 ** 6, num_steps=args.num_step_return)
+    # Select a replay buffer to use
+    if args.prioritized:
+        # Anneal beta from beta0 to 1 throughout training
+        betasteps = args.steps / args.update_interval
+        rbuf = replay_buffer.PrioritizedReplayBuffer(
+            10 ** 6, args.num_step_return, alpha=0.6, 
+            beta0=0.4, betasteps=betasteps)
+    else:
+        rbuf = replay_buffer.ReplayBuffer(10 ** 6, args.num_step_return)
 
     explorer = explorers.LinearDecayEpsilonGreedy(
         1.0, args.final_epsilon,
