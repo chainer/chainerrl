@@ -197,9 +197,12 @@ def main():
                 reward = -1.0
 
                 e.state = (position, velocity)
+
                 return np.array(e.state), reward, done, {}
 
             e.step = step
+
+            env._max_episode_steps = args.max_episode_len
 
         elif "-v" in args.env:
             env = atari_wrappers.wrap_deepmind(
@@ -323,6 +326,7 @@ def main():
         eval_explorer = explorers.Greedy()
         #explorers.ConstantEpsilonGreedy(
         #    args.eval_epsilon, lambda: np.random.randint(n_actions))
+
         experiments.train_agent_with_evaluation(
             agent=agent, env=env, steps=args.steps,
             eval_n_runs=args.eval_n_runs, eval_interval=args.eval_interval,
