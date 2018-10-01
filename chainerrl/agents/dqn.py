@@ -249,7 +249,8 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
         self.vid = None
 
     def save(self, dirname):
-        self.vid.release()
+        if self.vid is not None:
+            self.vid.release()
         """Save internal states."""
         super(DQN, self).save(dirname)
 
