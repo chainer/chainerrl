@@ -170,6 +170,8 @@ class ReplayBuffer(AbstractReplayBuffer):
                 self.memory, maxlen=self.memory.maxlen)
 
     def stop_current_episode(self):
+        if len(self.last_n_transitions) > 0 and len(self.last_n_transitions) < self.num_steps:
+            self.memory.append(copy.copy(self.last_n_transitions))
         self.last_n_transitions.clear()
 
 
