@@ -38,23 +38,45 @@ For more information, you can refer to [ChainerRL's documentation](http://chaine
 | Algorithm | Discrete Action | Continous Action | Recurrent Model | CPU Async Training |
 |:----------|:---------------:|:----------------:|:---------------:|:------------------:|
 | DQN (including DoubleDQN etc.) | ✓ | ✓ (NAF) | ✓ | x |
+| Categorical DQN | ✓ | x | ✓ | x |
 | DDPG | x | ✓ | ✓ | x |
-| A3C | ✓ | ✓ | ✓ | ✓ |
+| A3C  | ✓ | ✓ | ✓ | ✓ |
 | ACER | ✓ | ✓ | ✓ | ✓ |
 | NSQ (N-step Q-learning) | ✓ | ✓ (NAF) | ✓ | ✓ |
 | PCL (Path Consistency Learning) | ✓ | ✓ | ✓ | ✓ |
+| PPO  | ✓ | ✓ | x | x |
+| TRPO | ✓ | ✓ | x | x |
 
 Following algorithms have been implemented in ChainerRL:
 - A3C (Asynchronous Advantage Actor-Critic)
 - ACER (Actor-Critic with Experience Replay)
 - Asynchronous N-step Q-learning
+- Categorical DQN
 - DQN (including Double DQN, Persistent Advantage Learning (PAL), Double PAL, Dynamic Policy Programming (DPP))
-- DDPG (Deep Deterministic Poilcy Gradients) (including SVG(0))
+- DDPG (Deep Deterministic Policy Gradients) (including SVG(0))
 - PGT (Policy Gradient Theorem)
 - PCL (Path Consistency Learning)
 - PPO (Proximal Policy Optimization)
+- TRPO (Trust Region Policy Optimization)
 
 Q-function based algorithms such as DQN can utilize a Normalized Advantage Function (NAF) to tackle continuous-action problems as well as DQN-like discrete output networks.
+
+## Paper Implementations
+The following papers have been implemented in ChainerRL:
+- [Playing Atari with Deep Reinforcement Learning](https://www.cs.toronto.edu/~vmnih/docs/dqn.pdf)
+- [Human-level control through Deep Reinforcement Learning](https://storage.googleapis.com/deepmind-media/dqn/DQNNaturePaper.pdf)
+- [Deep Reinforcement Learning with Double Q-learning](https://arxiv.org/pdf/1509.06461.pdf)
+- [Prioritized Experience Replay](https://arxiv.org/pdf/1511.05952.pdf)
+- [Dueling Network Architectures for Deep Reinforcement Learning](https://arxiv.org/pdf/1511.06581.pdf)
+- [Asynchronous Methods for Deep Reinforcement Learning](https://arxiv.org/pdf/1602.01783.pdf)
+- [A Distributional Perspective on Reinforcement Learning](https://arxiv.org/pdf/1707.06887.pdf)
+- [Increasing the Action Gap: New Operators for Reinforcement Learning](https://arxiv.org/pdf/1512.04860.pdf)
+- [Noisy Networks for Exploration](https://arxiv.org/pdf/1706.10295.pdf)
+- [Continuous control with deep reinforcement learning](https://arxiv.org/abs/1509.02971)
+- [Proximal Policy Optimization Algorithms](https://arxiv.org/pdf/1707.06347.pdf)
+- [Trust Region Policy Optimization](https://arxiv.org/pdf/1502.05477.pdf)
+- [Sample Efficient Actor-Critic with Experience Replay](https://arxiv.org/pdf/1611.01224.pdf)
+- [Bridging the Gap Between Value and Policy Based Reinforcement Learning](https://arxiv.org/pdf/1702.08892.pdf)
 
 ## Environments
 

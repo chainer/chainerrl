@@ -15,12 +15,13 @@ from __future__ import unicode_literals
 from __future__ import absolute_import
 from builtins import *  # NOQA
 from future import standard_library
-standard_library.install_aliases()
+standard_library.install_aliases()  # NOQA
 import argparse
 import os
 
 import chainer
 import gym
+gym.undo_logger_setup()  # NOQA
 import gym.wrappers
 import numpy as np
 
@@ -29,18 +30,17 @@ from chainerrl import experiments
 from chainerrl import misc
 
 
-def phi(obs):
-    return obs.astype(np.float32)
-
-
 def main():
     import logging
 
     parser = argparse.ArgumentParser()
     parser.add_argument('--env', type=str, default='CartPole-v0')
-    parser.add_argument('--seed', type=int, default=None)
+    parser.add_argument('--seed', type=int, default=0,
+                        help='Random seed [0, 2 ** 32)')
     parser.add_argument('--gpu', type=int, default=0)
-    parser.add_argument('--outdir', type=str, default='results')
+    parser.add_argument('--outdir', type=str, default='results',
+                        help='Directory path to save output files.'
+                             ' If it does not exist, it will be created.')
     parser.add_argument('--beta', type=float, default=1e-4)
     parser.add_argument('--batchsize', type=int, default=10)
     parser.add_argument('--steps', type=int, default=10 ** 5)
@@ -55,15 +55,20 @@ def main():
     parser.add_argument('--monitor', action='store_true')
     args = parser.parse_args()
 
-    logging.getLogger().setLevel(args.logger_level)
+    logging.basicConfig(level=args.logger_level)
 
-    if args.seed is not None:
-        misc.set_random_seed(args.seed)
+    # Set a random seed used in ChainerRL.
+    misc.set_random_seed(args.seed, gpus=(args.gpu,))
 
     args.outdir = experiments.prepare_output_dir(args, args.outdir)
 
     def make_env(test):
         env = gym.make(args.env)
+        # Use different random seeds for train and test envs
+        env_seed = 2 ** 32 - 1 - args.seed if test else args.seed
+        env.seed(env_seed)
+        # Cast observations to float32 because our model uses float32
+        env = chainerrl.wrappers.CastObservationToFloat32(env)
         if args.monitor:
             env = gym.wrappers.Monitor(env, args.outdir)
         # Scale rewards observed by agents
@@ -113,7 +118,7 @@ def main():
     opt.add_hook(chainer.optimizer.GradientClipping(1))
 
     agent = chainerrl.agents.REINFORCE(
-        model, opt, beta=args.beta, phi=phi, batchsize=args.batchsize)
+        model, opt, beta=args.beta, batchsize=args.batchsize)
     if args.load:
         agent.load(args.load)
 

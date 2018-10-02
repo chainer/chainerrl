@@ -4,7 +4,7 @@ from __future__ import division
 from __future__ import absolute_import
 from builtins import *  # NOQA
 from future import standard_library
-standard_library.install_aliases()
+standard_library.install_aliases()  # NOQA
 
 import multiprocessing as mp
 import warnings
@@ -133,10 +133,14 @@ def run_async(n_process, run_func):
 
     for process_idx, p in enumerate(processes):
         p.join()
-        if p.exitcode < 0:
+        if p.exitcode > 0:
             warnings.warn(
                 "Process #{} (pid={}) exited with nonzero status {}".format(
                     process_idx, p.pid, p.exitcode))
+        elif p.exitcode < 0:
+            warnings.warn(
+                "Process #{} (pid={}) was terminated by signal {}".format(
+                    process_idx, p.pid, -p.exitcode))
 
 
 def as_shared_objects(obj):

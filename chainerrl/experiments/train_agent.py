@@ -3,7 +3,7 @@ from __future__ import unicode_literals
 from __future__ import division
 from __future__ import absolute_import
 from future import standard_library
-standard_library.install_aliases()
+standard_library.install_aliases()  # NOQA
 
 import logging
 import os
@@ -39,7 +39,6 @@ def train_agent(agent, env, steps, outdir, max_episode_len=None,
     # o_0, r_0
     obs = env.reset()
     r = 0
-    done = False
 
     t = step_offset
     if hasattr(agent, 't'):
@@ -79,9 +78,8 @@ def train_agent(agent, env, steps, outdir, max_episode_len=None,
                 episode_len = 0
                 obs = env.reset()
                 r = 0
-                done = False
 
-    except Exception:
+    except (Exception, KeyboardInterrupt):
         # Save the current model before being killed
         save_agent(agent, t, outdir, logger, suffix='_except')
         raise
@@ -90,11 +88,22 @@ def train_agent(agent, env, steps, outdir, max_episode_len=None,
     save_agent(agent, t, outdir, logger, suffix='_finish')
 
 
-def train_agent_with_evaluation(
-        agent, env, steps, eval_n_runs, eval_interval,
-        outdir, max_episode_len=None, step_offset=0, eval_explorer=None,
-        eval_max_episode_len=None, eval_env=None, successful_score=None,
-        step_hooks=[], logger=None):
+def train_agent_with_evaluation(agent,
+                                env,
+                                steps,
+                                eval_n_runs,
+                                eval_interval,
+                                outdir,
+                                max_episode_len=None,
+                                step_offset=0,
+                                eval_explorer=None,
+                                eval_max_episode_len=None,
+                                eval_env=None,
+                                successful_score=None,
+                                step_hooks=[],
+                                save_best_so_far_agent=True,
+                                logger=None,
+                                ):
     """Train an agent while regularly evaluating it.
 
     Args:
@@ -115,6 +124,9 @@ def train_agent_with_evaluation(
         step_hooks (list): List of callable objects that accepts
             (env, agent, step) as arguments. They are called every step.
             See chainerrl.experiments.hooks.
+        save_best_so_far_agent (bool): If set to True, after each evaluation,
+            if the score (= mean return of evaluation episodes) exceeds
+            the best-so-far score, the current agent is saved.
         logger (logging.Logger): Logger used in this function.
     """
 
@@ -135,7 +147,9 @@ def train_agent_with_evaluation(
                           explorer=eval_explorer,
                           env=eval_env,
                           step_offset=step_offset,
-                          logger=logger)
+                          save_best_so_far_agent=save_best_so_far_agent,
+                          logger=logger,
+                          )
 
     train_agent(
         agent, env, steps, outdir,

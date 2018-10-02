@@ -4,7 +4,7 @@ from __future__ import unicode_literals
 from __future__ import absolute_import
 from builtins import *  # NOQA
 from future import standard_library
-standard_library.install_aliases()
+standard_library.install_aliases()  # NOQA
 
 import contextlib
 import copy
@@ -18,7 +18,7 @@ from chainerrl.action_value import SingleActionValue
 from chainerrl import agent
 from chainerrl import distribution
 from chainerrl import links
-from chainerrl.misc import async
+from chainerrl.misc import async_
 from chainerrl.misc import copy_param
 from chainerrl.recurrent import Recurrent
 from chainerrl.recurrent import RecurrentChainMixin
@@ -322,7 +322,7 @@ class ACER(agent.AttributeSavingMixin, agent.AsyncAgent):
 
         # Thread specific model
         self.model = copy.deepcopy(self.shared_model)
-        async.assert_params_not_shared(self.shared_model, self.model)
+        async_.assert_params_not_shared(self.shared_model, self.model)
 
         self.optimizer = optimizer
 
@@ -611,9 +611,9 @@ class ACER(agent.AttributeSavingMixin, agent.AsyncAgent):
 
         self.init_history_data_for_online_update()
 
-    def act_and_train(self, state, reward):
+    def act_and_train(self, obs, reward):
 
-        statevar = np.expand_dims(self.phi(state), 0)
+        statevar = np.expand_dims(self.phi(obs), 0)
 
         self.past_rewards[self.t - 1] = reward
 
@@ -658,13 +658,13 @@ class ACER(agent.AttributeSavingMixin, agent.AsyncAgent):
                 state=self.last_state,
                 action=self.last_action,
                 reward=reward,
-                next_state=state,
+                next_state=obs,
                 next_action=action,
                 is_state_terminal=False,
                 mu=self.last_action_distrib,
             )
 
-        self.last_state = state
+        self.last_state = obs
         self.last_action = action
         self.last_action_distrib = action_distrib.copy()
 

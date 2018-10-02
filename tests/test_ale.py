@@ -4,7 +4,7 @@ from __future__ import division
 from __future__ import absolute_import
 from builtins import *  # NOQA
 from future import standard_library
-standard_library.install_aliases()
+standard_library.install_aliases()  # NOQA
 
 import random
 import sys
@@ -85,3 +85,7 @@ class TestALE(unittest.TestCase):
             self.assertGreater(total_r, -22)
             self.assertLess(total_r, -15)
             env.initialize()
+
+    def test_seed(self):
+        ale.ALE('breakout', seed=0)
+        ale.ALE('breakout', seed=2 ** 31 - 1)

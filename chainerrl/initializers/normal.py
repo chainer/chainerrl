@@ -8,5 +8,6 @@ class LeCunNormal(chainer.initializers.HeNormal):
     chainer.initializers.LeCunNormal is not available yet.
     (Chainer Pull Request #2764 has not been merged.)
     """
+
     def __init__(self, scale=1.0, dtype=None):
-        super(LeCunNormal, self).__init__(np.sqrt(0.5)*scale, dtype)
+        super(LeCunNormal, self).__init__(np.sqrt(0.5) * scale, dtype)

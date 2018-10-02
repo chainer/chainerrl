@@ -3,19 +3,26 @@ from __future__ import print_function
 from __future__ import division
 from __future__ import absolute_import
 from future import standard_library
-standard_library.install_aliases()
+standard_library.install_aliases()  # NOQA
 import unittest
 
 import numpy as np
 import random
 
 from chainer import testing
+from chainer.testing import condition
 
 from chainerrl.misc import prioritized
 
 
+@testing.parameterize(
+    {'uniform_ratio': 0, 'expected_corr_range': (0.9, 1)},
+    {'uniform_ratio': 0.7, 'expected_corr_range': (0.5, 0.85)},
+    {'uniform_ratio': 1, 'expected_corr_range': (-0.3, 0.3)},
+)
 class TestPrioritizedBuffer(unittest.TestCase):
 
+    @condition.retry(2)
     def test_convergence(self):
         size = 100
 
@@ -23,24 +30,29 @@ class TestPrioritizedBuffer(unittest.TestCase):
         for x in range(size):
             buf.append(x)
 
-        priority_init = list(range(size))
+        priority_init = list([(i + 1) / size for i in range(size)])
         random.shuffle(priority_init)
         count_sampled = [0] * size
 
         def priority(x, n):
-            return priority_init[x] + 1 / count_sampled[x]
+            if n == 0:
+                return 1.0
+            else:
+                return priority_init[x] / count_sampled[x]
 
-        count_none = 0
         for t in range(200):
-            sampled, probabilities = buf.sample(16)
-            if all([p is not None for p in probabilities]):
-                priority_old = [priority(x, count_sampled[x]) for x in sampled]
+            sampled, probabilities, _ = \
+                buf.sample(16, uniform_ratio=self.uniform_ratio)
+            priority_old = [priority(x, count_sampled[x]) for x in sampled]
+            if self.uniform_ratio == 0:
                 # assert: probabilities \propto priority_old
                 qs = [x / y for x, y in zip(probabilities, priority_old)]
                 for q in qs:
                     self.assertAlmostEqual(q, qs[0])
-            else:
-                count_none += 1
+            elif self.uniform_ratio == 1:
+                # assert: uniform
+                for p in probabilities:
+                    self.assertAlmostEqual(p, probabilities[0])
             for x in sampled:
                 count_sampled[x] += 1
             priority_new = [priority(x, count_sampled[x]) for x in sampled]
@@ -48,10 +60,11 @@ class TestPrioritizedBuffer(unittest.TestCase):
 
         for cnt in count_sampled:
             self.assertGreaterEqual(cnt, 1)
-        self.assertLessEqual(count_none, size // 16 + 1)
 
         corr = np.corrcoef(np.array([priority_init, count_sampled]))[0, 1]
-        self.assertGreater(corr, 0.8)
+        corr_lb, corr_ub = self.expected_corr_range
+        self.assertGreater(corr, corr_lb)
+        self.assertLess(corr, corr_ub)
 
 
 @testing.parameterize(
