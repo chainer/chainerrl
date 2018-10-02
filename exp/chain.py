@@ -97,7 +97,7 @@ def main():
     parser.add_argument('--buffer-size', type=int, default=1000)
     parser.add_argument('--minibatch-size', type=int, default=32)
     parser.add_argument('--max-episode-len', type=int,
-                        default=5 * 60 * 60 // 4,  # 5 minutes with 60/4 fps
+                        default=200,  # 5 minutes with 60/4 fps
                         help='Maximum number of steps for each episode.')
     parser.add_argument('--replay-start-size', type=int, default=100)
     parser.add_argument('--target-update-interval',
