@@ -316,7 +316,7 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
         #self.logger.info("%s" % self.entropy[-1].sigma.W.grad);
         self.optimizer.update()
 
-        if "MountainCar" in self.env:
+        if "car" in self.env:
             # table
             lr = self.table_lr# * (0.1**int(self.t/100000))
             gamma = self.gamma
@@ -820,7 +820,7 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
             self.t, lambda: greedy_action, action_value=action_value)
         #self.logger.info('a:%s', action)
 
-        if "MountainCar" in self.env:
+        if "car" in self.env:
             self.counts *= 0.9999
             self.counts[vel, pos, action] += 0.0001
             self.counts2 *= 0.99
@@ -833,10 +833,10 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
         #    self.update_noise_std(obs)
 
         if self.t % 100 == 0:
-            if self.vis and self.plot and "MountainCar" in self.env:
+            if self.vis and self.plot and "car" in self.env:
                 self.vis.plot_values(len(obs), self)
 
-        if self.t % 100 == 0 and "MountainCar" in self.env:
+        if self.t % 100 == 0 and "car" in self.env:
             self.plot_values2()
 
         # Update the target network
@@ -922,7 +922,7 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
 
             stats.append((name + '_q_sigma_mean', xp.mean(sigs)))
 
-        if not self.conv and "MountainCar" in self.env:
+        if not self.conv and "car" in self.env:
             try:
                 eval_vals(self.xp.asarray([[-1.5, -0.1], [-1.5, 0.1], [1.0, -0.1], [1.0, 0.1]], dtype=self.xp.float32), 'custom')
                 eval_vals(self.xp.random.uniform(-5, 5, (32, 2), dtype=self.xp.float32), 'random')
