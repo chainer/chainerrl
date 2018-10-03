@@ -178,8 +178,9 @@ def main():
         # Anneal beta from beta0 to 1 throughout training
         betasteps = args.steps / args.update_interval
         rbuf = replay_buffer.PrioritizedReplayBuffer(
-            10 ** 6, args.num_step_return, alpha=0.6, 
-            beta0=0.4, betasteps=betasteps)
+            10 ** 6, alpha=0.6, 
+            beta0=0.4, betasteps=betasteps, 
+            num_steps=args.num_step_return)
     else:
         rbuf = replay_buffer.ReplayBuffer(10 ** 6, args.num_step_return)
 
