@@ -202,7 +202,7 @@ def main():
 
             e.step = step
 
-            #env._max_episode_steps = args.max_episode_len
+            env._max_episode_steps = args.max_episode_len
 
         elif "-v" in args.env:
             env = atari_wrappers.wrap_deepmind(
