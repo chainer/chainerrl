@@ -173,7 +173,6 @@ def main():
 
     opt.setup(q_func)
 
-    print("PRIORITIZED IS " + str(args.prioritized))
     # Select a replay buffer to use
     if args.prioritized:
         # Anneal beta from beta0 to 1 throughout training
