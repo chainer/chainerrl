@@ -826,7 +826,8 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
             self.counts2 *= 0.99
             self.counts2[vel, pos, action] += 0.01
             self.visited[vel, pos, :] = 1
-            self.t += 1
+
+        self.t += 1
 
         #if self.t % 50 == 0:
         #    self.update_noise_std(obs)
