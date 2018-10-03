@@ -11,5 +11,10 @@ class VarianceScalingConstant(initializer.Initializer):
     def __call__(self, array):
         if self.dtype is not None:
             assert array.dtype == self.dtype
-        fan_in, _ = initializer.get_fans(array.shape)
-        Constant(self.scale / numpy.sqrt(fan_in))(array)
+
+        if len(array.shape) == 1:
+            Constant(self.scale / numpy.sqrt(array.shape[0]))(array)
+        else:
+            fan_in, _ = initializer.get_fans(array.shape)
+
+            Constant(self.scale / numpy.sqrt(fan_in))(array)

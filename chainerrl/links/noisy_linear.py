@@ -1,6 +1,6 @@
 import chainer
 import chainer.functions as F
-from chainer.initializers import Constant
+from chainer.initializers import LeCunUniform
 import chainer.links as L
 import numpy
 
@@ -23,15 +23,18 @@ class FactorizedNoisyLinear(chainer.Chain):
 
         W_data = mu_link.W.data
         in_size = None if W_data is None else W_data.shape[1]
+        device_id = mu_link._device_id
 
         with self.init_scope():
-            self.mu = mu_link
-            self.sigma = L.Linear(
-                in_size=in_size, out_size=self.out_size, nobias=self.nobias,
-                initialW=VarianceScalingConstant(sigma_scale),
-                initial_bias=Constant(sigma_scale))
+            self.mu = L.Linear(in_size, self.out_size, self.nobias,
+                               initialW=LeCunUniform(1 / numpy.sqrt(3)))
 
-        device_id = self.mu._device_id
+            self.sigma = L.Linear(in_size, self.out_size, self.nobias,
+                                  initialW=VarianceScalingConstant(
+                                      sigma_scale),
+                                  initial_bias=VarianceScalingConstant(
+                                      sigma_scale))
+
         if device_id is not None:
             self.to_gpu(device_id)
 

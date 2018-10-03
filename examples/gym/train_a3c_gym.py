@@ -30,6 +30,7 @@ gym.undo_logger_setup()  # NOQA
 import gym.wrappers
 import numpy as np
 
+import chainerrl
 from chainerrl.agents import a3c
 from chainerrl import experiments
 from chainerrl import links
@@ -39,10 +40,6 @@ from chainerrl.optimizers import rmsprop_async
 from chainerrl import policies
 from chainerrl.recurrent import RecurrentChainMixin
 from chainerrl import v_function
-
-
-def phi(obs):
-    return obs.astype(np.float32)
 
 
 class A3CFFSoftmax(chainer.ChainList, a3c.A3CModel):
@@ -149,6 +146,8 @@ def main():
         process_seed = int(process_seeds[process_idx])
         env_seed = 2 ** 32 - 1 - process_seed if test else process_seed
         env.seed(env_seed)
+        # Cast observations to float32 because our model uses float32
+        env = chainerrl.wrappers.CastObservationToFloat32(env)
         if args.monitor and process_idx == 0:
             env = gym.wrappers.Monitor(env, args.outdir)
         # Scale rewards observed by agents
@@ -181,7 +180,7 @@ def main():
         opt.add_hook(NonbiasWeightDecay(args.weight_decay))
 
     agent = a3c.A3C(model, opt, t_max=args.t_max, gamma=0.99,
-                    beta=args.beta, phi=phi)
+                    beta=args.beta)
     if args.load:
         agent.load(args.load)
 

@@ -93,6 +93,8 @@ def main():
         # Use different random seeds for train and test envs
         env_seed = 2 ** 32 - 1 - args.seed if test else args.seed
         env.seed(env_seed)
+        # Cast observations to float32 because our model uses float32
+        env = chainerrl.wrappers.CastObservationToFloat32(env)
         if args.monitor:
             env = gym.wrappers.Monitor(env, args.outdir)
         if isinstance(env.action_space, spaces.Box):
@@ -169,14 +171,11 @@ def main():
         else:
             rbuf = replay_buffer.ReplayBuffer(rbuf_capacity)
 
-    def phi(obs):
-        return obs.astype(np.float32)
-
     agent = DQN(q_func, opt, rbuf, gpu=args.gpu, gamma=args.gamma,
                 explorer=explorer, replay_start_size=args.replay_start_size,
                 target_update_interval=args.target_update_interval,
                 update_interval=args.update_interval,
-                phi=phi, minibatch_size=args.minibatch_size,
+                minibatch_size=args.minibatch_size,
                 target_update_method=args.target_update_method,
                 soft_update_tau=args.soft_update_tau,
                 episodic_update=args.episodic_replay, episodic_update_len=16)
