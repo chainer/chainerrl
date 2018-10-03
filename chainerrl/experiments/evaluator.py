@@ -27,7 +27,7 @@ max: maximum value of returns of evaluation runs
 min: minimum value of returns of evaluation runs
 """
 _basic_columns = ('steps', 'episodes', 'elapsed', 'mean',
-                  'median', 'stdev', 'max', 'min')
+                  'median', 'stdev', 'max', 'min', 'goal_rate')
 
 
 def run_evaluation_episodes(env, agent, n_runs, max_episode_len=None,
@@ -50,6 +50,7 @@ def run_evaluation_episodes(env, agent, n_runs, max_episode_len=None,
     """
     logger = logger or logging.getLogger(__name__)
     scores = []
+    goals = []
     sigmas = []
 
     for i in range(n_runs):
@@ -57,6 +58,7 @@ def run_evaluation_episodes(env, agent, n_runs, max_episode_len=None,
         done = False
         test_r = 0
         t = 0
+        goal = 0
         acts = []
 
         while not (done or t == max_episode_len):
@@ -73,6 +75,9 @@ def run_evaluation_episodes(env, agent, n_runs, max_episode_len=None,
             test_r += r
             t += 1
 
+            if info['goal']:
+                goal = 1
+
         if i == 0:
             logger.info(str(acts))
 
@@ -81,8 +86,9 @@ def run_evaluation_episodes(env, agent, n_runs, max_episode_len=None,
         # As mixing float and numpy float causes errors in statistics
         # functions, here every score is cast to float.
         scores.append(float(test_r))
+        goals.append(goal)
         logger.info('test episode: %s R: %s', i, test_r)
-    return scores#, sigmas
+    return scores, goals#, sigmas
 
 
 def eval_performance(env, agent, n_runs, max_episode_len=None,
@@ -103,7 +109,7 @@ def eval_performance(env, agent, n_runs, max_episode_len=None,
     Returns:
         Dict of statistics.
     """
-    scores = run_evaluation_episodes(
+    scores, goals = run_evaluation_episodes(
         env, agent, n_runs,
         max_episode_len=max_episode_len,
         explorer=explorer,
@@ -114,7 +120,8 @@ def eval_performance(env, agent, n_runs, max_episode_len=None,
         stdev=statistics.stdev(scores) if n_runs >= 2 else 0.0,
         max=np.max(scores),
         min=np.min(scores))
-    return stats
+
+    return stats, np.mean(goals)
 
 
 def record_stats(outdir, values):
@@ -181,7 +188,7 @@ class Evaluator(object):
             print('\t'.join(column_names), file=f)
 
     def evaluate_and_update_max_score(self, t, episodes):
-        eval_stats = eval_performance(
+        eval_stats, goal_rate = eval_performance(
             self.env, self.agent, self.n_runs,
             max_episode_len=self.max_episode_len, explorer=self.explorer,
             logger=self.logger)
@@ -195,7 +202,8 @@ class Evaluator(object):
                   eval_stats['median'],
                   eval_stats['stdev'],
                   eval_stats['max'],
-                  eval_stats['min']) + custom_values
+                  eval_stats['min'],
+                  goal_rate) + custom_values
         record_stats(self.outdir, values)
         if mean > self.max_score:
             self.logger.info('The best score is updated %s -> %s',
@@ -268,7 +276,7 @@ class AsyncEvaluator(object):
         return v
 
     def evaluate_and_update_max_score(self, t, episodes, env, agent):
-        eval_stats = eval_performance(
+        eval_stats, goal_rate = eval_performance(
             env, agent, self.n_runs,
             max_episode_len=self.max_episode_len, explorer=self.explorer,
             logger=self.logger)
@@ -282,7 +290,7 @@ class AsyncEvaluator(object):
                   eval_stats['median'],
                   eval_stats['stdev'],
                   eval_stats['max'],
-                  eval_stats['min']) + custom_values
+                  eval_stats['min'], goal_rate) + custom_values
         record_stats(self.outdir, values)
         with self._max_score.get_lock():
             if mean > self._max_score.value:

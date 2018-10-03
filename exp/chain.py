@@ -194,11 +194,12 @@ def main():
                 if (position==e.min_position and velocity<0): velocity = 0
 
                 done = bool(position >= e.goal_position)
+                goal = done
                 reward = -1.0
 
                 e.state = (position, velocity)
 
-                return np.array(e.state), reward, done, {}
+                return np.array(e.state), reward, done, {'goal': goal}
 
             e.step = step
 
