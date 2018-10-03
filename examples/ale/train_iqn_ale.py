@@ -60,6 +60,9 @@ def main():
                              ' are saved as output files.')
     parser.add_argument('--batch-accumulator', type=str, default='mean',
                         choices=['mean', 'sum'])
+    parser.add_argument('--quantile-thresholds-N', type=int, default=8)
+    parser.add_argument('--quantile-thresholds-N-prime', type=int, default=8)
+    parser.add_argument('--quantile-thresholds-K', type=int, default=32)
     args = parser.parse_args()
 
     import logging
@@ -142,6 +145,9 @@ def main():
         update_interval=args.update_interval,
         batch_accumulator=args.batch_accumulator,
         phi=phi,
+        quantile_thresholds_N=args.quantile_thresholds_N,
+        quantile_thresholds_N_prime=args.quantile_thresholds_N_prime,
+        quantile_thresholds_K=args.quantile_thresholds_K,
     )
 
     if args.load:
