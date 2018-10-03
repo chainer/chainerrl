@@ -120,7 +120,7 @@ def main():
         [q_func(fake_obss)(fake_taus)],
         os.path.join(args.outdir, 'model'))
 
-    # Use the same hyper parameters as https://arxiv.org/abs/1707.06887
+    # Use the same hyper parameters as https://arxiv.org/abs/1710.10044
     opt = chainer.optimizers.Adam(5e-5, eps=1e-2 / args.batch_size)
     opt.setup(q_func)
 
