@@ -79,7 +79,7 @@ def parse_agent(agent):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--env', type=str, default='BreakoutNoFrameskip-v4',
-        help='OpenAI Atari domain to perform algorithm on.')
+                        help='OpenAI Atari domain to perform algorithm on.')
     parser.add_argument('--outdir', type=str, default='results',
                         help='Directory path to save output files.'
                              ' If it does not exist, it will be created.')
@@ -91,11 +91,12 @@ def main():
     parser.add_argument('--load', type=str, default=None)
     parser.add_argument('--final-exploration-frames',
                         type=int, default=10 ** 6,
-                        help='Timesteps after which we stop annealing exploration rate')
+                        help='Timesteps after which we stop ' +
+                        'annealing exploration rate')
     parser.add_argument('--final-epsilon', type=float, default=0.01,
                         help='Final value of epsilon during training.')
     parser.add_argument('--eval-epsilon', type=float, default=0.001,
-                        help='Exploration epsilon used during evaluation episodes.')
+                        help='Exploration epsilon used during eval episodes.')
     parser.add_argument('--noisy-net-sigma', type=float, default=None)
     parser.add_argument('--arch', type=str, default='doubledqn',
                         choices=['nature', 'nips', 'dueling', 'doubledqn'],
@@ -106,10 +107,12 @@ def main():
                         default=30 * 60 * 60 // 4,  # 30 minutes with 60/4 fps
                         help='Maximum number of timesteps for each episode.')
     parser.add_argument('--replay-start-size', type=int, default=5 * 10 ** 4,
-                        help='Minimum replay buffer size before performing gradient updates.')
+                        help='Minimum replay buffer size before ' +
+                        'performing gradient updates.')
     parser.add_argument('--target-update-interval',
                         type=int, default=3 * 10 ** 4,
-                        help='Frequency (in timesteps) with which the target network is updated.')
+                        help='Frequency (in timesteps) at which ' +
+                        'the target network is updated.')
     parser.add_argument('--eval-interval', type=int, default=10 ** 5,
                         help='Timesteps in evaluation phase.')
     parser.add_argument('--update-interval', type=int, default=4,
