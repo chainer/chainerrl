@@ -8,12 +8,12 @@ standard_library.install_aliases()  # NOQA
 import argparse
 import os
 
-import gym
-gym.undo_logger_setup()  # NOQA
 import chainer
 from chainer import functions as F
 from chainer import links as L
 from chainer import optimizers
+import gym
+import gym.wrappers
 import numpy as np
 
 import chainerrl

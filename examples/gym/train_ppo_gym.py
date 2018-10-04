@@ -18,7 +18,6 @@ import argparse
 import chainer
 from chainer import functions as F
 import gym
-gym.undo_logger_setup()  # NOQA
 import gym.wrappers
 
 import chainerrl

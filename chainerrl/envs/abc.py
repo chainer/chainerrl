@@ -9,7 +9,7 @@ standard_library.install_aliases()  # NOQA
 import numpy as np
 
 from chainerrl import env
-from chainerrl import spaces
+from gym import spaces
 
 
 class ABC(env.Env):

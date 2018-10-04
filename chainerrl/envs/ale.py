@@ -13,7 +13,7 @@ import warnings
 import numpy as np
 
 from chainerrl import env
-from chainerrl import spaces
+from gym import spaces
 
 
 try:
