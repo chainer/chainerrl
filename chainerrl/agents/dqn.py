@@ -27,6 +27,11 @@ import numpy as np
 import matplotlib as mpl
 mpl.use('TkAgg')
 
+
+import sys
+sys.path.insert(0, ".")
+from chainerrl.agents.util import estimate
+
 from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
 from matplotlib.figure import Figure
 
@@ -229,7 +234,7 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
             self.plot = False
 
         self.conv = False
-        #cv2.namedWindow('test', cv2.WINDOW_NORMAL)
+        cv2.namedWindow('test', cv2.WINDOW_NORMAL)
 
         self.counts = np.zeros((20, 20, 3))
         self.counts2 = np.zeros((20, 20, 3))
@@ -639,13 +644,9 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
             return img
 
         def get_row(act):
-
-
             data = arr(vals.q_values.data)[:, act]
             #means = normalize(data, -100, 0)
             means = normalize(data, -10, 0)
-
-
 
             try:
                 data = arr(vals.sigmas.data)[:, act]
@@ -716,6 +717,10 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
         acts_soft = get_softmax(vals.q_values.data)
         acts2_soft = get_softmax(self.q_table_mu)
 
+        if hasattr(vals, 'sigmas') and vals.sigmas is not None:
+            empty = estimate(self.xp, vals.q_values.data, vals.sigmas.data, 10).reshape((20, 20, 3))
+            empty = cv2.resize(empty, (128, 128), interpolation=cv2.INTER_NEAREST)
+
         visits = cv2.resize(self.visited, (128, 128), interpolation=cv2.INTER_NEAREST)
 
         #print(acts.shape, divider.shape, empty.shape)
@@ -745,8 +750,8 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
         else:
             canvas = np.vstack([header, row1, divider, row2, divider, row3, divider, acts, divider, bottom])
 
-        #cv2.imshow('test', canvas)
-        #cv2.waitKey(1)
+        cv2.imshow('test', canvas)
+        cv2.waitKey(1)
         #cv2.imwrite('frames2/%06d.png' % self.t, canvas*255.0)
 
         #print('writing vid')
