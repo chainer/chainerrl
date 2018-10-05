@@ -29,12 +29,7 @@ policy.FCDeterministicPolicy = policies.FCDeterministicPolicy
 policy.FCBNDeterministicPolicy = policies.FCBNDeterministicPolicy
 policy.FCLSTMDeterministicPolicy = policies.FCLSTMDeterministicPolicy
 policy.FCLSTMDeterministicPolicy = policies.FCLSTMDeterministicPolicy
-policy.GaussianPolicy = policies.GaussianPolicy
 policy.FCGaussianPolicy = policies.FCGaussianPolicy
-policy.LinearGaussianPolicyWithDiagonalCovariance = \
-    policies.LinearGaussianPolicyWithDiagonalCovariance
-policy.LinearGaussianPolicyWithSphericalCovariance = \
-    policies.LinearGaussianPolicyWithSphericalCovariance
 policy.MellowmaxPolicy = policies.MellowmaxPolicy
 
 q_function.DuelingDQN = q_functions.DuelingDQN
