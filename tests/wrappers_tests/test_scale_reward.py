@@ -24,6 +24,8 @@ class TestScaleReward(unittest.TestCase):
     def test_scale_reward(self):
         env = chainerrl.wrappers.ScaleReward(
             gym.make(self.env_id), scale=self.scale)
+        self.assertIsNone(env.original_reward)
+        self.assertAlmostEqual(env.scale, self.scale)
 
         _ = env.reset()
         _, r, _, _ = env.step(env.action_space.sample())

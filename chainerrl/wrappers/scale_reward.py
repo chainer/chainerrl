@@ -24,6 +24,7 @@ class ScaleReward(gym.RewardWrapper):
     def __init__(self, env, scale):
         super().__init__(env)
         self.scale = scale
+        self.original_reward = None
 
     def _reward(self, reward):
         self.original_reward = reward
