@@ -17,6 +17,7 @@ class ScaleReward(gym.RewardWrapper):
         scale (float): Scale factor.
 
     Attributes:
+        scale: Scale factor.
         original_reward: Reward before casting.
     """
 
