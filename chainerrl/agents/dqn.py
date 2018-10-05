@@ -155,7 +155,8 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
                  use_table=False,
                  table_lr=0.01,
                  samples=1,
-                 env=None):
+                 env=None,
+                 video=False):
         self.model = q_function
         self.q_function = q_function  # For backward compatibility
 
@@ -225,6 +226,7 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
         self.last_entropy = 0
 
         self.vis = vis
+        self.video = video
         self.head = head
 
         try:
@@ -234,7 +236,7 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
             self.plot = False
 
         self.conv = False
-        cv2.namedWindow('test', cv2.WINDOW_NORMAL)
+        #cv2.namedWindow('test', cv2.WINDOW_NORMAL)
 
         self.counts = np.zeros((20, 20, 3))
         self.counts2 = np.zeros((20, 20, 3))
@@ -750,8 +752,8 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
         else:
             canvas = np.vstack([header, row1, divider, row2, divider, row3, divider, acts, divider, bottom])
 
-        cv2.imshow('test', canvas)
-        cv2.waitKey(1)
+        #cv2.imshow('test', canvas)
+        #cv2.waitKey(1)
         #cv2.imwrite('frames2/%06d.png' % self.t, canvas*255.0)
 
         #print('writing vid')
@@ -841,7 +843,7 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
             if self.vis and self.plot and "car" in self.env:
                 self.vis.plot_values(len(obs), self)
 
-        if self.t % 100 == 0 and "car" in self.env:
+        if self.video and self.t % 100 == 0 and "car" in self.env:
             self.plot_values2()
 
         # Update the target network

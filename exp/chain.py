@@ -115,6 +115,7 @@ def main():
                         help='Logging level. 10:DEBUG, 20:INFO etc.')
     parser.add_argument('--render', action='store_true', default=False,
                         help='Render env states in a GUI window.')
+    parser.add_argument('--video', action='store_true', default=False)
     parser.add_argument('--monitor', action='store_true', default=False,
                         help='Monitor env. Videos and additional information'
                              ' are saved as output files.')
@@ -309,7 +310,8 @@ def main():
                   head=head, use_table=args.use_table,
                   table_lr=args.table_lr,
                   samples=args.samples,
-                  env=args.env)
+                  env=args.env,
+                  video=args.video)
 
     if args.load:
         agent.load(args.load)
