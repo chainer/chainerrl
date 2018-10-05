@@ -90,7 +90,6 @@ def run_evaluation_episodes(env, agent, n_runs, max_episode_len=None,
         logger.info('test episode: %s R: %s', i, test_r)
     return scores, goals#, sigmas
 
-
 def eval_performance(env, agent, n_runs, max_episode_len=None,
                      explorer=None, logger=None):
     """Run multiple evaluation episodes and return statistics.

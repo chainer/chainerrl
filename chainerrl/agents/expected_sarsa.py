@@ -8,6 +8,7 @@ standard_library.install_aliases()  # NOQA
 
 from chainerrl.agents import dqn
 import chainer.functions as F
+from chainerrl.agents.util import estimate
 
 from chainer.functions.math import ndtr
 from chainer.functions.math import exponential
@@ -15,21 +16,12 @@ import math
 import numpy as np
 import cv2
 
-PROBC = 1. / (2 * math.pi) ** 0.5
-
 from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
 from matplotlib.figure import Figure
 import matplotlib.pyplot as plt
 
 fig, (ax1, ax2) = plt.subplots(1, 2)
 pltcanvas = FigureCanvas(fig)
-
-def prob(x, loc, scale):
-    return (PROBC / scale) * exponential.exp(
-        - 0.5 * (x - loc) ** 2 / scale ** 2)
-
-def cdf(x, loc, scale):
-    return ndtr.ndtr((x - loc) / scale)
 
 class ExpectedSARSA(dqn.DQN):
     """SARSA.
@@ -59,46 +51,6 @@ class ExpectedSARSA(dqn.DQN):
             # normal distribution values + thompson sampling
             #starts = means.min(axis=1)-sigmas.max(axis=1)*3
 
-            def estimate(n, std=3):
-                start = (p_means-p_sigmas*std)
-                end = (p_means+p_sigmas*std)
-
-                interval = (end-start)/n
-
-                mean = 0
-                sigma = 0
-
-                act_probs = self.xp.ones((p_means.shape[0], p_means.shape[1]), dtype=self.xp.float32) * 1e-5
-
-                for i in range(n):
-                    alpha = start + interval*i
-
-                    def get_prob(x):
-                        block = self.xp.repeat(x, 3, axis=1).flatten()
-                        pdfs = prob(x.flatten(), p_means.flatten(), p_sigmas.flatten()).reshape((p_means.shape[0], p_means.shape[1]))
-                        #cdfs = cdf(x, p_means.flatten(), p_sigmas.flatten()).reshape((p_means.shape[0], p_means.shape[1]))
-                        cdfs = cdf(block, self.xp.tile(p_means, (1, p_means.shape[1])).flatten(),
-                            self.xp.tile(p_sigmas, (1, p_means.shape[1])).flatten()).reshape((p_means.shape[0], p_means.shape[1], p_means.shape[1]))
-
-                        a_probs = self.xp.zeros_like(p_means)
-
-                        for a in range(p_means.shape[1]):
-                            p = pdfs[:, a]
-                            for a2 in range(p_means.shape[1]):
-                                if a2 != a:
-                                    p *= cdfs[:, a, a2]
-
-                            a_probs[:, a] = p.data
-
-                        return a_probs
-
-                    est = get_prob(alpha)
-                    act_probs += est
-
-                act_probs2 = act_probs / act_probs.sum(axis=1)[:, None]
-
-                return act_probs2
-
             def sample(num_samples):
                 counts = np.zeros((p_means.shape[0], 3))
 
@@ -127,7 +79,7 @@ class ExpectedSARSA(dqn.DQN):
 
                 return act_probs
 
-            act_probs = estimate(10, 3)
+            act_probs = estimate(self.xp, p_means, p_sigmas, 10, 3)
             #act_probs2 = estimate(10, 5)
             act_probs3 = sample(self.samples)
 
