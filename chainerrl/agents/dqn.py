@@ -721,7 +721,7 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
 
         if hasattr(vals, 'sigmas') and vals.sigmas is not None:
             empty = estimate(self.xp, vals.q_values.data, vals.sigmas.data, 10).reshape((20, 20, 3))
-            empty = cv2.resize(empty, (128, 128), interpolation=cv2.INTER_NEAREST)
+            empty = cv2.resize(self.xp.asnumpy(empty), (128, 128), interpolation=cv2.INTER_NEAREST)
 
         visits = cv2.resize(self.visited, (128, 128), interpolation=cv2.INTER_NEAREST)
 
