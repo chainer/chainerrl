@@ -550,7 +550,7 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
 
         if self.entropy or self.entropy_coef > 0:
             if self.head:
-                entropy_loss = -(F.sum(F.log(F.absolute(sigma)**2.0)))
+                entropy_loss = -(F.sum(F.log(F.absolute(sigma)**2.0 + 1e-5)))
             else:
                 entropy_loss = -(sum([m.entropy for m in self.entropy]))
 
