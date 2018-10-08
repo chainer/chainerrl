@@ -8,6 +8,7 @@ standard_library.install_aliases()  # NOQA
 
 from multiprocessing import Pipe
 from multiprocessing import Process
+import signal
 
 from cached_property import cached_property
 import numpy as np
@@ -16,6 +17,8 @@ from chainerrl import env
 
 
 def worker(remote, env_fn):
+    # Ignore CTRL+C in the worker process
+    signal.signal(signal.SIGINT, signal.SIG_IGN)
     env = env_fn()
     try:
         while True:
