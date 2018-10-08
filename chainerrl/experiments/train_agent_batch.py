@@ -76,7 +76,7 @@ def train_agent_batch(agent, env, steps, outdir, log_interval=None,
     """
 
     logger = logger or logging.getLogger(__name__)
-    d = deque(maxlen=return_window_size)
+    recent_returns = deque(maxlen=return_window_size)
 
     try:
         num_processes = env.num_envs
@@ -123,7 +123,7 @@ You passed: {}'.format(type(env)))
             episode_idx += 1 - masks
             # Add to deque whenever done/reset
             episode_r_ = np.ma.masked_array(episode_r, masks)
-            d.extend(episode_r_.compressed())
+            recent_returns.extend(episode_r_.compressed())
             # Start new episode for those with mask
             episode_r *= masks
             episode_len *= masks
@@ -133,11 +133,11 @@ You passed: {}'.format(type(env)))
                 hook(env, agent, t)
 
             if save_training_r and t % log_interval == 0:
-                _write_to_file(outdir, t, np.mean(d))
+                _write_to_file(outdir, t, np.mean(recent_returns))
 
             if eval_interval is not None and t % log_interval == 0:
                 logger.info('outdir:{}, step:{}, avg_r:{}, episode:{}'.format(
-                    outdir, t, np.mean(d), episode_idx))
+                    outdir, t, np.mean(recent_returns), episode_idx))
                 logger.info('statistics: {}'.format(agent.get_statistics()))
 
                 if evaluator is not None:
