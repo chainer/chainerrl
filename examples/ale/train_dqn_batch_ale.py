@@ -19,7 +19,6 @@ import numpy as np
 import chainerrl
 from chainerrl.action_value import DiscreteActionValue
 from chainerrl import agents
-from chainerrl.envs.vec_env import VectorEnv
 from chainerrl import experiments
 from chainerrl import explorers
 from chainerrl import links
@@ -159,8 +158,9 @@ def main():
         return env
 
     def make_batch_env(test):
-        return VectorEnv([make_env(idx, test)
-                          for idx, env in enumerate(range(args.num_envs))])
+        return chainerrl.envs.MultiprocessVectorEnv(
+            [(lambda: make_env(idx, test))
+             for idx, env in enumerate(range(args.num_envs))])
 
     sample_env = make_env(0, test=False)
 
@@ -215,7 +215,7 @@ def main():
 
     if args.demo:
         eval_stats = experiments.eval_performance(
-            env=eval_env,
+            env=make_batch_env(test=True),
             agent=agent,
             n_runs=args.eval_n_runs)
         print('n_runs: {} mean: {} median: {} stdev {}'.format(
@@ -224,8 +224,8 @@ def main():
     else:
         experiments.train_agent_batch_with_evaluation(
             agent=agent,
-            env=make_batch_env(False),
-            eval_env=make_batch_env(True),
+            env=make_batch_env(test=False),
+            eval_env=make_batch_env(test=True),
             steps=args.steps,
             eval_n_runs=args.eval_n_runs,
             eval_interval=args.eval_interval,

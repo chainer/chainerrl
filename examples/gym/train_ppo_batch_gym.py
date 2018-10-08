@@ -22,9 +22,9 @@ gym.undo_logger_setup()  # NOQA
 import gym.wrappers
 import numpy as np
 
+import chainerrl
 from chainerrl.agents import a3c
 from chainerrl.agents import PPO
-from chainerrl.envs.vec_env import VectorEnv
 from chainerrl import experiments
 from chainerrl import links
 from chainerrl import misc
@@ -166,8 +166,9 @@ def main():
         return env
 
     def make_batch_env(test):
-        return VectorEnv([make_env(idx, test)
-                          for idx, env in enumerate(range(args.num_envs))])
+        return chainerrl.envs.MultiprocessVectorEnv(
+            [(lambda: make_env(idx, test))
+             for idx, env in enumerate(range(args.num_envs))])
 
     # Only for getting timesteps, and obs-action spaces
     sample_env = gym.make(args.env)

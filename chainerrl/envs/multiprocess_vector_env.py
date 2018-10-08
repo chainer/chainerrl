@@ -15,37 +15,43 @@ import numpy as np
 from chainerrl import env
 
 
-def worker(remote, env_fn_wrapper):
-    env = env_fn_wrapper
-    while True:
-        cmd, data = remote.recv()
-        if cmd == 'step':
-            ob, reward, done, info = env.step(data)
-            if done:
+def worker(remote, env_fn):
+    env = env_fn()
+    try:
+        while True:
+            cmd, data = remote.recv()
+            if cmd == 'step':
+                ob, reward, done, info = env.step(data)
+                if done:
+                    ob = env.reset()
+                remote.send((ob, reward, done, info))
+            elif cmd == 'reset':
                 ob = env.reset()
-            remote.send((ob, reward, done, info))
-        elif cmd == 'reset':
-            ob = env.reset()
-            remote.send(ob)
-        elif cmd == 'close':
-            remote.close()
-            break
-        elif cmd == 'get_spaces':
-            remote.send((env.action_space, env.observation_space))
-        elif cmd == 'spec':
-            remote.send(env.spec)
-        elif cmd == 'seed':
-            remote.send(env.seed(data))
-        else:
-            raise NotImplementedError
+                remote.send(ob)
+            elif cmd == 'close':
+                remote.close()
+                break
+            elif cmd == 'get_spaces':
+                remote.send((env.action_space, env.observation_space))
+            elif cmd == 'spec':
+                remote.send(env.spec)
+            elif cmd == 'seed':
+                remote.send(env.seed(data))
+            else:
+                raise NotImplementedError
+    finally:
+        env.close()
 
 
-class VectorEnv(env.Env):
+class MultiprocessVectorEnv(env.VectorEnv):
+    """VectorEnv where each env is run in its own subprocess.
+
+    Args:
+        env_fns (list of callable): List of callables, each of which
+            returns gym.Env that is run in its own subprocess.
+    """
 
     def __init__(self, env_fns):
-        """envs: list of gym environments to run in subprocesses
-
-        """
         nenvs = len(env_fns)
         self.remotes, self.work_remotes = zip(*[Pipe() for _ in range(nenvs)])
         self.ps = \
@@ -53,21 +59,24 @@ class VectorEnv(env.Env):
              for (work_remote, env_fn) in zip(self.work_remotes, env_fns)]
         for p in self.ps:
             p.start()
-
         self.last_obs = [None] * self.num_envs
         self.remotes[0].send(('get_spaces', None))
         self.action_space, self.observation_space = self.remotes[0].recv()
+        self.closed = False
 
     def __del__(self):
-        self.close()
+        if not self.closed:
+            self.close()
 
     @cached_property
     def spec(self):
+        self._assert_not_closed()
         self.remotes[0].send(('spec', None))
         spec = self.remotes[0].recv()
         return spec
 
     def step(self, actions):
+        self._assert_not_closed()
         for remote, action in zip(self.remotes, actions):
             remote.send(('step', action))
         results = [remote.recv() for remote in self.remotes]
@@ -75,6 +84,7 @@ class VectorEnv(env.Env):
         return self.last_obs, rews, dones, infos
 
     def reset(self, mask=None):
+        self._assert_not_closed()
         if mask is None:
             mask = np.zeros(self.num_envs)
         for m, remote in zip(mask, self.remotes):
@@ -87,12 +97,15 @@ class VectorEnv(env.Env):
         return obs
 
     def close(self):
+        self._assert_not_closed()
+        self.closed = True
         for remote in self.remotes:
             remote.send(('close', None))
         for p in self.ps:
             p.join()
 
     def seed(self, seeds=None):
+        self._assert_not_closed()
         if seeds is not None:
             if isinstance(seeds, int):
                 seeds = [seeds] * self.num_envs
@@ -115,3 +128,6 @@ class VectorEnv(env.Env):
     @property
     def num_envs(self):
         return len(self.remotes)
+
+    def _assert_not_closed(self):
+        assert not self.closed, "Trying to operate on a MultiprocessVectorEnv after calling close()"  # NOQA
