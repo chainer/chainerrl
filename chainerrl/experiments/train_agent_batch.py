@@ -150,6 +150,9 @@ You passed: {}'.format(type(env)))
     except (Exception, KeyboardInterrupt):
         # Save the current model before being killed
         save_agent(agent, t, outdir, logger, suffix='_except')
+        env.close()
+        if evaluator:
+            evaluator.env.close()
         raise
     else:
         # Save the final model
