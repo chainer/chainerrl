@@ -87,11 +87,11 @@ You passed: {}'.format(type(env)))
 
     episode_r = np.zeros(num_processes, dtype='f')
     episode_idx = np.zeros(num_processes, dtype='i')
-    episode_len = np.zeros(num_processes, dtype='f')
+    episode_len = np.zeros(num_processes, dtype='i')
 
     # o_0, r_0
-    obs = env.reset()
-    r = np.zeros(num_processes, dtype='f')
+    obss = env.reset()
+    rs = np.zeros(num_processes, dtype='f')
 
     t = step_offset
     if hasattr(agent, 't'):
@@ -100,40 +100,38 @@ You passed: {}'.format(type(env)))
     try:
         while t < steps:
             # a_t
-            action = agent.batch_act_and_train(obs)
+            actions = agent.batch_act_and_train(obss)
             # o_{t+1}, r_{t+1}
-            obs, r, done, info = env.step(action)
+            obss, rs, dones, infos = env.step(actions)
+            episode_r += rs
+            episode_len += 1
             # Compute mask for done and reset
             if max_episode_len is None:
-                reset_mask = np.zeros(num_processes, dtype=bool)
+                end_by_episode_len = np.zeros(num_processes, dtype=bool)
             else:
-                reset_mask = episode_len == max_episode_len
+                end_by_episode_len = (episode_len == max_episode_len)
             # Package mask inside info dict
-            for i, reset in zip(info, reset_mask):
-                i['reset'] = reset
+            for info, flag in zip(infos, end_by_episode_len):
+                info['reset'] = info.get('reset', False) or flag
             # Make mask. 0 if done/reset, 1 if pass
-            masks = np.logical_not(np.logical_or(reset_mask, done))
+            end = np.logical_or(end_by_episode_len, dones)
+            not_end = np.logical_not(end)
             # Reset environment whenever done/reset
-            obs_ = env.reset(masks)
+            obss_ = env.reset(not_end)
             # Train agent
-            agent.batch_observe_and_train(obs_, r, done, info)
+            agent.batch_observe_and_train(obss_, rs, dones, infos)
             # Update reward for current episode
-            episode_r += r
-            episode_len += 1
-            episode_idx += 1 - masks
+            episode_idx += end
             # Add to deque whenever done/reset
-            episode_r_ = np.ma.masked_array(episode_r, masks)
-            recent_returns.extend(episode_r_.compressed())
+            recent_returns.extend(
+                np.ma.masked_array(episode_r, not_end).compressed())
             # Start new episode for those with mask
-            episode_r *= masks
-            episode_len *= masks
+            episode_r *= not_end
+            episode_len *= not_end
             t += num_processes
 
             for hook in step_hooks:
                 hook(env, agent, t)
-
-            if save_training_r and t % log_interval == 0:
-                _write_to_file(outdir, t, np.mean(recent_returns))
 
             if eval_interval is not None and t % log_interval == 0:
                 logger.info('outdir:{}, step:{}, avg_r:{}, episode:{}'.format(
