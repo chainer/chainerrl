@@ -14,7 +14,6 @@ from builtins import *  # NOQA
 from future import standard_library
 standard_library.install_aliases()  # NOQA
 import argparse
-import os
 
 import chainer
 from chainer import functions as F
@@ -22,8 +21,8 @@ import gym
 import gym.wrappers
 import numpy as np
 
+import chainerrl
 from chainerrl.agents import a2c
-from chainerrl.envs.vec_env import VectorEnv
 from chainerrl import experiments
 from chainerrl import links
 from chainerrl import misc
@@ -84,22 +83,19 @@ class A2CGaussian(chainer.ChainList, a2c.A2CModel):
 
 def main():
 
-    # Prevent numpy from using multiple threads
-    os.environ['OMP_NUM_THREADS'] = '1'
-
     import logging
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('processes', type=int)
     parser.add_argument('--env', type=str, default='Pendulum-v0')
     parser.add_argument('--arch', type=str, default='Gaussian',
                         choices=('FFSoftmax', 'FFMellowmax', 'Gaussian'))
-    parser.add_argument('--seed', type=int, default=None)
+    parser.add_argument('--seed', type=int, default=0,
+                        help='Random seed [0, 2 ** 32)')
     parser.add_argument('--outdir', type=str, default=None)
     parser.add_argument('--profile', action='store_true')
     parser.add_argument('--steps', type=int, default=8 * 10 ** 7)
     parser.add_argument('--update-steps', type=int, default=5)
-    parser.add_argument('--log-interval', type=int, default=50)
+    parser.add_argument('--log-interval', type=int, default=1000)
     parser.add_argument('--eval-interval', type=int, default=10 ** 5)
     parser.add_argument('--eval-n-runs', type=int, default=10)
     parser.add_argument('--reward-scale-factor', type=float, default=1e-2)
@@ -123,17 +119,30 @@ def main():
                         help='RMSprop optimizer alpha')
     parser.add_argument('--gpu', '-g', type=int, default=-1,
                         help='GPU ID (negative value indicates CPU)')
+    parser.add_argument('--num-envs', type=int, default=1)
     args = parser.parse_args()
 
-    logging.getLogger().setLevel(args.logger_level)
+    logging.basicConfig(level=args.logger_level)
 
-    if args.seed is not None:
-        misc.set_random_seed(args.seed)
+    # Set a random seed used in ChainerRL.
+    # If you use more than one processes, the results will be no longer
+    # deterministic even with the same random seed.
+    misc.set_random_seed(args.seed)
+
+    # Set different random seeds for different subprocesses.
+    # If seed=0 and processes=4, subprocess seeds are [0, 1, 2, 3].
+    # If seed=1 and processes=4, subprocess seeds are [4, 5, 6, 7].
+    process_seeds = np.arange(args.num_envs) + args.seed * args.num_envs
+    assert process_seeds.max() < 2 ** 32
 
     args.outdir = experiments.prepare_output_dir(args, args.outdir)
 
     def make_env(process_idx, test):
         env = gym.make(args.env)
+        # Use different random seeds for train and test envs
+        process_seed = int(process_seeds[process_idx])
+        env_seed = 2 ** 32 - 1 - process_seed if test else process_seed
+        env.seed(env_seed)
         if args.monitor and process_idx == 0:
             env = gym.wrappers.Monitor(env, args.outdir)
         # Scale rewards observed by agents
@@ -144,11 +153,12 @@ def main():
             misc.env_modifiers.make_rendered(env)
         return env
 
-    sample_env = VectorEnv([
-        make_env(i, args.demo) for i in range(args.processes)])
-    if args.seed is not None:
-        sample_env.seed(args.seed)
+    def make_batch_env(test):
+        return chainerrl.envs.MultiprocessVectorEnv(
+            [(lambda: make_env(idx, test))
+             for idx, env in enumerate(range(args.num_envs))])
 
+    sample_env = make_env(process_idx=0, test=False)
     timestep_limit = sample_env.spec.tags.get(
         'wrapper_config.TimeLimit.max_episode_steps')
     obs_space = sample_env.observation_space
@@ -172,7 +182,7 @@ def main():
 
     agent = a2c.A2C(model, optimizer, gamma=args.gamma,
                     gpu=args.gpu,
-                    num_processes=args.processes,
+                    num_processes=args.num_envs,
                     update_steps=args.update_steps,
                     phi=phi,
                     use_gae=args.use_gae,
@@ -191,12 +201,16 @@ def main():
             args.eval_n_runs, eval_stats['mean'], eval_stats['median'],
             eval_stats['stdev']))
     else:
-        eval_env = make_env(0, True)
-        experiments.train_agent_with_evaluation_sync(
-            agent=agent, env=sample_env, steps=args.steps,
+        experiments.train_agent_batch_with_evaluation(
+            agent=agent,
+            env=make_batch_env(test=False),
+            eval_env=make_batch_env(test=True),
+            steps=args.steps,
             log_interval=args.log_interval,
-            eval_n_runs=args.eval_n_runs, eval_interval=args.eval_interval,
-            outdir=args.outdir, eval_env=eval_env)
+            eval_n_runs=args.eval_n_runs,
+            eval_interval=args.eval_interval,
+            outdir=args.outdir,
+        )
     sample_env.close()
 
 

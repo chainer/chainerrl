@@ -151,13 +151,13 @@ class A2C(agent.AttributeSavingMixin):
             [self.update_steps, self.num_processes] + list(action_shape),
             dtype=action.dtype)
         self.rewards = self.xp.zeros(
-            (self.update_steps, self.num_processes, 1), dtype='f')
+            (self.update_steps, self.num_processes), dtype='f')
         self.value_preds = self.xp.zeros(
-            (self.update_steps + 1, self.num_processes, 1), dtype='f')
+            (self.update_steps + 1, self.num_processes), dtype='f')
         self.returns = self.xp.zeros(
-            (self.update_steps + 1, self.num_processes, 1), dtype='f')
+            (self.update_steps + 1, self.num_processes), dtype='f')
         self.masks = self.xp.ones(
-            (self.update_steps, self.num_processes, 1), dtype='f')
+            (self.update_steps, self.num_processes), dtype='f')
 
         self.obs_shape = obs_shape
         self.action_shape = action_shape
@@ -181,7 +181,7 @@ class A2C(agent.AttributeSavingMixin):
     def update(self):
         with chainer.no_backprop_mode():
             _, next_value = self.model.pi_and_v(self.states[-1])
-            next_value = next_value.data
+            next_value = next_value.data[:, 0]
 
         self._compute_returns(next_value)
         pout, values = \
@@ -193,13 +193,13 @@ class A2C(agent.AttributeSavingMixin):
         dist_entropy = F.mean(pout.entropy)
         action_log_probs = pout.log_prob(actions)
 
-        values = values.reshape(self.update_steps, self.num_processes, 1)
+        values = values.reshape((self.update_steps, self.num_processes))
         action_log_probs = action_log_probs.reshape(
-            self.update_steps, self.num_processes, 1)
-        advantages = chainer.Variable(self.returns[:-1]) - values
+            (self.update_steps, self.num_processes))
+        advantages = self.returns[:-1] - values
         value_loss = F.mean(advantages * advantages)
         action_loss = \
-            - F.mean(chainer.Variable(advantages.data) * action_log_probs)
+            - F.mean(advantages.data * action_log_probs)
 
         self.model.cleargrads()
 
@@ -223,19 +223,16 @@ class A2C(agent.AttributeSavingMixin):
             (1 - self.average_entropy_decay) *
             (float(dist_entropy.data) - self.average_entropy))
 
-    def act_and_train(self, state, reward, done):
-        statevar = self.batch_states([state], self.xp, self.phi)[0]
+    def batch_act_and_train(self, batch_obs):
+
+        statevar = self.batch_states(batch_obs, self.xp, self.phi)
 
         if self.t == 0:
-            pout, _ = self.model.pi_and_v(statevar[0:1])
+            pout, _ = self.model.pi_and_v(statevar)
             action = pout.sample().data
-            self._flush_storage(state.shape, action)
+            self._flush_storage(statevar.shape, action)
 
-        self.rewards[self.t - self.t_start -
-                     1] = self.xp.array(reward, dtype=self.xp.float32)
         self.states[self.t - self.t_start] = statevar
-        self.masks[self.t - self.t_start - 1] \
-            = self.xp.array([[0.0] if done_ else [1.0] for done_ in done])
 
         if self.t - self.t_start == self.update_steps:
             self.update()
@@ -247,11 +244,25 @@ class A2C(agent.AttributeSavingMixin):
 
         self.actions[self.t - self.t_start] \
             = action.reshape([-1] + list(self.action_shape))
-        self.value_preds[self.t - self.t_start] = value.data
+        self.value_preds[self.t - self.t_start] = value.data[:, 0]
 
         self.t += 1
 
         return chainer.cuda.to_cpu(action)
+
+    def batch_observe_and_train(self, batch_obs, batch_reward, batch_done,
+                                batch_info):
+
+        statevar = self.batch_states(batch_obs, self.xp, self.phi)
+
+        self.masks[self.t - self.t_start - 1] =\
+            self.xp.array([0.0 if done else 1.0 for done in batch_done])
+        self.rewards[self.t - self.t_start - 1] =\
+            self.xp.array(batch_reward, dtype=self.xp.float32)
+        self.states[self.t - self.t_start] = statevar
+
+        if self.t - self.t_start == self.update_steps:
+            self.update()
 
     def act(self, obs):
         with chainer.no_backprop_mode():
@@ -261,6 +272,16 @@ class A2C(agent.AttributeSavingMixin):
                 return chainer.cuda.to_cpu(pout.most_probable.data)[0]
             else:
                 return chainer.cuda.to_cpu(pout.sample().data)[0]
+
+    def batch_act(self, batch_obs):
+        statevar = self.batch_states(batch_obs, self.xp, self.phi)
+        with chainer.no_backprop_mode():
+            pout, _ = self.model.pi_and_v(statevar)
+        action = pout.sample().data
+        return chainer.cuda.to_cpu(action)
+
+    def batch_observe(self, batch_obs, batch_reward, batch_done, batch_info):
+        pass
 
     def stop_episode_and_train(self, state, reward, done=False):
         pass
