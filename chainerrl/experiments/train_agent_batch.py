@@ -12,48 +12,15 @@ import os
 import numpy as np
 
 
-from chainerrl.experiments.evaluator import BatchEvaluator
+from chainerrl.experiments.evaluator import Evaluator
 from chainerrl.experiments.evaluator import save_agent
-from chainerrl.misc.ask_yes_no import ask_yes_no
 from chainerrl.misc.makedirs import makedirs
-
-
-def save_agent_replay_buffer(agent, t, outdir, suffix='', logger=None):
-    logger = logger or logging.getLogger(__name__)
-    filename = os.path.join(outdir, '{}{}.replay.pkl'.format(t, suffix))
-    agent.replay_buffer.save(filename)
-    logger.info('Saved the current replay buffer to %s', filename)
-
-
-def ask_and_save_agent_replay_buffer(agent, t, outdir, suffix=''):
-    if hasattr(agent, 'replay_buffer') and \
-            ask_yes_no('Replay buffer has {} transitions. Do you save them to a file?'.format(len(agent.replay_buffer))):  # NOQA
-        save_agent_replay_buffer(agent, t, outdir, suffix=suffix)
-
-
-def _get_mask(num_processes, info, done, episode_len, max_episode_len):
-    if max_episode_len is None:
-        reset_mask = np.zeros(num_processes, dtype=bool)
-    else:
-        reset_mask = episode_len == max_episode_len
-
-    for i, reset in zip(info, reset_mask):
-        i['reset'] = reset
-
-    mask = np.logical_not(np.logical_or(reset_mask, done))
-    return info, mask
-
-
-def _write_to_file(outdir, step, avg_r):
-    with open(os.path.join(outdir, 'training_r.txt'), 'a+') as f:
-        print('\t'.join(str(x) for x in [step, avg_r]), file=f)
 
 
 def train_agent_batch(agent, env, steps, outdir, log_interval=None,
                       max_episode_len=None, eval_interval=None,
                       step_offset=0, evaluator=None, successful_score=None,
-                      step_hooks=[], return_window_size=100, logger=None,
-                      save_training_r=False):
+                      step_hooks=[], return_window_size=100, logger=None):
     """Train an agent in a batch environment.
 
     Args:
@@ -65,33 +32,27 @@ def train_agent_batch(agent, env, steps, outdir, log_interval=None,
         outdir (str): Path to the directory to output things.
         max_episode_len (int): Maximum episode length.
         step_offset (int): Time step from which training starts.
-        return_window_size(int): Size of reward array.
+        return_window_size (int): Number of training episodes used to estimate
+            the average returns of the current agent.
         successful_score (float): Finish training if the mean score is greater
             or equal to thisvalue if not None
         step_hooks (list): List of callable objects that accepts
             (env, agent, step) as arguments. They are called every step.
             See chainerrl.experiments.hooks.
         logger (logging.Logger): Logger used in this function.
-        save_training_r (bool): save training reward in outdir.
     """
 
     logger = logger or logging.getLogger(__name__)
     recent_returns = deque(maxlen=return_window_size)
 
-    try:
-        num_processes = env.num_envs
-    except AttributeError:
-        logger.error('Please pass a VectorEnv instance. \
-You passed: {}'.format(type(env)))
-        raise
-
-    episode_r = np.zeros(num_processes, dtype='f')
-    episode_idx = np.zeros(num_processes, dtype='i')
-    episode_len = np.zeros(num_processes, dtype='i')
+    num_envs = env.num_envs
+    episode_r = np.zeros(num_envs, dtype='f')
+    episode_idx = np.zeros(num_envs, dtype='i')
+    episode_len = np.zeros(num_envs, dtype='i')
 
     # o_0, r_0
     obss = env.reset()
-    rs = np.zeros(num_processes, dtype='f')
+    rs = np.zeros(num_envs, dtype='f')
 
     t = step_offset
     if hasattr(agent, 't'):
@@ -105,42 +66,49 @@ You passed: {}'.format(type(env)))
             obss, rs, dones, infos = env.step(actions)
             episode_r += rs
             episode_len += 1
+
             # Compute mask for done and reset
             if max_episode_len is None:
-                end_by_episode_len = np.zeros(num_processes, dtype=bool)
+                end_by_episode_len = np.zeros(num_envs, dtype=bool)
             else:
                 end_by_episode_len = (episode_len == max_episode_len)
             # Package mask inside info dict
             for info, flag in zip(infos, end_by_episode_len):
                 info['reset'] = info.get('reset', False) or flag
+            # Agent observes the consequences
+            agent.batch_observe_and_train(obss, rs, dones, infos)
+
             # Make mask. 0 if done/reset, 1 if pass
             end = np.logical_or(end_by_episode_len, dones)
             not_end = np.logical_not(end)
-            # Reset environment whenever done/reset
-            obss_ = env.reset(not_end)
-            # Train agent
-            agent.batch_observe_and_train(obss_, rs, dones, infos)
-            # Update reward for current episode
+
+            # For episodes that ends, do the following:
+            #   1. increment the episode count
+            #   2. record the return
+            #   3. clear the record of rewards
+            #   4. clear the record of the number of steps
+            #   5. reset the env to start a new episode
             episode_idx += end
-            # Add to deque whenever done/reset
             recent_returns.extend(
                 np.ma.masked_array(episode_r, not_end).compressed())
-            # Start new episode for those with mask
             episode_r *= not_end
             episode_len *= not_end
-            t += num_processes
+            obss = env.reset(not_end)
+
+            t += num_envs
 
             for hook in step_hooks:
                 hook(env, agent, t)
 
-            if eval_interval is not None and t % log_interval == 0:
-                logger.info('outdir:{}, step:{}, avg_r:{}, episode:{}'.format(
-                    outdir, t, np.mean(recent_returns), np.sum(episode_idx)))
+            if (log_interval is not None
+                    and t > log_interval
+                    and t % log_interval < num_envs):
+                logger.info('outdir:{} step:{} episode:{} average_R:{}'.format(
+                    outdir, t, np.sum(episode_idx), np.mean(recent_returns)))
                 logger.info('statistics: {}'.format(agent.get_statistics()))
-
-                if evaluator is not None:
-                    evaluator.evaluate_if_necessary(
-                        t=t, episodes=episode_idx + 1)
+            if evaluator:
+                if evaluator.evaluate_if_necessary(
+                        t=t, episodes=episode_idx):
                     if (successful_score is not None and
                             evaluator.max_score >= successful_score):
                         break
@@ -174,7 +142,6 @@ def train_agent_batch_with_evaluation(agent,
                                       step_hooks=[],
                                       save_best_so_far_agent=True,
                                       logger=None,
-                                      save_training_r=False,
                                       ):
     """Train an agent while regularly evaluating it.
 
@@ -201,7 +168,6 @@ def train_agent_batch_with_evaluation(agent,
             if the score (= mean return of evaluation episodes) exceeds
             the best-so-far score, the current agent is saved.
         logger (logging.Logger): Logger used in this function.
-        save_training_r (bool): save training reward in outdir.
     """
 
     logger = logger or logging.getLogger(__name__)
@@ -214,16 +180,16 @@ def train_agent_batch_with_evaluation(agent,
     if eval_max_episode_len is None:
         eval_max_episode_len = max_episode_len
 
-    evaluator = BatchEvaluator(agent=agent,
-                               n_runs=eval_n_runs,
-                               eval_interval=eval_interval, outdir=outdir,
-                               max_episode_len=eval_max_episode_len,
-                               explorer=eval_explorer,
-                               env=eval_env,
-                               step_offset=step_offset,
-                               save_best_so_far_agent=save_best_so_far_agent,
-                               logger=logger,
-                               )
+    evaluator = Evaluator(agent=agent,
+                          n_runs=eval_n_runs,
+                          eval_interval=eval_interval, outdir=outdir,
+                          max_episode_len=eval_max_episode_len,
+                          explorer=eval_explorer,
+                          env=eval_env,
+                          step_offset=step_offset,
+                          save_best_so_far_agent=save_best_so_far_agent,
+                          logger=logger,
+                          )
 
     train_agent_batch(
         agent, env, steps, outdir,
@@ -235,5 +201,4 @@ def train_agent_batch_with_evaluation(agent,
         return_window_size=return_window_size,
         log_interval=log_interval,
         step_hooks=step_hooks,
-        save_training_r=save_training_r,
         logger=logger)

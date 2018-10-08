@@ -14,6 +14,8 @@ import time
 
 import numpy as np
 
+import chainerrl
+
 
 """Columns that describe information about an experiment.
 
@@ -69,8 +71,85 @@ def run_evaluation_episodes(env, agent, n_runs, max_episode_len=None,
         # As mixing float and numpy float causes errors in statistics
         # functions, here every score is cast to float.
         scores.append(float(test_r))
-        logger.info('test episode: %s R: %s', i, test_r)
+        logger.info('Evaluation episode %s length:%s R:%s', i, t, test_r)
     return scores
+
+
+def batch_run_evaluation_episodes(
+    env,
+    agent,
+    n_runs,
+    max_episode_len=None,
+    explorer=None,
+    logger=None,
+):
+    """Run multiple evaluation episodes and return returns in a batch manner.
+
+    Args:
+        env (VectorEnv): Environment used for evaluation.
+        agent (Agent): Agent to evaluate.
+        n_runs (int): Number of evaluation runs.
+        max_episode_len (int or None): If specified, episodes
+            longer than this value will be truncated.
+        explorer (Explorer): If specified, the given Explorer
+            will be used for selecting actions.
+        logger (Logger or None): If specified, the given Logger
+            object will be used for logging results. If not
+            specified, the default logger of this module will
+            be used.
+
+    Returns:
+        List of returns of evaluation runs.
+    """
+    logger = logger or logging.getLogger(__name__)
+    num_envs = env.num_envs
+    episode_returns = []
+    episode_lengths = []
+    episode_r = np.zeros(num_envs, dtype='f')
+    episode_len = np.zeros(num_envs, dtype='i')
+
+    obss = env.reset()
+    rs = np.zeros(num_envs, dtype='f')
+
+    while len(episode_returns) < n_runs:
+        # a_t
+        actions = agent.batch_act(obss)
+        # o_{t+1}, r_{t+1}
+        obss, rs, dones, infos = env.step(actions)
+        episode_r += rs
+        episode_len += 1
+
+        # Compute mask for done and reset
+        if max_episode_len is None:
+            end_by_episode_len = np.zeros(num_envs, dtype=bool)
+        else:
+            end_by_episode_len = (episode_len == max_episode_len)
+        # Package mask inside info dict
+        for info, flag in zip(infos, end_by_episode_len):
+            info['reset'] = info.get('reset', False) or flag
+        # Agent observes the consequences
+        agent.batch_observe(obss, rs, dones, infos)
+
+        # Make mask. 0 if done/reset, 1 if pass
+        end = np.logical_or(end_by_episode_len, dones)
+        not_end = np.logical_not(end)
+
+        episode_returns.extend(
+            np.ma.masked_array(episode_r, not_end).compressed())
+        episode_lengths.extend(
+            np.ma.masked_array(episode_len, not_end).compressed())
+        episode_r *= not_end
+        episode_len *= not_end
+        obss = env.reset(not_end)
+
+    episode_returns = episode_returns[:n_runs]
+    episode_lengths = episode_lengths[:n_runs]
+
+    for i, (epi_len, epi_ret) in enumerate(
+            zip(episode_lengths, episode_returns)):
+        logger.info('Evaluation episode %s length: %s R: %s',
+                    i, epi_len, epi_ret)
+    return [float(r) for r in episode_returns]
 
 
 def eval_performance(env, agent, n_runs, max_episode_len=None,
@@ -91,11 +170,18 @@ def eval_performance(env, agent, n_runs, max_episode_len=None,
     Returns:
         Dict of statistics.
     """
-    scores = run_evaluation_episodes(
-        env, agent, n_runs,
-        max_episode_len=max_episode_len,
-        explorer=explorer,
-        logger=logger)
+    if isinstance(env, chainerrl.env.VectorEnv):
+        scores = batch_run_evaluation_episodes(
+            env, agent, n_runs,
+            max_episode_len=max_episode_len,
+            explorer=explorer,
+            logger=logger)
+    else:
+        scores = run_evaluation_episodes(
+            env, agent, n_runs,
+            max_episode_len=max_episode_len,
+            explorer=explorer,
+            logger=logger)
     stats = dict(
         mean=statistics.mean(scores),
         median=statistics.median(scores),
@@ -199,180 +285,6 @@ class Evaluator(object):
             self.prev_eval_t = t - t % self.eval_interval
             return score
         return None
-
-
-class BatchEvaluator(object):
-    """Object that is responsible for evaluating batch agents
-
-    Args:
-        agent (Agent): Agent to evaluate.
-        env (Env): Env to evaluate the agent on.
-        n_runs (int): Number of episodes used in each evaluation.
-        eval_interval (int): Interval of evaluations in steps.
-        outdir (str): Path to a directory to save things.
-        max_episode_len (int): Maximum length of episodes used in evaluations.
-        explorer (Explorer or None): If set to a Explorer, it is used in
-            evaluations. If set to None, actions returned by the agent are
-            directly passed to the env.
-        step_offset (int): Offset of steps used to schedule evaluations.
-        save_best_so_far_agent (bool): If set to True, after each evaluation,
-            if the score (= mean of returns in evaluation episodes) exceeds
-            the best-so-far score, the current agent is saved.
-
-    """
-
-    def __init__(self,
-                 agent,
-                 env,
-                 n_runs,
-                 eval_interval,
-                 outdir,
-                 max_episode_len=None,
-                 explorer=None,
-                 step_offset=0,
-                 save_best_so_far_agent=True,
-                 logger=None,
-                 ):
-        self.agent = agent
-        self.env = env
-        self.max_score = np.finfo(np.float32).min
-        self.start_time = time.time()
-        self.n_runs = n_runs
-        self.eval_interval = eval_interval
-        self.outdir = outdir
-        self.max_episode_len = max_episode_len
-        self.explorer = explorer
-        self.step_offset = step_offset
-        self.prev_eval_t = (self.step_offset -
-                            self.step_offset % self.eval_interval)
-        self.save_best_so_far_agent = save_best_so_far_agent
-        self.logger = logger or logging.getLogger(__name__)
-
-        # Write a header line first
-        with open(os.path.join(self.outdir, 'scores.txt'), 'w') as f:
-            custom_columns = tuple(t[0] for t in self.agent.get_statistics())
-            column_names = _basic_columns + custom_columns
-            print('\t'.join(column_names), file=f)
-
-    def evaluate_and_update_max_score(self, t, episodes):
-        eval_stats = self._batch_eval_performance(
-            self.env, self.agent, self.n_runs,
-            max_episode_len=self.max_episode_len, explorer=self.explorer,
-            logger=self.logger)
-        elapsed = time.time() - self.start_time
-        custom_values = tuple(tup[1] for tup in self.agent.get_statistics())
-        mean = eval_stats['mean']
-        values = (t,
-                  episodes,
-                  elapsed,
-                  mean,
-                  eval_stats['median'],
-                  eval_stats['stdev'],
-                  eval_stats['max'],
-                  eval_stats['min']) + custom_values
-        record_stats(self.outdir, values)
-        if mean > self.max_score:
-            self.logger.info('The best score is updated %s -> %s',
-                             self.max_score, mean)
-            self.max_score = mean
-            if self.save_best_so_far_agent:
-                save_agent(self.agent, t, self.outdir, self.logger)
-        return mean
-
-    def evaluate_if_necessary(self, t, episodes):
-        if t >= self.prev_eval_t + self.eval_interval:
-            score = self.evaluate_and_update_max_score(t, episodes)
-            self.prev_eval_t = t - t % self.eval_interval
-            return score
-        return None
-
-    def _batch_eval_performance(self, env, agent, n_runs, max_episode_len=None,
-                                explorer=None, logger=None):
-        """Run multiple evaluation episodes and return statistics
-
-        Args:
-            env (Environment): Environment used for evaluation
-            agent (Agent): Agent to evaluate.
-            n_runs (int): Number of evaluation runs.
-            max_episode_len (int or None): If specified,
-                episodes longer than this value will be truncated.
-            explorer (Explorer): If specified, the given Explorer
-                will be used for selecting actions.
-            logger (Logger or None): If specified, the given
-                Logger object will be used for logging results.
-                If not specified, the default logger of this module
-                will be used.
-
-        Returns:
-            Dict of statistics.
-        """
-        scores = self._batch_run_evaluation_episodes(
-            env, agent, n_runs,
-            max_episode_len=max_episode_len,
-            explorer=explorer,
-            logger=logger)
-        stats = dict(
-            mean=statistics.mean(scores),
-            median=statistics.median(scores),
-            stdev=statistics.stdev(scores) if n_runs >= 2 else 0.0,
-            max=np.max(scores),
-            min=np.min(scores))
-        return stats
-
-    def _batch_run_evaluation_episodes(self, env, agent, n_runs,
-                                       max_episode_len=None, explorer=None,
-                                       logger=None):
-        """Run multiple evaluation episodes and return returns.
-
-        Args:
-            env (Environment): Environment used for evaluation
-            agent (Agent): Agent to evaluate.
-            n_runs (int): Number of evaluation runs.
-            max_episode_len (int or None): If specified, episodes
-                longer than this value will be truncated.
-            explorer (Explorer): If specified, the given Explorer
-                will be used for selecting actions.
-            logger (Logger or None): If specified, the given Logger
-                object will be used for logging results. If not
-                specified, the default logger of this module will
-                be used.
-
-        Returns:
-            List of returns of evaluation runs.
-        """
-        logger = logger or logging.getLogger(__name__)
-        scores = []
-        num_processes = env.num_envs
-
-        for i in range(n_runs):
-            obs = env.reset()  # o_{0}
-            done = np.zeros(num_processes, dtype=bool)
-            test_r = np.zeros(num_processes)
-            t = np.zeros(num_processes)
-            r_when_done = np.zeros(num_processes)
-            while not (done.all() or (t == max_episode_len).all()):
-                def greedy_action_func():
-                    return agent.batch_act(obs)
-                if explorer is not None:
-                    a = explorer.select_action(t, greedy_action_func)
-                else:
-                    a = greedy_action_func()
-                obs, r, done_, info = env.step(a)
-                test_r += r
-                t += 1
-                # Prepare a mask whenever done or t == max_len
-                mask = np.logical_or(t == max_episode_len, done_)
-                for idx, m in enumerate(mask):
-                    if m:
-                        done[idx] = True
-                # Whenever done, set r_when_done
-                for idx, d in enumerate(done):
-                    if d:
-                        r_when_done[idx] = test_r[idx]
-            scores.append(np.mean(r_when_done))
-            logger.info('test episode: %s mean_r : %s',
-                        i, np.mean(r_when_done))
-        return scores
 
 
 class AsyncEvaluator(object):

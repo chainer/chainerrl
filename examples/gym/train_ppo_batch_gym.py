@@ -232,7 +232,6 @@ def main():
             agent=agent,
             env=make_batch_env(False),
             eval_env=make_batch_env(True),
-            save_training_r=args.save_training,
             outdir=args.outdir,
             steps=args.steps,
             eval_n_runs=args.eval_n_runs,
