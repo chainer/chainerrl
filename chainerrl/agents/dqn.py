@@ -338,7 +338,7 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
             #sigma_entropy_grad = ent * 2.0 / np.sum(self.q_table_sigma)
             self.q_table_sigma[s, a] += lr * (sigma_target - self.q_table_sigma[s, a])
             #self.q_table_sigma += sigma_entropy_grad
-            #self.q_table_mu[s, a] += lr * (mu_target - self.q_table_mu[s, a])
+            self.q_table_mu[s, a] += lr * (mu_target - self.q_table_mu[s, a])
 
     def discretize(self, state):
         pos = (20 * (state[:, 0] + 1.3) / 2.0).astype(np.int32)
