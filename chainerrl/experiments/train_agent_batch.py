@@ -7,7 +7,6 @@ standard_library.install_aliases()  # NOQA
 
 from collections import deque
 import logging
-import os
 
 import numpy as np
 
