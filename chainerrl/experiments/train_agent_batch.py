@@ -86,7 +86,7 @@ You passed: {}'.format(type(env)))
         raise
 
     episode_r = np.zeros(num_processes, dtype='f')
-    episode_idx = np.zeros(num_processes, dtype='f')
+    episode_idx = np.zeros(num_processes, dtype='i')
     episode_len = np.zeros(num_processes, dtype='f')
 
     # o_0, r_0
@@ -137,7 +137,7 @@ You passed: {}'.format(type(env)))
 
             if eval_interval is not None and t % log_interval == 0:
                 logger.info('outdir:{}, step:{}, avg_r:{}, episode:{}'.format(
-                    outdir, t, np.mean(recent_returns), episode_idx))
+                    outdir, t, np.mean(recent_returns), np.sum(episode_idx)))
                 logger.info('statistics: {}'.format(agent.get_statistics()))
 
                 if evaluator is not None:
