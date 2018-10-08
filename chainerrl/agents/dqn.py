@@ -242,7 +242,7 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
         self.counts2 = np.zeros((20, 20, 3))
         self.visited = np.zeros((20, 20, 3))
 
-        self.q_table_mu = self.xp.asarray(np.ones((20*20, 3)) * 0)
+        self.q_table_mu = self.xp.asarray(np.ones((20*20, 3)) * -20)
         self.q_table_sigma = self.xp.asarray(np.ones((20*20, 3)))
         self.last_score = ""
         self.use_table = use_table
@@ -338,7 +338,7 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
             #sigma_entropy_grad = ent * 2.0 / np.sum(self.q_table_sigma)
             self.q_table_sigma[s, a] += lr * (sigma_target - self.q_table_sigma[s, a])
             #self.q_table_sigma += sigma_entropy_grad
-            self.q_table_mu[s, a] += lr * (mu_target - self.q_table_mu[s, a])
+            #self.q_table_mu[s, a] += lr * (mu_target - self.q_table_mu[s, a])
 
     def discretize(self, state):
         pos = (20 * (state[:, 0] + 1.3) / 2.0).astype(np.int32)
@@ -586,7 +586,7 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
                     action = cuda.to_cpu(action_value.argmax())
                 else:
                     action_value = self.model(
-                        self.batch_states([obs], self.xp, self.phi), **{'noise': True, 'act': True, 'avg': False})
+                        self.batch_states([obs], self.xp, self.phi))#, **{'noise': True, 'act': True, 'avg': False})
                     q = float(action_value.max.data)
                     action = cuda.to_cpu(action_value.greedy_actions.data)[0]
 
@@ -627,6 +627,8 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
         hdivider[:, :, 0] = 0.7
 
         def normalize(data, min=None, max=None):
+            data = data.copy()
+
             if min is None:
                 min = data.min()
 
@@ -721,7 +723,7 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
 
         if hasattr(vals, 'sigmas') and vals.sigmas is not None:
             empty = estimate(self.xp, vals.q_values.data, vals.sigmas.data, 10).reshape((20, 20, 3))
-            empty = cv2.resize(self.xp.asnumpy(empty), (128, 128), interpolation=cv2.INTER_NEAREST)
+            empty = cv2.resize(arr(empty), (128, 128), interpolation=cv2.INTER_NEAREST)
 
         visits = cv2.resize(self.visited, (128, 128), interpolation=cv2.INTER_NEAREST)
 
@@ -809,7 +811,7 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
                     greedy_action = cuda.to_cpu(action_value.argmax())
                 else:
                     action_value = self.model(
-                        self.batch_states([obs], self.xp, self.phi), **{'noise': True, 'avg': False})
+                        self.batch_states([obs], self.xp, self.phi))
                     q = float(action_value.max.data)
 
                     if self.head:
