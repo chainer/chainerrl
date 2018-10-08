@@ -71,7 +71,7 @@ def run_evaluation_episodes(env, agent, n_runs, max_episode_len=None,
         # As mixing float and numpy float causes errors in statistics
         # functions, here every score is cast to float.
         scores.append(float(test_r))
-        logger.info('Evaluation episode %s length:%s R:%s', i, t, test_r)
+        logger.info('evaluation episode %s length:%s R:%s', i, t, test_r)
     return scores
 
 
@@ -147,7 +147,7 @@ def batch_run_evaluation_episodes(
 
     for i, (epi_len, epi_ret) in enumerate(
             zip(episode_lengths, episode_returns)):
-        logger.info('Evaluation episode %s length: %s R: %s',
+        logger.info('evaluation episode %s length: %s R: %s',
                     i, epi_len, epi_ret)
     return [float(r) for r in episode_returns]
 
