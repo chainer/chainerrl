@@ -28,17 +28,15 @@ class RandomizeAction(gym.ActionWrapper):
         super().__init__(env)
         assert 0 <= random_fraction <= 1
         assert isinstance(env.action_space, gym.spaces.Discrete)
-        self.random_fraction = random_fraction
-        self.original_action = None
-        self.np_random = np.random.RandomState()
+        self._random_fraction = random_fraction
+        self._np_random = np.random.RandomState()
 
     def _action(self, action):
-        self.original_action = action
-        if self.np_random.rand() < self.random_fraction:
-            return self.np_random.randint(self.env.action_space.n)
+        if self._np_random.rand() < self._random_fraction:
+            return self._np_random.randint(self.env.action_space.n)
         else:
-            return self.original_action
+            return action
 
     def seed(self, seed):
         super().seed(seed)
-        self.np_random.seed(seed)
+        self._np_random.seed(seed)
