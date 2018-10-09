@@ -10,7 +10,7 @@ from chainerrl import links
 import numpy as np
 
 class MySequence(chainer.Chain):#links.Sequence):
-    def __init__(self, obs, acts, head=False, mean=1):
+    def __init__(self, obs, acts, head=False, mean=1, sigmanet="100,100"):
         """
         if head:
             super().__init__(
@@ -57,13 +57,22 @@ class MySequence(chainer.Chain):#links.Sequence):
                 self.l3 = L.Linear(100, acts)
 
             for n in range(mean):
-                nl1 = L.Linear(obs, 100)
-                nl2 = L.Linear(100, 100)
-                nl3 = L.Linear(100, acts)
+                net = []
+                sizes = [int(n) for n in sigmanet.split(",")]
 
-                self.add_link(str(n)+'_l1', nl1)
-                self.add_link(str(n)+'_l2', nl2)
-                self.add_link(str(n)+'_l3', nl3)
+                self.l1 = L.Linear(obs, sizes[0])
+                net.append(self.l1)
+                self.add_link(str(n)+'_l1', self.l1)
+
+                if len(sizes) > 1:
+                    for i, size in enumerate(sizes[:-1]):
+                        lay = L.Linear(sizes[i], sizes[i+1])
+                        self.add_link(str(n)+'_l{}'.format(i+2), lay)
+                        net.append(lay)
+
+                ll = L.Linear(sizes[-1], acts)
+                net.append(ll)
+                self.add_link(str(n)+'_ll', ll)
 
                 """
                 def net(x):
@@ -72,7 +81,7 @@ class MySequence(chainer.Chain):#links.Sequence):
                     x = nl3(x)
                     return x
                 """
-                net = [nl1, nl2, nl3]
+
 
                 self.sigma_nets.append(net)
 
@@ -109,10 +118,14 @@ class MySequence(chainer.Chain):#links.Sequence):
                 #sigma = F.reshape(sigma, (x.shape[0], self.mean, self.acts))
                 sigmas = []
                 for i in range(self.mean):
-                    l1, l2, l3 = self.sigma_nets[i]
-                    x = F.relu(l1(input))
-                    x = F.relu(l2(x))
-                    x = l3(x)
+                    layers = self.sigma_nets[i]
+                    x = input
+                    for k, layer in enumerate(layers):
+                        if k == len(layers)-1:
+                            x = layer(x)
+                        else:
+                            x = F.relu(layer(x))
+
                     sigmas.append(x)
                 sigmas = F.stack(sigmas, axis=0)
                 sigmas = F.softplus(sigmas)
