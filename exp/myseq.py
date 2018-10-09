@@ -60,9 +60,9 @@ class MySequence(chainer.Chain):#links.Sequence):
                 net = []
                 sizes = [int(n) for n in sigmanet.split(",")]
 
-                self.l1 = L.Linear(obs, sizes[0])
-                net.append(self.l1)
-                self.add_link(str(n)+'_l1', self.l1)
+                l1 = L.Linear(obs, sizes[0])
+                net.append(l1)
+                self.add_link(str(n)+'_l1', l1)
 
                 if len(sizes) > 1:
                     for i, size in enumerate(sizes[:-1]):
