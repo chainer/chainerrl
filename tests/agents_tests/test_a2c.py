@@ -14,11 +14,11 @@ from chainer import optimizers
 from chainer import testing
 import numpy as np
 
+import chainerrl
 from chainerrl.agents.a2c import A2C
 from chainerrl.agents.a2c import A2CSeparateModel
 from chainerrl.envs.abc import ABC
-from chainerrl.envs.vec_env import VectorEnv
-from chainerrl.experiments import train_agent_with_evaluation_sync
+from chainerrl.experiments.evaluator import batch_run_evaluation_episodes
 from chainerrl import policies
 from chainerrl import v_functions
 
@@ -68,31 +68,29 @@ class TestA2C(unittest.TestCase):
             agent.load(self.agent_dirname)
 
         # Train
-        train_agent_with_evaluation_sync(
-            agent=agent, env=env, steps=steps, outdir=self.tmpdir,
+        chainerrl.experiments.train_agent_batch_with_evaluation(
+            agent=agent,
+            env=env,
+            steps=steps,
+            outdir=self.tmpdir,
             log_interval=10,
-            eval_interval=200, eval_n_runs=50, successful_score=1,
-            eval_env=test_env)
+            eval_interval=200,
+            eval_n_runs=50,
+            successful_score=1,
+            eval_env=test_env,
+        )
 
         agent.stop_episode()
         env.close()
 
         # Test
         n_test_runs = 100
-        n_succeeded = 0
-        for _ in range(n_test_runs):
-            total_r = 0.0
-            obs = test_env.reset()
-            done = False
-            reward = 0.0
-            while not done:
-                action = agent.act(obs)
-                obs, reward, done, _ = test_env.step(action)
-                total_r += reward
-            agent.stop_episode()
-            if np.isclose(total_r, successful_return):
-                n_succeeded += 1
-
+        eval_returns = batch_run_evaluation_episodes(
+            test_env,
+            agent,
+            n_runs=n_test_runs,
+        )
+        n_succeeded = np.sum(np.asarray(eval_returns) >= successful_return)
         if require_success:
             self.assertGreater(n_succeeded, 0.8 * n_test_runs)
 
@@ -140,9 +138,10 @@ class TestA2C(unittest.TestCase):
         return A2CSeparateModel(pi=pi, v=v)
 
     def make_env_and_successful_return(self, test, n):
-        if test:
-            return ABC(discrete=self.discrete,
-                       deterministic=test), 1
-        return VectorEnv(
-            [ABC(discrete=self.discrete,
-                 deterministic=test) for _ in range(n)]), 1
+
+        def make_env():
+            return ABC(discrete=self.discrete, deterministic=test)
+
+        vec_env = chainerrl.envs.MultiprocessVectorEnv(
+            [make_env for _ in range(n)])
+        return vec_env, 1
