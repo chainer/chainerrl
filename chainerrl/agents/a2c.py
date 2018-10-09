@@ -228,8 +228,9 @@ class A2C(agent.AttributeSavingMixin):
         statevar = self.batch_states(batch_obs, self.xp, self.phi)
 
         if self.t == 0:
-            pout, _ = self.model.pi_and_v(statevar)
-            action = pout.sample().data
+            with chainer.no_backprop_mode():
+                pout, _ = self.model.pi_and_v(statevar)
+                action = pout.sample().data
             self._flush_storage(statevar.shape, action)
 
         self.states[self.t - self.t_start] = statevar
@@ -239,8 +240,7 @@ class A2C(agent.AttributeSavingMixin):
 
         with chainer.no_backprop_mode():
             pout, value = self.model.pi_and_v(statevar)
-
-        action = pout.sample().data
+            action = pout.sample().data
 
         self.actions[self.t - self.t_start] \
             = action.reshape([-1] + list(self.action_shape))
@@ -277,7 +277,7 @@ class A2C(agent.AttributeSavingMixin):
         statevar = self.batch_states(batch_obs, self.xp, self.phi)
         with chainer.no_backprop_mode():
             pout, _ = self.model.pi_and_v(statevar)
-        action = pout.sample().data
+            action = pout.sample().data
         return chainer.cuda.to_cpu(action)
 
     def batch_observe(self, batch_obs, batch_reward, batch_done, batch_info):
