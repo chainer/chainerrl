@@ -19,6 +19,7 @@ from chainerrl.agents.a3c import A3CSeparateModel
 from chainerrl.agents.ppo import PPO
 from chainerrl.envs.abc import ABC
 from chainerrl.experiments.evaluator import batch_run_evaluation_episodes
+from chainerrl.experiments.evaluator import run_evaluation_episodes
 from chainerrl.experiments import train_agent_batch_with_evaluation
 from chainerrl.experiments import train_agent_with_evaluation
 from chainerrl import policies
@@ -31,6 +32,7 @@ from chainerrl import v_functions
         'lambd': [0.0, 0.5],
         'discrete': [False, True],
         'standardize_advantages': [False, True],
+        'episodic': [True, False],
     })
 ))
 class TestPPO(unittest.TestCase):
@@ -64,6 +66,7 @@ class TestPPO(unittest.TestCase):
         test_env, successful_return = self.make_env_and_successful_return(
             test=True)
         agent = self.make_agent(env, gpu)
+        max_episode_len = None if self.episodic else 2
 
         if load_model:
             print('Load agent from', self.agent_dirname)
@@ -71,27 +74,28 @@ class TestPPO(unittest.TestCase):
 
         # Train
         train_agent_with_evaluation(
-            agent=agent, env=env, steps=steps, outdir=self.tmpdir,
-            eval_interval=200, eval_n_runs=50, successful_score=1,
-            eval_env=test_env)
+            agent=agent,
+            env=env,
+            steps=steps,
+            outdir=self.tmpdir,
+            eval_interval=200,
+            eval_n_runs=50,
+            successful_score=successful_return,
+            eval_env=test_env,
+            max_episode_len=max_episode_len,
+        )
 
         agent.stop_episode()
 
         # Test
         n_test_runs = 100
-        n_succeeded = 0
-        for _ in range(n_test_runs):
-            total_r = 0.0
-            obs = test_env.reset()
-            done = False
-            reward = 0.0
-            while not done:
-                action = agent.act(obs)
-                obs, reward, done, _ = test_env.step(action)
-                total_r += reward
-            agent.stop_episode()
-            if np.isclose(total_r, successful_return):
-                n_succeeded += 1
+        eval_returns = run_evaluation_episodes(
+            test_env,
+            agent,
+            n_runs=n_test_runs,
+            max_episode_len=max_episode_len,
+        )
+        n_succeeded = np.sum(np.asarray(eval_returns) >= successful_return)
 
         if require_success:
             self.assertGreater(n_succeeded, 0.8 * n_test_runs)
@@ -140,7 +144,12 @@ class TestPPO(unittest.TestCase):
         return A3CSeparateModel(pi=pi, v=v)
 
     def make_env_and_successful_return(self, test):
-        return ABC(discrete=self.discrete, deterministic=test), 1
+        env = ABC(
+            discrete=self.discrete,
+            deterministic=test,
+            episodic=self.episodic,
+        )
+        return env, 1
 
 
 @testing.parameterize(*(
@@ -149,6 +158,7 @@ class TestPPO(unittest.TestCase):
         'lambd': [0.0, 0.5],
         'discrete': [False, True],
         'standardize_advantages': [False, True],
+        'episodic': [True, False],
     })
 ))
 class TestBatchPPO(unittest.TestCase):
@@ -183,6 +193,7 @@ class TestBatchPPO(unittest.TestCase):
         test_env, successful_return = self.make_env_and_successful_return(
             test=True, num_envs=num_envs)
         agent = self.make_agent(env, gpu)
+        max_episode_len = None if self.episodic else 2
 
         if load_model:
             print('Load agent from', self.agent_dirname)
@@ -190,9 +201,17 @@ class TestBatchPPO(unittest.TestCase):
 
         # Train
         train_agent_batch_with_evaluation(
-            agent=agent, env=env, steps=steps, outdir=self.tmpdir,
-            eval_interval=200, eval_n_runs=50, successful_score=1,
-            eval_env=test_env, log_interval=100)
+            agent=agent,
+            env=env,
+            steps=steps,
+            outdir=self.tmpdir,
+            eval_interval=200,
+            eval_n_runs=50,
+            successful_score=successful_return,
+            eval_env=test_env,
+            log_interval=100,
+            max_episode_len=max_episode_len,
+        )
         env.close()
 
         # Test
@@ -201,6 +220,7 @@ class TestBatchPPO(unittest.TestCase):
             test_env,
             agent,
             n_runs=n_test_runs,
+            max_episode_len=max_episode_len,
         )
         test_env.close()
         n_succeeded = np.sum(np.asarray(eval_returns) >= successful_return)
@@ -252,7 +272,11 @@ class TestBatchPPO(unittest.TestCase):
 
     def make_env_and_successful_return(self, test, num_envs=3):
         def make_env():
-            return ABC(discrete=self.discrete, deterministic=test)
+            return ABC(
+                discrete=self.discrete,
+                deterministic=test,
+                episodic=self.episodic,
+            )
         vec_env = chainerrl.envs.MultiprocessVectorEnv(
             [make_env for _ in range(num_envs)])
         return vec_env, 1.0
