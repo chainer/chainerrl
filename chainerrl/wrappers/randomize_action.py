@@ -31,7 +31,8 @@ class RandomizeAction(gym.ActionWrapper):
     def __init__(self, env, random_fraction):
         super().__init__(env)
         assert 0 <= random_fraction <= 1
-        assert isinstance(env.action_space, gym.spaces.Discrete)
+        assert isinstance(env.action_space, gym.spaces.Discrete),\
+            'RandomizeAction supports only gym.spaces.Discrete as an action space'  # NOQA
         self._random_fraction = random_fraction
         self._np_random = np.random.RandomState()
 
