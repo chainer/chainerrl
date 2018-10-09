@@ -51,7 +51,7 @@ def main():
     parser.add_argument('--env', type=str, default='BreakoutNoFrameskip-v4')
     parser.add_argument('--seed', type=int, default=0,
                         help='Random seed [0, 2 ** 31)')
-    parser.add_argument('--outdir', type=str, default=None)
+    parser.add_argument('--outdir', type=str, default='results')
     parser.add_argument('--max-episode-len', type=int,
                         default=30 * 60 * 60 // 4,  # 30 minutes with 60/4 fps
                         help='Maximum number of steps for each episode.')
