@@ -87,6 +87,9 @@ def main():
             episode_life=not test,
             clip_rewards=not test)
         env.seed(int(env_seed))
+        if test:
+            # Randomize actions like epsilon-greedy in evaluation as well
+            env = chainerrl.wrappers.RandomizeAction(env, 0.05)
         if args.monitor:
             env = gym.wrappers.Monitor(
                 env, args.outdir,
@@ -141,8 +144,6 @@ def main():
             args.eval_n_runs, eval_stats['mean'], eval_stats['median'],
             eval_stats['stdev']))
     else:
-        explorer = explorers.ConstantEpsilonGreedy(0.05, action_space.sample)
-
         # Linearly decay the learning rate to zero
         def lr_setter(env, agent, value):
             agent.optimizer.lr = value
@@ -159,7 +160,6 @@ def main():
             steps=args.steps,
             eval_n_runs=args.eval_n_runs,
             eval_interval=args.eval_interval,
-            eval_explorer=explorer,
             max_episode_len=args.max_episode_len,
             global_step_hooks=[lr_decay_hook],
             save_best_so_far_agent=False,
