@@ -4,7 +4,7 @@ from __future__ import division
 from __future__ import absolute_import
 from builtins import *  # NOQA
 from future import standard_library
-standard_library.install_aliases()
+standard_library.install_aliases()  # NOQA
 
 import copy
 import logging
@@ -170,7 +170,7 @@ class TestBiasCorrection(unittest.TestCase):
         for sample in pi_samples:
             base_policy.cleargrads()
             loss = -evaluate_action(sample) * pi.log_prob(sample)
-            loss.backward()
+            F.squeeze(loss).backward()
             onpolicy_gs.append(extract_gradients_as_single_vector(base_policy))
         # on-policy
         onpolicy_gs_mean = np.mean(onpolicy_gs, axis=0)
@@ -184,7 +184,7 @@ class TestBiasCorrection(unittest.TestCase):
         for sample in mu_samples:
             base_policy.cleargrads()
             loss = -evaluate_action(sample) * pi.log_prob(sample)
-            loss.backward()
+            F.squeeze(loss).backward()
             offpolicy_gs.append(
                 extract_gradients_as_single_vector(base_policy))
         offpolicy_gs_mean = np.mean(offpolicy_gs, axis=0)
@@ -199,7 +199,7 @@ class TestBiasCorrection(unittest.TestCase):
             base_policy.cleargrads()
             rho = float(pi.prob(sample).data / mu.prob(sample).data)
             loss = -rho * evaluate_action(sample) * pi.log_prob(sample)
-            loss.backward()
+            F.squeeze(loss).backward()
             is_gs.append(extract_gradients_as_single_vector(base_policy))
         is_gs_mean = np.mean(is_gs, axis=0)
         is_gs_var = np.var(is_gs, axis=0)
@@ -220,7 +220,7 @@ class TestBiasCorrection(unittest.TestCase):
                     action_value=action_value,
                     v=0,
                     truncation_threshold=truncation_threshold)
-                loss.backward()
+                F.squeeze(loss).backward()
                 gs.append(extract_gradients_as_single_vector(base_policy))
             return gs
 
@@ -299,7 +299,7 @@ class TestEfficientTRPO(unittest.TestCase):
             for _ in range(n):
                 distrib = policy(x)
                 policy.cleargrads()
-                loss_func(distrib).backward()
+                F.squeeze(loss_func(distrib)).backward()
                 optimizer.update()
             distrib_after = policy(x)
             return float(another_distrib.kl(distrib_after).data)

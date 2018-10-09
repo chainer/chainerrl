@@ -4,12 +4,13 @@ from __future__ import unicode_literals
 from __future__ import absolute_import
 from builtins import *  # NOQA
 from future import standard_library
-standard_library.install_aliases()
+standard_library.install_aliases()  # NOQA
 
 from logging import getLogger
 import warnings
 
 import chainer
+import chainer.functions as F
 import numpy as np
 
 import chainerrl
@@ -156,7 +157,7 @@ class REINFORCE(agent.AttributeSavingMixin, agent.Agent):
         # Variable with it will raise an error, so it is manually converted to
         # float here.
         total_loss /= float(self.batchsize)
-        total_loss.backward()
+        F.squeeze(total_loss).backward()
         self.reward_sequences = [[]]
         self.log_prob_sequences = [[]]
         self.entropy_sequences = [[]]

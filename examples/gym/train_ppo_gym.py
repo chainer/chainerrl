@@ -12,15 +12,15 @@ from __future__ import unicode_literals
 from __future__ import absolute_import
 from builtins import *  # NOQA
 from future import standard_library
-standard_library.install_aliases()
+standard_library.install_aliases()  # NOQA
 import argparse
 
 import chainer
 from chainer import functions as F
 import gym
 import gym.wrappers
-import numpy as np
 
+import chainerrl
 from chainerrl.agents import a3c
 from chainerrl.agents import PPO
 from chainerrl import experiments
@@ -28,10 +28,6 @@ from chainerrl import links
 from chainerrl import misc
 from chainerrl.optimizers.nonbias_weight_decay import NonbiasWeightDecay
 from chainerrl import policies
-
-
-def phi(obs):
-    return obs.astype(np.float32)
 
 
 class A3CFFSoftmax(chainer.ChainList, a3c.A3CModel):
@@ -98,14 +94,17 @@ def main():
 
     parser = argparse.ArgumentParser()
     parser.add_argument('--gpu', type=int, default=0)
-    parser.add_argument('--env', type=str, default='Hopper-v1')
+    parser.add_argument('--env', type=str, default='Hopper-v2')
     parser.add_argument('--arch', type=str, default='FFGaussian',
                         choices=('FFSoftmax', 'FFMellowmax',
                                  'FFGaussian'))
     parser.add_argument('--normalize-obs', action='store_true')
     parser.add_argument('--bound-mean', action='store_true')
-    parser.add_argument('--seed', type=int, default=None)
-    parser.add_argument('--outdir', type=str, default=None)
+    parser.add_argument('--seed', type=int, default=0,
+                        help='Random seed [0, 2 ** 32)')
+    parser.add_argument('--outdir', type=str, default='results',
+                        help='Directory path to save output files.'
+                             ' If it does not exist, it will be created.')
     parser.add_argument('--steps', type=int, default=10 ** 6)
     parser.add_argument('--eval-interval', type=int, default=10000)
     parser.add_argument('--eval-n-runs', type=int, default=10)
@@ -125,15 +124,20 @@ def main():
     parser.add_argument('--entropy-coef', type=float, default=0.0)
     args = parser.parse_args()
 
-    logging.getLogger().setLevel(args.logger_level)
+    logging.basicConfig(level=args.logger_level)
 
-    if args.seed is not None:
-        misc.set_random_seed(args.seed)
+    # Set a random seed used in ChainerRL
+    misc.set_random_seed(args.seed, gpus=(args.gpu,))
 
     args.outdir = experiments.prepare_output_dir(args, args.outdir)
 
     def make_env(test):
         env = gym.make(args.env)
+        # Use different random seeds for train and test envs
+        env_seed = 2 ** 32 - 1 - args.seed if test else args.seed
+        env.seed(env_seed)
+        # Cast observations to float32 because our model uses float32
+        env = chainerrl.wrappers.CastObservationToFloat32(env)
         if args.monitor:
             env = gym.wrappers.Monitor(env, args.outdir)
         # Scale rewards observed by agents
@@ -166,7 +170,6 @@ def main():
         opt.add_hook(NonbiasWeightDecay(args.weight_decay))
     agent = PPO(model, opt,
                 gpu=args.gpu,
-                phi=phi,
                 update_interval=args.update_interval,
                 minibatch_size=args.batchsize, epochs=args.epochs,
                 clip_eps_vf=None, entropy_coef=args.entropy_coef,
@@ -213,8 +216,8 @@ def main():
             step_hooks=[
                 lr_decay_hook,
                 clip_eps_decay_hook,
-                ],
-            )
+            ],
+        )
 
 
 if __name__ == '__main__':

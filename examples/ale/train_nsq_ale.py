@@ -4,65 +4,96 @@ from __future__ import unicode_literals
 from __future__ import absolute_import
 from builtins import *  # NOQA
 from future import standard_library
-standard_library.install_aliases()
+standard_library.install_aliases()  # NOQA
 
 import argparse
 import os
 import random
 
 # This prevents numpy from using multiple threads
-os.environ['OMP_NUM_THREADS'] = '1'
+os.environ['OMP_NUM_THREADS'] = '1'  # NOQA
 
 from chainer import links as L
+import gym
+from gym import spaces
+import gym.wrappers
+import numpy as np
 
 import chainerrl
 from chainerrl.action_value import DiscreteActionValue
 from chainerrl.agents import nsq
-from chainerrl.envs import ale
 from chainerrl import experiments
 from chainerrl import explorers
 from chainerrl import links
 from chainerrl import misc
 from chainerrl.optimizers import rmsprop_async
-from chainerrl import spaces
 
-from dqn_phi import dqn_phi
+import atari_wrappers
 
 
 def main():
 
-    import logging
-    # logging.basicConfig(level=logging.DEBUG)
-
     parser = argparse.ArgumentParser()
     parser.add_argument('processes', type=int)
-    parser.add_argument('rom', type=str)
-    parser.add_argument('--seed', type=int, default=None)
+    parser.add_argument('--env', type=str, default='BreakoutNoFrameskip-v4')
+    parser.add_argument('--seed', type=int, default=0,
+                        help='Random seed [0, 2 ** 31)')
     parser.add_argument('--lr', type=float, default=7e-4)
     parser.add_argument('--steps', type=int, default=8 * 10 ** 7)
-    parser.add_argument('--use-sdl', action='store_true', default=False)
+    parser.add_argument('--max-episode-len', type=int,
+                        default=5 * 60 * 60 // 4,  # 5 minutes with 60/4 fps
+                        help='Maximum number of steps for each episode.')
     parser.add_argument('--final-exploration-frames',
                         type=int, default=4 * 10 ** 6)
-    parser.add_argument('--outdir', type=str, default='nsq_output')
+    parser.add_argument('--outdir', type=str, default='results',
+                        help='Directory path to save output files.'
+                             ' If it does not exist, it will be created.')
     parser.add_argument('--profile', action='store_true')
     parser.add_argument('--eval-interval', type=int, default=10 ** 6)
     parser.add_argument('--eval-n-runs', type=int, default=10)
     parser.add_argument('--demo', action='store_true', default=False)
     parser.add_argument('--load', type=str, default=None)
+    parser.add_argument('--logging-level', type=int, default=20,
+                        help='Logging level. 10:DEBUG, 20:INFO etc.')
+    parser.add_argument('--render', action='store_true', default=False,
+                        help='Render env states in a GUI window.')
+    parser.add_argument('--monitor', action='store_true', default=False,
+                        help='Monitor env. Videos and additional information'
+                             ' are saved as output files.')
     args = parser.parse_args()
 
-    if args.seed is not None:
-        misc.set_random_seed(args.seed)
+    import logging
+    logging.basicConfig(level=args.logging_level)
+
+    # Set a random seed used in ChainerRL.
+    # If you use more than one processes, the results will be no longer
+    # deterministic even with the same random seed.
+    misc.set_random_seed(args.seed)
+
+    # Set different random seeds for different subprocesses.
+    # If seed=0 and processes=4, subprocess seeds are [0, 1, 2, 3].
+    # If seed=1 and processes=4, subprocess seeds are [4, 5, 6, 7].
+    process_seeds = np.arange(args.processes) + args.seed * args.processes
+    assert process_seeds.max() < 2 ** 31
 
     args.outdir = experiments.prepare_output_dir(args, args.outdir)
-
     print('Output files are saved in {}'.format(args.outdir))
 
     def make_env(process_idx, test):
-        env = ale.ALE(args.rom, use_sdl=args.use_sdl,
-                      treat_life_lost_as_terminal=not test)
-        if not test:
-            misc.env_modifiers.make_reward_clipped(env, -1, 1)
+        # Use different random seeds for train and test envs
+        process_seed = process_seeds[process_idx]
+        env_seed = 2 ** 31 - 1 - process_seed if test else process_seed
+        env = atari_wrappers.wrap_deepmind(
+            atari_wrappers.make_atari(args.env),
+            episode_life=not test,
+            clip_rewards=not test)
+        env.seed(int(env_seed))
+        if args.monitor:
+            env = gym.wrappers.Monitor(
+                env, args.outdir,
+                mode='evaluation' if test else 'training')
+        if args.render:
+            misc.env_modifiers.make_rendered(env)
         return env
 
     sample_env = make_env(0, test=False)
@@ -79,6 +110,10 @@ def main():
 
     def action_sampler():
         return chainerrl.misc.sample_from_space(action_space)
+
+    def phi(x):
+        # Feature extractor
+        return np.asarray(x, dtype=np.float32) / 255
 
     # Make process-specific agents to diversify exploration
     def make_agent(process_idx):
@@ -97,7 +132,7 @@ def main():
         explorer.logger.setLevel(logging.INFO)
         return nsq.NSQ(q_func, opt, t_max=5, gamma=0.99,
                        i_target=40000,
-                       explorer=explorer, phi=dqn_phi)
+                       explorer=explorer, phi=phi)
 
     if args.demo:
         env = make_env(0, True)
@@ -129,7 +164,11 @@ def main():
             eval_n_runs=args.eval_n_runs,
             eval_interval=args.eval_interval,
             eval_explorer=explorer,
-            global_step_hooks=[lr_decay_hook])
+            max_episode_len=args.max_episode_len,
+            global_step_hooks=[lr_decay_hook],
+            save_best_so_far_agent=False,
+        )
+
 
 if __name__ == '__main__':
     main()

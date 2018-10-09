@@ -4,7 +4,7 @@ from __future__ import division
 from __future__ import absolute_import
 from builtins import *  # NOQA
 from future import standard_library
-standard_library.install_aliases()
+standard_library.install_aliases()  # NOQA
 
 import itertools
 
@@ -107,6 +107,4 @@ class RandomAccessQueue(object):
         return self._queue_front.pop()
 
     def sample(self, k):
-        nf = len(self._queue_front)
-        return [self._queue_front[i] if i < nf else self._queue_back[i - nf]
-                for i in sample_n_k(len(self), k)]
+        return [self[i] for i in sample_n_k(len(self), k)]

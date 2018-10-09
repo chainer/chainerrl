@@ -4,7 +4,7 @@ from __future__ import division
 from __future__ import absolute_import
 from builtins import *  # NOQA
 from future import standard_library
-standard_library.install_aliases()
+standard_library.install_aliases()  # NOQA
 
 from chainerrl.agents import dqn
 
@@ -13,7 +13,7 @@ class SARSA(dqn.DQN):
     """SARSA.
 
     Unlike DQN, this agent uses actions that have been actually taken to
-    compute tareget Q values, thus is an on-policy algorithm.
+    compute target Q values, thus is an on-policy algorithm.
     """
 
     def _compute_target_values(self, exp_batch, gamma):

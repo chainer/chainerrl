@@ -4,16 +4,16 @@ from __future__ import division
 from __future__ import absolute_import
 from builtins import *  # NOQA
 from future import standard_library
-standard_library.install_aliases()
+standard_library.install_aliases()  # NOQA
 import collections
 import os
 import sys
 import warnings
 
+from gym import spaces
 import numpy as np
 
 from chainerrl import env
-from chainerrl import spaces
 
 
 try:
@@ -134,7 +134,9 @@ class ALE(env.Env):
 
         self.action_space = spaces.Discrete(len(self.legal_actions))
         one_screen_observation_space = spaces.Box(
-            low=0, high=255, shape=(84, 84))
+            low=0, high=255,
+            shape=(84, 84), dtype=np.uint8,
+        )
         self.observation_space = spaces.Tuple(
             [one_screen_observation_space] * n_last_screens)
 

@@ -11,17 +11,24 @@ If you could kindly send a PR to ChainerRL, please make sure all the tests succe
 
 ## Testing
 
-To test chainerrl modules, install and run `pytest`. Pass `-m "not gpu"` to skip tests that require gpu.
+To test chainerrl modules, install and run `pytest`. Pass `-m "not gpu"` to skip tests that require gpu. E.g.
+```
+$ pip install pytest
+$ pytest -m "not gpu"
+```
+
 
 To test examples, run `test_examples.sh [gpu device id]`. `-1` would run examples with only cpu.
 
 ## Coding style
 
-We use PEP8. To check your code, use `flake8` command installed by `hacking` package.
+We use PEP8. To check your code, use `autopep8` and `flake8` command installed by `hacking` package.
 ```
-$ pip install hacking
+$ pip install autopep8 hacking
+$ autopep8 --diff path/to/your/code.py
 $ flake8 path/to/your/code.py
 ```
+
 
 To use Python 3 features as much as possible while keeping Python 2 support, add the following lines to the head of each file.
 ```

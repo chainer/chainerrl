@@ -25,7 +25,7 @@ class TestEmpiricalNormalization(unittest.TestCase):
 
         xs = []
         for t in range(10):
-            x = xp.random.normal(loc=4, scale=2, size=(t+3, 10))
+            x = xp.random.normal(loc=4, scale=2, size=(t + 3, 10))
             en(x)
             xs.extend(list(x))
         xs = xp.stack(xs)
@@ -56,7 +56,7 @@ class TestEmpiricalNormalization(unittest.TestCase):
         shape = (2, 3, 4)
         for batch_axis in range(3):
             en = empirical_normalization.EmpiricalNormalization(
-                shape=shape[:batch_axis]+shape[batch_axis+1:],
+                shape=shape[:batch_axis] + shape[batch_axis + 1:],
                 batch_axis=batch_axis,
             )
             for _ in range(10):
@@ -83,7 +83,7 @@ class TestEmpiricalNormalization(unittest.TestCase):
     def test_mixed_inputs(self):
         en = empirical_normalization.EmpiricalNormalization(7)
         for t in range(5):
-            y = en(np.random.rand(t+1, 7))
+            y = en(np.random.rand(t + 1, 7))
             self.assertIsInstance(y, np.ndarray)
-            y = en(chainer.Variable(np.random.rand(t+1, 7)))
+            y = en(chainer.Variable(np.random.rand(t + 1, 7)))
             self.assertIsInstance(y, chainer.Variable)

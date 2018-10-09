@@ -2,15 +2,11 @@ from setuptools import find_packages
 from setuptools import setup
 import sys
 
-gym_require = 'gym>=0.7.3'
-if sys.version_info < (3, 0):
-    gym_require += ',!=0.9.6'
-
 install_requires = [
     'cached-property',
     'chainer>=2.0.0',
     'future',
-    gym_require,
+    'gym>=0.9.7',
     'numpy>=1.10.4',
     'pillow',
     'scipy',
@@ -30,7 +26,7 @@ if sys.version_info < (3, 5):
     install_requires.append('funcsigs')
 
 setup(name='chainerrl',
-      version='0.3.0',
+      version='0.4.0',
       description='ChainerRL, a deep reinforcement learning library',
       author='Yasuhiro Fujita',
       author_email='fujita@preferred.jp',

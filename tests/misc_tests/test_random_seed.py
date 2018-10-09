@@ -4,7 +4,7 @@ from __future__ import division
 from __future__ import absolute_import
 from future import standard_library
 from builtins import *  # NOQA
-standard_library.install_aliases()
+standard_library.install_aliases()  # NOQA
 
 import random
 import unittest
