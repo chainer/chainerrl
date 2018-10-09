@@ -10,6 +10,7 @@ import argparse
 import logging
 
 import chainer
+import gym
 import numpy as np
 
 import chainerrl

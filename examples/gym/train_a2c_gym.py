@@ -31,10 +31,6 @@ from chainerrl import policies
 from chainerrl import v_function
 
 
-def phi(obs):
-    return obs.astype(np.float32)
-
-
 class A2CFFSoftmax(chainer.ChainList, a2c.A2CModel):
     """An example of A2C feedforward softmax policy."""
 
@@ -143,6 +139,8 @@ def main():
         process_seed = int(process_seeds[process_idx])
         env_seed = 2 ** 32 - 1 - process_seed if test else process_seed
         env.seed(env_seed)
+        # Cast observations to float32 because our model uses float32
+        env = chainerrl.wrappers.CastObservationToFloat32(env)
         if args.monitor and process_idx == 0:
             env = gym.wrappers.Monitor(env, args.outdir)
         # Scale rewards observed by agents
@@ -184,7 +182,6 @@ def main():
                     gpu=args.gpu,
                     num_processes=args.num_envs,
                     update_steps=args.update_steps,
-                    phi=phi,
                     use_gae=args.use_gae,
                     tau=args.tau)
     if args.load:

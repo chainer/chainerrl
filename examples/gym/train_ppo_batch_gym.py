@@ -18,7 +18,6 @@ import argparse
 import chainer
 from chainer import functions as F
 import gym
-gym.undo_logger_setup()  # NOQA
 import gym.wrappers
 import numpy as np
 
@@ -30,10 +29,6 @@ from chainerrl import links
 from chainerrl import misc
 from chainerrl.optimizers.nonbias_weight_decay import NonbiasWeightDecay
 from chainerrl import policies
-
-
-def phi(obs):
-    return [ob.astype(np.float32) for ob in obs]
 
 
 class A3CFFSoftmax(chainer.ChainList, a3c.A3CModel):
@@ -155,6 +150,8 @@ def main():
         process_seed = int(process_seeds[process_idx])
         env_seed = 2 ** 32 - 1 - process_seed if test else process_seed
         env.seed(env_seed)
+        # Cast observations to float32 because our model uses float32
+        env = chainerrl.wrappers.CastObservationToFloat32(env)
         if args.monitor:
             env = gym.wrappers.Monitor(env, args.outdir)
         # Scale rewards observed by agents
@@ -193,7 +190,6 @@ def main():
         opt.add_hook(NonbiasWeightDecay(args.weight_decay))
     agent = PPO(model, opt,
                 gpu=args.gpu,
-                phi=phi,
                 update_interval=args.update_interval,
                 minibatch_size=args.batchsize, epochs=args.epochs,
                 clip_eps_vf=None, entropy_coef=args.entropy_coef,
