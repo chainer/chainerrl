@@ -14,10 +14,11 @@ from chainer import optimizers
 from chainer import testing
 import numpy as np
 
+import chainerrl
 from chainerrl.agents.a3c import A3CSeparateModel
 from chainerrl.agents.ppo import PPO
 from chainerrl.envs.abc import ABC
-from chainerrl.envs.vec_env import VectorEnv
+from chainerrl.experiments.evaluator import batch_run_evaluation_episodes
 from chainerrl.experiments import train_agent_batch_with_evaluation
 from chainerrl.experiments import train_agent_with_evaluation
 from chainerrl import policies
@@ -192,33 +193,22 @@ class TestBatchPPO(unittest.TestCase):
             agent=agent, env=env, steps=steps, outdir=self.tmpdir,
             eval_interval=200, eval_n_runs=50, successful_score=1,
             eval_env=test_env, log_interval=100)
-
-        agent.stop_episode()
+        env.close()
 
         # Test
         n_test_runs = 100
-        n_succeeded = np.zeros(num_envs, dtype='f')
-        for _ in range(n_test_runs):
-            total_r = np.zeros(num_envs, dtype='f')
-            obs = test_env.reset()
-            done = np.zeros(num_envs, dtype=bool)
-            reward = np.zeros(num_envs, dtype='f')
-
-            while not done.all():
-                action = agent.batch_act_and_train(obs)
-                obs, reward, done, _ = test_env.step(action)
-                total_r += reward
-                success = np.isclose(total_r, successful_return)
-                n_succeeded[success] += 1
-
+        eval_returns = batch_run_evaluation_episodes(
+            test_env,
+            agent,
+            n_runs=n_test_runs,
+        )
+        test_env.close()
+        n_succeeded = np.sum(np.asarray(eval_returns) >= successful_return)
         if require_success:
-            self.assertTrue((n_succeeded > 0.8 * n_test_runs).all())
+            self.assertGreater(n_succeeded, 0.8 * n_test_runs)
 
         # Save
         agent.save(self.agent_dirname)
-        # Close environment
-        env.close()
-        test_env.close()
 
     def make_agent(self, env, gpu):
         model = self.make_model(env)
@@ -261,8 +251,8 @@ class TestBatchPPO(unittest.TestCase):
         return A3CSeparateModel(pi=pi, v=v)
 
     def make_env_and_successful_return(self, test, num_envs=3):
-        batch_env = VectorEnv([ABC(discrete=self.discrete, deterministic=test)
-                               for _ in range(num_envs)])
-        batch_env.spec = None
-        batch_env.__spec__ = None
-        return batch_env, np.ones(num_envs, dtype='f')
+        def make_env():
+            return ABC(discrete=self.discrete, deterministic=test)
+        vec_env = chainerrl.envs.MultiprocessVectorEnv(
+            [make_env for _ in range(num_envs)])
+        return vec_env, 1.0
