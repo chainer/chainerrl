@@ -79,8 +79,6 @@ class TestA2C(unittest.TestCase):
             successful_score=1,
             eval_env=test_env,
         )
-
-        agent.stop_episode()
         env.close()
 
         # Test
@@ -90,6 +88,7 @@ class TestA2C(unittest.TestCase):
             agent,
             n_runs=n_test_runs,
         )
+        test_env.close()
         n_succeeded = np.sum(np.asarray(eval_returns) >= successful_return)
         if require_success:
             self.assertGreater(n_succeeded, 0.8 * n_test_runs)
