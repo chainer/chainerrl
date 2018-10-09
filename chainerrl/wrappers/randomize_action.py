@@ -13,7 +13,11 @@ import numpy as np
 class RandomizeAction(gym.ActionWrapper):
     """Apply a random action instead of the one sent by the agent.
 
-    This wrapper can be used to make a stochastic env.
+    This wrapper can be used to make a stochastic env. The common use is
+    for evaluation in Atari environments, where actions are replaced with
+    random ones with a low probability.
+
+    Only gym.spaces.Discrete is supported as an action space.
 
     For exploration during training, use explorers like
     chainerrl.explorers.ConstantEpsilonGreedy instead of this wrapper.
