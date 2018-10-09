@@ -17,11 +17,6 @@ install:
       pip install pytest-cov
     fi
   - pip install -r requirements.txt --only-binary=numpy,scipy
-  # Avoid this issue https://github.com/jupyter/jupyter/issues/370
-  - |
-    if [[ $TRAVIS_PYTHON_VERSION == 3.5.1 ]]; then
-      pip install ipython==6.5.0
-    fi
   - pip install jupyter
   # atari_py==0.1.4 causes an error
   - pip install atari_py==0.1.1
