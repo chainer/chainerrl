@@ -10,10 +10,10 @@ import os
 import sys
 import warnings
 
+from gym import spaces
 import numpy as np
 
 from chainerrl import env
-from gym import spaces
 
 
 try:
