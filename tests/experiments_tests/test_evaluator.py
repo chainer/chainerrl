@@ -41,7 +41,6 @@ class TestEvaluator(unittest.TestCase):
             eval_interval=3,
             outdir=outdir,
             max_episode_len=None,
-            explorer=None,
             step_offset=0,
             save_best_so_far_agent=self.save_best_so_far_agent,
         )
@@ -105,7 +104,6 @@ class TestAsyncEvaluator(unittest.TestCase):
             eval_interval=3,
             outdir=outdir,
             max_episode_len=None,
-            explorer=None,
             step_offset=0,
             save_best_so_far_agent=self.save_best_so_far_agent,
         )

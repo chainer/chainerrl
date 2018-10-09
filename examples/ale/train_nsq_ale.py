@@ -19,6 +19,7 @@ from gym import spaces
 import gym.wrappers
 import numpy as np
 
+import chainerrl
 from chainerrl.action_value import DiscreteActionValue
 from chainerrl.agents import nsq
 from chainerrl import experiments
