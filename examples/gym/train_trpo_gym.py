@@ -26,7 +26,7 @@ import os
 import chainer
 from chainer import functions as F
 import gym
-gym.undo_logger_setup()  # NOQA
+import gym.spaces
 import gym.wrappers
 import numpy as np
 
@@ -38,7 +38,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--gpu', type=int, default=0,
                         help='GPU device ID. Set to -1 to use CPUs only.')
-    parser.add_argument('--env', type=str, default='Hopper-v1',
+    parser.add_argument('--env', type=str, default='Hopper-v2',
                         help='Gym Env ID')
     parser.add_argument('--seed', type=int, default=0,
                         help='Random seed [0, 2 ** 32)')

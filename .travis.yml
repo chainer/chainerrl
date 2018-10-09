@@ -18,7 +18,8 @@ install:
     fi
   - pip install -r requirements.txt --only-binary=numpy,scipy
   - pip install jupyter
-  - pip install atari_py>=0.1.1
+  # atari_py==0.1.4 causes an error
+  - pip install atari_py==0.1.1
   - pip install autopep8
   - pip install hacking
   - pip install coveralls

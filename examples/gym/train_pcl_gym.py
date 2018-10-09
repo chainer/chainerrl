@@ -24,7 +24,7 @@ os.environ['OMP_NUM_THREADS'] = '1'  # NOQA
 
 import chainer
 import gym
-gym.undo_logger_setup()  # NOQA
+import gym.spaces
 import gym.wrappers
 import numpy as np
 

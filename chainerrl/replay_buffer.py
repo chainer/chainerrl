@@ -98,7 +98,7 @@ class AbstractEpisodicReplayBuffer(AbstractReplayBuffer):
                 episode is sampled instead. If None, full episodes are always
                 returned.
         Returns:
-            Sequence of n sampled epiosodes, each of which is a sequence of
+            Sequence of n sampled episodes, each of which is a sequence of
             transitions.
         """
         raise NotImplementedError
@@ -164,7 +164,7 @@ class ReplayBuffer(AbstractReplayBuffer):
 
 
 class PriorityWeightError(object):
-    """For propotional prioritization
+    """For proportional prioritization
 
     alpha determines how much prioritization is used.
 
@@ -229,7 +229,7 @@ class PrioritizedReplayBuffer(ReplayBuffer, PriorityWeightError):
     """Stochastic Prioritization
 
     https://arxiv.org/pdf/1511.05952.pdf \S3.3
-    propotional prioritization
+    proportional prioritization
 
     Args:
         capacity (int)

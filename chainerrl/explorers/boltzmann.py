@@ -31,7 +31,7 @@ class Boltzmann(chainerrl.explorer.Explorer):
         with chainer.no_backprop_mode():
             probs = chainer.cuda.to_cpu(
                 F.softmax(action_value.q_values / self.T).data).ravel()
-        return np.random.choice(np.arange(n_actions),  p=probs)
+        return np.random.choice(np.arange(n_actions), p=probs)
 
     def __repr__(self):
         return 'Boltzmann(T={})'.format(self.T)
