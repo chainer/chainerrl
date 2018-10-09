@@ -6,13 +6,12 @@ from builtins import *  # NOQA
 from future import standard_library
 standard_library.install_aliases()  # NOQA
 
-from cached_property import cached_property
 import numpy as np
 
-from chainerrl import env
+import chainerrl
 
 
-class SerialVectorEnv(env.VectorEnv):
+class SerialVectorEnv(chainerrl.env.VectorEnv):
     """VectorEnv where each env is run sequentially.
 
     The purpose of this VectorEnv is to help debugging. For speed, you should
@@ -45,6 +44,10 @@ class SerialVectorEnv(env.VectorEnv):
     def seed(self, seeds):
         for env, seed in zip(self.envs, seeds):
             env.seed(seed)
+
+    def close(self):
+        for env in self.envs:
+            env.close()
 
     @property
     def num_envs(self):

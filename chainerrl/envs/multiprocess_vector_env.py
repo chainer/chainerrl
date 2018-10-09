@@ -13,7 +13,7 @@ import signal
 from cached_property import cached_property
 import numpy as np
 
-from chainerrl import env
+import chainerrl
 
 
 def worker(remote, env_fn):
@@ -46,7 +46,7 @@ def worker(remote, env_fn):
         env.close()
 
 
-class MultiprocessVectorEnv(env.VectorEnv):
+class MultiprocessVectorEnv(chainerrl.env.VectorEnv):
     """VectorEnv where each env is run in its own subprocess.
 
     Args:
