@@ -13,9 +13,10 @@ import random
 # This prevents numpy from using multiple threads
 os.environ['OMP_NUM_THREADS'] = '1'  # NOQA
 
-import gym
-gym.undo_logger_setup()  # NOQA
 from chainer import links as L
+import gym
+from gym import spaces
+import gym.wrappers
 import numpy as np
 
 from chainerrl.action_value import DiscreteActionValue
@@ -25,7 +26,6 @@ from chainerrl import explorers
 from chainerrl import links
 from chainerrl import misc
 from chainerrl.optimizers import rmsprop_async
-from chainerrl import spaces
 
 import atari_wrappers
 

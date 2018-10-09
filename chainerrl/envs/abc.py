@@ -6,10 +6,10 @@ from builtins import *  # NOQA
 from future import standard_library
 standard_library.install_aliases()  # NOQA
 
+from gym import spaces
 import numpy as np
 
 from chainerrl import env
-from chainerrl import spaces
 
 
 class ABC(env.Env):

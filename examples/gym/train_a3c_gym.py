@@ -26,7 +26,6 @@ import chainer
 from chainer import functions as F
 from chainer import links as L
 import gym
-gym.undo_logger_setup()  # NOQA
 import gym.wrappers
 import numpy as np
 
@@ -76,8 +75,7 @@ class A3CLSTMGaussian(chainer.ChainList, a3c.A3CModel, RecurrentChainMixin):
         self.v_head = L.Linear(obs_size, hidden_size)
         self.pi_lstm = L.LSTM(hidden_size, lstm_size)
         self.v_lstm = L.LSTM(hidden_size, lstm_size)
-        self.pi = policies.LinearGaussianPolicyWithDiagonalCovariance(
-            lstm_size, action_size)
+        self.pi = policies.FCGaussianPolicy(lstm_size, action_size)
         self.v = v_function.FCVFunction(lstm_size)
         super().__init__(self.pi_head, self.v_head,
                          self.pi_lstm, self.v_lstm, self.pi, self.v)
