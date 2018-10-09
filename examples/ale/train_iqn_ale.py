@@ -13,7 +13,6 @@ import chainer
 import chainer.functions as F
 import chainer.links as L
 import gym
-gym.undo_logger_setup()  # NOQA
 import numpy as np
 
 import chainerrl

@@ -1,6 +1,6 @@
 """An example of training Categorical DQN against OpenAI Gym Envs.
 
-This script is an example of training a CategoricalDQN agent against OpenAI
+This script is an example of training an IQN agent against OpenAI
 Gym envs. Only discrete spaces are supported.
 
 To solve CartPole-v0, run:
@@ -22,9 +22,7 @@ import chainer.functions as F
 import chainer.links as L
 from chainer import optimizers
 import gym
-gym.undo_logger_setup()  # NOQA
 import gym.wrappers
-import numpy as np
 
 import chainerrl
 from chainerrl import experiments
@@ -51,12 +49,9 @@ def main():
     parser.add_argument('--demo', action='store_true', default=False)
     parser.add_argument('--load', type=str, default=None)
     parser.add_argument('--steps', type=int, default=10 ** 8)
-    parser.add_argument('--prioritized-replay', action='store_true')
-    parser.add_argument('--episodic-replay', action='store_true')
     parser.add_argument('--replay-start-size', type=int, default=50)
     parser.add_argument('--target-update-interval', type=int, default=100)
     parser.add_argument('--target-update-method', type=str, default='hard')
-    parser.add_argument('--soft-update-tau', type=float, default=1e-2)
     parser.add_argument('--update-interval', type=int, default=1)
     parser.add_argument('--eval-n-runs', type=int, default=100)
     parser.add_argument('--eval-interval', type=int, default=1000)
@@ -82,6 +77,8 @@ def main():
         env = gym.make(args.env)
         env_seed = 2 ** 32 - 1 - args.seed if test else args.seed
         env.seed(env_seed)
+        # Cast observations to float32 because our model uses float32
+        env = chainerrl.wrappers.CastObservationToFloat32(env)
         if args.monitor:
             env = gym.wrappers.Monitor(env, args.outdir)
         if not test:
@@ -118,15 +115,12 @@ def main():
     rbuf_capacity = 50000  # 5 * 10 ** 5
     rbuf = replay_buffer.ReplayBuffer(rbuf_capacity)
 
-    def phi(obs):
-        return obs.astype(np.float32)
-
     agent = chainerrl.agents.IQN(
         q_func, opt, rbuf, gpu=args.gpu, gamma=args.gamma,
         explorer=explorer, replay_start_size=args.replay_start_size,
         target_update_interval=args.target_update_interval,
         update_interval=args.update_interval,
-        phi=phi, minibatch_size=args.minibatch_size,
+        minibatch_size=args.minibatch_size,
     )
 
     if args.load:
