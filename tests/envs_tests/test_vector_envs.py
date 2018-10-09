@@ -8,10 +8,7 @@ standard_library.install_aliases()  # NOQA
 
 import unittest
 
-from chainer import cuda
 from chainer import testing
-from chainer.testing import attr
-from chainer.testing import condition
 import gym
 import numpy as np
 
