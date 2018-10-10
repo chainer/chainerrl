@@ -6,5 +6,3 @@ dist/
 .idea/
 results/
 examples/gym/results/
-.coverage*
-.cache/
