@@ -143,12 +143,13 @@ class ALE(env.Env):
     def current_screen(self):
         # Max of two consecutive frames
         assert self.last_raw_screen is not None
-        rgb_img = np.maximum(self.ale.getScreenRGB(), self.last_raw_screen)
+        # getScreenRGB returns BGR
+        bgr_img = np.maximum(self.ale.getScreenRGB(), self.last_raw_screen)
         # Make sure the last raw screen is used only once
         self.last_raw_screen = None
-        assert rgb_img.shape[2:] == (3,)
-        # RGB -> Luminance
-        img = np.dot(rgb_img, np.array([0.299, 0.587, 0.114]))
+        assert bgr_img.shape[2:] == (3,)
+        # BGR -> Luminance
+        img = np.dot(bgr_img, np.array([0.114, 0.587, 0.299]))
         img = img.astype(np.uint8)
         if img.shape == (250, 160):
             raise RuntimeError("This ROM is for PAL. Please use ROMs for NTSC")
