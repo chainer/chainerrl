@@ -132,7 +132,6 @@ def train_agent_batch_with_evaluation(agent,
                                       outdir,
                                       max_episode_len=None,
                                       step_offset=0,
-                                      eval_explorer=None,
                                       eval_max_episode_len=None,
                                       return_window_size=100,
                                       eval_env=None,
@@ -154,7 +153,6 @@ def train_agent_batch_with_evaluation(agent,
         max_episode_len (int): Maximum episode length.
         step_offset (int): Time step from which training starts.
         return_window_size(int): Size of reward array.
-        eval_explorer: Explorer used for evaluation.
         eval_max_episode_len (int or None): Maximum episode length of
             evaluation runs. If set to None, max_episode_len is used instead.
         eval_env: Environment used for evaluation.
@@ -183,7 +181,6 @@ def train_agent_batch_with_evaluation(agent,
                           n_runs=eval_n_runs,
                           eval_interval=eval_interval, outdir=outdir,
                           max_episode_len=eval_max_episode_len,
-                          explorer=eval_explorer,
                           env=eval_env,
                           step_offset=step_offset,
                           save_best_so_far_agent=save_best_so_far_agent,
