@@ -10,13 +10,15 @@ from chainer import testing
 import gym
 import gym.spaces
 
-import basetest_agents as base
+import chainerrl
 from chainerrl import agents
 from chainerrl import explorers
 from chainerrl import policies
 from chainerrl import q_functions
 from chainerrl import replay_buffer
 from chainerrl import v_function
+
+import basetest_agents as base
 
 
 def create_stochastic_policy_for_env(env):
@@ -127,8 +129,11 @@ class TestDQN(base._TestAgentInterface):
         rbuf = replay_buffer.ReplayBuffer(10 ** 5)
         opt = optimizers.Adam()
         opt.setup(model)
+
+        def action_sampler():
+            return chainerrl.misc.sample_from_space(env.action_space)
         explorer = explorers.ConstantEpsilonGreedy(
-            0.2, random_action_func=lambda: env.action_space.sample())
+            0.2, random_action_func=action_sampler)
         return agents.DQN(model, opt, rbuf, gamma=0.99, explorer=explorer)
 
 
@@ -144,8 +149,11 @@ class TestDoubleDQN(base._TestAgentInterface):
         rbuf = replay_buffer.ReplayBuffer(10 ** 5)
         opt = optimizers.Adam()
         opt.setup(model)
+
+        def action_sampler():
+            return chainerrl.misc.sample_from_space(env.action_space)
         explorer = explorers.ConstantEpsilonGreedy(
-            0.2, random_action_func=lambda: env.action_space.sample())
+            0.2, random_action_func=action_sampler)
         return agents.DoubleDQN(
             model, opt, rbuf, gamma=0.99, explorer=explorer)
 
@@ -161,8 +169,11 @@ class TestNSQ(base._TestAgentInterface):
         model = create_state_q_function_for_env(env)
         opt = optimizers.Adam()
         opt.setup(model)
+
+        def action_sampler():
+            return chainerrl.misc.sample_from_space(env.action_space)
         explorer = explorers.ConstantEpsilonGreedy(
-            0.2, random_action_func=lambda: env.action_space.sample())
+            0.2, random_action_func=action_sampler)
         return agents.NSQ(
             q_function=model,
             optimizer=opt,

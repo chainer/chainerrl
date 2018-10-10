@@ -6,6 +6,7 @@ from builtins import *  # NOQA
 from future import standard_library
 standard_library.install_aliases()  # NOQA
 
+import contextlib
 import os
 import random
 
@@ -39,3 +40,32 @@ def set_random_seed(seed, gpus=()):
                 chainer.cuda.cupy.random.seed(seed)
     # chainer.functions.n_step_rnn directly depends on CHAINER_SEED
     os.environ['CHAINER_SEED'] = str(seed)
+
+
+@contextlib.contextmanager
+def using_numpy_random_for_gym_spaces():
+    from gym import spaces
+    gym_spaces_random_state = spaces.prng.np_random
+    spaces.prng.np_random = np.random.rand.__self__
+    yield
+    spaces.prng.np_random = gym_spaces_random_state
+
+
+def sample_from_space(space):
+    """Sample from gym.spaces.Space.
+
+    Unlike gym.spaces.Space.sample, this function use numpy's global random
+    state.
+
+    Users should use this function instead of gym.spaces.Space.sample because
+    it is not recommended to use gym.space.Space.sample in algorithms.
+    See https://github.com/openai/gym/blob/master/gym/spaces/prng.py
+
+    Args:
+        space (gym.spaces.Space): Space.
+
+    Returns:
+        object: Sample from the given space.
+    """
+    with using_numpy_random_for_gym_spaces():
+        return space.sample()

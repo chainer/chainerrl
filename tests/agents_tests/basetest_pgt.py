@@ -12,6 +12,7 @@ from chainer import links as L
 from chainer import optimizers
 import numpy as np
 
+import chainerrl
 from chainerrl.envs.abc import ABC
 from chainerrl.explorers.epsilon_greedy import LinearDecayEpsilonGreedy
 from chainerrl.links import Sequence
@@ -47,7 +48,7 @@ class _TestPGTOnABC(_TestTraining):
 
     def make_explorer(self, env):
         def random_action_func():
-            a = env.action_space.sample()
+            a = chainerrl.misc.sample_from_space(env.action_space)
             if isinstance(a, np.ndarray):
                 return a.astype(np.float32)
             else:

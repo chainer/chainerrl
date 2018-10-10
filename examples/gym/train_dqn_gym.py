@@ -131,10 +131,14 @@ def main():
             obs_size, n_actions,
             n_hidden_channels=args.n_hidden_channels,
             n_hidden_layers=args.n_hidden_layers)
+
+        def action_sampler():
+            return chainerrl.misc.sample_from_space(action_space)
+
         # Use epsilon-greedy for exploration
         explorer = explorers.LinearDecayEpsilonGreedy(
             args.start_epsilon, args.end_epsilon, args.final_exploration_steps,
-            action_space.sample)
+            action_sampler)
 
     if args.noisy_net_sigma is not None:
         links.to_factorized_noisy(q_func)

@@ -137,11 +137,8 @@ def main():
 
     rbuf = replay_buffer.ReplayBuffer(5 * 10 ** 5)
 
-    def random_action():
-        a = action_space.sample()
-        if isinstance(a, np.ndarray):
-            a = a.astype(np.float32)
-        return a
+    def phi(obs):
+        return obs.astype(np.float32)
 
     ou_sigma = (action_space.high - action_space.low) * 0.2
     explorer = explorers.AdditiveOU(sigma=ou_sigma)

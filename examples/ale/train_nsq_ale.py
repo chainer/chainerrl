@@ -19,6 +19,7 @@ from gym import spaces
 import gym.wrappers
 import numpy as np
 
+import chainerrl
 from chainerrl.action_value import DiscreteActionValue
 from chainerrl.agents import nsq
 from chainerrl import experiments
@@ -107,6 +108,9 @@ def main():
     opt = rmsprop_async.RMSpropAsync(lr=args.lr, eps=1e-1, alpha=0.99)
     opt.setup(q_func)
 
+    def action_sampler():
+        return chainerrl.misc.sample_from_space(action_space)
+
     def phi(x):
         # Feature extractor
         return np.asarray(x, dtype=np.float32) / 255
@@ -123,7 +127,7 @@ def main():
             epsilon_target = 0.5
         explorer = explorers.LinearDecayEpsilonGreedy(
             1, epsilon_target, args.final_exploration_frames,
-            action_space.sample)
+            action_sampler)
         # Suppress the explorer logger
         explorer.logger.setLevel(logging.INFO)
         return nsq.NSQ(q_func, opt, t_max=5, gamma=0.99,
@@ -141,7 +145,7 @@ def main():
             args.eval_n_runs, eval_stats['mean'], eval_stats['median'],
             eval_stats['stdev']))
     else:
-        explorer = explorers.ConstantEpsilonGreedy(0.05, action_space.sample)
+        explorer = explorers.ConstantEpsilonGreedy(0.05, action_sampler)
 
         # Linearly decay the learning rate to zero
         def lr_setter(env, agent, value):
