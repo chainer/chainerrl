@@ -11,10 +11,10 @@ import os
 # Prevent numpy from using multiple threads
 os.environ['OMP_NUM_THREADS'] = '1'  # NOQA
 
-import gym
-gym.undo_logger_setup()  # NOQA
 import chainer
 from chainer import links as L
+import gym
+import gym.wrappers
 import numpy as np
 
 import chainerrl
