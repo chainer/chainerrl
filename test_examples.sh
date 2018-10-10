@@ -15,10 +15,15 @@ python examples/ale/train_dqn_ale.py --env PongNoFrameskip-v4 --steps 100 --repl
 model=$(find $outdir/ale/dqn -name "*_finish")
 python examples/ale/train_dqn_ale.py --env PongNoFrameskip-v4 --demo --load $model --eval-n-runs 1 --outdir $outdir/temp --gpu $gpu
 
+# ale/dqn batch
+python examples/ale/train_dqn_batch_ale.py --env PongNoFrameskip-v4 --steps 100 --replay-start-size 50 --outdir $outdir/ale/dqn_batch --gpu $gpu
+model=$(find $outdir/ale/dqn_batch -name "*_finish")
+python examples/ale/train_dqn_batch_ale.py --env PongNoFrameskip-v4 --demo --load $model --eval-n-runs 1 --outdir $outdir/temp --gpu $gpu
+
 # ale/a2c
-python examples/ale/train_a2c_ale.py 4 pong --steps 100 --update-steps 50 --outdir $outdir/ale/a2c
+python examples/ale/train_a2c_ale.py --env PongNoFrameskip-v4 --steps 100 --update-steps 50 --outdir $outdir/ale/a2c
 model=$(find $outdir/ale/a2c -name "*_finish")
-python examples/ale/train_a2c_ale.py 1 pong --demo --load $model --eval-n-runs 1
+python examples/ale/train_a2c_ale.py --env PongNoFrameskip-v4 --demo --load $model --eval-n-runs 1
 
 # ale/a3c
 if [[ $gpu -lt 0 ]]; then
@@ -57,9 +62,9 @@ model=$(find $outdir/gym/dqn -name "*_finish")
 python examples/gym/train_dqn_gym.py --demo --load $model --eval-n-runs 1 --outdir $outdir/temp --gpu $gpu
 
 # gym/a2c
-python examples/gym/train_a2c_gym.py 4 --steps 100 --update-steps 50 --outdir $outdir/gym/a2c --gpu $gpu
+python examples/gym/train_a2c_gym.py --steps 100 --update-steps 50 --outdir $outdir/gym/a2c --gpu $gpu
 model=$(find $outdir/gym/a2c -name "*_finish")
-python examples/gym/train_a2c_gym.py 1 --demo --load $model --eval-n-runs 1 --gpu $gpu
+python examples/gym/train_a2c_gym.py --demo --load $model --eval-n-runs 1 --gpu $gpu
 
 # gym/a3c
 python examples/gym/train_a3c_gym.py 4 --steps 100 --outdir $outdir/gym/a3c
@@ -90,6 +95,11 @@ python examples/gym/train_reinforce_gym.py --demo --load $model --eval-n-runs 1 
 python examples/gym/train_ppo_gym.py --steps 100 --update-interval 50 --batchsize 16 --epochs 2 --outdir $outdir/gym/ppo --env Pendulum-v0 --gpu $gpu
 model=$(find $outdir/gym/ppo -name "*_finish")
 python examples/gym/train_ppo_gym.py --demo --load $model --eval-n-runs 1 --env Pendulum-v0 --outdir $outdir/temp --gpu $gpu
+
+# gym/ppo batch (specify non-mujoco env to test without mujoco)
+python examples/gym/train_ppo_batch_gym.py --steps 100 --update-interval 50 --batchsize 16 --epochs 2 --outdir $outdir/gym/ppo_batch --env Pendulum-v0 --gpu $gpu
+model=$(find $outdir/gym/ppo_batch -name "*_finish")
+python examples/gym/train_ppo_batch_gym.py --demo --load $model --eval-n-runs 1 --env Pendulum-v0 --outdir $outdir/temp --gpu $gpu
 
 # gym/trpo (specify non-mujoco env to test without mujoco)
 if [[ $double_backprop_support = 1 ]]; then
