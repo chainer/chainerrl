@@ -11,5 +11,3 @@ from chainerrl.experiments.train_agent import train_agent_with_evaluation  # NOQ
 from chainerrl.experiments.train_agent_async import train_agent_async  # NOQA
 from chainerrl.experiments.train_agent_batch import train_agent_batch  # NOQA
 from chainerrl.experiments.train_agent_batch import train_agent_batch_with_evaluation  # NOQA
-from chainerrl.experiments.train_agent_sync import train_agent_sync  # NOQA
-from chainerrl.experiments.train_agent_sync import train_agent_with_evaluation_sync  # NOQA
