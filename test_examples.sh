@@ -7,8 +7,13 @@ echo "outdir: $outdir"
 
 gpu="$1"
 
-# While Chaienr v3 supports double backprop, v3.0.0's supported functions are very limited, so use v3.1.0.
-double_backprop_support=$(python -c "import chainer; from distutils.version import StrictVersion; print(1 if StrictVersion(chainer.__version__) >= StrictVersion('3.1.0') else 0)")
+# While Chainer v3 supports double backprop, v3.0.0's supported functions are very limited, so use v3.1.0.
+double_backprop_support=$(python <<'END'
+import chainer
+from packaging.version import parse  # Cannot use distutils to parse *.rc1
+print(1 if parse(chainer.__version__) >= parse('3.1.0') else 0)
+END
+)
 
 # ale/dqn
 python examples/ale/train_dqn_ale.py --env PongNoFrameskip-v4 --steps 100 --replay-start-size 50 --outdir $outdir/ale/dqn --gpu $gpu

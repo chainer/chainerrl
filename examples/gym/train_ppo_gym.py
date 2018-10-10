@@ -140,10 +140,10 @@ def main():
         env = chainerrl.wrappers.CastObservationToFloat32(env)
         if args.monitor:
             env = gym.wrappers.Monitor(env, args.outdir)
-        # Scale rewards observed by agents
-        if args.reward_scale_factor and not test:
-            misc.env_modifiers.make_reward_filtered(
-                env, lambda x: x * args.reward_scale_factor)
+        if not test:
+            # Scale rewards (and thus returns) to a reasonable range so that
+            # training is easier
+            env = chainerrl.wrappers.ScaleReward(env, args.reward_scale_factor)
         if args.render:
             misc.env_modifiers.make_rendered(env)
         return env
