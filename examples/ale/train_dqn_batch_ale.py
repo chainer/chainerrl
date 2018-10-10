@@ -146,6 +146,7 @@ def main():
             episode_life=not test,
             clip_rewards=not test)
         if test:
+            # Randomize actions like epsilon-greedy in evaluation as well
             env = chainerrl.wrappers.RandomizeAction(env, args.eval_epsilon)
         env.seed(env_seed)
         if args.monitor:
