@@ -114,9 +114,9 @@ def main():
                         help='Frequency (in timesteps) at which ' +
                         'the target network is updated.')
     parser.add_argument('--eval-interval', type=int, default=10 ** 5,
-                        help='Timesteps in evaluation phase.')
+                        help='Frequency (in timesteps) of evaluation phase.')
     parser.add_argument('--update-interval', type=int, default=4,
-                        help='Frequency (in time steps) of network updates.')
+                        help='Frequency (in timesteps) of network updates.')
     parser.add_argument('--eval-n-runs', type=int, default=10)
     parser.add_argument('--no-clip-delta',
                         dest='clip_delta', action='store_false')
