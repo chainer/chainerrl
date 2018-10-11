@@ -39,7 +39,7 @@ class _TestTraining(unittest.TestCase):
         random_seed.set_random_seed(1)
         logging.basicConfig(level=logging.DEBUG)
 
-        env, _ = self.make_env_and_successful_return(test=False)
+        env = self.make_env_and_successful_return(test=False)[0]
         test_env, successful_return = self.make_env_and_successful_return(
             test=True)
         agent = self.make_agent(env, gpu)
