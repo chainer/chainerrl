@@ -97,6 +97,10 @@ class DiscreteActionValue(ActionValue):
     def params(self):
         return (self.q_values,)
 
+    def __getitem__(self, i):
+        return DiscreteActionValue(
+            self.q_values[i], q_values_formatter=self.q_values_formatter)
+
 
 class DistributionalDiscreteActionValue(ActionValue):
     """distributional Q-function output for discrete action space.
@@ -179,6 +183,13 @@ class DistributionalDiscreteActionValue(ActionValue):
     def params(self):
         return (self.q_dist,)
 
+    def __getitem__(self, i):
+        return DistributionalDiscreteActionValue(
+            self.q_dist[i],
+            self.z_values,
+            q_values_formatter=self.q_values_formatter,
+        )
+
 
 class QuadraticActionValue(ActionValue):
     """Q-function output for continuous action space.
@@ -258,6 +269,15 @@ class QuadraticActionValue(ActionValue):
     def params(self):
         return (self.mu, self.mat, self.v)
 
+    def __getitem__(self, i):
+        return QuadraticActionValue(
+            self.mu[i],
+            self.mat[i],
+            self.v[i],
+            min_action=self.min_action,
+            max_action=self.max_action,
+        )
+
 
 class SingleActionValue(ActionValue):
     """ActionValue that can evaluate only a single action."""
@@ -297,3 +317,6 @@ class SingleActionValue(ActionValue):
             ' graph that outputs SingleActionValue, use the variable returned'
             ' by its method such as evaluate_actions instead.')
         return ()
+
+    def __getitem__(self, i):
+        raise NotImplementedError
