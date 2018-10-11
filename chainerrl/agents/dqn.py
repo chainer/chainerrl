@@ -12,7 +12,6 @@ from logging import getLogger
 import chainer
 from chainer import cuda
 import chainer.functions as F
-import numpy as np
 
 from chainerrl import agent
 from chainerrl.misc.batch_states import batch_states
@@ -82,7 +81,7 @@ def compute_weighted_value_loss(y, t, weights,
     return loss
 
 
-class DQN(agent.AttributeSavingMixin, agent.Agent):
+class DQN(agent.AttributeSavingMixin, agent.BatchAgent):
     """Deep Q-Network algorithm.
 
     Args:
@@ -441,8 +440,7 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
             return batch_argmax
 
     def batch_observe_and_train(self, batch_obs, batch_reward,
-                                batch_done, batch_info):
-        batch_reset = np.array([info['reset'] for info in batch_info])
+                                batch_done, batch_reset):
         for i in range(len(batch_obs)):
             self.t += 1
             # Update the target network
@@ -464,7 +462,7 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
             self.replay_updater.update_if_necessary(self.t)
 
     def batch_observe(self, batch_obs, batch_reward,
-                      batch_done, batch_info):
+                      batch_done, batch_reset):
         pass
 
     def stop_episode_and_train(self, state, reward, done=False):
