@@ -111,17 +111,14 @@ def batch_run_evaluation_episodes(
 
         # Compute mask for done and reset
         if max_episode_len is None:
-            end_by_episode_len = np.zeros(num_envs, dtype=bool)
+            resets = np.zeros(num_envs, dtype=bool)
         else:
-            end_by_episode_len = (episode_len == max_episode_len)
-        # Package mask inside info dict
-        for info, flag in zip(infos, end_by_episode_len):
-            info['reset'] = info.get('reset', False) or flag
+            resets = (episode_len == max_episode_len)
         # Agent observes the consequences
-        agent.batch_observe(obss, rs, dones, infos)
+        agent.batch_observe(obss, rs, dones, resets)
 
         # Make mask. 0 if done/reset, 1 if pass
-        end = np.logical_or(end_by_episode_len, dones)
+        end = np.logical_or(resets, dones)
         not_end = np.logical_not(end)
 
         episode_returns.extend(
