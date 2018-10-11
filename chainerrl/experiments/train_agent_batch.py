@@ -104,7 +104,7 @@ def train_agent_batch(agent, env, steps, outdir, log_interval=None,
                 logger.info('statistics: {}'.format(agent.get_statistics()))
             if evaluator:
                 if evaluator.evaluate_if_necessary(
-                        t=t, episodes=episode_idx):
+                        t=t, episodes=np.sum(episode_idx)):
                     if (successful_score is not None and
                             evaluator.max_score >= successful_score):
                         break
