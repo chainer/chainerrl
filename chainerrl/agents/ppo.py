@@ -25,7 +25,7 @@ def _elementwise_clip(x, x_min, x_max):
     return F.minimum(F.maximum(x, x_min), x_max)
 
 
-class PPO(agent.AttributeSavingMixin, agent.Agent):
+class PPO(agent.AttributeSavingMixin, agent.BatchAgent):
     """Proximal Policy Optimization
 
     See https://arxiv.org/abs/1707.06347
@@ -523,30 +523,11 @@ class PPO(agent.AttributeSavingMixin, agent.Agent):
             'nonterminal': 0.0 if done else 1.0
         }
 
-    def batch_observe(self, batch_obs, batch_reward, batch_done, batch_info):
-        """Proxy method during evaluation
-
-        Args:
-            batch_obs (ndarray): batch of observations
-            batch_reward (ndarray): batch of rewards
-            batch_done (ndarray): batch of done signals
-            batch_info (ndarray): additional information
-        """
+    def batch_observe(self, batch_obs, batch_reward, batch_done, batch_reset):
         pass
 
     def batch_observe_and_train(self, batch_obs, batch_reward,
-                                batch_done, batch_info):
-        """Observe model interaction with env and updates it
-
-        This method must be called after batch_act during training.
-
-        Args:
-            batch_obs (ndarray): batch of observations
-            batch_reward (ndarray): batch of rewards
-            batch_done (ndarray): batch of done signals
-            batch_info (ndarray): additional information
-        """
-        batch_reset = np.array([info['reset'] for info in batch_info])
+                                batch_done, batch_reset):
 
         # Initialize reset memory at first iteration
         if self._prev_reset is None:
