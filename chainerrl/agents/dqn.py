@@ -423,11 +423,6 @@ class DQN(agent.AttributeSavingMixin, agent.BatchAgent):
                 action_value=batch_av[i:i + 1],
             )
             for i in range(len(batch_obs))]
-        for _ in range(len(batch_obs)):
-            self.t += 1
-            # Update the target network
-            if self.t % self.target_update_interval == 0:
-                self.sync_target_network()
         self.batch_last_obs = list(batch_obs)
         self.batch_last_action = list(batch_action)
         return batch_action
