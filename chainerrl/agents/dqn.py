@@ -421,7 +421,7 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
         batch_action = [
             self.explorer.select_action(
                 self.t, lambda: batch_argmax[i],
-                # action_value=batch_av[i:i + 1],
+                action_value=batch_av[i:i + 1],
             )
             for i in range(len(batch_obs))]
         for _ in range(len(batch_obs)):
