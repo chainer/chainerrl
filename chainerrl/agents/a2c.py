@@ -52,7 +52,7 @@ class A2CSeparateModel(chainer.Chain, A2CModel, RecurrentChainMixin):
         return pout, vout
 
 
-class A2C(agent.AttributeSavingMixin):
+class A2C(agent.AttributeSavingMixin, agent.BatchAgent):
     """A2C: Advantage Actor-Critic.
 
     A2C is a synchronous, deterministic variant of Asynchronous Advantage
@@ -250,8 +250,18 @@ class A2C(agent.AttributeSavingMixin):
 
         return chainer.cuda.to_cpu(action)
 
+    def batch_act(self, batch_obs):
+        statevar = self.batch_states(batch_obs, self.xp, self.phi)
+        with chainer.no_backprop_mode():
+            pout, _ = self.model.pi_and_v(statevar)
+            action = pout.sample().data
+        return chainer.cuda.to_cpu(action)
+
     def batch_observe_and_train(self, batch_obs, batch_reward, batch_done,
-                                batch_info):
+                                batch_reset):
+
+        if any(batch_reset):
+            raise RuntimeError('A2C does not support resetting an env withtout reaching a terminal state during training')  # NOQA
 
         statevar = self.batch_states(batch_obs, self.xp, self.phi)
 
@@ -264,6 +274,12 @@ class A2C(agent.AttributeSavingMixin):
         if self.t - self.t_start == self.update_steps:
             self.update()
 
+    def batch_observe(self, batch_obs, batch_reward, batch_done, batch_reset):
+        pass
+
+    def act_and_train(obs, reward):
+        raise RuntimeError('A2C does not support non-batch training')
+
     def act(self, obs):
         with chainer.no_backprop_mode():
             statevar = self.batch_states([obs], self.xp, self.phi)
@@ -273,18 +289,8 @@ class A2C(agent.AttributeSavingMixin):
             else:
                 return chainer.cuda.to_cpu(pout.sample().data)[0]
 
-    def batch_act(self, batch_obs):
-        statevar = self.batch_states(batch_obs, self.xp, self.phi)
-        with chainer.no_backprop_mode():
-            pout, _ = self.model.pi_and_v(statevar)
-            action = pout.sample().data
-        return chainer.cuda.to_cpu(action)
-
-    def batch_observe(self, batch_obs, batch_reward, batch_done, batch_info):
-        pass
-
     def stop_episode_and_train(self, state, reward, done=False):
-        pass
+        raise RuntimeError('A2C does not support non-batch training')
 
     def stop_episode(self):
         pass
