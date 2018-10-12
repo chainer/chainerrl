@@ -417,7 +417,7 @@ class DQN(agent.AttributeSavingMixin, agent.BatchAgent):
         with chainer.using_config('train', False), chainer.no_backprop_mode():
             batch_xs = self.batch_states(batch_obs, self.xp, self.phi)
             batch_av = self.model(batch_xs)
-            # batch_maxq = batch_av.max.data
+            batch_maxq = batch_av.max.data
             batch_argmax = cuda.to_cpu(batch_av.greedy_actions.data)
         batch_action = [
             self.explorer.select_action(
@@ -427,6 +427,11 @@ class DQN(agent.AttributeSavingMixin, agent.BatchAgent):
             for i in range(len(batch_obs))]
         self.batch_last_obs = list(batch_obs)
         self.batch_last_action = list(batch_action)
+
+        # Update stats
+        self.average_q *= self.average_q_decay
+        self.average_q += (1 - self.average_q_decay) * float(batch_maxq.mean())
+
         return batch_action
 
     def batch_act(self, batch_obs):
