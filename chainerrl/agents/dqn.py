@@ -156,13 +156,15 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
                  table_lr=0.01,
                  samples=1,
                  env=None,
-                 video=False):
+                 video=False,
+                 table_sigma=table_sigma):
         self.model = q_function
         self.q_function = q_function  # For backward compatibility
 
         #cv2.namedWindow("vis", cv2.WINDOW_NORMAL)
         #cv2.namedWindow('test', cv2.WINDOW_NORMAL)
         self.env = env
+        self.table_sigma = table_sigma
 
         if gpu is not None and gpu >= 0:
             cuda.get_device(gpu).use()
@@ -816,7 +818,10 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
                     q = float(action_value.max.data)
 
                     if self.head:
-                        greedy_action = cuda.to_cpu(action_value.sample_actions_given_sigma(table_sigma).data)[0]
+                        if self.table_sigma:
+                            greedy_action = cuda.to_cpu(action_value.sample_actions_given_sigma(table_sigma).data)[0]
+                        else:
+                            greedy_action = cuda.to_cpu(action_value.sample_actions.data)[0]
                     else:
                         greedy_action = cuda.to_cpu(action_value.greedy_actions.data)[0]
 

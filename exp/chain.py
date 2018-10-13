@@ -138,6 +138,7 @@ def main():
 
     parser.add_argument('--force', type=float, default=0.001)
 
+    parser.add_argument('--table-sigma', action='store_true', default=False)
     parser.add_argument('--head', action='store_true', default=False)
     parser.add_argument('--noisy-y', action='store_true', default=False)
     parser.add_argument('--noisy-t', action='store_true', default=False)
@@ -312,7 +313,8 @@ def main():
                   table_lr=args.table_lr,
                   samples=args.samples,
                   env=args.env,
-                  video=args.video)
+                  video=args.video,
+                  table_sigma=args.table_sigma)
 
     if args.load:
         agent.load(args.load)
