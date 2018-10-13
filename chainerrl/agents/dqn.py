@@ -157,7 +157,7 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
                  samples=1,
                  env=None,
                  video=False,
-                 table_sigma=table_sigma):
+                 table_sigma=False):
         self.model = q_function
         self.q_function = q_function  # For backward compatibility
 
