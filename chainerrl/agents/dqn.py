@@ -157,7 +157,8 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
                  samples=1,
                  env=None,
                  video=False,
-                 table_sigma=False):
+                 table_sigma=False,
+                 scale_sigma=1):
         self.model = q_function
         self.q_function = q_function  # For backward compatibility
 
@@ -165,6 +166,7 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
         #cv2.namedWindow('test', cv2.WINDOW_NORMAL)
         self.env = env
         self.table_sigma = table_sigma
+        self.scale_sigma = scale_sigma
 
         if gpu is not None and gpu >= 0:
             cuda.get_device(gpu).use()
@@ -806,7 +808,6 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
 
         with chainer.using_config('train', False):
             with chainer.no_backprop_mode():
-
                 if self.use_table:
                     action_value = self.q_table_mu[vel*20+pos, :]
                     q = action_value.max()
@@ -814,7 +815,7 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
                 else:
                     action_value = self.model(
                         self.batch_states([obs], self.xp, self.phi))
-                    table_sigma = self.q_table_sigma[vel*20+pos, :]
+                    table_sigma = self.q_table_sigma[vel*20+pos, :] * self.scale_sigma
                     q = float(action_value.max.data)
 
                     if self.head:
