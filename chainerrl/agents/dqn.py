@@ -158,7 +158,8 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
                  env=None,
                  video=False,
                  table_sigma=False,
-                 scale_sigma=1):
+                 scale_sigma=1,
+                 min_sigma=0):
         self.model = q_function
         self.q_function = q_function  # For backward compatibility
 
@@ -167,6 +168,7 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
         self.env = env
         self.table_sigma = table_sigma
         self.scale_sigma = scale_sigma
+        self.min_sigma = min_sigma
 
         if gpu is not None and gpu >= 0:
             cuda.get_device(gpu).use()
@@ -726,7 +728,10 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
         acts2_soft = get_softmax(self.q_table_mu)
 
         if hasattr(vals, 'sigmas') and vals.sigmas is not None:
-            empty = estimate(self.xp, vals.q_values.data, vals.sigmas.data, 10).reshape((20, 20, 3))
+            if self.table_sigma:
+                empty = estimate(self.xp, vals.q_values.data, self.q_table_sigma, 10).reshape((20, 20, 3))
+            else:
+                empty = estimate(self.xp, vals.q_values.data, vals.sigmas.data, 10).reshape((20, 20, 3))
             empty = cv2.resize(arr(empty), (128, 128), interpolation=cv2.INTER_NEAREST)
 
         visits = cv2.resize(self.visited, (128, 128), interpolation=cv2.INTER_NEAREST)
@@ -815,7 +820,7 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
                 else:
                     action_value = self.model(
                         self.batch_states([obs], self.xp, self.phi))
-                    table_sigma = self.q_table_sigma[vel*20+pos, :] * self.scale_sigma
+                    table_sigma = self.xp.max(self.q_table_sigma[vel*20+pos, :] * self.scale_sigma, self.min_sigma)
                     q = float(action_value.max.data)
 
                     if self.head:

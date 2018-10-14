@@ -138,6 +138,7 @@ def main():
 
     parser.add_argument('--force', type=float, default=0.001)
     parser.add_argument('--scale-sigma', type=float, default=1)
+    parser.add_argument('--min-sigma', type=float, default=0)
 
     parser.add_argument('--table-sigma', action='store_true', default=False)
     parser.add_argument('--head', action='store_true', default=False)
@@ -316,7 +317,8 @@ def main():
                   env=args.env,
                   video=args.video,
                   table_sigma=args.table_sigma,
-                  scale_sigma=args.scale_sigma)
+                  scale_sigma=args.scale_sigma,
+                  min_sigma=args.min_sigma)
 
     if args.load:
         agent.load(args.load)
