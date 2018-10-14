@@ -820,7 +820,7 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
                 else:
                     action_value = self.model(
                         self.batch_states([obs], self.xp, self.phi))
-                    table_sigma = self.xp.max(self.q_table_sigma[vel*20+pos, :] * self.scale_sigma, self.min_sigma)
+                    table_sigma = self.xp.maximum(self.q_table_sigma[vel*20+pos, :] * self.scale_sigma, self.min_sigma)
                     q = float(action_value.max.data)
 
                     if self.head:
