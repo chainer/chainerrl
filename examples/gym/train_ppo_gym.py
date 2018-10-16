@@ -61,12 +61,10 @@ class A3CFFGaussian(chainer.Chain, a3c.A3CModel):
 
     def __init__(self, obs_size, action_space,
                  n_hidden_layers=2, n_hidden_channels=64,
-                 bound_mean=None, normalize_obs=None):
+                 bound_mean=None):
         assert bound_mean in [False, True]
-        assert normalize_obs in [False, True]
         super().__init__()
         hidden_sizes = (n_hidden_channels,) * n_hidden_layers
-        self.normalize_obs = normalize_obs
         with self.init_scope():
             self.pi = policies.FCGaussianPolicyWithStateIndependentCovariance(
                 obs_size, action_space.low.size,
@@ -76,16 +74,8 @@ class A3CFFGaussian(chainer.Chain, a3c.A3CModel):
                 min_action=action_space.low, max_action=action_space.high,
                 mean_wscale=1e-2)
             self.v = links.MLP(obs_size, 1, hidden_sizes=hidden_sizes)
-            if self.normalize_obs:
-                self.obs_filter = links.EmpiricalNormalization(
-                    shape=obs_size
-                )
 
     def pi_and_v(self, state):
-        if self.normalize_obs:
-            state = F.clip(self.obs_filter(state, update=False),
-                           -5.0, 5.0)
-
         return self.pi(state), self.v(state)
 
 
@@ -154,6 +144,10 @@ def main():
     obs_space = sample_env.observation_space
     action_space = sample_env.action_space
 
+    # Normalize observations based on their empirical mean and variance
+    obs_normalizer = chainerrl.links.EmpiricalNormalization(
+        obs_space.low.size)
+
     # Switch policy types accordingly to action space types
     if args.arch == 'FFSoftmax':
         model = A3CFFSoftmax(obs_space.low.size, action_space.n)
@@ -161,14 +155,14 @@ def main():
         model = A3CFFMellowmax(obs_space.low.size, action_space.n)
     elif args.arch == 'FFGaussian':
         model = A3CFFGaussian(obs_space.low.size, action_space,
-                              bound_mean=args.bound_mean,
-                              normalize_obs=args.normalize_obs)
+                              bound_mean=args.bound_mean)
 
     opt = chainer.optimizers.Adam(alpha=args.lr, eps=1e-5)
     opt.setup(model)
     if args.weight_decay > 0:
         opt.add_hook(NonbiasWeightDecay(args.weight_decay))
     agent = PPO(model, opt,
+                obs_normalizer=obs_normalizer,
                 gpu=args.gpu,
                 update_interval=args.update_interval,
                 minibatch_size=args.batchsize, epochs=args.epochs,
