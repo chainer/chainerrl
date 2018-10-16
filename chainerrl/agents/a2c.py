@@ -261,7 +261,10 @@ class A2C(agent.AttributeSavingMixin, agent.BatchAgent):
                                 batch_reset):
 
         if any(batch_reset):
-            raise RuntimeError('A2C does not support resetting an env withtout reaching a terminal state during training')  # NOQA
+            warnings.warn('A2C currently does not support resetting an env withtout reaching a terminal state during training. When receiving True in batch_reset, A2C considers it as True in batch_done instead.')  # NOQA
+            for i, reset in enumerate(batch_reset):
+                if reset:
+                    batch_done[i] = True
 
         statevar = self.batch_states(batch_obs, self.xp, self.phi)
 
