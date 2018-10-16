@@ -276,20 +276,19 @@ class DDPG(AttributeSavingMixin, Agent):
                 transitions, xp=self.xp, phi=self.phi)
             batches.append(batch)
 
-        with self.model.state_reset():
-            with self.target_model.state_reset():
+        with self.model.state_reset(), self.target_model.state_reset():
 
-                # Since the target model is evaluated one-step ahead,
-                # its internal states need to be updated
-                self.target_q_function.update_state(
-                    batches[0]['state'], batches[0]['action'])
-                self.target_policy(batches[0]['state'])
+            # Since the target model is evaluated one-step ahead,
+            # its internal states need to be updated
+            self.target_q_function.update_state(
+                batches[0]['state'], batches[0]['action'])
+            self.target_policy(batches[0]['state'])
 
-                # Update critic through time
-                critic_loss = 0
-                for batch in batches:
-                    critic_loss += self.compute_critic_loss(batch)
-                self.critic_optimizer.update(lambda: critic_loss / max_epi_len)
+            # Update critic through time
+            critic_loss = 0
+            for batch in batches:
+                critic_loss += self.compute_critic_loss(batch)
+            self.critic_optimizer.update(lambda: critic_loss / max_epi_len)
 
         with self.model.state_reset():
 
