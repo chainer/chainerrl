@@ -8,9 +8,9 @@ standard_library.install_aliases()  # NOQA
 import argparse
 import os
 
-import gym
-gym.undo_logger_setup()  # NOQA
 import chainer
+import gym
+import gym.wrappers
 import numpy as np
 
 import chainerrl
@@ -79,6 +79,9 @@ def main():
             episode_life=not test,
             clip_rewards=not test)
         env.seed(int(env_seed))
+        if test:
+            # Randomize actions like epsilon-greedy in evaluation as well
+            env = chainerrl.wrappers.RandomizeAction(env, args.eval_epsilon)
         if args.monitor:
             env = gym.wrappers.Monitor(
                 env, args.outdir,
@@ -143,13 +146,10 @@ def main():
             args.eval_n_runs, eval_stats['mean'], eval_stats['median'],
             eval_stats['stdev']))
     else:
-        # In testing DQN, randomly select 5% of actions
-        eval_explorer = explorers.ConstantEpsilonGreedy(
-            args.eval_epsilon, lambda: np.random.randint(n_actions))
         experiments.train_agent_with_evaluation(
             agent=agent, env=env, steps=args.steps,
             eval_n_runs=args.eval_n_runs, eval_interval=args.eval_interval,
-            outdir=args.outdir, eval_explorer=eval_explorer,
+            outdir=args.outdir,
             save_best_so_far_agent=False,
             max_episode_len=args.max_episode_len,
             eval_env=eval_env,

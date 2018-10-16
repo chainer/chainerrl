@@ -8,7 +8,7 @@ import cv2
 import gym
 import numpy as np
 
-from chainerrl import spaces
+from gym import spaces
 
 cv2.ocl.setUseOpenCL(False)
 
