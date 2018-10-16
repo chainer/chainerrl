@@ -6,7 +6,9 @@ from builtins import *  # NOQA
 from future import standard_library
 standard_library.install_aliases()  # NOQA
 
+import collections
 import copy
+import itertools
 
 import chainer
 from chainer import cuda
@@ -15,6 +17,11 @@ import numpy as np
 
 from chainerrl import agent
 from chainerrl.misc.batch_states import batch_states
+
+
+def _mean_or_nan(xs):
+    """Return its mean a non-empty sequence, numpy.nan for a empty one."""
+    return np.mean(xs) if xs else np.nan
 
 
 def _elementwise_clip(x, x_min, x_max):
@@ -50,15 +57,32 @@ class PPO(agent.AttributeSavingMixin, agent.BatchAgent):
             to update value function. If it is ``None``, value function is not
             clipped on updates.
         standardize_advantages (bool): Use standardized advantages on updates
-        average_v_decay (float): Decay rate of average V, only used for
-            recording statistics
-        average_loss_decay (float): Decay rate of average loss, only used for
-            recording statistics
+        value_stats_window (int): Window size used to compute statistics
+            of value predictions.
+        entropy_stats_window (int): Window size used to compute statistics
+            of entropy of action distributions.
+        value_loss_stats_window (int): Window size used to compute statistics
+            of loss values regarding the value function.
+        policy_loss_stats_window (int): Window size used to compute statistics
+            of loss values regarding the policy.
+
+    Statistics:
+        average_value: Average of value predictions on non-terminal states.
+            It's updated on (batch_)act_and_train.
+        average_entropy: Average of entropy of action distributions on
+            non-terminal states. It's updated on (batch_)act_and_train.
+        average_value_loss: Average of losses regarding the value function.
+            It's updated after the model is updated.
+        average_policy_loss: Average of losses regarding the policy.
+            It's updated after the model is updated.
     """
 
     saved_attributes = ['model', 'optimizer']
 
-    def __init__(self, model, optimizer,
+    def __init__(self,
+                 model,
+                 optimizer,
+                 obs_normalizer=None,
                  gpu=None,
                  gamma=0.99,
                  lambd=0.95,
@@ -71,17 +95,22 @@ class PPO(agent.AttributeSavingMixin, agent.BatchAgent):
                  clip_eps=0.2,
                  clip_eps_vf=None,
                  standardize_advantages=True,
-                 average_v_decay=0.999, average_loss_decay=0.99,
                  batch_states=batch_states,
+                 value_stats_window=1000,
+                 entropy_stats_window=1000,
+                 value_loss_stats_window=100,
+                 policy_loss_stats_window=100,
                  ):
         self.model = model
+        self.optimizer = optimizer
+        self.obs_normalizer = obs_normalizer
 
         if gpu is not None and gpu >= 0:
             cuda.get_device_from_id(gpu).use()
             self.model.to_gpu(device=gpu)
+            if self.obs_normalizer is not None:
+                self.obs_normalizer.to_gpu(device=gpu)
 
-        self.num_envs = 1
-        self.optimizer = optimizer
         self.gamma = gamma
         self.lambd = lambd
         self.phi = phi
@@ -93,183 +122,163 @@ class PPO(agent.AttributeSavingMixin, agent.BatchAgent):
         self.clip_eps = clip_eps
         self.clip_eps_vf = clip_eps_vf
         self.standardize_advantages = standardize_advantages
-
-        self.average_v = 0
-        self._batch_init_loss_statistics(self.num_envs)
-        self.average_v_decay = average_v_decay
-        self.average_loss_decay = average_loss_decay
-
         self.batch_states = batch_states
 
         self.xp = self.model.xp
-        self.last_state = None
 
+        # Contains episodes used for next update iteration
         self.memory = []
-        self.batch_memory = []
+
+        # Contains transitions of the last episode not moved to self.memory yet
         self.last_episode = []
-        self._accumulator = []
-        self._accumulator_memory = []
-        self._prev_reset = None
-        self._prev_done = None
+        self.last_state = None
+        self.last_action = None
 
-    def _act(self, state):
-        xp = self.xp
-        with chainer.using_config('train', False), chainer.no_backprop_mode():
-            b_state = self.batch_states([state], xp, self.phi)
-            action_distrib, v = self.model(b_state)
-            action = action_distrib.sample()
-            return cuda.to_cpu(action.data)[0], cuda.to_cpu(v.data)[0]
+        # Batch versions of last_episode, last_state, and last_action
+        self.batch_last_episode = None
+        self.batch_last_state = None
+        self.batch_last_action = None
 
-    def _batch_act(self, states):
-        """Runs a single-env self.model on a VectorEnv set of observations"""
-        xp = self.xp
-        with chainer.using_config('train', False), chainer.no_backprop_mode():
-            b_state = self.batch_states(states, xp, self.phi)
-            action_distrib, batch_v = self.model(b_state)
-            batch_actions = action_distrib.sample()
-            return cuda.to_cpu(batch_actions.data), cuda.to_cpu(batch_v.data)
+        self.value_record = collections.deque(maxlen=value_stats_window)
+        self.entropy_record = collections.deque(maxlen=entropy_stats_window)
+        self.value_loss_record = collections.deque(
+            maxlen=value_loss_stats_window)
+        self.policy_loss_record = collections.deque(
+            maxlen=policy_loss_stats_window)
 
-    def _train(self):
+    def _initialize_batch_variables(self, num_envs):
+        self.batch_last_episode = [[] for _ in range(num_envs)]
+        self.batch_last_state = [None] * num_envs
+        self.batch_last_action = [None] * num_envs
 
-        interval = len(self.memory) + len(self.last_episode)
-
-        if interval >= self.update_interval:
+    def _update_if_dataset_is_ready(self):
+        dataset_size = (
+            sum(len(episode) for episode in self.memory)
+            + len(self.last_episode)
+            + (0 if self.batch_last_episode is None else sum(
+                len(episode) for episode in self.batch_last_episode)))
+        if dataset_size >= self.update_interval:
             self._flush_last_episode()
-            self.update()
+            dataset = self._make_dataset()
+            assert len(dataset) >= self.update_interval
+            self._update(dataset)
             self.memory = []
 
-    def _batch_train(self, terminal):
+    def _make_dataset(self):
+        dataset = list(itertools.chain.from_iterable(self.memory))
+        xp = self.model.xp
 
-        if self.batch_memory:
+        # Compute v_pred and next_v_pred
+        states = self.batch_states([b['state'] for b in dataset], xp, self.phi)
+        next_states = self.batch_states([b['next_state']
+                                         for b in dataset], xp, self.phi)
+        if self.obs_normalizer:
+            states = self.obs_normalizer(states, update=False)
+            next_states = self.obs_normalizer(next_states, update=False)
+        with chainer.using_config('train', False), chainer.no_backprop_mode():
+            _, vs_pred = self.model(states)
+            vs_pred = chainer.cuda.to_cpu(vs_pred.data.ravel())
+            _, next_vs_pred = self.model(next_states)
+            next_vs_pred = chainer.cuda.to_cpu(next_vs_pred.data.ravel())
+        for transition, v_pred, next_v_pred in zip(dataset,
+                                                   vs_pred,
+                                                   next_vs_pred):
+            transition['v_pred'] = v_pred
+            transition['next_v_pred'] = next_v_pred
 
-            mem_length = [len(mem) for mem in self.batch_memory]
-            eps_length = [len(acc) for acc in self._accumulator_memory]
-            interval = np.sum(mem_length) + np.sum(eps_length)
+        # Compute adv and v_teacher
+        for episode in self.memory:
+            adv = 0.0
+            for transition in reversed(episode):
+                td_err = (
+                    transition['reward']
+                    + (self.gamma * transition['nonterminal']
+                       * transition['next_v_pred'])
+                    - transition['v_pred']
+                )
+                adv = td_err + self.gamma * self.lambd * adv
+                transition['adv'] = adv
+                transition['v_teacher'] = adv + transition['v_pred']
 
-            if interval >= self.update_interval:
-                self._batch_flush_last_episode(terminal, mem_length)
-                self.batch_update()
-                self.batch_memory = []
+        return dataset
 
     def _flush_last_episode(self):
         if self.last_episode:
-            self._compute_teacher(self.last_episode)
-            self.memory.extend(self.last_episode)
+            self.memory.append(self.last_episode)
             self.last_episode = []
+        if self.batch_last_episode:
+            for i, episode in enumerate(self.batch_last_episode):
+                if episode:
+                    self.memory.append(episode)
+                    self.batch_last_episode[i] = []
 
-    def _batch_flush_last_episode(self, terminal, mem_length=None):
-        """Appends to accumulator and batch_memory
+    def _update_obs_normalizer(self, dataset):
+        assert self.obs_normalizer
+        states = self.batch_states(
+            [b['state'] for b in dataset], self.obs_normalizer.xp, self.phi)
+        self.obs_normalizer.experience(states)
 
-        The main idea is that the accumulator obtains the value
-        of the previous episode, and appends it to batch_memory on the
-        next timestep.
-        """
-        if mem_length is not None and np.any(np.array(mem_length) == 0):
-            # terminal: flush all the complete transitions. Indicates the
-            # split between complete and incomplete.
-            terminal = np.ones(self.num_envs, dtype=bool)
-            if self._accumulator:
-                self._batch_compute_teacher(self._accumulator_memory, terminal)
-                self._batch_memory_append(self._accumulator_memory, terminal)
-                self._clear_accum_memory(self._accumulator_memory, terminal)
+    def _update(self, dataset):
+        """Update both the policy and the value function."""
 
-        if self.last_episode:
-            if self._accumulator:
-                self._accumulator_memory_append(self._accumulator)
-                self._batch_compute_teacher(self._accumulator_memory, terminal)
-                self._batch_memory_append(self._accumulator_memory, terminal)
-                self._clear_accum_memory(self._accumulator_memory, terminal)
-                self._accumulator = []
+        if self.obs_normalizer:
+            self._update_obs_normalizer(dataset)
 
-            self._accumulator_append(self.last_episode)
-            self.last_episode = []
+        xp = self.model.xp
 
-    def _clear_accum_memory(self, accum_mem, terminal):
-        for env, sig in enumerate(terminal):
-            if sig:
-                accum_mem[env] = []
+        assert 'state' in dataset[0]
+        assert 'v_teacher' in dataset[0]
 
-    def _accumulator_memory_append(self, accum):
-        """Appends to accumulator_memory before compute_teacher"""
-        if not self._accumulator_memory:
-            self._accumulator_memory.extend(accum)
-        else:
-            for env in range(self.num_envs):
-                self._accumulator_memory[env].extend(accum[env])
+        target_model = copy.deepcopy(self.model)
 
-    def _accumulator_append(self, last_episode):
-        """Appends to self._accumulator for next_v_pred updates
+        dataset_iter = chainer.iterators.SerialIterator(
+            dataset, self.minibatch_size)
 
-        The type signature of batch_memory is:
-            batch_memory :: [[dict, dict, ...], [dict, dict, ...]]
-            where len(batch_memory) == self.num_envs
+        if self.standardize_advantages:
+            all_advs = xp.array([b['adv'] for b in dataset])
+            mean_advs = xp.mean(all_advs)
+            std_advs = xp.std(all_advs)
 
-        Args:
-            last_episode (list): a list of dictionaries with statistics
-                from the last episode
-        """
-        if not self._accumulator:
-            self._accumulator.extend(last_episode)
-        else:
-            assert len(self._accumulator) == self.num_envs
-            for env in range(self.num_envs):
-                self._accumulator[env].extend(last_episode[env])
+        while dataset_iter.epoch < self.epochs:
+            batch = dataset_iter.__next__()
+            states = self.batch_states(
+                [b['state'] for b in batch], xp, self.phi)
+            if self.obs_normalizer:
+                states = self.obs_normalizer(states, update=False)
+            actions = xp.array([b['action'] for b in batch])
+            distribs, vs_pred = self.model(states)
+            with chainer.no_backprop_mode():
+                target_distribs, _ = target_model(states)
 
-    def _batch_memory_append(self, last_episode, terminal):
-        """Appends to self.batch_memory
+            advs = xp.array([b['adv'] for b in batch], dtype=xp.float32)
+            if self.standardize_advantages:
+                advs = (advs - mean_advs) / (std_advs + 1e-8)
 
-        The type signature of batch_memory is:
-            batch_memory :: [[dict, dict, ...], [dict, dict, ...]]
-            where len(batch_memory) == self.num_envs
+            vs_pred_old = xp.array([b['v_pred']
+                                    for b in batch], dtype=xp.float32)
+            vs_teacher = xp.array([b['v_teacher']
+                                   for b in batch], dtype=xp.float32)
+            # Same shape as vs_pred: (batch_size, 1)
+            vs_pred_old = vs_pred_old[..., None]
+            vs_teacher = vs_teacher[..., None]
 
-        Args:
-            last_episode (list): a list of dictionaries with statistics
-                from the last episode
-        """
-        for env, sig in enumerate(terminal):
-            if sig:
-                self.batch_memory[env].extend(last_episode[env])
-
-    def _compute_teacher(self, last_episode):
-        """Estimate state values and advantages of self.last_episode
-
-        TD(lambda) estimation
-        """
-        adv = 0.0
-        for transition in reversed(last_episode):
-            td_err = (
-                transition['reward']
-                + (self.gamma * transition['nonterminal']
-                   * transition['next_v_pred'])
-                - transition['v_pred']
+            self.optimizer.update(
+                self._lossfun,
+                distribs, vs_pred, distribs.log_prob(actions),
+                vs_pred_old=vs_pred_old,
+                target_log_probs=target_distribs.log_prob(actions),
+                advs=advs,
+                vs_teacher=vs_teacher,
             )
-            adv = td_err + self.gamma * self.lambd * adv
-            transition['adv'] = adv
-            transition['v_teacher'] = adv + transition['v_pred']
-
-    def _batch_compute_teacher(self, batch_last_episode, terminal):
-        """Estimate state values and advantages of self.last_episode
-
-        TD(lambda) estimation
-        """
-        for env, sig in enumerate(terminal):
-            if sig:
-                self._compute_teacher(batch_last_episode[env])
-
-    def _batch_init_loss_statistics(self, num_envs):
-        """Initialize loss statistics when batch"""
-        self.average_loss_policy = np.zeros(shape=(num_envs,), dtype='f')
-        self.average_loss_value_func = np.zeros(shape=(num_envs,), dtype='f')
-        self.average_loss_entropy = np.zeros(shape=(num_envs,), dtype='f')
 
     def _lossfun(self,
                  distribs, vs_pred, log_probs,
                  vs_pred_old, target_log_probs,
-                 advs, vs_teacher, idx=0):
+                 advs, vs_teacher):
+
         prob_ratio = F.exp(log_probs - target_log_probs)
         ent = distribs.entropy
 
-        prob_ratio = F.expand_dims(prob_ratio, axis=-1)
         loss_policy = - F.mean(F.minimum(
             prob_ratio * advs,
             F.clip(prob_ratio, 1 - self.clip_eps, 1 + self.clip_eps) * advs))
@@ -286,242 +295,121 @@ class PPO(agent.AttributeSavingMixin, agent.BatchAgent):
             ))
         loss_entropy = -F.mean(ent)
 
-        self.average_loss_policy[idx] += (
-            (1 - self.average_loss_decay) *
-            (cuda.to_cpu(loss_policy.data) - self.average_loss_policy[idx]))
-        self.average_loss_value_func[idx] += (
-            (1 - self.average_loss_decay) *
-            (cuda.to_cpu(loss_value_func.data) -
-             self.average_loss_value_func[idx]))
-        self.average_loss_entropy[idx] += (
-            (1 - self.average_loss_decay) *
-            (cuda.to_cpu(loss_entropy.data) - self.average_loss_entropy[idx]))
+        self.value_loss_record.append(float(loss_value_func.data))
+        self.policy_loss_record.append(float(loss_policy.data))
 
-        return (
+        loss = (
             loss_policy
             + self.value_func_coef * loss_value_func
             + self.entropy_coef * loss_entropy
         )
 
-    def _batch_iter_reset(self, iter_list):
-        """Resets a list of iterables"""
-        for iterable in iter_list:
-            iterable.reset()
-
-    def _update(self, dataset_iter, target_model, mean_advs,
-                std_advs, process_idx=None):
-        """General update abstraction
-
-        Args:
-            dataset_iter (chainer.iterators.SerialIterator):
-                the current memory for updating all parameters
-            target_model (chainer.Model): model fed to the agent
-            mean_advs (ndarray): list of computed mean advantages
-            std_advs (ndarray): list of computed std advantages
-            process_idx (int): process index for saving statistics
-        """
-        xp = self.xp
-
-        while dataset_iter.epoch < self.epochs:
-            batch = dataset_iter.__next__()
-            states = self.batch_states(
-                [b['state'] for b in batch], xp, self.phi)
-            actions = xp.array([b['action'] for b in batch])
-            distribs, vs_pred = self.model(states)
-            with chainer.no_backprop_mode():
-                target_distribs, _ = target_model(states)
-
-            advs = xp.array([b['adv'] for b in batch], dtype=xp.float32)
-            if self.standardize_advantages:
-                advs = (advs - mean_advs[process_idx]) / std_advs[process_idx]
-
-            vs_pred_old = xp.array([b['v_pred']
-                                    for b in batch], dtype=xp.float32)
-            vs_teacher = xp.array([b['v_teacher']
-                                   for b in batch], dtype=xp.float32)
-
-            vs_pred_old = xp.array([b['v_pred']
-                                    for b in batch], dtype=xp.float32)
-            vs_teacher = xp.array([b['v_teacher']
-                                   for b in batch], dtype=xp.float32)
-
-            self.optimizer.update(
-                self._lossfun,
-                distribs, vs_pred, distribs.log_prob(actions),
-                vs_pred_old=vs_pred_old,
-                target_log_probs=target_distribs.log_prob(actions),
-                advs=advs,
-                vs_teacher=vs_teacher,
-                idx=process_idx
-            )
-
-    def update(self):
-        """Performs a single environment update"""
-        xp = self.xp
-
-        # Set-up advantages
-        if self.standardize_advantages:
-            all_advs = xp.array([b['adv'] for b in self.memory])
-            mean_advs = xp.mean(all_advs)
-            std_advs = xp.std(all_advs)
-        else:
-            mean_advs, std_advs = (None,) * 2
-
-        target_model = copy.deepcopy(self.model)
-
-        # Make an iterator
-        dataset_iter = chainer.iterators.SerialIterator(
-            self.memory, self.minibatch_size)
-        dataset_iter.reset()
-
-        # Call _update() function
-        self._update(dataset_iter, target_model, mean_advs, std_advs)
-
-    def batch_update(self):
-        """Performs a batch update"""
-        xp = self.xp
-
-        # Set-up advantages
-        if self.standardize_advantages:
-            all_advs = xp.array([e['adv']
-                                 for env in self.batch_memory for e in env])
-            mean_advs = xp.mean(all_advs)
-            std_advs = xp.std(all_advs)
-
-        else:
-            mean_advs, std_advs = (None,) * 2
-
-        target_model = copy.deepcopy(self.model)
-
-        # Flatten self.batch_memory
-        flat_batch_memory = [e for env in self.batch_memory for e in env]
-
-        # Make an iterator
-        dataset_iter = chainer.iterators.SerialIterator(
-            flat_batch_memory, self.minibatch_size)
-        dataset_iter.reset()
-
-        # Call _update() function
-        self._update(dataset_iter, target_model, mean_advs, std_advs)
+        return loss
 
     def act_and_train(self, obs, reward):
-        if hasattr(self.model, 'obs_filter'):
-            xp = self.xp
-            b_state = self.batch_states([obs], xp, self.phi)
-            self.model.obs_filter.experience(b_state)
 
-        action, v = self._act(obs)
+        xp = self.xp
+        b_state = self.batch_states([obs], xp, self.phi)
 
-        # Update stats
-        self.average_v += (
-            (1 - self.average_v_decay) *
-            (v[0] - self.average_v))
+        if self.obs_normalizer:
+            b_state = self.obs_normalizer(b_state, update=False)
+
+        # action_distrib will be recomputed when computing gradients
+        with chainer.using_config('train', False), chainer.no_backprop_mode():
+            action_distrib, value = self.model(b_state)
+            action = chainer.cuda.to_cpu(action_distrib.sample().data)[0]
+            self.entropy_record.append(float(action_distrib.entropy.data))
+            self.value_record.append(float(value.data))
 
         if self.last_state is not None:
             self.last_episode.append({
                 'state': self.last_state,
                 'action': self.last_action,
                 'reward': reward,
-                'v_pred': self.last_v,
                 'next_state': obs,
-                'next_v_pred': v,
-                'nonterminal': 1.0})
+                'nonterminal': 1.0,
+            })
         self.last_state = obs
         self.last_action = action
-        self.last_v = v
 
-        self._train()
+        self._update_if_dataset_is_ready()
+
         return action
 
     def act(self, obs):
-        action, v = self._act(obs)
+        xp = self.xp
+        b_state = self.batch_states([obs], xp, self.phi)
 
-        # Update stats
-        self.average_v += (
-            (1 - self.average_v_decay) *
-            (v[0] - self.average_v))
+        if self.obs_normalizer:
+            b_state = self.obs_normalizer(b_state, update=False)
+
+        with chainer.using_config('train', False), chainer.no_backprop_mode():
+            action_distrib, _ = self.model(b_state)
+            action = chainer.cuda.to_cpu(action_distrib.sample().data)[0]
 
         return action
 
-    def batch_act(self, batch_obs):
-        """Takes a batch of observations and peforms a batch of actions
-
-        Args:
-            batch_obs (ndarray): a list containing the observations
-
-        Returns:
-            batch_action (ndarray): set of actions for each environment
-        """
-        batch_action, batch_v = self._batch_act(batch_obs)
-
-        return batch_action
-
-    def batch_act_and_train(self, batch_obs):
-        """Takes a batch of observations and performs a batch of actions
-
-        Args:
-            batch_obs (ndarray): a list containing the observations for each
-                              environment.
-
-        Returns:
-            batch_action (ndarray): set of actions for each environment
-        """
-        # Infer number of envs
-        self.num_envs = len(batch_obs)
-
-        # Initialize loss stats
-        if len(self.average_loss_policy) != self.num_envs:
-            self._batch_init_loss_statistics(self.num_envs)
-        # Initialize batch memory
-        if not self.batch_memory:
-            self.batch_memory = [[] for i in range(self.num_envs)]
-
-        batch_action, batch_v = self._batch_act(batch_obs)
-
-        # Update stats
-        self.average_v += (
-            (1 - self.average_v_decay) *
-            (batch_v - self.average_v))
-
-        self.last_state = batch_obs
-        self.last_action = batch_action
-        self.last_v = batch_v
-
-        return batch_action
-
     def stop_episode_and_train(self, state, reward, done=False):
-        _, v = self._act(state)
 
         assert self.last_state is not None
         self.last_episode.append({
             'state': self.last_state,
             'action': self.last_action,
             'reward': reward,
-            'v_pred': self.last_v,
             'next_state': state,
-            'next_v_pred': v,
-            'nonterminal': 0.0 if done else 1.0})
+            'nonterminal': 0.0 if done else 1.0,
+        })
 
         self.last_state = None
-        del self.last_action
-        del self.last_v
+        self.last_action = None
 
         self._flush_last_episode()
         self.stop_episode()
 
+        self._update_if_dataset_is_ready()
+
     def stop_episode(self):
         pass
 
-    def _create_last_transition(self, i, done, batch_reward, batch_obs):
-        """Helper function to append in last_episode"""
-        return {
-            'state': self.last_state[i],
-            'action': self.last_action[i],
-            'v_pred': self.last_v[i],
-            'reward': batch_reward[i],
-            'next_state': batch_obs[i],
-            'nonterminal': 0.0 if done else 1.0
-        }
+    def batch_act(self, batch_obs):
+        xp = self.xp
+        b_state = self.batch_states(batch_obs, xp, self.phi)
+
+        if self.obs_normalizer:
+            b_state = self.obs_normalizer(b_state, update=False)
+
+        with chainer.using_config('train', False), chainer.no_backprop_mode():
+            action_distrib, _ = self.model(b_state)
+            action = chainer.cuda.to_cpu(action_distrib.sample().data)
+
+        return action
+
+    def batch_act_and_train(self, batch_obs):
+        xp = self.xp
+        b_state = self.batch_states(batch_obs, xp, self.phi)
+
+        if self.obs_normalizer:
+            b_state = self.obs_normalizer(b_state, update=False)
+
+        num_envs = len(batch_obs)
+        if self.batch_last_episode is None:
+            self._initialize_batch_variables(num_envs)
+        assert len(self.batch_last_episode) == num_envs
+        assert len(self.batch_last_state) == num_envs
+        assert len(self.batch_last_action) == num_envs
+
+        # action_distrib will be recomputed when computing gradients
+        with chainer.using_config('train', False), chainer.no_backprop_mode():
+            action_distrib, batch_value = self.model(b_state)
+            batch_action = chainer.cuda.to_cpu(action_distrib.sample().data)
+            self.entropy_record.extend(
+                chainer.cuda.to_cpu(action_distrib.entropy.data))
+            self.value_record.extend(chainer.cuda.to_cpu((batch_value.data)))
+
+        self.batch_last_state = list(batch_obs)
+        self.batch_last_action = list(batch_action)
+
+        return batch_action
 
     def batch_observe(self, batch_obs, batch_reward, batch_done, batch_reset):
         pass
@@ -529,59 +417,35 @@ class PPO(agent.AttributeSavingMixin, agent.BatchAgent):
     def batch_observe_and_train(self, batch_obs, batch_reward,
                                 batch_done, batch_reset):
 
-        # Initialize reset memory at first iteration
-        if self._prev_reset is None:
-            self._prev_reset = np.zeros(self.num_envs, dtype=bool)
-        if self._prev_done is None:
-            self._prev_done = np.zeros(self.num_envs, dtype=bool)
+        for i, (state, action, reward, next_state, done, reset) in enumerate(zip(  # NOQA
+            self.batch_last_state,
+            self.batch_last_action,
+            batch_reward,
+            batch_obs,
+            batch_done,
+            batch_reset,
+        )):
+            if state is not None:
+                assert action is not None
+                self.batch_last_episode[i].append({
+                    'state': state,
+                    'action': action,
+                    'reward': reward,
+                    'next_state': next_state,
+                    'nonterminal': 0.0 if done else 1.0,
+                })
+            if done or reset:
+                self.memory.append(self.batch_last_episode[i])
+                self.batch_last_episode[i] = []
+                self.batch_last_state[i] = None
+                self.batch_last_action[i] = None
 
-        if not self.last_episode:
-            # Fill-in initial values first
-            for i, done in enumerate(batch_done):
-                self.last_episode.append([
-                    self._create_last_transition(i, done,
-                                                 batch_reward,
-                                                 batch_obs)])
-        else:
-            # Then fill-in each list in envs
-            for i, done in enumerate(batch_done):
-                self.last_episode[i].append(
-                    self._create_last_transition(i, done,
-                                                 batch_reward,
-                                                 batch_obs))
-
-        if np.any(batch_reset):
-            # Call model whenever there is reset
-            _, batch_v = self._batch_act(batch_obs)
-
-            for i, v in enumerate(batch_v):
-                if batch_reset[i]:
-                    self.average_v[i] += (
-                        (1 - self.average_v_decay) *
-                        (v - self.average_v[i]))
-
-        for i, (reset, prev_reset) in enumerate(zip(batch_reset, self._prev_reset)):  # NOQA
-            # This episode's next_v_pred is new batch_v whenever reset
-            self.last_episode[i][-1]['next_v_pred'] = batch_v[i] if reset else None  # NOQA
-            try:
-                # Previous episode's next_v_pred is this episode's
-                # batch_v from batch_act() (lookback step)
-                if not prev_reset:
-                    # If not reset previously, use last_v
-                    self._accumulator[i][-1]['next_v_pred'] = self.last_v[i]
-            except IndexError:
-                pass
-
-        self._prev_reset, self._prev_done = batch_reset, batch_done
-        terminal = np.logical_or(batch_reset, batch_done)
-
-        self._batch_flush_last_episode(terminal)
-        self._batch_train(terminal)
+        self._update_if_dataset_is_ready()
 
     def get_statistics(self):
         return [
-            ('average_v', np.mean(self.average_v)),
-            ('average_loss_policy', np.mean(self.average_loss_policy)),
-            ('average_loss_value_func', np.mean(self.average_loss_value_func)),
-            ('average_loss_entropy', np.mean(self.average_loss_entropy)),
+            ('average_value', _mean_or_nan(self.value_record)),
+            ('average_entropy', _mean_or_nan(self.entropy_record)),
+            ('average_value_loss', _mean_or_nan(self.value_loss_record)),
+            ('average_policy_loss', _mean_or_nan(self.policy_loss_record)),
         ]
