@@ -51,14 +51,13 @@ class TestCopyParam(unittest.TestCase):
         # a = (1 - tau) * a + tau * b
         copy_param.soft_copy_param(target_link=a, source_link=b, tau=0.1)
 
-        np.testing.assert_almost_equal(a.W.array, np.full(a.W.array.shape, 0.55))
-        np.testing.assert_almost_equal(b.W.array, np.full(b.W.array.shape, 1.0))
+        np.testing.assert_almost_equal(a.W.array, np.full(a.W.shape, 0.55))
+        np.testing.assert_almost_equal(b.W.array, np.full(b.W.shape, 1.0))
 
         copy_param.soft_copy_param(target_link=a, source_link=b, tau=0.1)
 
-        np.testing.assert_almost_equal(
-            a.W.array, np.full(a.W.array.shape, 0.595))
-        np.testing.assert_almost_equal(b.W.array, np.full(b.W.array.shape, 1.0))
+        np.testing.assert_almost_equal(a.W.array, np.full(a.W.shape, 0.595))
+        np.testing.assert_almost_equal(b.W.array, np.full(b.W.shape, 1.0))
 
     def test_soft_copy_param_type_check(self):
         a = L.Linear(None, 5)

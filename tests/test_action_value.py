@@ -240,7 +240,8 @@ class TestSingleActionValue(unittest.TestCase):
             self.batch_size, self.action_size).astype(np.float32)
         ret = self.av.evaluate_actions(sample_actions)
         self.assertIsInstance(ret, chainer.Variable)
-        np.testing.assert_equal(ret.array, self.evaluator(sample_actions).array)
+        np.testing.assert_equal(
+            ret.array, self.evaluator(sample_actions).array)
 
     def test_compute_advantage(self):
         if not self.has_maximizer:

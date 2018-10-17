@@ -39,7 +39,7 @@ def set_shared_params(a, b):
         if param_name in b:
             shared_param = b[param_name]
             param.array = np.frombuffer(
-                shared_param, dtype=param.array.dtype).reshape(param.array.shape)
+                shared_param, dtype=param.dtype).reshape(param.shape)
 
 
 def make_params_not_shared(a):

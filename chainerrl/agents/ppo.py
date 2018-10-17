@@ -177,7 +177,8 @@ class PPO(agent.AttributeSavingMixin, agent.Agent):
             (cuda.to_cpu(loss_policy.array) - self.average_loss_policy))
         self.average_loss_value_func += (
             (1 - self.average_loss_decay) *
-            (cuda.to_cpu(loss_value_func.array) - self.average_loss_value_func))
+            (cuda.to_cpu(loss_value_func.array)
+                - self.average_loss_value_func))
         self.average_loss_entropy += (
             (1 - self.average_loss_decay) *
             (cuda.to_cpu(loss_entropy.array) - self.average_loss_entropy))
