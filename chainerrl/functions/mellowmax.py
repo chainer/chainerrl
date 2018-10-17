@@ -57,7 +57,7 @@ def maximum_entropy_mellowmax(values, omega=1., beta_min=-10, beta_max=10):
     # Advantage: Q - mellowmax(Q)
     batch_adv = values - F.broadcast_to(F.expand_dims(mm, 1), values.shape)
     # Move data to CPU because we use Brent's algorithm in scipy
-    batch_adv = chainer.cuda.to_cpu(batch_adv.data)
+    batch_adv = chainer.cuda.to_cpu(batch_adv.array)
     batch_beta = np.empty(mm.shape, dtype=np.float32)
 
     # Beta is computed as the root of this function

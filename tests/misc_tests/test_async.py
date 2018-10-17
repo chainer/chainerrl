@@ -47,10 +47,10 @@ class TestAsync(unittest.TestCase):
         c_params = dict(model_c.namedparams())
 
         def assert_same_pointers_to_data(a, b):
-            self.assertEqual(a['/W'].data.ctypes.data,
-                             b['/W'].data.ctypes.data)
-            self.assertEqual(a['/b'].data.ctypes.data,
-                             b['/b'].data.ctypes.data)
+            self.assertEqual(a['/W'].array.ctypes.data,
+                             b['/W'].array.ctypes.data)
+            self.assertEqual(a['/b'].array.ctypes.data,
+                             b['/b'].array.ctypes.data)
 
         def assert_different_pointers_to_grad(a, b):
             self.assertNotEqual(a['/W'].grad.ctypes.data,
@@ -132,24 +132,24 @@ class TestAsync(unittest.TestCase):
         print('model_a replaced')
         a_params = dict(model_a.namedparams())
         for param_name, param in list(a_params.items()):
-            print((param_name, param.data.ctypes.data))
+            print((param_name, param.array.ctypes.data))
 
         print('model_b replaced')
         b_params = dict(model_b.namedparams())
         for param_name, param in list(b_params.items()):
-            print((param_name, param.data.ctypes.data))
+            print((param_name, param.array.ctypes.data))
 
         # Pointers to head parameters must be the same
-        self.assertEqual(a_params['/0/W'].data.ctypes.data,
-                         b_params['/0/W'].data.ctypes.data)
-        self.assertEqual(a_params['/0/b'].data.ctypes.data,
-                         b_params['/0/b'].data.ctypes.data)
+        self.assertEqual(a_params['/0/W'].array.ctypes.data,
+                         b_params['/0/W'].array.ctypes.data)
+        self.assertEqual(a_params['/0/b'].array.ctypes.data,
+                         b_params['/0/b'].array.ctypes.data)
 
         # Pointers to tail parameters must be different
-        self.assertNotEqual(a_params['/1/W'].data.ctypes.data,
-                            b_params['/1/W'].data.ctypes.data)
-        self.assertNotEqual(a_params['/1/b'].data.ctypes.data,
-                            b_params['/1/b'].data.ctypes.data)
+        self.assertNotEqual(a_params['/1/W'].array.ctypes.data,
+                            b_params['/1/W'].array.ctypes.data)
+        self.assertNotEqual(a_params['/1/b'].array.ctypes.data,
+                            b_params['/1/b'].array.ctypes.data)
 
     def test_shared_link_copy(self):
         head = L.Linear(2, 2)
@@ -157,20 +157,20 @@ class TestAsync(unittest.TestCase):
         model_b = chainer.ChainList(head.copy(), L.Linear(2, 4))
         a_params = dict(model_a.namedparams())
         b_params = dict(model_b.namedparams())
-        self.assertEqual(a_params['/0/W'].data.ctypes.data,
-                         b_params['/0/W'].data.ctypes.data)
-        self.assertEqual(a_params['/0/b'].data.ctypes.data,
-                         b_params['/0/b'].data.ctypes.data)
+        self.assertEqual(a_params['/0/W'].array.ctypes.data,
+                         b_params['/0/W'].array.ctypes.data)
+        self.assertEqual(a_params['/0/b'].array.ctypes.data,
+                         b_params['/0/b'].array.ctypes.data)
         import copy
         model_a_copy = copy.deepcopy(model_a)
         model_b_copy = copy.deepcopy(model_b)
         a_copy_params = dict(model_a_copy.namedparams())
         b_copy_params = dict(model_b_copy.namedparams())
         # When A and B are separately deepcopied, head is no longer shared
-        self.assertNotEqual(a_copy_params['/0/W'].data.ctypes.data,
-                            b_copy_params['/0/W'].data.ctypes.data)
-        self.assertNotEqual(a_copy_params['/0/b'].data.ctypes.data,
-                            b_copy_params['/0/b'].data.ctypes.data)
+        self.assertNotEqual(a_copy_params['/0/W'].array.ctypes.data,
+                            b_copy_params['/0/W'].array.ctypes.data)
+        self.assertNotEqual(a_copy_params['/0/b'].array.ctypes.data,
+                            b_copy_params['/0/b'].array.ctypes.data)
 
         model_total_copy = copy.deepcopy(chainer.ChainList(model_a, model_b))
         model_a_copy = model_total_copy[0]
@@ -178,10 +178,10 @@ class TestAsync(unittest.TestCase):
         a_copy_params = dict(model_a_copy.namedparams())
         b_copy_params = dict(model_b_copy.namedparams())
         # When ChainList(A, B) is deepcopied, head is still shared!
-        self.assertEqual(a_copy_params['/0/W'].data.ctypes.data,
-                         b_copy_params['/0/W'].data.ctypes.data)
-        self.assertEqual(a_copy_params['/0/b'].data.ctypes.data,
-                         b_copy_params['/0/b'].data.ctypes.data)
+        self.assertEqual(a_copy_params['/0/W'].array.ctypes.data,
+                         b_copy_params['/0/W'].array.ctypes.data)
+        self.assertEqual(a_copy_params['/0/b'].array.ctypes.data,
+                         b_copy_params['/0/b'].array.ctypes.data)
 
     def test_run_async(self):
         counter = mp.Value('l', 0)

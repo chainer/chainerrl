@@ -76,8 +76,8 @@ class TestSoftmaxDistribution(unittest.TestCase):
         self.assertTrue(isinstance(sample, chainer.Variable))
         self.assertEqual(sample.shape, (self.batch_size,))
         for b in range(self.batch_size):
-            self.assertGreaterEqual(sample.data[b], 0)
-            self.assertLess(sample.data[b], self.n)
+            self.assertGreaterEqual(sample.array[b], 0)
+            self.assertLess(sample.array[b], self.n)
 
     def test_prob(self):
         batch_ps = []
@@ -86,10 +86,10 @@ class TestSoftmaxDistribution(unittest.TestCase):
             batch_p = self.distrib.prob(indices)
             self.assertTrue(isinstance(batch_p, chainer.Variable))
             for b in range(self.batch_size):
-                p = batch_p.data[b]
+                p = batch_p.array[b]
                 self.assertGreaterEqual(p, self.min_prob)
                 self.assertLessEqual(p, 1)
-            batch_ps.append(batch_p.data)
+            batch_ps.append(batch_p.array)
         np.testing.assert_almost_equal(sum(batch_ps), np.ones(self.batch_size))
 
     def test_log_prob(self):
@@ -97,8 +97,8 @@ class TestSoftmaxDistribution(unittest.TestCase):
             indices = np.asarray([a] * self.batch_size, dtype=np.int32)
             batch_p = self.distrib.prob(indices)
             batch_log_p = self.distrib.log_prob(indices)
-            np.testing.assert_almost_equal(np.log(batch_p.data),
-                                           batch_log_p.data)
+            np.testing.assert_almost_equal(np.log(batch_p.array),
+                                           batch_log_p.array)
 
     def test_entropy(self):
         self.distrib.entropy
@@ -112,7 +112,7 @@ class TestSoftmaxDistribution(unittest.TestCase):
         kl = self.distrib.kl(self.distrib)
         for b in range(self.batch_size):
             np.testing.assert_allclose(
-                kl.data[b], np.zeros_like(kl.data[b]), rtol=1e-5)
+                kl.array[b], np.zeros_like(kl.array[b]), rtol=1e-5)
 
     def test_copy(self):
         another = self.distrib.copy()
@@ -140,8 +140,8 @@ class TestMellowmaxDistribution(unittest.TestCase):
         self.assertTrue(isinstance(sample, chainer.Variable))
         self.assertEqual(sample.shape, (self.batch_size,))
         for b in range(self.batch_size):
-            self.assertGreaterEqual(sample.data[b], 0)
-            self.assertLess(sample.data[b], self.n)
+            self.assertGreaterEqual(sample.array[b], 0)
+            self.assertLess(sample.array[b], self.n)
 
     def test_prob(self):
         batch_ps = []
@@ -150,10 +150,10 @@ class TestMellowmaxDistribution(unittest.TestCase):
             batch_p = self.distrib.prob(indices)
             self.assertTrue(isinstance(batch_p, chainer.Variable))
             for b in range(self.batch_size):
-                p = batch_p.data[b]
+                p = batch_p.array[b]
                 self.assertGreaterEqual(p, 0)
                 self.assertLessEqual(p, 1)
-            batch_ps.append(batch_p.data)
+            batch_ps.append(batch_p.array)
         np.testing.assert_almost_equal(sum(batch_ps), np.ones(self.batch_size))
 
     def test_log_prob(self):
@@ -161,8 +161,8 @@ class TestMellowmaxDistribution(unittest.TestCase):
             indices = np.asarray([a] * self.batch_size, dtype=np.int32)
             batch_p = self.distrib.prob(indices)
             batch_log_p = self.distrib.log_prob(indices)
-            np.testing.assert_almost_equal(np.log(batch_p.data),
-                                           batch_log_p.data)
+            np.testing.assert_almost_equal(np.log(batch_p.array),
+                                           batch_log_p.array)
 
     def test_entropy(self):
         self.distrib.entropy
@@ -176,7 +176,7 @@ class TestMellowmaxDistribution(unittest.TestCase):
         kl = self.distrib.kl(self.distrib)
         for b in range(self.batch_size):
             np.testing.assert_allclose(
-                kl.data[b], np.zeros_like(kl.data[b]), rtol=1e-5)
+                kl.array[b], np.zeros_like(kl.array[b]), rtol=1e-5)
 
     def test_copy(self):
         another = self.distrib.copy()
@@ -206,7 +206,7 @@ class TestGaussianDistribution(unittest.TestCase):
         most_probable = self.distrib.most_probable
         self.assertTrue(isinstance(most_probable, chainer.Variable))
         self.assertEqual(most_probable.shape, (self.batch_size, self.ndim))
-        np.testing.assert_allclose(most_probable.data, self.mean, rtol=1e-5)
+        np.testing.assert_allclose(most_probable.array, self.mean, rtol=1e-5)
 
     def test_prob(self):
         sample = self.distrib.sample()
@@ -215,9 +215,9 @@ class TestGaussianDistribution(unittest.TestCase):
             cov = (np.identity(self.ndim, dtype=np.float32) *
                    self.var[b])
             desired_pdf = scipy.stats.multivariate_normal(
-                self.mean[b], cov).pdf(sample.data[b])
+                self.mean[b], cov).pdf(sample.array[b])
             np.testing.assert_allclose(
-                sample_prob.data[b],
+                sample_prob.array[b],
                 desired_pdf, rtol=1e-5)
 
     def test_log_prob(self):
@@ -227,9 +227,9 @@ class TestGaussianDistribution(unittest.TestCase):
             cov = (np.identity(self.ndim, dtype=np.float32) *
                    self.var[b])
             desired_pdf = scipy.stats.multivariate_normal(
-                self.mean[b], cov).pdf(sample.data[b])
+                self.mean[b], cov).pdf(sample.array[b])
             np.testing.assert_allclose(
-                sample_log_prob.data[b],
+                sample_log_prob.array[b],
                 np.log(desired_pdf), rtol=1e-4)
 
     def test_entropy(self):
@@ -240,13 +240,13 @@ class TestGaussianDistribution(unittest.TestCase):
             desired_entropy = scipy.stats.multivariate_normal(
                 self.mean[b], cov).entropy()
             np.testing.assert_allclose(
-                entropy.data[b], desired_entropy, rtol=1e-5)
+                entropy.array[b], desired_entropy, rtol=1e-5)
 
     def test_self_kl(self):
         kl = self.distrib.kl(self.distrib)
         for b in range(self.batch_size):
             np.testing.assert_allclose(
-                kl.data[b], np.zeros_like(kl.data[b]), rtol=1e-5)
+                kl.array[b], np.zeros_like(kl.array[b]), rtol=1e-5)
 
     def test_kl(self):
         # Compare it to chainer.functions.gaussian_kl_divergence
@@ -256,8 +256,8 @@ class TestGaussianDistribution(unittest.TestCase):
         kl = self.distrib.kl(standard)
         chainer_kl = chainer.functions.gaussian_kl_divergence(
             self.distrib.mean, self.distrib.ln_var)
-        np.testing.assert_allclose(kl.data.sum(),
-                                   chainer_kl.data,
+        np.testing.assert_allclose(kl.array.sum(),
+                                   chainer_kl.array,
                                    rtol=1e-5)
 
     def test_copy(self):
@@ -282,13 +282,13 @@ class TestContinuousDeterministicDistribution(unittest.TestCase):
         sample = self.distrib.sample()
         self.assertTrue(isinstance(sample, chainer.Variable))
         self.assertEqual(sample.shape, (self.batch_size, self.ndim))
-        np.testing.assert_allclose(sample.data, self.x, rtol=1e-5)
+        np.testing.assert_allclose(sample.array, self.x, rtol=1e-5)
 
     def test_most_probable(self):
         most_probable = self.distrib.most_probable
         self.assertTrue(isinstance(most_probable, chainer.Variable))
         self.assertEqual(most_probable.shape, (self.batch_size, self.ndim))
-        np.testing.assert_allclose(most_probable.data, self.x, rtol=1e-5)
+        np.testing.assert_allclose(most_probable.array, self.x, rtol=1e-5)
 
     def test_copy(self):
         another = self.distrib.copy()

@@ -94,7 +94,7 @@ def compute_hessian(y, params):
     for i in range(len(flat_grads)):
         ggrads = chainer.grad([flat_grads[i]], params)
         assert all(ggrad is not None for ggrad in ggrads)
-        ggrads_data = [ggrad.data for ggrad in ggrads]
+        ggrads_data = [ggrad.array for ggrad in ggrads]
         flat_ggrads_data = trpo._flatten_and_concat_ndarrays(ggrads_data)
         hessian_rows.append(flat_ggrads_data)
     return np.asarray(hessian_rows)

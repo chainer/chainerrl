@@ -228,7 +228,7 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
 
         # Update stats
         self.average_loss *= self.average_loss_decay
-        self.average_loss += (1 - self.average_loss_decay) * float(loss.data)
+        self.average_loss += (1 - self.average_loss_decay) * float(loss.array)
 
         self.model.cleargrads()
         loss.backward()
@@ -286,7 +286,7 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
                 # Update stats
                 self.average_loss *= self.average_loss_decay
                 self.average_loss += \
-                    (1 - self.average_loss_decay) * float(loss.data)
+                    (1 - self.average_loss_decay) * float(loss.array)
 
                 self.model.cleargrads()
                 loss.backward()
@@ -339,7 +339,7 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
         if errors_out is not None:
             del errors_out[:]
             delta = F.sum(abs(y - t), axis=1)
-            delta = cuda.to_cpu(delta.data)
+            delta = cuda.to_cpu(delta.array)
             for e in delta:
                 errors_out.append(e)
 
@@ -357,8 +357,8 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
             with chainer.no_backprop_mode():
                 action_value = self.model(
                     self.batch_states([obs], self.xp, self.phi))
-                q = float(action_value.max.data)
-                action = cuda.to_cpu(action_value.greedy_actions.data)[0]
+                q = float(action_value.max.array)
+                action = cuda.to_cpu(action_value.greedy_actions.array)[0]
 
         # Update stats
         self.average_q *= self.average_q_decay
@@ -373,8 +373,8 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
             with chainer.no_backprop_mode():
                 action_value = self.model(
                     self.batch_states([obs], self.xp, self.phi))
-                q = float(action_value.max.data)
-                greedy_action = cuda.to_cpu(action_value.greedy_actions.data)[
+                q = float(action_value.max.array)
+                greedy_action = cuda.to_cpu(action_value.greedy_actions.array)[
                     0]
 
         # Update stats

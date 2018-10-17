@@ -114,7 +114,7 @@ class PPO(agent.AttributeSavingMixin, agent.Agent):
             with chainer.no_backprop_mode():
                 action_distrib, v = self.model(b_state)
                 action = action_distrib.sample()
-            return cuda.to_cpu(action.data)[0], cuda.to_cpu(v.data)[0]
+            return cuda.to_cpu(action.array)[0], cuda.to_cpu(v.array)[0]
 
     def _train(self):
         if len(self.memory) + len(self.last_episode) >= self.update_interval:
@@ -174,13 +174,13 @@ class PPO(agent.AttributeSavingMixin, agent.Agent):
         # Update stats
         self.average_loss_policy += (
             (1 - self.average_loss_decay) *
-            (cuda.to_cpu(loss_policy.data) - self.average_loss_policy))
+            (cuda.to_cpu(loss_policy.array) - self.average_loss_policy))
         self.average_loss_value_func += (
             (1 - self.average_loss_decay) *
-            (cuda.to_cpu(loss_value_func.data) - self.average_loss_value_func))
+            (cuda.to_cpu(loss_value_func.array) - self.average_loss_value_func))
         self.average_loss_entropy += (
             (1 - self.average_loss_decay) *
-            (cuda.to_cpu(loss_entropy.data) - self.average_loss_entropy))
+            (cuda.to_cpu(loss_entropy.array) - self.average_loss_entropy))
 
         return (
             loss_policy

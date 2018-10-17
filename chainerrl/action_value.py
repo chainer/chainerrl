@@ -62,15 +62,15 @@ class DiscreteActionValue(ActionValue):
 
     def __init__(self, q_values, q_values_formatter=lambda x: x):
         assert isinstance(q_values, chainer.Variable)
-        self.xp = cuda.get_array_module(q_values.data)
+        self.xp = cuda.get_array_module(q_values.array)
         self.q_values = q_values
-        self.n_actions = q_values.data.shape[1]
+        self.n_actions = q_values.array.shape[1]
         self.q_values_formatter = q_values_formatter
 
     @cached_property
     def greedy_actions(self):
         return chainer.Variable(
-            self.q_values.data.argmax(axis=1).astype(np.int32))
+            self.q_values.array.argmax(axis=1).astype(np.int32))
 
     @cached_property
     def max(self):
@@ -92,8 +92,8 @@ class DiscreteActionValue(ActionValue):
 
     def __repr__(self):
         return 'DiscreteActionValue greedy_actions:{} q_values:{}'.format(
-            self.greedy_actions.data,
-            self.q_values_formatter(self.q_values.data))
+            self.greedy_actions.array,
+            self.q_values_formatter(self.q_values.array))
 
     @property
     def params(self):
@@ -117,17 +117,17 @@ class DistributionalDiscreteActionValue(ActionValue):
         assert z_values.ndim == 1
         assert q_dist.shape[2] == z_values.shape[0]
 
-        self.xp = cuda.get_array_module(q_dist.data)
+        self.xp = cuda.get_array_module(q_dist.array)
         self.z_values = z_values
         self.q_values = F.sum(F.scale(q_dist, self.z_values, axis=2), axis=2)
         self.q_dist = q_dist
-        self.n_actions = q_dist.data.shape[1]
+        self.n_actions = q_dist.array.shape[1]
         self.q_values_formatter = q_values_formatter
 
     @cached_property
     def greedy_actions(self):
         return chainer.Variable(
-            self.q_values.data.argmax(axis=1).astype(np.int32))
+            self.q_values.array.argmax(axis=1).astype(np.int32))
 
     @cached_property
     def max(self):
@@ -144,7 +144,7 @@ class DistributionalDiscreteActionValue(ActionValue):
         """
         with chainer.force_backprop_mode():
             return self.q_dist[self.xp.arange(self.q_values.shape[0]),
-                               self.greedy_actions.data]
+                               self.greedy_actions.array]
 
     def evaluate_actions(self, actions):
         return F.select_item(self.q_values, actions)
@@ -174,8 +174,8 @@ class DistributionalDiscreteActionValue(ActionValue):
 
     def __repr__(self):
         return 'DistributionalDiscreteActionValue greedy_actions:{} q_values:{}'.format(  # NOQA
-            self.greedy_actions.data,
-            self.q_values_formatter(self.q_values.data))
+            self.greedy_actions.array,
+            self.q_values_formatter(self.q_values.array))
 
     @property
     def params(self):
@@ -202,7 +202,7 @@ class QuadraticActionValue(ActionValue):
     """
 
     def __init__(self, mu, mat, v, min_action=None, max_action=None):
-        self.xp = cuda.get_array_module(mu.data)
+        self.xp = cuda.get_array_module(mu.array)
         self.mu = mu
         self.mat = mat
         self.v = v
@@ -215,7 +215,7 @@ class QuadraticActionValue(ActionValue):
         else:
             self.max_action = self.xp.asarray(max_action, dtype=np.float32)
 
-        self.batch_size = self.mu.data.shape[0]
+        self.batch_size = self.mu.array.shape[0]
 
     @cached_property
     def greedy_actions(self):
@@ -223,10 +223,10 @@ class QuadraticActionValue(ActionValue):
             a = self.mu
             if self.min_action is not None:
                 a = F.maximum(
-                    self.xp.broadcast_to(self.min_action, a.data.shape), a)
+                    self.xp.broadcast_to(self.min_action, a.array.shape), a)
             if self.max_action is not None:
                 a = F.minimum(
-                    self.xp.broadcast_to(self.max_action, a.data.shape), a)
+                    self.xp.broadcast_to(self.max_action, a.array.shape), a)
             return a
 
     @cached_property
@@ -254,7 +254,7 @@ class QuadraticActionValue(ActionValue):
 
     def __repr__(self):
         return 'QuadraticActionValue greedy_actions:{} v:{}'.format(
-            self.greedy_actions.data, self.v.data)
+            self.greedy_actions.array, self.v.array)
 
     @property
     def params(self):

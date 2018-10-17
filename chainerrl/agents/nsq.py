@@ -94,7 +94,7 @@ class NSQ(AttributeSavingMixin, AsyncAgent):
             R = 0
         else:
             with state_kept(self.target_q_function):
-                R = float(self.target_q_function(statevar).max.data)
+                R = float(self.target_q_function(statevar).max.array)
 
         loss = 0
         for i in reversed(range(self.t_start, self.t)):
@@ -147,13 +147,13 @@ class NSQ(AttributeSavingMixin, AsyncAgent):
             self.target_q_function(statevar)
         qout = self.q_function(statevar)
         action = self.explorer.select_action(
-            self.t_global.value, lambda: qout.greedy_actions.data[0],
+            self.t_global.value, lambda: qout.greedy_actions.array[0],
             action_value=qout)
         q = qout.evaluate_actions(np.asarray([action]))
         self.past_action_values[self.t] = q
         self.t += 1
         self.average_q += ((1 - self.average_q_decay) *
-                           (float(q.data[0]) - self.average_q))
+                           (float(q.array[0]) - self.average_q))
         with self.t_global.get_lock():
             self.t_global.value += 1
             t_global = self.t_global.value
@@ -169,7 +169,7 @@ class NSQ(AttributeSavingMixin, AsyncAgent):
         statevar = self.batch_states([obs], np, self.phi)
         qout = self.q_function(statevar)
         self.logger.debug('act action_value: %s', qout)
-        return qout.greedy_actions.data[0]
+        return qout.greedy_actions.array[0]
 
     def stop_episode_and_train(self, state, reward, done=False):
         self.past_rewards[self.t - 1] = reward
