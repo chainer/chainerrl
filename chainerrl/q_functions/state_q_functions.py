@@ -25,7 +25,7 @@ from chainerrl.recurrent import RecurrentChainMixin
 
 
 def scale_by_tanh(x, low, high):
-    xp = cuda.get_array_module(x.data)
+    xp = cuda.get_array_module(x.array)
     scale = (high - low) / 2
     scale = xp.expand_dims(xp.asarray(scale, dtype=np.float32), axis=0)
     mean = (high + low) / 2

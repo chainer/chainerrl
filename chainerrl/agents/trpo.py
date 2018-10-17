@@ -45,7 +45,7 @@ def _flatten_and_concat_variables(vs):
 def _as_ndarray(x):
     """chainer.Variable or ndarray -> ndarray."""
     if isinstance(x, chainer.Variable):
-        return x.data
+        return x.array
     else:
         return x
 
@@ -68,7 +68,7 @@ def _replace_params_data(params, new_params_data):
     """Replace data of params with new data."""
     for param, new_param_data in zip(params, new_params_data):
         assert param.shape == new_param_data.shape
-        param.data[:] = new_param_data
+        param.array[:] = new_param_data
 
 
 def _hessian_vector_product(flat_grads, params, vec):
@@ -76,7 +76,7 @@ def _hessian_vector_product(flat_grads, params, vec):
     grads = chainer.grad([F.sum(flat_grads * vec)], params)
     assert all(grad is not None for grad in grads),\
         "The Hessian-vector product contains None."
-    grads_data = [grad.data for grad in grads]
+    grads_data = [grad.array for grad in grads]
     return _flatten_and_concat_ndarrays(grads_data)
 
 
@@ -261,9 +261,9 @@ You're using Chainer v{}. TRPO requires Chainer v3.0.0 or newer.""".format(chain
             states = self.obs_normalizer(states, update=False)
             next_states = self.obs_normalizer(next_states, update=False)
         with chainer.using_config('train', False), chainer.no_backprop_mode():
-            vs_pred = chainer.cuda.to_cpu(self.vf(states).data.ravel())
+            vs_pred = chainer.cuda.to_cpu(self.vf(states).array.ravel())
             next_vs_pred = chainer.cuda.to_cpu(
-                self.vf(next_states).data.ravel())
+                self.vf(next_states).array.ravel())
         for transition, v_pred, next_v_pred in zip(dataset,
                                                    vs_pred,
                                                    next_vs_pred):
@@ -463,24 +463,24 @@ The gradient contains None. The policy may have unused parameters."
                     advs=advs)
                 new_kl = F.mean(action_distrib_old.kl(new_action_distrib))
 
-            improve = new_gain.data - gain.data
+            improve = new_gain.array - gain.array
             self.logger.info(
                 'Surrogate objective improve: %s', float(improve))
-            self.logger.info('KL divergence: %s', float(new_kl.data))
-            if not xp.isfinite(new_gain.data):
+            self.logger.info('KL divergence: %s', float(new_kl.array))
+            if not xp.isfinite(new_gain.array):
                 self.logger.info(
                     "Surrogate objective is not finite. Bakctracking...")
-            elif not xp.isfinite(new_kl.data):
+            elif not xp.isfinite(new_kl.array):
                 self.logger.info(
                     "KL divergence is not finite. Bakctracking...")
             elif improve < 0:
                 self.logger.info(
                     "Surrogate objective didn't improve. Bakctracking...")
-            elif float(new_kl.data) > self.max_kl:
+            elif float(new_kl.array) > self.max_kl:
                 self.logger.info(
                     "KL divergence exceeds max_kl. Bakctracking...")
             else:
-                self.kl_record.append(float(new_kl.data))
+                self.kl_record.append(float(new_kl.array))
                 self.policy_step_size_record.append(step_size)
                 break
             step_size *= 0.5
@@ -507,8 +507,8 @@ Line search coundn't find a good step size. The policy was not updated.")
         # action_distrib will be recomputed when computing gradients
         with chainer.using_config('train', False), chainer.no_backprop_mode():
             action_distrib = self.policy(b_state)
-            action = chainer.cuda.to_cpu(action_distrib.sample().data)[0]
-            self.entropy_record.append(float(action_distrib.entropy.data))
+            action = chainer.cuda.to_cpu(action_distrib.sample().array)[0]
+            self.entropy_record.append(float(action_distrib.entropy.array))
 
         self.logger.debug('action_distrib: %s', action_distrib)
         self.logger.debug('action: %s', action)
@@ -537,9 +537,9 @@ Line search coundn't find a good step size. The policy was not updated.")
             action_distrib = self.policy(b_state)
             if self.act_deterministically:
                 action = chainer.cuda.to_cpu(
-                    action_distrib.most_probable.data)[0]
+                    action_distrib.most_probable.array)[0]
             else:
-                action = chainer.cuda.to_cpu(action_distrib.sample().data)[0]
+                action = chainer.cuda.to_cpu(action_distrib.sample().array)[0]
         return action
 
     def stop_episode_and_train(self, state, reward, done=False):

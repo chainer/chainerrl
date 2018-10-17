@@ -94,8 +94,8 @@ class TestDeterministicPolicy(unittest.TestCase):
         self.assertEqual(chainer.cuda.get_array_module(a),
                          chainer.cuda.get_array_module(x))
         if self.bound_action:
-            self.assertTrue((a.data <= max_action).all())
-            self.assertTrue((a.data >= min_action).all())
+            self.assertTrue((a.array <= max_action).all())
+            self.assertTrue((a.array >= min_action).all())
 
     def test_call_cpu(self):
         self._test_call(gpu=-1)
