@@ -17,7 +17,7 @@ class PrioritizedBuffer (object):
     def __init__(self, capacity=None, wait_priority_after_sampling=True,
                  initial_max_priority=1.0):
         self.capacity = capacity
-        self.array = collections.deque()
+        self.data = collections.deque()
         self.priority_sums = SumTreeQueue()
         self.priority_mins = MinTreeQueue()
         self.max_priority = initial_max_priority
@@ -25,7 +25,7 @@ class PrioritizedBuffer (object):
         self.flag_wait_priority = False
 
     def __len__(self):
-        return len(self.array)
+        return len(self.data)
 
     def append(self, value, priority=None):
         if self.capacity is not None and len(self) == self.capacity:
@@ -34,7 +34,7 @@ class PrioritizedBuffer (object):
             # Append with the highest priority
             priority = self.max_priority
 
-        self.array.append(value)
+        self.data.append(value)
         self.priority_sums.append(priority)
         self.priority_mins.append(priority)
 
@@ -42,7 +42,7 @@ class PrioritizedBuffer (object):
         assert len(self) > 0
         self.priority_sums.popleft()
         self.priority_mins.popleft()
-        return self.array.popleft()
+        return self.data.popleft()
 
     def _sample_indices_and_probabilities(self, n, uniform_ratio):
         total_priority = self.priority_sums.sum()
@@ -89,7 +89,7 @@ class PrioritizedBuffer (object):
         indices, probabilities, min_prob = \
             self._sample_indices_and_probabilities(
                 n, uniform_ratio=uniform_ratio)
-        sampled = [self.array[i] for i in indices]
+        sampled = [self.data[i] for i in indices]
         self.sampled_indices = indices
         self.flag_wait_priority = True
         return sampled, probabilities, min_prob
@@ -108,7 +108,7 @@ class PrioritizedBuffer (object):
 
     def _uniform_sample_indices_and_probabilities(self, n):
         indices = list(sample_n_k(
-            len(self.array), n))
+            len(self.data), n))
         probabilities = [1 / len(self)] * len(indices)
         return indices, probabilities
 
