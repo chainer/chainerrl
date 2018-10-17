@@ -14,8 +14,8 @@ install:
       pip install "chainer==3.1.0"
     else
       pip install chainer
-      pip install pytest-cov
     fi
+  - pip install pytest-cov
   - pip install -r requirements.txt --only-binary=numpy,scipy
   - pip install jupyter
   # atari_py==0.1.4 causes an error
