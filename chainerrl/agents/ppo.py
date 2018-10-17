@@ -109,11 +109,10 @@ class PPO(agent.AttributeSavingMixin, agent.Agent):
 
     def _act(self, state):
         xp = self.xp
-        with chainer.using_config('train', False):
+        with chainer.using_config('train', False), chainer.no_backprop_mode():
             b_state = self.batch_states([state], xp, self.phi)
-            with chainer.no_backprop_mode():
-                action_distrib, v = self.model(b_state)
-                action = action_distrib.sample()
+            action_distrib, v = self.model(b_state)
+            action = action_distrib.sample()
             return cuda.to_cpu(action.array)[0], cuda.to_cpu(v.array)[0]
 
     def _train(self):
