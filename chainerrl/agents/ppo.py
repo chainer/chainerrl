@@ -295,8 +295,8 @@ class PPO(agent.AttributeSavingMixin, agent.BatchAgent):
             ))
         loss_entropy = -F.mean(ent)
 
-        self.value_loss_record.append(float(loss_value_func.data))
-        self.policy_loss_record.append(float(loss_policy.data))
+        self.value_loss_record.append(float(loss_value_func.array))
+        self.policy_loss_record.append(float(loss_policy.array))
 
         loss = (
             loss_policy

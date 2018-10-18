@@ -26,7 +26,7 @@ from chainerrl.replay_buffer import batch_experiences
 
 def asfloat(x):
     if isinstance(x, chainer.Variable):
-        return float(x.data)
+        return float(x.array)
     else:
         return float(x)
 
@@ -204,11 +204,11 @@ class PCL(agent.AttributeSavingMixin, agent.AsyncAgent):
             G = F.expand_dims(G, -1)
             last_v = next_values[t + d - 1]
             if not self.backprop_future_values:
-                last_v = chainer.Variable(last_v.data)
+                last_v = chainer.Variable(last_v.array)
 
             # C_pi only backprop through pi
-            C_pi = (- values[t].data +
-                    self.gamma ** d * last_v.data +
+            C_pi = (- values[t].array +
+                    self.gamma ** d * last_v.array +
                     R_seq -
                     self.tau * G)
 
@@ -216,7 +216,7 @@ class PCL(agent.AttributeSavingMixin, agent.AsyncAgent):
             C_v = (- values[t] +
                    self.gamma ** d * last_v +
                    R_seq -
-                   self.tau * G.data)
+                   self.tau * G.array)
 
             pi_losses.append(C_pi ** 2)
             v_losses.append(C_v ** 2)
@@ -236,9 +236,9 @@ class PCL(agent.AttributeSavingMixin, agent.AsyncAgent):
 
         if self.process_idx == 0:
             self.logger.debug('pi_loss:%s v_loss:%s',
-                              pi_loss.data, v_loss.data)
+                              pi_loss.array, v_loss.array)
 
-        return pi_loss + F.reshape(v_loss, pi_loss.data.shape)
+        return pi_loss + F.reshape(v_loss, pi_loss.array.shape)
 
     def update(self, loss):
 
@@ -356,7 +356,7 @@ class PCL(agent.AttributeSavingMixin, agent.AsyncAgent):
                 next_values[t - 1] = self.past_values[t]
             if statevar is None:
                 next_values[self.t - 1] = chainer.Variable(
-                    self.xp.zeros_like(self.past_values[self.t - 1].data))
+                    self.xp.zeros_like(self.past_values[self.t - 1].array))
             else:
                 with state_kept(self.model):
                     _, v = self.model(statevar)
@@ -392,7 +392,7 @@ class PCL(agent.AttributeSavingMixin, agent.AsyncAgent):
                     self.update_from_replay()
 
         action_distrib, v = self.model(statevar)
-        action = chainer.cuda.to_cpu(action_distrib.sample().data)[0]
+        action = chainer.cuda.to_cpu(action_distrib.sample().array)[0]
         if self.explorer is not None:
             action = self.explorer.select_action(self.t, lambda: action)
 
@@ -406,14 +406,14 @@ class PCL(agent.AttributeSavingMixin, agent.AsyncAgent):
         if self.process_idx == 0:
             self.logger.debug(
                 't:%s r:%s a:%s action_distrib:%s v:%s',
-                self.t, reward, action, action_distrib, float(v.data))
+                self.t, reward, action, action_distrib, float(v.array))
         # Update stats
         self.average_value += (
             (1 - self.average_value_decay) *
-            (float(v.data[0]) - self.average_value))
+            (float(v.array[0]) - self.average_value))
         self.average_entropy += (
             (1 - self.average_entropy_decay) *
-            (float(action_distrib.entropy.data[0]) - self.average_entropy))
+            (float(action_distrib.entropy.array[0]) - self.average_entropy))
 
         if self.last_state is not None:
             assert self.last_action is not None
@@ -442,9 +442,9 @@ class PCL(agent.AttributeSavingMixin, agent.AsyncAgent):
             action_distrib, _ = self.model(statevar)
             if self.act_deterministically:
                 return chainer.cuda.to_cpu(
-                    action_distrib.most_probable.data)[0]
+                    action_distrib.most_probable.array)[0]
             else:
-                return chainer.cuda.to_cpu(action_distrib.sample().data)[0]
+                return chainer.cuda.to_cpu(action_distrib.sample().array)[0]
 
     def stop_episode_and_train(self, state, reward, done=False):
         assert self.last_state is not None

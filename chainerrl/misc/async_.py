@@ -38,8 +38,8 @@ def set_shared_params(a, b):
     for param_name, param in a.namedparams():
         if param_name in b:
             shared_param = b[param_name]
-            param.data = np.frombuffer(
-                shared_param, dtype=param.data.dtype).reshape(param.data.shape)
+            param.array = np.frombuffer(
+                shared_param, dtype=param.dtype).reshape(param.shape)
 
 
 def make_params_not_shared(a):
@@ -50,7 +50,7 @@ def make_params_not_shared(a):
     """
     assert isinstance(a, chainer.Link)
     for param in a.params():
-        param.data = param.data.copy()
+        param.array = param.array.copy()
 
 
 def assert_params_not_shared(a, b):
@@ -60,7 +60,7 @@ def assert_params_not_shared(a, b):
     b_params = dict(b.namedparams())
     for name, a_param in a_params.items():
         b_param = b_params[name]
-        assert a_param.data.ctypes.data != b_param.data.ctypes.data
+        assert a_param.array.ctypes.data != b_param.array.ctypes.data
 
 
 def set_shared_states(a, b):
@@ -80,7 +80,7 @@ def extract_params_as_shared_arrays(link):
     assert isinstance(link, chainer.Link)
     shared_arrays = {}
     for param_name, param in link.namedparams():
-        shared_arrays[param_name] = mp.RawArray('f', param.data.ravel())
+        shared_arrays[param_name] = mp.RawArray('f', param.array.ravel())
     return shared_arrays
 
 
