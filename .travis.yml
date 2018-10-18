@@ -24,7 +24,6 @@ install:
   - pip install hacking
   - pip install coveralls
   - pip install opencv-python
-  - pip install packaging
   - python setup.py develop
   - python -c "import numpy; numpy.show_config()"
 before_script:
