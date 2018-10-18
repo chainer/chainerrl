@@ -846,7 +846,7 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
             self.counts[vel, pos, action] += 0.0001
             self.counts2 *= 0.99
             self.counts2[vel, pos, action] += 0.01
-            self.visited[vel, pos, :] = 1
+            self.visited[vel, pos, action] = 1
 
         self.t += 1
 
@@ -951,5 +951,7 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
                 self.conv = True
 
         stats.append(('est_error', self.est_error))
+        stats.append(('visited_s', np.sum(np.max(self.visited,2))))
+        stats.append(('visited_sa', np.sum(self.visited)))
 
         return stats
