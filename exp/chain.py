@@ -9,7 +9,7 @@ import argparse
 import os
 
 import gym
-gym.undo_logger_setup()  # NOQA
+#gym.undo_logger_setup()  # NOQA
 from chainer import functions as F
 from chainer import links as L
 from chainer import optimizers
@@ -148,6 +148,7 @@ def main():
     parser.add_argument('--no-greedy', action='store_true', default=False)
 
     parser.add_argument('--use-table', action='store_true', default=False)
+    parser.add_argument('--no-nn', action='store_true', default=False)
 
     parser.add_argument('--env', type=str, default='grid')
 
@@ -238,14 +239,17 @@ def main():
     #    n_hidden_channels=32,
     #    n_hidden_layers=2)#
 
-    if "-v" in args.env:
-        q_func = MySequence(None, n_actions, head, args.avg)
+    if args.no_nn:
+        q_func = None
     else:
-        try:
-            n_obs = env.observation_space.n
-        except:
-            n_obs = env.observation_space.shape[0]
-        q_func = MySequence(n_obs, n_actions, head, args.avg, args.sigmanet)
+        if "-v" in args.env:
+            q_func = MySequence(None, n_actions, head, args.avg)
+        else:
+            try:
+                n_obs = env.observation_space.n
+            except:
+                n_obs = env.observation_space.shape[0]
+            q_func = MySequence(n_obs, n_actions, head, args.avg, args.sigmanet)
 
     """
     # Draw the computational graph and save it in the output directory.
@@ -290,7 +294,8 @@ def main():
         os.path.join(args.outdir, 'diagram2'))
     """
 
-    opt.setup(q_func)
+    if not args.no_nn:
+        opt.setup(q_func)
 
     def phi(x):
         # Feature extractor
@@ -318,7 +323,10 @@ def main():
                   video=args.video,
                   table_sigma=args.table_sigma,
                   scale_sigma=args.scale_sigma,
-                  min_sigma=args.min_sigma)
+                  min_sigma=args.min_sigma,
+                  no_nn=args.no_nn,
+                  outdir=args.outdir,
+                  algo=args.agent)
 
     if args.load:
         agent.load(args.load)
