@@ -249,6 +249,7 @@ class PPO(agent.AttributeSavingMixin, agent.BatchAgent):
             distribs, vs_pred = self.model(states)
             with chainer.no_backprop_mode():
                 target_distribs, _ = target_model(states)
+                target_log_probs = target_distribs.log_prob(actions)
 
             advs = xp.array([b['adv'] for b in batch], dtype=xp.float32)
             if self.standardize_advantages:
@@ -266,7 +267,7 @@ class PPO(agent.AttributeSavingMixin, agent.BatchAgent):
                 self._lossfun,
                 distribs, vs_pred, distribs.log_prob(actions),
                 vs_pred_old=vs_pred_old,
-                target_log_probs=target_distribs.log_prob(actions),
+                target_log_probs=target_log_probs,
                 advs=advs,
                 vs_teacher=vs_teacher,
             )
