@@ -88,7 +88,6 @@ def main():
     parser.add_argument('--arch', type=str, default='FFGaussian',
                         choices=('FFSoftmax', 'FFMellowmax',
                                  'FFGaussian'))
-    parser.add_argument('--normalize-obs', action='store_true')
     parser.add_argument('--bound-mean', action='store_true')
     parser.add_argument('--seed', type=int, default=0,
                         help='Random seed [0, 2 ** 32)')
