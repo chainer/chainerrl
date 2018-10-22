@@ -7,6 +7,7 @@ from future import standard_library
 standard_library.install_aliases()  # NOQA
 
 from logging import getLogger
+import warnings
 
 import chainer
 from chainer import functions as F
