@@ -309,6 +309,16 @@ class PPO(agent.AttributeSavingMixin, agent.BatchAgent):
 
     def act_and_train(self, obs, reward):
 
+        if self.last_state is not None:
+            self.last_episode.append({
+                'state': self.last_state,
+                'action': self.last_action,
+                'reward': reward,
+                'next_state': obs,
+                'nonterminal': 1.0,
+            })
+        self._update_if_dataset_is_ready()
+
         xp = self.xp
         b_state = self.batch_states([obs], xp, self.phi)
 
@@ -322,18 +332,8 @@ class PPO(agent.AttributeSavingMixin, agent.BatchAgent):
             self.entropy_record.append(float(action_distrib.entropy.data))
             self.value_record.append(float(value.data))
 
-        if self.last_state is not None:
-            self.last_episode.append({
-                'state': self.last_state,
-                'action': self.last_action,
-                'reward': reward,
-                'next_state': obs,
-                'nonterminal': 1.0,
-            })
         self.last_state = obs
         self.last_action = action
-
-        self._update_if_dataset_is_ready()
 
         return action
 
