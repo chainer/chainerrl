@@ -25,8 +25,6 @@ def worker(remote, env_fn):
             cmd, data = remote.recv()
             if cmd == 'step':
                 ob, reward, done, info = env.step(data)
-                if done:
-                    ob = env.reset()
                 remote.send((ob, reward, done, info))
             elif cmd == 'reset':
                 ob = env.reset()
