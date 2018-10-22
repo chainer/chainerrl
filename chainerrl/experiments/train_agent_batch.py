@@ -97,7 +97,7 @@ def train_agent_batch(agent, env, steps, outdir, log_interval=None,
                 hook(env, agent, t)
 
             if (log_interval is not None
-                    and t > log_interval
+                    and t >= log_interval
                     and t % log_interval < num_envs):
                 logger.info('outdir:{} step:{} episode:{} average_R:{}'.format(
                     outdir, t, np.sum(episode_idx), np.mean(recent_returns)))
