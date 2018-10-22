@@ -18,12 +18,14 @@ from chainerrl import replay_buffer
 @testing.parameterize(*testing.product(
     {
         'capacity': [100, None],
+        'num_steps': [1, 3]
     }
 ))
 class TestReplayBuffer(unittest.TestCase):
 
     def test_append_and_sample(self):
         capacity = self.capacity
+        num_steps = self.num_steps
         rbuf = replay_buffer.ReplayBuffer(capacity)
 
         self.assertEqual(len(rbuf), 0)
