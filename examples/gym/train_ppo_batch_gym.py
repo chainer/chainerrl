@@ -120,7 +120,7 @@ def main():
     logging.basicConfig(level=args.logger_level)
 
     # Set a random seed used in ChainerRL
-    misc.set_random_seed(args.seed)
+    misc.set_random_seed(args.seed, gpus=(args.gpu,))
 
     # Set different random seeds for different subprocesses.
     # If seed=0 and processes=4, subprocess seeds are [0, 1, 2, 3].
