@@ -18,11 +18,13 @@ install:
     fi
   - pip install -r requirements.txt --only-binary=numpy,scipy
   - pip install jupyter
-  - pip install atari_py>=0.1.1
+  # atari_py==0.1.4 causes an error
+  - pip install atari_py==0.1.1
   - pip install autopep8
   - pip install hacking
   - pip install coveralls
   - pip install opencv-python
+  - pip install packaging
   - python setup.py develop
   - python -c "import numpy; numpy.show_config()"
 before_script:

@@ -248,7 +248,7 @@ class PCL(agent.AttributeSavingMixin, agent.AsyncAgent):
 
         # Compute gradients using thread-specific model
         self.model.zerograds()
-        loss.backward()
+        F.squeeze(loss).backward()
         if self.train_async:
             # Copy the gradients to the globally shared model
             self.shared_model.zerograds()

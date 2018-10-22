@@ -6,7 +6,6 @@ from builtins import *  # NOQA
 from future import standard_library
 standard_library.install_aliases()  # NOQA
 
-from abc import abstractmethod
 from logging import getLogger
 
 import chainer
@@ -24,24 +23,7 @@ from chainerrl.policy import Policy
 logger = getLogger(__name__)
 
 
-class GaussianPolicy(Policy):
-    """Abstract Gaussian policy."""
-
-    @abstractmethod
-    def compute_mean_and_var(self, x):
-        """Compute mean and variance.
-
-        Returns:
-          tuple of two ~chainer.Variable: mean and variance
-        """
-        raise NotImplementedError()
-
-    def __call__(self, x):
-        mean, var = self.compute_mean_and_var(x)
-        return distribution.GaussianDistribution(mean=mean, var=var)
-
-
-class FCGaussianPolicy(chainer.ChainList, GaussianPolicy):
+class FCGaussianPolicy(chainer.ChainList, Policy):
     """Gaussian policy that consists of fully-connected layers.
 
     This model has two output layers: the mean layer and the variance layer.
@@ -130,7 +112,7 @@ class FCGaussianPolicy(chainer.ChainList, GaussianPolicy):
 
 
 class FCGaussianPolicyWithStateIndependentCovariance(
-        chainer.Chain, GaussianPolicy):
+        chainer.Chain, Policy):
     """Gaussian policy that consists of FC layers with parametrized covariance.
 
     This model has one output layers: the mean layer.
@@ -200,7 +182,7 @@ class FCGaussianPolicyWithStateIndependentCovariance(
         return distribution.GaussianDistribution(mean, var)
 
 
-class FCGaussianPolicyWithFixedCovariance(links.Sequence, GaussianPolicy):
+class FCGaussianPolicyWithFixedCovariance(links.Sequence, Policy):
     """Gaussian policy that consists of FC layers with fixed covariance.
 
     This model has one output layers: the mean layer.
@@ -266,45 +248,3 @@ class FCGaussianPolicyWithFixedCovariance(links.Sequence, GaussianPolicy):
         layers.append(lambda x: distribution.GaussianDistribution(
             x, get_var_array(x.shape)))
         super().__init__(*layers)
-
-
-class LinearGaussianPolicyWithDiagonalCovariance(
-        chainer.ChainList, GaussianPolicy):
-    """Linear Gaussian policy whose covariance matrix is diagonal."""
-
-    def __init__(self, n_input_channels, action_size):
-
-        self.n_input_channels = n_input_channels
-        self.action_size = action_size
-
-        self.mean_layer = L.Linear(n_input_channels, action_size)
-        self.var_layer = L.Linear(n_input_channels, action_size)
-
-        super().__init__(self.mean_layer, self.var_layer)
-
-    def compute_mean_and_var(self, x):
-        # mean = self.mean_layer(x)
-        mean = F.tanh(self.mean_layer(x)) * 2.0
-        var = F.softplus(self.var_layer(x))
-        return mean, var
-
-
-class LinearGaussianPolicyWithSphericalCovariance(
-        chainer.ChainList, GaussianPolicy):
-    """Linear Gaussian policy whose covariance matrix is spherical."""
-
-    def __init__(self, n_input_channels, action_size):
-
-        self.n_input_channels = n_input_channels
-        self.action_size = action_size
-
-        self.mean_layer = L.Linear(n_input_channels, action_size)
-        self.var_layer = L.Linear(n_input_channels, 1)
-
-        super().__init__(self.mean_layer, self.var_layer)
-
-    def compute_mean_and_var(self, x):
-        # mean = self.mean_layer(x)
-        mean = F.tanh(self.mean_layer(x)) * 2.0
-        var = F.softplus(F.broadcast_to(self.var_layer(x), mean.data.shape))
-        return mean, var

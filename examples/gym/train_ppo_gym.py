@@ -18,7 +18,6 @@ import argparse
 import chainer
 from chainer import functions as F
 import gym
-gym.undo_logger_setup()  # NOQA
 import gym.wrappers
 
 import chainerrl
@@ -95,7 +94,7 @@ def main():
 
     parser = argparse.ArgumentParser()
     parser.add_argument('--gpu', type=int, default=0)
-    parser.add_argument('--env', type=str, default='Hopper-v1')
+    parser.add_argument('--env', type=str, default='Hopper-v2')
     parser.add_argument('--arch', type=str, default='FFGaussian',
                         choices=('FFSoftmax', 'FFMellowmax',
                                  'FFGaussian'))
@@ -141,10 +140,10 @@ def main():
         env = chainerrl.wrappers.CastObservationToFloat32(env)
         if args.monitor:
             env = gym.wrappers.Monitor(env, args.outdir)
-        # Scale rewards observed by agents
-        if args.reward_scale_factor and not test:
-            misc.env_modifiers.make_reward_filtered(
-                env, lambda x: x * args.reward_scale_factor)
+        if not test:
+            # Scale rewards (and thus returns) to a reasonable range so that
+            # training is easier
+            env = chainerrl.wrappers.ScaleReward(env, args.reward_scale_factor)
         if args.render:
             misc.env_modifiers.make_rendered(env)
         return env

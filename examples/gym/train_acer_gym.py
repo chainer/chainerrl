@@ -15,6 +15,7 @@ import chainer
 from chainer import functions as F
 from chainer import links as L
 import gym
+from gym import spaces
 import gym.wrappers
 import numpy as np
 
@@ -30,7 +31,6 @@ from chainerrl.optimizers import rmsprop_async
 from chainerrl import policies
 from chainerrl import q_functions
 from chainerrl.replay_buffer import EpisodicReplayBuffer
-from chainerrl import spaces
 from chainerrl import v_functions
 
 
@@ -94,10 +94,10 @@ def main():
         env = chainerrl.wrappers.CastObservationToFloat32(env)
         if args.monitor and process_idx == 0:
             env = gym.wrappers.Monitor(env, args.outdir)
-        # Scale rewards observed by agents
         if not test:
-            misc.env_modifiers.make_reward_filtered(
-                env, lambda x: x * args.reward_scale_factor)
+            # Scale rewards (and thus returns) to a reasonable range so that
+            # training is easier
+            env = chainerrl.wrappers.ScaleReward(env, args.reward_scale_factor)
         if args.render and process_idx == 0 and not test:
             misc.env_modifiers.make_rendered(env)
         return env
