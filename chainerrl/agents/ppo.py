@@ -160,7 +160,7 @@ class PPO(agent.AttributeSavingMixin, agent.BatchAgent):
         if dataset_size >= self.update_interval:
             self._flush_last_episode()
             dataset = self._make_dataset()
-            assert len(dataset) >= self.update_interval
+            assert len(dataset) == dataset_size
             self._update(dataset)
             self.memory = []
 
