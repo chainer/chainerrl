@@ -99,8 +99,14 @@ def train_agent_batch(agent, env, steps, outdir, log_interval=None,
             if (log_interval is not None
                     and t >= log_interval
                     and t % log_interval < num_envs):
-                logger.info('outdir:{} step:{} episode:{} average_R:{}'.format(
-                    outdir, t, np.sum(episode_idx), np.mean(recent_returns)))
+                logger.info(
+                    'outdir:{} step:{} episode:{} last_R: {} average_R:{}'.format(  # NOQA
+                        outdir,
+                        t,
+                        np.sum(episode_idx),
+                        recent_returns[-1] if recent_returns else np.nan,
+                        np.mean(recent_returns) if recent_returns else np.nan,
+                    ))
                 logger.info('statistics: {}'.format(agent.get_statistics()))
             if evaluator:
                 if evaluator.evaluate_if_necessary(
