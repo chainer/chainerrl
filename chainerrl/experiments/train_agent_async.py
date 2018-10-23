@@ -131,7 +131,6 @@ def train_agent_async(outdir, processes, make_env,
                       max_episode_len=None,
                       step_offset=0,
                       successful_score=None,
-                      eval_explorer=None,
                       agent=None,
                       make_agent=None,
                       global_step_hooks=[],
@@ -155,7 +154,6 @@ def train_agent_async(outdir, processes, make_env,
         step_offset (int): Time step from which training starts.
         successful_score (float): Finish training if the mean score is greater
             or equal to this value if not None
-        eval_explorer: Explorer used for evaluation.
         agent (Agent): Agent to train.
         make_agent (callable): (process_idx) -> Agent
         global_step_hooks (list): List of callable objects that accepts
@@ -194,7 +192,6 @@ def train_agent_async(outdir, processes, make_env,
             eval_interval=eval_interval, outdir=outdir,
             max_episode_len=max_episode_len,
             step_offset=step_offset,
-            explorer=eval_explorer,
             save_best_so_far_agent=save_best_so_far_agent,
             logger=logger,
         )

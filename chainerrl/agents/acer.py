@@ -27,11 +27,11 @@ from chainerrl.recurrent import state_reset
 
 
 def compute_importance(pi, mu, x):
-    return np.nan_to_num(float(pi.prob(x).data) / float(mu.prob(x).data))
+    return np.nan_to_num(float(pi.prob(x).array) / float(mu.prob(x).array))
 
 
 def compute_full_importance(pi, mu):
-    pimu = pi.all_prob.data / mu.all_prob.data
+    pimu = pi.all_prob.array / mu.all_prob.array
     # NaN occurs when inf/inf or 0/0
     pimu[np.isnan(pimu)] = 1
     pimu = np.nan_to_num(pimu)
@@ -50,8 +50,8 @@ def compute_policy_gradient_full_correction(
         correction_weight = (
             np.maximum(1 - truncation_threshold * rho_all_inv,
                        np.zeros_like(rho_all_inv)) *
-            action_distrib.all_prob.data[0])
-        correction_advantage = action_value.q_values.data[0] - v
+            action_distrib.all_prob.array[0])
+        correction_advantage = action_value.q_values.array[0] - v
     return -F.sum(correction_weight *
                   action_distrib.all_log_prob *
                   correction_advantage, axis=1)
@@ -64,7 +64,7 @@ def compute_policy_gradient_sample_correction(
     assert np.isscalar(v)
     assert truncation_threshold is not None
     with chainer.no_backprop_mode():
-        sample_action = action_distrib.sample().data
+        sample_action = action_distrib.sample().array
         rho_dash_inv = compute_importance(
             action_distrib_mu, action_distrib, sample_action)
         if (truncation_threshold > 0 and
@@ -72,7 +72,7 @@ def compute_policy_gradient_sample_correction(
             return chainer.Variable(np.asarray([0], dtype=np.float32))
         correction_weight = max(0, 1 - truncation_threshold * rho_dash_inv)
         assert correction_weight <= 1
-        q = float(action_value.evaluate_actions(sample_action).data[0])
+        q = float(action_value.evaluate_actions(sample_action).array[0])
         correction_advantage = q - v
     return -(correction_weight *
              action_distrib.log_prob(sample_action) *
@@ -155,7 +155,7 @@ class ACERSDNSeparateModel(chainer.Chain, RecurrentChainMixin):
         v = self.v(obs)
 
         def evaluator(action):
-            adv_mean = sum(self.adv(obs, action_distrib.sample().data)
+            adv_mean = sum(self.adv(obs, action_distrib.sample().array)
                            for _ in range(self.n)) / self.n
             return v + self.adv(obs, action) - adv_mean
 
@@ -214,13 +214,13 @@ def compute_loss_with_kl_constraint(distrib, another_distrib, original_loss,
     """
     # Compute g: a direction to minimize the original loss
     with backprop_truncated(*distrib.params):
-        original_loss.backward()
+        F.squeeze(original_loss).backward()
     g = [p.grad[0] for p in distrib.params]
     for p in distrib.params:
         p.cleargrad()
 
     # Compute k: a direction to increase KL div.
-    kl = another_distrib.kl(distrib)
+    kl = F.squeeze(another_distrib.kl(distrib))
     with backprop_truncated(*distrib.params):
         (-kl).backward()
     k = [p.grad[0] for p in distrib.params]
@@ -238,8 +238,8 @@ def compute_loss_with_kl_constraint(distrib, another_distrib, original_loss,
     z = [gp - k_factor * kp for kp, gp in zip(k, g)]
     loss = 0
     for p, zp in zip(distrib.params, z):
-        loss += F.sum(p * zp, axis=1)
-    return loss, float(kl.data)
+        loss += F.sum(p * zp)
+    return F.reshape(loss, original_loss.shape), float(kl.array)
 
 
 class ACER(agent.AttributeSavingMixin, agent.AsyncAgent):
@@ -446,16 +446,16 @@ class ACER(agent.AttributeSavingMixin, agent.AsyncAgent):
             assert np.isscalar(Q_ret)
             assert np.isscalar(Q_opc)
             if self.use_Q_opc:
-                advantage = Q_opc - float(v.data)
+                advantage = Q_opc - float(v.array)
             else:
-                advantage = Q_ret - float(v.data)
+                advantage = Q_ret - float(v.array)
             pi_loss += self.compute_one_step_pi_loss(
                 action=ba,
                 advantage=advantage,
                 action_distrib=action_distrib,
                 action_distrib_mu=action_distrib_mu,
                 action_value=action_value,
-                v=float(v.data),
+                v=float(v.array),
                 avg_action_distrib=avg_action_distrib)
 
             # Accumulate gradients of value function
@@ -466,21 +466,21 @@ class ACER(agent.AttributeSavingMixin, agent.AsyncAgent):
             if not discrete:
                 assert isinstance(v, chainer.Variable), \
                     "v must be backprop-able"
-                v_target = (min(1, rho) * (Q_ret - float(Q.data)) +
-                            float(v.data))
+                v_target = (min(1, rho) * (Q_ret - float(Q.array)) +
+                            float(v.array))
                 Q_loss += (v_target - v) ** 2 / 2
 
             if self.process_idx == 0:
                 self.logger.debug(
                     't:%s v:%s Q:%s Q_ret:%s Q_opc:%s',
-                    i, float(v.data), float(Q.data), Q_ret, Q_opc)
+                    i, float(v.array), float(Q.array), Q_ret, Q_opc)
 
             if discrete:
                 c = min(1, rho)
             else:
                 c = min(1, rho ** (1 / ba.size))
-            Q_ret = c * (Q_ret - float(Q.data)) + float(v.data)
-            Q_opc = Q_opc - float(Q.data) + float(v.data)
+            Q_ret = c * (Q_ret - float(Q.array)) + float(v.array)
+            Q_opc = Q_opc - float(Q.array) + float(v.array)
 
         pi_loss *= self.pi_loss_coef
         Q_loss *= self.Q_loss_coef
@@ -491,9 +491,9 @@ class ACER(agent.AttributeSavingMixin, agent.AsyncAgent):
 
         if self.process_idx == 0:
             self.logger.debug('pi_loss:%s Q_loss:%s',
-                              pi_loss.data, Q_loss.data)
+                              pi_loss.array, Q_loss.array)
 
-        return pi_loss + F.reshape(Q_loss, pi_loss.data.shape)
+        return pi_loss + F.reshape(Q_loss, pi_loss.array.shape)
 
     def update(self, t_start, t_stop, R, states, actions, rewards, values,
                action_values, action_distribs, action_distribs_mu,
@@ -516,7 +516,7 @@ class ACER(agent.AttributeSavingMixin, agent.AsyncAgent):
 
         # Compute gradients using thread-specific model
         self.model.zerograds()
-        total_loss.backward()
+        F.squeeze(total_loss).backward()
         # Copy the gradients to the globally shared model
         self.shared_model.zerograds()
         copy_param.copy_grad(
@@ -576,7 +576,7 @@ class ACER(agent.AttributeSavingMixin, agent.AsyncAgent):
                         last_s = last_transition['next_state']
                         action_distrib, action_value, last_v = self.model(
                             np.expand_dims(self.phi(last_s), 0))
-                    R = float(last_v.data)
+                    R = float(last_v.array)
                 return self.update(
                     R=R, t_start=0, t_stop=len(episode),
                     states=states, rewards=rewards,
@@ -597,7 +597,7 @@ class ACER(agent.AttributeSavingMixin, agent.AsyncAgent):
                 with chainer.no_backprop_mode():
                     with state_kept(self.model):
                         action_distrib, action_value, v = self.model(statevar)
-                R = float(v.data)
+                R = float(v.array)
             self.update(
                 t_start=self.t_start, t_stop=self.t, R=R,
                 states=self.past_states,
@@ -625,7 +625,7 @@ class ACER(agent.AttributeSavingMixin, agent.AsyncAgent):
         self.past_states[self.t] = statevar
         action_distrib, action_value, v = self.model(statevar)
         self.past_action_values[self.t] = action_value
-        action = action_distrib.sample().data[0]
+        action = action_distrib.sample().array[0]
 
         # Save values for a later update
         self.past_values[self.t] = v
@@ -645,10 +645,10 @@ class ACER(agent.AttributeSavingMixin, agent.AsyncAgent):
         # Update stats
         self.average_value += (
             (1 - self.average_value_decay) *
-            (float(v.data[0]) - self.average_value))
+            (float(v.array[0]) - self.average_value))
         self.average_entropy += (
             (1 - self.average_entropy_decay) *
-            (float(action_distrib.entropy.data[0]) - self.average_entropy))
+            (float(action_distrib.entropy.array[0]) - self.average_entropy))
 
         if self.replay_buffer is not None and self.last_state is not None:
             assert self.last_action is not None
@@ -676,9 +676,9 @@ class ACER(agent.AttributeSavingMixin, agent.AsyncAgent):
             statevar = np.expand_dims(self.phi(obs), 0)
             action_distrib, _, _ = self.model(statevar)
             if self.act_deterministically:
-                return action_distrib.most_probable.data[0]
+                return action_distrib.most_probable.array[0]
             else:
-                return action_distrib.sample().data[0]
+                return action_distrib.sample().array[0]
 
     def stop_episode_and_train(self, state, reward, done=False):
         assert self.last_state is not None

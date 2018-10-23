@@ -27,7 +27,7 @@ class TestInvertGradients(unittest.TestCase):
 
     def check_forward(self, x_data):
 
-        # In chainer, update will be like x.data -= lr * x.grad,
+        # In chainer, update will be like x.array -= lr * x.grad,
         # which means negative gradients will increase values.
 
         # Not exceeding

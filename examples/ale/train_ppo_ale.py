@@ -7,9 +7,9 @@ from future import standard_library
 standard_library.install_aliases()  # NOQA
 import argparse
 
-import gym
-gym.undo_logger_setup()  # NOQA
 import chainer
+import gym
+import gym.wrappers
 import numpy as np
 
 from chainerrl.agents.a3c import A3CModel

@@ -8,7 +8,7 @@ standard_library.install_aliases()  # NOQA
 from chainer import optimizers
 from chainer import testing
 import gym
-gym.undo_logger_setup()  # NOQA
+import gym.spaces
 
 import basetest_agents as base
 from chainerrl import agents

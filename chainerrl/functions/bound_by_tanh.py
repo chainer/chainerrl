@@ -23,7 +23,7 @@ def bound_by_tanh(x, low, high):
     assert isinstance(x, chainer.Variable)
     assert low is not None
     assert high is not None
-    xp = cuda.get_array_module(x.data)
+    xp = cuda.get_array_module(x.array)
     x_scale = (high - low) / 2
     x_scale = xp.expand_dims(xp.asarray(x_scale), axis=0)
     x_mean = (high + low) / 2

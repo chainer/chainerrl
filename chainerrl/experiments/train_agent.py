@@ -96,7 +96,6 @@ def train_agent_with_evaluation(agent,
                                 outdir,
                                 max_episode_len=None,
                                 step_offset=0,
-                                eval_explorer=None,
                                 eval_max_episode_len=None,
                                 eval_env=None,
                                 successful_score=None,
@@ -115,7 +114,6 @@ def train_agent_with_evaluation(agent,
         outdir (str): Path to the directory to output things.
         max_episode_len (int): Maximum episode length.
         step_offset (int): Time step from which training starts.
-        eval_explorer: Explorer used for evaluation.
         eval_max_episode_len (int or None): Maximum episode length of
             evaluation runs. If set to None, max_episode_len is used instead.
         eval_env: Environment used for evaluation.
@@ -144,7 +142,6 @@ def train_agent_with_evaluation(agent,
                           n_runs=eval_n_runs,
                           eval_interval=eval_interval, outdir=outdir,
                           max_episode_len=eval_max_episode_len,
-                          explorer=eval_explorer,
                           env=eval_env,
                           step_offset=step_offset,
                           save_best_so_far_agent=save_best_so_far_agent,

@@ -51,7 +51,7 @@ class TestLowerTriangularMatrix(unittest.TestCase):
         diag_rows, diag_cols = numpy.diag_indices(self.n)
         correct_y[:, diag_rows, diag_cols] = cuda.to_cpu(diag_data)
 
-        gradient_check.assert_allclose(correct_y, cuda.to_cpu(y.data))
+        gradient_check.assert_allclose(correct_y, cuda.to_cpu(y.array))
 
     def test_forward_cpu(self):
         self.check_forward(self.diag, self.non_diag)

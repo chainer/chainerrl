@@ -10,6 +10,7 @@ from logging import getLogger
 import warnings
 
 import chainer
+import chainer.functions as F
 import numpy as np
 
 import chainerrl
@@ -77,7 +78,7 @@ class REINFORCE(agent.AttributeSavingMixin, agent.Agent):
 
         batch_obs = self.batch_states([obs], self.xp, self.phi)
         action_distrib = self.model(batch_obs)
-        batch_action = action_distrib.sample().data  # Do not backprop
+        batch_action = action_distrib.sample().array  # Do not backprop
         action = chainer.cuda.to_cpu(batch_action)[0]
 
         # Save values used to compute losses
@@ -95,7 +96,7 @@ class REINFORCE(agent.AttributeSavingMixin, agent.Agent):
         # Update stats
         self.average_entropy += (
             (1 - self.average_entropy_decay) *
-            (float(action_distrib.entropy.data[0]) - self.average_entropy))
+            (float(action_distrib.entropy.array[0]) - self.average_entropy))
 
         return action
 
@@ -105,9 +106,9 @@ class REINFORCE(agent.AttributeSavingMixin, agent.Agent):
             action_distrib = self.model(batch_obs)
             if self.act_deterministically:
                 return chainer.cuda.to_cpu(
-                    action_distrib.most_probable.data)[0]
+                    action_distrib.most_probable.array)[0]
             else:
-                return chainer.cuda.to_cpu(action_distrib.sample().data)[0]
+                return chainer.cuda.to_cpu(action_distrib.sample().array)[0]
 
     def stop_episode_and_train(self, obs, reward, done=False):
 
@@ -156,7 +157,7 @@ class REINFORCE(agent.AttributeSavingMixin, agent.Agent):
         # Variable with it will raise an error, so it is manually converted to
         # float here.
         total_loss /= float(self.batchsize)
-        total_loss.backward()
+        F.squeeze(total_loss).backward()
         self.reward_sequences = [[]]
         self.log_prob_sequences = [[]]
         self.entropy_sequences = [[]]
