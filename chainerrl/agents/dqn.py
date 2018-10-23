@@ -179,10 +179,12 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
         self.average_loss_decay = average_loss_decay
 
         # Error checking
-        if self.replay_buffer.capacity is not None and \
-        self.replay_buffer.capacity < self.replay_updater.replay_start_size:
-            raise ValueError("Replay start size cannot exceed " \
-             + "replay buffer capacity.")
+        if (self.replay_buffer.capacity is not None and
+                self.replay_buffer.capacity <
+                self.replay_updater.replay_start_size):
+            raise ValueError(
+                'Replay start size cannot exceed '
+                'replay buffer capacity.')
 
     def sync_target_network(self):
         """Synchronize target network with current network."""
