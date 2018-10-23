@@ -105,7 +105,7 @@ class _TestBatchTrainingMixin(object):
     """
 
     def make_vec_env_and_successful_return(self, test, num_envs=2):
-        _, successful_return = self.make_env_and_successful_return(test=test)
+        successful_return = self.make_env_and_successful_return(test=test)[1]
         vec_env = chainerrl.envs.SerialVectorEnv(
             [self.make_env_and_successful_return(test=test)[0]
                 for _ in range(num_envs)])
