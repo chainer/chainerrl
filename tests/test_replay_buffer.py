@@ -7,6 +7,8 @@ from future import standard_library
 standard_library.install_aliases()  # NOQA
 import os
 import tempfile
+import collections
+import copy
 import unittest
 
 from chainer import testing
@@ -26,46 +28,57 @@ class TestReplayBuffer(unittest.TestCase):
     def test_append_and_sample(self):
         capacity = self.capacity
         num_steps = self.num_steps
-        rbuf = replay_buffer.ReplayBuffer(capacity)
+        rbuf = replay_buffer.ReplayBuffer(capacity, num_steps)
 
         self.assertEqual(len(rbuf), 0)
 
         # Add one and sample one
-        trans1 = dict(state=0, action=1, reward=2, next_state=3,
-                      next_action=4, is_state_terminal=True)
-        rbuf.append(**trans1)
+        correct_item = collections.deque([], maxlen=num_steps)
+        for i in range(num_steps):
+            trans1 = dict(state=0, action=1, reward=2, next_state=3,
+                      next_action=4, is_state_terminal=False)
+            correct_item.append(trans1)
+            rbuf.append(**trans1)
         self.assertEqual(len(rbuf), 1)
         s1 = rbuf.sample(1)
         self.assertEqual(len(s1), 1)
-        self.assertEqual(s1[0], trans1)
+        self.assertEqual(s1[0], correct_item)
 
         # Add two and sample two, which must be unique
+        correct_item2 = copy.deepcopy(correct_item)
         trans2 = dict(state=1, action=1, reward=2, next_state=3,
-                      next_action=4, is_state_terminal=True)
+                      next_action=4, is_state_terminal=False)
+        correct_item2.append(trans2)
         rbuf.append(**trans2)
         self.assertEqual(len(rbuf), 2)
         s2 = rbuf.sample(2)
         self.assertEqual(len(s2), 2)
-        if s2[0]['state'] == 0:
-            self.assertEqual(s2[0], trans1)
-            self.assertEqual(s2[1], trans2)
+        if s2[0][num_steps-1]['state'] == 0:
+            self.assertEqual(s2[0], correct_item)
+            self.assertEqual(s2[1], correct_item2)
         else:
-            self.assertEqual(s2[0], trans2)
-            self.assertEqual(s2[1], trans1)
+            self.assertEqual(s2[1], correct_item)
+            self.assertEqual(s2[0], correct_item2) 
 
     def test_save_and_load(self):
         capacity = self.capacity
+        num_steps = self.num_steps
 
         tempdir = tempfile.mkdtemp()
 
-        rbuf = replay_buffer.ReplayBuffer(capacity)
+        rbuf = replay_buffer.ReplayBuffer(capacity, num_steps)
 
+        correct_item = collections.deque([], maxlen=num_steps)
         # Add two transitions
-        trans1 = dict(state=0, action=1, reward=2, next_state=3,
-                      next_action=4, is_state_terminal=True)
-        rbuf.append(**trans1)
+        for _ in range(num_steps):
+            trans1 = dict(state=0, action=1, reward=2, next_state=3,
+                      next_action=4, is_state_terminal=False)
+            correct_item.append(trans1)
+            rbuf.append(**trans1)
+        correct_item2 = copy.deepcopy(correct_item)
         trans2 = dict(state=1, action=1, reward=2, next_state=3,
                       next_action=4, is_state_terminal=True)
+        correct_item2.append(trans2)
         rbuf.append(**trans2)
 
         # Now it has two transitions
@@ -89,12 +102,12 @@ class TestReplayBuffer(unittest.TestCase):
 
         # And sampled transitions are exactly what I added!
         s2 = rbuf.sample(2)
-        if s2[0]['state'] == 0:
-            self.assertEqual(s2[0], trans1)
-            self.assertEqual(s2[1], trans2)
+        if s2[0][num_steps-1]['state'] == 0:
+            self.assertEqual(s2[0], correct_item)
+            self.assertEqual(s2[1], correct_item2)
         else:
-            self.assertEqual(s2[0], trans2)
-            self.assertEqual(s2[1], trans1)
+            self.assertEqual(s2[0], correct_item2)
+            self.assertEqual(s2[1], correct_item)
 
 
 @testing.parameterize(*testing.product(
