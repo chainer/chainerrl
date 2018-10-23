@@ -431,7 +431,7 @@ def batch_experiences(experiences, xp, phi, gamma, batch_states=batch_states, ha
     """
     batched_experiences = dict()
     if has_weight:
-        batched_experiences['weights'] = experiences['weights']
+        batched_experiences['weight'] = experiences['weights']
         assert 'samples' in experiences
         experiences = experiences['samples']
     batched_experiences['state'] =  batch_states(

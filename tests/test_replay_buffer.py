@@ -235,7 +235,6 @@ class TestPrioritizedReplayBuffer(unittest.TestCase):
             rbuf.append(**trans1)
         self.assertEqual(len(rbuf), 1)
         s1 = rbuf.sample(1)
-        print (str(s1))
         rbuf.update_errors([3.14])
         self.assertEqual(len(s1), 1)
         self.assertAlmostEqual(s1[0]['weight'], 1.0)
