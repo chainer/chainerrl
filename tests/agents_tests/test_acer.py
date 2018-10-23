@@ -75,7 +75,7 @@ class TestDegenerateDistribution(unittest.TestCase):
         self.mu = deg_distrib if self.mu_deg else nondeg_distrib
 
     def test_importance(self):
-        action = self.mu.sample().data
+        action = self.mu.sample().array
         pimu = acer.compute_importance(self.pi, self.mu, action)
         print('pi/mu', pimu)
         self.assertFalse(np.isnan(np.sum(pimu)))
@@ -94,24 +94,24 @@ class TestDegenerateDistribution(unittest.TestCase):
             return
         correction_term = acer.compute_policy_gradient_full_correction(
             self.pi, self.mu, self.action_value, 0, self.truncation_threshold)
-        print('correction_term', correction_term.data)
-        self.assertFalse(np.isnan(np.sum(correction_term.data)))
+        print('correction_term', correction_term.array)
+        self.assertFalse(np.isnan(np.sum(correction_term.array)))
 
     def test_sample_correction_term(self):
         if self.truncation_threshold is None:
             return
         correction_term = acer.compute_policy_gradient_sample_correction(
             self.pi, self.mu, self.action_value, 0, self.truncation_threshold)
-        print('correction_term', correction_term.data)
-        self.assertFalse(np.isnan(np.sum(correction_term.data)))
+        print('correction_term', correction_term.array)
+        self.assertFalse(np.isnan(np.sum(correction_term.array)))
 
     def test_policy_gradient(self):
-        action = self.mu.sample().data
+        action = self.mu.sample().array
         pg = acer.compute_policy_gradient_loss(
             action, 1, self.pi, self.mu, self.action_value, 0,
             self.truncation_threshold)
-        print('pg', pg.data)
-        self.assertFalse(np.isnan(np.sum(pg.data)))
+        print('pg', pg.array)
+        self.assertFalse(np.isnan(np.sum(pg.array)))
 
 
 @testing.parameterize(*(
@@ -148,7 +148,7 @@ class TestBiasCorrection(unittest.TestCase):
         mu = another_policy(x)
 
         def evaluate_action(action):
-            return float(action_value.evaluate_actions(action).data)
+            return float(action_value.evaluate_actions(action).array)
 
         if self.distrib_type == 'Gaussian':
             W = np.random.rand(self.action_size, 1).astype(np.float32)
@@ -163,8 +163,8 @@ class TestBiasCorrection(unittest.TestCase):
 
         n = 1000
 
-        pi_samples = [pi.sample().data for _ in range(n)]
-        mu_samples = [mu.sample().data for _ in range(n)]
+        pi_samples = [pi.sample().array for _ in range(n)]
+        mu_samples = [mu.sample().array for _ in range(n)]
 
         onpolicy_gs = []
         for sample in pi_samples:
@@ -197,7 +197,7 @@ class TestBiasCorrection(unittest.TestCase):
         is_gs = []
         for sample in mu_samples:
             base_policy.cleargrads()
-            rho = float(pi.prob(sample).data / mu.prob(sample).data)
+            rho = float(pi.prob(sample).array / mu.prob(sample).array)
             loss = -rho * evaluate_action(sample) * pi.log_prob(sample)
             F.squeeze(loss).backward()
             is_gs.append(extract_gradients_as_single_vector(base_policy))
@@ -282,14 +282,14 @@ class TestEfficientTRPO(unittest.TestCase):
                 1, 3, n_hidden_channels=0, n_hidden_layers=0)
             x = np.random.rand(1, 1).astype(np.float32, copy=False)
         base_distrib = base_policy(x)
-        sample = base_distrib.sample().data
+        sample = base_distrib.sample().array
         another_distrib = base_policy(
             np.random.rand(1, 1).astype(np.float32, copy=False)).copy()
 
         def base_loss_func(distrib):
             return distrib.log_prob(sample)
 
-        kl_before = float(another_distrib.kl(base_distrib).data)
+        kl_before = float(another_distrib.kl(base_distrib).array)
         print('kl_before', kl_before)
 
         def compute_kl_after_update(loss_func, n=100):
@@ -302,7 +302,7 @@ class TestEfficientTRPO(unittest.TestCase):
                 F.squeeze(loss_func(distrib)).backward()
                 optimizer.update()
             distrib_after = policy(x)
-            return float(another_distrib.kl(distrib_after).data)
+            return float(another_distrib.kl(distrib_after).array)
 
         # Without kl constraint
         kl_after_without_constraint = compute_kl_after_update(base_loss_func)

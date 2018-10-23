@@ -93,7 +93,7 @@ class CategoricalDQN(dqn.DQN):
         n_atoms = z_values.size
 
         # next_q_max: (batch_size, n_atoms)
-        next_q_max = target_next_qout.max_as_distribution.data
+        next_q_max = target_next_qout.max_as_distribution.array
         assert next_q_max.shape == (batch_size, n_atoms), next_q_max.shape
 
         # Tz: (batch_size, n_atoms)

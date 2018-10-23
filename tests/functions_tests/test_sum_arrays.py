@@ -38,7 +38,7 @@ class TestSumArrays(unittest.TestCase):
     def check_forward(self, xs):
         y = chainerrl.functions.sum_arrays(xs)
         correct_y = sum(self.xs)
-        gradient_check.assert_allclose(correct_y, cuda.to_cpu(y.data))
+        gradient_check.assert_allclose(correct_y, cuda.to_cpu(y.array))
 
     def test_forward_cpu(self):
         self.check_forward(self.xs)

@@ -24,9 +24,6 @@ from chainerrl import policies
 from chainerrl import v_functions
 
 
-_is_double_backprop_supported = trpo._is_double_backprop_supported
-
-
 class OldStyleIdentity(chainer.Function):
 
     """Old-style identity function."""
@@ -47,12 +44,6 @@ def old_style_identity(*args):
 
 
 class TestFindOldStyleFunction(unittest.TestCase):
-
-    def setUp(self):
-        if not _is_double_backprop_supported:
-            self.skipTest(
-                'Chainer v{} does not support double backprop.'.format(
-                    chainer.__version__))
 
     def test(self):
         a = chainer.Variable(np.random.rand(1).astype(np.float32))
@@ -94,19 +85,13 @@ def compute_hessian(y, params):
     for i in range(len(flat_grads)):
         ggrads = chainer.grad([flat_grads[i]], params)
         assert all(ggrad is not None for ggrad in ggrads)
-        ggrads_data = [ggrad.data for ggrad in ggrads]
+        ggrads_data = [ggrad.array for ggrad in ggrads]
         flat_ggrads_data = trpo._flatten_and_concat_ndarrays(ggrads_data)
         hessian_rows.append(flat_ggrads_data)
     return np.asarray(hessian_rows)
 
 
 class TestHessianVectorProduct(unittest.TestCase):
-
-    def setUp(self):
-        if not _is_double_backprop_supported:
-            self.skipTest(
-                'Chainer v{} does not support double backprop.'.format(
-                    chainer.__version__))
 
     def _generate_params_and_first_order_output(self):
         a = chainer.Variable(np.random.rand(3).astype(np.float32))
@@ -174,10 +159,6 @@ Chainer v{} does not support double backprop of these functions: {}.".format(
 class TestTRPO(unittest.TestCase):
 
     def setUp(self):
-        if not _is_double_backprop_supported:
-            self.skipTest(
-                'Chainer v{} does not support double backprop.'.format(
-                    chainer.__version__))
         self.tmpdir = tempfile.mkdtemp()
         self.agent_dirname = os.path.join(self.tmpdir, 'agent_final')
 

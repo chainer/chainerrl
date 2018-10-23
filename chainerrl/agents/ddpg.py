@@ -209,7 +209,7 @@ class DDPG(AttributeSavingMixin, Agent):
         # Update stats
         self.average_critic_loss *= self.average_loss_decay
         self.average_critic_loss += ((1 - self.average_loss_decay) *
-                                     float(loss.data))
+                                     float(loss.array))
 
         return loss
 
@@ -249,7 +249,7 @@ class DDPG(AttributeSavingMixin, Agent):
         # Update stats
         self.average_actor_loss *= self.average_loss_decay
         self.average_actor_loss += ((1 - self.average_loss_decay) *
-                                    float(loss.data))
+                                    float(loss.array))
         return loss
 
     def update(self, experiences, errors_out=None):
@@ -276,20 +276,19 @@ class DDPG(AttributeSavingMixin, Agent):
                 transitions, xp=self.xp, phi=self.phi)
             batches.append(batch)
 
-        with self.model.state_reset():
-            with self.target_model.state_reset():
+        with self.model.state_reset(), self.target_model.state_reset():
 
-                # Since the target model is evaluated one-step ahead,
-                # its internal states need to be updated
-                self.target_q_function.update_state(
-                    batches[0]['state'], batches[0]['action'])
-                self.target_policy(batches[0]['state'])
+            # Since the target model is evaluated one-step ahead,
+            # its internal states need to be updated
+            self.target_q_function.update_state(
+                batches[0]['state'], batches[0]['action'])
+            self.target_policy(batches[0]['state'])
 
-                # Update critic through time
-                critic_loss = 0
-                for batch in batches:
-                    critic_loss += self.compute_critic_loss(batch)
-                self.critic_optimizer.update(lambda: critic_loss / max_epi_len)
+            # Update critic through time
+            critic_loss = 0
+            for batch in batches:
+                critic_loss += self.compute_critic_loss(batch)
+            self.critic_optimizer.update(lambda: critic_loss / max_epi_len)
 
         with self.model.state_reset():
 
@@ -339,11 +338,11 @@ class DDPG(AttributeSavingMixin, Agent):
 
         # Update stats
         self.average_q *= self.average_q_decay
-        self.average_q += (1 - self.average_q_decay) * float(q.data)
+        self.average_q += (1 - self.average_q_decay) * float(q.array)
 
         self.logger.debug('t:%s a:%s q:%s',
-                          self.t, action.data[0], q.data)
-        return cuda.to_cpu(action.data[0])
+                          self.t, action.array[0], q.array)
+        return cuda.to_cpu(action.array[0])
 
     def stop_episode_and_train(self, state, reward, done=False):
 

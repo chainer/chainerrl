@@ -4,7 +4,6 @@ atari_py
 hacking
 mock
 opencv-python
-packaging
 pytest
 sphinx
 sphinx_rtd_theme

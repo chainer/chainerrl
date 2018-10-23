@@ -34,7 +34,7 @@ class InvertGradients(function.Function):
     def backward(self, inputs, grad_outputs):
         x, = inputs
         gy, = grad_outputs
-        # In chainer, update will be like x.data -= lr * x.grad,
+        # In chainer, update will be like x.array -= lr * x.grad,
         # which means negative gradients will increase values.
         increasing = (gy < 0).astype(gy.dtype)
         gx = gy.copy()
@@ -56,5 +56,5 @@ def invert_gradients(x, range_min, range_max):
         The same value as x, except that the gradients backpropagated is scaled
         and inverted so that values would be in a given range after update.
     """
-    xp = cuda.get_array_module(x, x.data)
+    xp = cuda.get_array_module(x, x.array)
     return InvertGradients(xp.asarray(range_min), xp.asarray(range_max))(x)
