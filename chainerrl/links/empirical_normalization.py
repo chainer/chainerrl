@@ -62,7 +62,7 @@ class EmpiricalNormalization(chainer.Link):
             return
 
         if isinstance(x, chainer.Variable):
-            x = x.data
+            x = x.array
 
         count_x = x.shape[self.batch_axis]
         if count_x == 0:

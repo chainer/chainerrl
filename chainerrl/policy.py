@@ -6,12 +6,16 @@ from builtins import *  # NOQA
 from future import standard_library
 standard_library.install_aliases()  # NOQA
 
+from abc import ABCMeta
 from abc import abstractmethod
+
+from future.utils import with_metaclass
+
 from logging import getLogger
 logger = getLogger(__name__)
 
 
-class Policy(object):
+class Policy(with_metaclass(ABCMeta, object)):
     """Abstract policy."""
 
     @abstractmethod

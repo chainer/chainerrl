@@ -45,7 +45,7 @@ def train_agent_batch(agent, env, steps, outdir, log_interval=None,
     recent_returns = deque(maxlen=return_window_size)
 
     num_envs = env.num_envs
-    episode_r = np.zeros(num_envs, dtype='f')
+    episode_r = np.zeros(num_envs, dtype=np.float64)
     episode_idx = np.zeros(num_envs, dtype='i')
     episode_len = np.zeros(num_envs, dtype='i')
 

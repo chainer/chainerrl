@@ -81,7 +81,7 @@ class TestComputeValueLoss(unittest.TestCase):
     def test_not_weighted(self):
         loss = compute_value_loss(
             self.y, self.t, clip_delta=self.clip_delta,
-            batch_accumulator=self.batch_accumulator).data
+            batch_accumulator=self.batch_accumulator).array
         if self.batch_accumulator == 'mean':
             gt_loss = self.gt_losses.mean()
         else:
@@ -96,7 +96,7 @@ class TestComputeValueLoss(unittest.TestCase):
         loss_w1 = compute_weighted_value_loss(
             self.y, self.t, clip_delta=self.clip_delta,
             batch_accumulator=self.batch_accumulator,
-            weights=w1).data
+            weights=w1).array
         if self.batch_accumulator == 'mean':
             gt_loss = self.gt_losses.mean()
         else:
@@ -111,7 +111,7 @@ class TestComputeValueLoss(unittest.TestCase):
         loss_wu = compute_weighted_value_loss(
             self.y, self.t, clip_delta=self.clip_delta,
             batch_accumulator=self.batch_accumulator,
-            weights=wu).data
+            weights=wu).array
         if self.batch_accumulator == 'mean':
             gt_loss = (self.gt_losses * wu).mean()
         else:

@@ -177,27 +177,27 @@ class PGT(AttributeSavingMixin, Agent):
             # Update stats
             self.average_critic_loss *= self.average_loss_decay
             self.average_critic_loss += ((1 - self.average_loss_decay) *
-                                         float(loss.data))
+                                         float(loss.array))
 
             return loss
 
         def compute_actor_loss():
             pout = self.policy(batch_state)
-            sampled_actions = pout.sample().data
+            sampled_actions = pout.sample().array
             log_probs = pout.log_prob(sampled_actions)
             with chainer.using_config('train', False):
                 q = self.q_function(batch_state, sampled_actions)
                 v = self.q_function(
                     batch_state, pout.most_probable)
             advantage = F.reshape(q - v, (batch_size,))
-            advantage = chainer.Variable(advantage.data)
+            advantage = chainer.Variable(advantage.array)
             loss = - F.sum(advantage * log_probs + self.beta * pout.entropy) \
                 / batch_size
 
             # Update stats
             self.average_actor_loss *= self.average_loss_decay
             self.average_actor_loss += ((1 - self.average_loss_decay) *
-                                        float(loss.data))
+                                        float(loss.array))
 
             return loss
 
@@ -247,11 +247,11 @@ class PGT(AttributeSavingMixin, Agent):
 
         # Update stats
         self.average_q *= self.average_q_decay
-        self.average_q += (1 - self.average_q_decay) * float(q.data)
+        self.average_q += (1 - self.average_q_decay) * float(q.array)
 
         self.logger.debug('t:%s a:%s q:%s',
-                          self.t, action.data[0], q.data)
-        return cuda.to_cpu(action.data[0])
+                          self.t, action.array[0], q.array)
+        return cuda.to_cpu(action.array[0])
 
     def stop_episode_and_train(self, state, reward, done=False):
 

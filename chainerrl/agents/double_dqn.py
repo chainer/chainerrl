@@ -21,9 +21,8 @@ class DoubleDQN(dqn.DQN):
 
         batch_next_state = exp_batch['next_state']
 
-        with chainer.using_config('train', False):
-            with state_kept(self.q_function):
-                next_qout = self.q_function(batch_next_state)
+        with chainer.using_config('train', False), state_kept(self.q_function):
+            next_qout = self.q_function(batch_next_state)
 
         target_next_qout = self.target_q_function(batch_next_state)
 

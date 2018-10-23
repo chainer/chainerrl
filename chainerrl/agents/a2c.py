@@ -7,6 +7,7 @@ from future import standard_library
 standard_library.install_aliases()  # NOQA
 
 from logging import getLogger
+import warnings
 
 import chainer
 from chainer import functions as F
@@ -262,6 +263,7 @@ class A2C(agent.AttributeSavingMixin, agent.BatchAgent):
 
         if any(batch_reset):
             warnings.warn('A2C currently does not support resetting an env withtout reaching a terminal state during training. When receiving True in batch_reset, A2C considers it as True in batch_done instead.')  # NOQA
+            batch_done = list(batch_done)
             for i, reset in enumerate(batch_reset):
                 if reset:
                     batch_done[i] = True

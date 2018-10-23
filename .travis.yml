@@ -4,18 +4,18 @@ python:
   - "2.7"
   - "3.5.1"
 env:
-  - CHAINER_VERSION=2
+  - CHAINER_VERSION=3
   - CHAINER_VERSION=stable
 # command to install dependencies
 install:
   - pip install --upgrade pip setuptools wheel
   - |
-    if [[ $CHAINER_VERSION == 2 ]]; then
-      pip install "chainer<3.0.0"
+    if [[ $CHAINER_VERSION == 3 ]]; then
+      pip install "chainer==3.1.0"
     else
       pip install chainer
-      pip install pytest-cov
     fi
+  - pip install pytest-cov
   - pip install -r requirements.txt --only-binary=numpy,scipy
   - pip install jupyter
   # atari_py==0.1.4 causes an error
@@ -24,7 +24,6 @@ install:
   - pip install hacking
   - pip install coveralls
   - pip install opencv-python
-  - pip install packaging
   - python setup.py develop
   - python -c "import numpy; numpy.show_config()"
 before_script:
@@ -38,12 +37,7 @@ script:
   - flake8 examples
   - autopep8 -r chainerrl tests examples --diff | tee check_autopep8
   - test ! -s check_autopep8
-  - |
-    if [[ $CHAINER_VERSION == 2 ]]; then
-      nosetests -a '!gpu,!slow' -x tests --with-coverage --cover-package chainerrl
-    else
-      pytest -m "not gpu and not slow" -x tests --cov=chainerrl
-    fi
+  - pytest -m "not gpu and not slow" -x tests --cov=chainerrl
   - ./test_examples.sh -1
   - if [[ $TRAVIS_PYTHON_VERSION == 3.5.1 && $CHAINER_VERSION == stable ]]; then jupyter nbconvert --to notebook --execute examples/quickstart/quickstart.ipynb --ExecutePreprocessor.timeout=600; fi
 after_success:
