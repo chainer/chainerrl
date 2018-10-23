@@ -225,6 +225,7 @@ def main():
             log_interval=args.log_interval,
             return_window_size=args.window_size,
             max_episode_len=timestep_limit,
+            save_best_so_far_agent=False,
             step_hooks=[
                 lr_decay_hook,
                 clip_eps_decay_hook,
