@@ -265,9 +265,7 @@ class PrioritizedReplayBuffer(ReplayBuffer, PriorityWeightError):
         assert len(self.memory) >= n
         sampled, probabilities, min_prob = self.memory.sample(n)
         weights = self.weights_from_probabilities(probabilities, min_prob)
-        for e, w in zip(sampled, weights):
-            e['weight'] = w
-        return sampled
+        return dict(samples=sampled, weights=weights)
 
     def update_errors(self, errors):
         self.memory.set_last_priority(self.priority_from_errors(errors))
@@ -415,7 +413,7 @@ class PrioritizedEpisodicReplayBuffer (
                 self.capacity_left += len(discarded_episode)
         assert not self.current_episode
 
-def batch_experiences(experiences, xp, phi, gamma, batch_states=batch_states):
+def batch_experiences(experiences, xp, phi, gamma, batch_states=batch_states, has_weight=False):
     """Takes a batch of k experiences each of which contains j
     consecutive transitions and vectorizes them, where j is between 1 and n.
 
@@ -431,23 +429,26 @@ def batch_experiences(experiences, xp, phi, gamma, batch_states=batch_states):
         each set of experiences. The action is ... Reward is discounted reward.
 
     """
-
-    return {
-        'state': batch_states(
-            [elem[0]['state'] for elem in experiences], xp, phi),
-        'action': xp.asarray([elem[0]['action'] for elem in experiences]),
-        'reward': xp.asarray([sum((gamma ** i) * exp[i]['reward'] for i in range(len(exp)))for exp in experiences], 
-            dtype=np.float32),
-        'next_state': batch_states(
-            [elem[len(elem)-1]['next_state'] for elem in experiences], xp, phi),
-        'next_action': xp.asarray(
-            [elem[len(elem)-1]['next_action'] for elem in experiences]),
-        'is_state_terminal': xp.asarray(
-            [any(transition['is_state_terminal'] for transition in exp) for exp in experiences],
-            dtype=np.float32),
-        'discount':xp.asarray([(gamma ** len(elem))for elem in experiences], 
+    batched_experiences = dict()
+    if has_weight:
+        batched_experiences['weights'] = experiences['weights']
+        assert 'samples' in experiences
+        experiences = experiences['samples']
+    batched_experiences['state'] =  batch_states(
+            [elem[0]['state'] for elem in experiences], xp, phi)
+    batched_experiences['action'] = xp.asarray([elem[0]['action'] for elem in experiences])
+    batched_experiences['reward'] = xp.asarray(
+            [sum((gamma ** i) * exp[i]['reward'] for i in range(len(exp))) for exp in experiences], 
             dtype=np.float32)
-        }
+    batched_experiences['next_state'] = batch_states(
+            [elem[len(elem)-1]['next_state'] for elem in experiences], xp, phi)
+    batched_experiences['next_action'] = xp.asarray(
+            [elem[len(elem)-1]['next_action'] for elem in experiences])
+    batched_experiences['is_state_terminal'] = xp.asarray(
+            [any(transition['is_state_terminal'] for transition in exp) for exp in experiences],
+            dtype=np.float32)
+    batched_experiences['discount'] = xp.asarray([(gamma ** len(elem))for elem in experiences], 
+            dtype=np.float32)
 
 
 class ReplayUpdater(object):

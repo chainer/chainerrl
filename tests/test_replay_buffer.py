@@ -211,6 +211,7 @@ class TestEpisodicReplayBuffer(unittest.TestCase):
 @testing.parameterize(*testing.product(
     {
         'capacity': [100, None],
+        'num_steps': [1],
         'normalize_by_max': ['batch', 'memory'],
     }
 ))
@@ -218,19 +219,23 @@ class TestPrioritizedReplayBuffer(unittest.TestCase):
 
     def test_append_and_sample(self):
         capacity = self.capacity
+        num_steps = self.num_steps
         rbuf = replay_buffer.PrioritizedReplayBuffer(
             capacity,
             normalize_by_max=self.normalize_by_max,
-            error_max=5)
+            error_max=5,
+            num_steps=num_steps)
 
         self.assertEqual(len(rbuf), 0)
 
         # Add one and sample one
-        trans1 = dict(state=0, action=1, reward=2, next_state=3,
+        for _ in range(num_steps):
+            trans1 = dict(state=0, action=1, reward=2, next_state=3,
                       next_action=4, is_state_terminal=True)
-        rbuf.append(**trans1)
+            rbuf.append(**trans1)
         self.assertEqual(len(rbuf), 1)
         s1 = rbuf.sample(1)
+        print (str(s1))
         rbuf.update_errors([3.14])
         self.assertEqual(len(s1), 1)
         self.assertAlmostEqual(s1[0]['weight'], 1.0)

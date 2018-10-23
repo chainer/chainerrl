@@ -209,13 +209,11 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
         Returns:
           None
         """
-        has_weight = 'weight' in experiences[0]
+        has_weight = 'weights' in experiences
         exp_batch = batch_experiences(experiences, xp=self.xp, phi=self.phi, 
-                                    gamma=self.gamma, batch_states=self.batch_states)
+                                    gamma=self.gamma, batch_states=self.batch_states, 
+                                    has_weight=has_weight)
         if has_weight:
-            exp_batch['weights'] = self.xp.asarray(
-                [elem['weight'] for elem in experiences],
-                dtype=self.xp.float32)
             if errors_out is None:
                 errors_out = []
         loss = self._compute_loss(
