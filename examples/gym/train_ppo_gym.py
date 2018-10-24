@@ -192,7 +192,7 @@ def main():
 
         # Linearly decay the clipping parameter to zero
         def clip_eps_setter(env, agent, value):
-            agent.clip_eps = value
+            agent.clip_eps = max(value, 1e-8)
 
         clip_eps_decay_hook = experiments.LinearInterpolationHook(
             args.steps, 0.2, 0, clip_eps_setter)
