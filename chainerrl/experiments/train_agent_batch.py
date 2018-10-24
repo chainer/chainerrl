@@ -91,10 +91,10 @@ def train_agent_batch(agent, env, steps, outdir, log_interval=None,
             episode_len *= not_end
             obss = env.reset(not_end)
 
-            t += num_envs
-
-            for hook in step_hooks:
-                hook(env, agent, t)
+            for _ in range(num_envs):
+                t += 1
+                for hook in step_hooks:
+                    hook(env, agent, t)
 
             if (log_interval is not None
                     and t >= log_interval
