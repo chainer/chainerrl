@@ -265,7 +265,9 @@ class PrioritizedReplayBuffer(ReplayBuffer, PriorityWeightError):
         assert len(self.memory) >= n
         sampled, probabilities, min_prob = self.memory.sample(n)
         weights = self.weights_from_probabilities(probabilities, min_prob)
-        return dict(samples=sampled, weights=weights)
+        for e, w in zip(sampled, weights):
+            e[0]['weight'] = w
+        return sampled
 
     def update_errors(self, errors):
         self.memory.set_last_priority(self.priority_from_errors(errors))
