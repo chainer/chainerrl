@@ -66,6 +66,13 @@ class TestDiscreteActionValue(unittest.TestCase):
         self.assertEqual(len(self.qout.params), 1)
         self.assertEqual(id(self.qout.params[0]), id(self.qout.q_values))
 
+    def test_getitem(self):
+        sliced = self.qout[:10]
+        np.testing.assert_equal(sliced.q_values.array, self.q_values[:10])
+        self.assertEqual(sliced.n_actions, self.action_size)
+        self.assertIs(sliced.q_values_formatter,
+                      self.qout.q_values_formatter)
+
 
 class TestDistributionalDiscreteActionValue(unittest.TestCase):
 
@@ -140,6 +147,15 @@ class TestDistributionalDiscreteActionValue(unittest.TestCase):
         self.assertEqual(len(self.qout.params), 1)
         self.assertIs(self.qout.params[0], self.qout.q_dist)
 
+    def test_getitem(self):
+        sliced = self.qout[:10]
+        np.testing.assert_equal(sliced.q_values.array, self.q_values[:10])
+        np.testing.assert_equal(sliced.z_values, self.z_values)
+        np.testing.assert_equal(sliced.q_dist.array, self.atom_probs[:10])
+        self.assertEqual(sliced.n_actions, self.action_size)
+        self.assertIs(sliced.q_values_formatter,
+                      self.qout.q_values_formatter)
+
 
 class TestQuadraticActionValue(unittest.TestCase):
     def test_max_unbounded(self):
@@ -193,6 +209,29 @@ class TestQuadraticActionValue(unittest.TestCase):
         np.testing.assert_array_less(
             v_out[mu_is_not_allowed],
             v[mu_is_not_allowed])
+
+    def test_getitem(self):
+        n_batch = 7
+        ndim_action = 3
+        mu = np.random.randn(n_batch, ndim_action).astype(np.float32)
+        mat = np.broadcast_to(
+            np.eye(ndim_action, dtype=np.float32)[None],
+            (n_batch, ndim_action, ndim_action))
+        v = np.random.randn(n_batch).astype(np.float32)
+        min_action, max_action = -1, 1
+        qout = action_value.QuadraticActionValue(
+            chainer.Variable(mu),
+            chainer.Variable(mat),
+            chainer.Variable(v),
+            min_action,
+            max_action,
+        )
+        sliced = qout[:3]
+        np.testing.assert_equal(sliced.mu.array, mu[:3])
+        np.testing.assert_equal(sliced.mat.array, mat[:3])
+        np.testing.assert_equal(sliced.v.array, v[:3])
+        np.testing.assert_equal(sliced.min_action, min_action)
+        np.testing.assert_equal(sliced.max_action, max_action)
 
 
 @testing.parameterize(*testing.product({
@@ -258,3 +297,7 @@ class TestSingleActionValue(unittest.TestCase):
     def test_params(self):
         # no params
         self.assertEqual(len(self.av.params), 0)
+
+    def test_getitem(self):
+        with self.assertRaises(NotImplementedError):
+            self.av[:1]
