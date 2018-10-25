@@ -95,7 +95,7 @@ def batch_run_evaluation_episodes(
     num_envs = env.num_envs
     episode_returns = []
     episode_lengths = []
-    episode_r = np.zeros(num_envs, dtype='f')
+    episode_r = np.zeros(num_envs, dtype=np.float64)
     episode_len = np.zeros(num_envs, dtype='i')
 
     obss = env.reset()
