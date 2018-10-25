@@ -131,6 +131,7 @@ def main():
     parser.add_argument('--orig-noise', action='store_true', default=False)
     parser.add_argument('--last-noise', type=int, default=0)
     parser.add_argument('--entropy-coef', type=float, default=0)
+    parser.add_argument('--sigma-gamma', type=float, default=0.99)
     parser.add_argument('--noise-coef', type=float, default=1)
     parser.add_argument('--reward-scale-factor', type=float, default=1)
     parser.add_argument('--init-method', type=str, default='/out')
@@ -326,7 +327,8 @@ def main():
                   min_sigma=args.min_sigma,
                   no_nn=args.no_nn,
                   outdir=args.outdir,
-                  algo=args.agent)
+                  algo=args.agent,
+                  sigma_gamma=args.sigma_gamma)
 
     if args.load:
         agent.load(args.load)

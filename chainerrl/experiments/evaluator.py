@@ -78,8 +78,8 @@ def run_evaluation_episodes(env, agent, n_runs, max_episode_len=None,
             if info['goal']:
                 goal = 1
 
-        if i == 0:
-            logger.info(str(acts))
+        #if i == 0:
+        #    logger.info(str(acts))
 
         #sigmas.append([F.mean(F.abs(noise.sigma)) for noise in agent.entropy])
         agent.stop_episode()

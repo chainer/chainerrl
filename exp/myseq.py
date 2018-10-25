@@ -113,20 +113,20 @@ class MySequence(chainer.Chain):#links.Sequence):
             x = self.l3(x)
 
         if self.head:
-            if self.mean > 1:
+            if self.mean > 0:
                 #sigma = x[:, self.acts:]
                 #sigma = F.reshape(sigma, (x.shape[0], self.mean, self.acts))
                 sigmas = []
                 for i in range(self.mean):
                     layers = self.sigma_nets[i]
-                    x = input
+                    x2 = input
                     for k, layer in enumerate(layers):
                         if k == len(layers)-1:
-                            x = layer(x)
+                            x2 = layer(x2)
                         else:
-                            x = F.relu(layer(x))
+                            x2 = F.relu(layer(x2))
 
-                    sigmas.append(x)
+                    sigmas.append(x2)
                 sigmas = F.stack(sigmas, axis=0)
                 sigmas = F.softplus(sigmas)
                 sigma = F.mean(sigmas, axis=0)

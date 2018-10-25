@@ -162,15 +162,19 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
                  min_sigma=0,
                  no_nn=False,
                  outdir="results",
-                 algo="DQN"):
+                 algo="DQN",
+                 sigma_gamma=0.9):
         self.model = q_function
         self.q_function = q_function  # For backward compatibility
 
-        #cv2.namedWindow("vis", cv2.WINDOW_NORMAL)
+        self.render = False
+        if self.render:
+            cv2.namedWindow("vis", cv2.WINDOW_NORMAL)
         #cv2.namedWindow('test', cv2.WINDOW_NORMAL)
         self.env = env
         self.table_sigma = table_sigma
         self.scale_sigma = scale_sigma
+        self.sigma_gamma = sigma_gamma
         self.min_sigma = min_sigma
         self.no_nn = no_nn
         self.nn = not no_nn
@@ -353,7 +357,7 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
         if "car" in self.env:
             # table
             lr = self.table_lr# * (0.1**int(self.t/100000))
-            gamma = self.gamma
+            gamma = self.sigma_gamma
 
             s = self.discretize(exp_batch['state'])
             s_n = self.discretize(exp_batch['next_state'])
@@ -809,7 +813,7 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
         else:
             canvas = np.vstack([header, row1, divider, row2, divider, row3, divider, acts, divider, bottom])
 
-        #cv2.imshow('test', canvas)
+        #ow('test', canvas)
         #cv2.waitKey(1)
         #cv2.imwrite('frames2/%06d.png' % self.t, canvas*255.0)
 
@@ -848,8 +852,9 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
         self.vid.write((canvas*255.0).astype(np.uint8))
 
         #cv2.imwrite("results/debug.png", canvas*255.0)
-        #cv2.imshow("vis", canvas)
-        #cv2.waitKey(1)
+        if self.render:
+            cv2.imshow("vis", canvas)
+            cv2.waitKey(1)
 
         #pltax.clear()
 
