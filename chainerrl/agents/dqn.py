@@ -438,4 +438,5 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
         return [
             ('average_q', self.average_q),
             ('average_loss', self.average_loss),
+            ('n_updates', self.optimizer.t),
         ]
