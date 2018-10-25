@@ -436,6 +436,7 @@ class PPO(agent.AttributeSavingMixin, agent.BatchAgent):
                     'nonterminal': 0.0 if done else 1.0,
                 })
             if done or reset:
+                assert self.batch_last_episode[i]
                 self.memory.append(self.batch_last_episode[i])
                 self.batch_last_episode[i] = []
                 self.batch_last_state[i] = None
