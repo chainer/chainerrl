@@ -177,7 +177,6 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
         self.average_q_decay = average_q_decay
         self.average_loss = 0
         self.average_loss_decay = average_loss_decay
-        self.n_updates = 0
 
     def sync_target_network(self):
         """Synchronize target network with current network."""
@@ -230,7 +229,6 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
         # Update stats
         self.average_loss *= self.average_loss_decay
         self.average_loss += (1 - self.average_loss_decay) * float(loss.array)
-        self.n_updates += 1
 
         self.model.cleargrads()
         loss.backward()
@@ -440,5 +438,5 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
         return [
             ('average_q', self.average_q),
             ('average_loss', self.average_loss),
-            ('n_updates', self.n_updates),
+            ('n_updates', self.optimizer.t),
         ]
