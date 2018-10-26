@@ -11,6 +11,7 @@ from abc import ABCMeta
 from abc import abstractmethod
 from abc import abstractproperty
 import collections
+import copy
 
 import numpy as np
 import six.moves.cPickle as pickle
@@ -19,7 +20,6 @@ from chainerrl.misc.batch_states import batch_states
 from chainerrl.misc.collections import RandomAccessQueue
 from chainerrl.misc.prioritized import PrioritizedBuffer
 
-import copy
 
 class AbstractReplayBuffer(with_metaclass(ABCMeta, object)):
     """Defines a common interface of replay buffer.
@@ -147,7 +147,7 @@ class ReplayBuffer(AbstractReplayBuffer):
             self.memory.append(copy.copy(self.last_n_transitions))
             self.last_n_transitions.clear()
         else:
-            if len(self.last_n_transitions) == self.num_steps:  
+            if len(self.last_n_transitions) == self.num_steps:
                 self.memory.append(copy.copy(self.last_n_transitions))
 
     def sample(self, num_experiences):
@@ -240,7 +240,7 @@ class PriorityWeightError(object):
 class PrioritizedReplayBuffer(ReplayBuffer, PriorityWeightError):
     """Stochastic Prioritization
 
-    https://arxiv.org/pdf/1511.05952.pdf \S3.3
+    https://arxiv.org/pdf/1511.05952.pdf Section 3.3
     proportional prioritization
 
     Args:
@@ -249,10 +249,10 @@ class PrioritizedReplayBuffer(ReplayBuffer, PriorityWeightError):
         normalize_by_max (bool)
     """
 
-    def __init__(self, capacity=None, alpha=0.6, 
-                beta0=0.4, betasteps=2e5, eps=0.01,
-                normalize_by_max=True, error_min=0, error_max=1, 
-                num_steps=1):
+    def __init__(self, capacity=None, alpha=0.6,
+        beta0=0.4, betasteps=2e5, eps=0.01,
+        normalize_by_max=True, error_min=0,
+        error_max=1, num_steps=1):
         assert num_steps > 0
         self.num_steps = num_steps
         self.memory = PrioritizedBuffer(capacity=capacity)
