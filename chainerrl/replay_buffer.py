@@ -415,13 +415,14 @@ class PrioritizedEpisodicReplayBuffer (
                 self.capacity_left += len(discarded_episode)
         assert not self.current_episode
 
+
 def batch_experiences(experiences, xp, phi, gamma, batch_states=batch_states):
     """Takes a batch of k experiences each of which contains j
     consecutive transitions and vectorizes them, where j is between 1 and n.
 
     Args:
         experiences: list? of k experiences, each of which contains between 1
-        and n consecutive transitions. 
+        and n consecutive transitions.
         E.g. [(s_t, a_t r_t, s_(t+1), (s_(t+2), ..., s_(t+3)), ... , (s_(t+j),...,s_(t+j+1))]
         xp : Matrix library? Find a better word.
         phi : Preprocessing function (double check)
@@ -429,7 +430,6 @@ def batch_experiences(experiences, xp, phi, gamma, batch_states=batch_states):
     Returns:
         Returns a dictionary of vectors. State contains the k start states from
         each set of experiences. The action is ... Reward is discounted reward.
-
     """
 
     return {
