@@ -263,7 +263,7 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
                     transitions.append(ep[i])
                     if has_weights:
                         weights_step.append(weights[index])
-                batch = batch_experiences(transitions,
+                batch = batch_experiences([transitions],
                                             xp=self.xp,
                                             phi=self.phi, 
                                             gamma=self.gamma,

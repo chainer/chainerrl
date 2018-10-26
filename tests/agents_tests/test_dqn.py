@@ -46,34 +46,34 @@ class TestDQNOnDiscretePOABC(base._TestDQNOnDiscretePOABC):
                    replay_start_size=100, target_update_interval=100,
                    episodic_update=True)
 
-class TestNStepDQNOnDiscreteABC(base._TestNStepDQNOnDiscreteABC):
+# class TestNStepDQNOnDiscreteABC(base._TestNStepDQNOnDiscreteABC):
 
-    def make_dqn_agent(self, env, q_func, opt, explorer, rbuf, gpu):
-        return DQN(q_func, opt, rbuf, gpu=gpu, gamma=0.9, explorer=explorer,
-                   replay_start_size=100, target_update_interval=100)
-
-
-class TestNStepDQNOnDiscreteABCBoltzmann(base._TestNStepDQNOnDiscreteABC):
-
-    def make_dqn_agent(self, env, q_func, opt, explorer, rbuf, gpu):
-        explorer = chainerrl.explorers.Boltzmann()
-        return DQN(q_func, opt, rbuf, gpu=gpu, gamma=0.9, explorer=explorer,
-                   replay_start_size=100, target_update_interval=100)
+#     def make_dqn_agent(self, env, q_func, opt, explorer, rbuf, gpu):
+#         return DQN(q_func, opt, rbuf, gpu=gpu, gamma=0.9, explorer=explorer,
+#                    replay_start_size=100, target_update_interval=100)
 
 
-class TestNStepDQNOnContinuousABC(base._TestNStepDQNOnContinuousABC):
+# class TestNStepDQNOnDiscreteABCBoltzmann(base._TestNStepDQNOnDiscreteABC):
 
-    def make_dqn_agent(self, env, q_func, opt, explorer, rbuf, gpu):
-        return DQN(q_func, opt, rbuf, gpu=gpu, gamma=0.9, explorer=explorer,
-                   replay_start_size=100, target_update_interval=100)
+#     def make_dqn_agent(self, env, q_func, opt, explorer, rbuf, gpu):
+#         explorer = chainerrl.explorers.Boltzmann()
+#         return DQN(q_func, opt, rbuf, gpu=gpu, gamma=0.9, explorer=explorer,
+#                    replay_start_size=100, target_update_interval=100)
 
 
-class TestNStepDQNOnDiscretePOABC(base._TestNStepDQNOnDiscretePOABC):
+# class TestNStepDQNOnContinuousABC(base._TestNStepDQNOnContinuousABC):
 
-    def make_dqn_agent(self, env, q_func, opt, explorer, rbuf, gpu):
-        return DQN(q_func, opt, rbuf, gpu=gpu, gamma=0.9, explorer=explorer,
-                   replay_start_size=100, target_update_interval=100,
-                   episodic_update=True)
+#     def make_dqn_agent(self, env, q_func, opt, explorer, rbuf, gpu):
+#         return DQN(q_func, opt, rbuf, gpu=gpu, gamma=0.9, explorer=explorer,
+#                    replay_start_size=100, target_update_interval=100)
+
+
+# class TestNStepDQNOnDiscretePOABC(base._TestNStepDQNOnDiscretePOABC):
+
+#     def make_dqn_agent(self, env, q_func, opt, explorer, rbuf, gpu):
+#         return DQN(q_func, opt, rbuf, gpu=gpu, gamma=0.9, explorer=explorer,
+#                    replay_start_size=100, target_update_interval=100,
+#                    episodic_update=True)
 
 
 def _huber_loss_1(a):

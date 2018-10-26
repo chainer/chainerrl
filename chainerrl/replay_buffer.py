@@ -423,7 +423,7 @@ def batch_experiences(experiences, xp, phi, gamma, batch_states=batch_states):
     Args:
         experiences: list? of k experiences, each of which contains between 1
         and n consecutive transitions.
-        E.g. [(s_t, a_t r_t, s_(t+1), (s_(t+2), ..., s_(t+3)), ... , (s_(t+j),...,s_(t+j+1))]
+        E.g. [(s_t, a_t, r_t, s_(t+1), (s_(t+2), ..., s_(t+3)), ... , (s_(t+j),...,s_(t+j+1))]
         xp : Matrix library? Find a better word.
         phi : Preprocessing function (double check)
         batch_states (int): Converts a list to a batch
