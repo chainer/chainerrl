@@ -217,8 +217,7 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
                 for elem in experiences], dtype=self.xp.float32)
             if errors_out is None:
                 errors_out = []
-        loss = self._compute_loss(
-            exp_batch, errors_out=errors_out)
+        loss = self._compute_loss(exp_batch, errors_out=errors_out)
         if has_weight:
             self.replay_buffer.update_errors(errors_out)
 
