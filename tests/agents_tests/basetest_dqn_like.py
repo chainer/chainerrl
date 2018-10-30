@@ -74,21 +74,6 @@ class _TestDQNOnABC(_TestDQNLike):
     def make_replay_buffer(self, env):
         return replay_buffer.ReplayBuffer(10 ** 5)
 
-class _TestNStepDQNOnABC(_TestDQNOnABC):
-
-    def make_replay_buffer(self, env):
-        return replay_buffer.ReplayBuffer(10 ** 5, num_steps=3)
-
-class _TestNStepDQNOnDiscreteABC(_TestNStepDQNOnABC):
-
-    def make_q_func(self, env):
-        return q_functions.FCStateQFunctionWithDiscreteAction(
-            env.observation_space.low.size, env.action_space.n, 10, 10)
-
-    def make_env_and_successful_return(self, test):
-        return False
-        # return ABC(discrete=True, deterministic=test), 1
-
 class _TestDQNOnDiscreteABC(_TestDQNOnABC):
 
     def make_q_func(self, env):
@@ -115,21 +100,19 @@ class _TestDQNOnDiscretePOABC(_TestDQNOnABC):
         return ABC(discrete=True, partially_observable=True,
                    deterministic=test), 1
 
-# class _TestNStepDQNOnDiscretePOABC(_TestDQNOnABC):
+class _TestNStepDQNOnABC(_TestDQNOnABC):
 
-#     def make_q_func(self, env):
-#         return q_functions.FCLSTMStateQFunction(
-#             n_dim_obs=env.observation_space.low.size,
-#             n_dim_action=env.action_space.n,
-#             n_hidden_channels=10,
-#             n_hidden_layers=1)
+    def make_replay_buffer(self, env):
+        return replay_buffer.ReplayBuffer(10 ** 5, num_steps=3)
 
-#     def make_replay_buffer(self, env):
-#         return replay_buffer.EpisodicReplayBuffer(10 ** 5, 3)
+class _TestNStepDQNOnDiscreteABC(_TestNStepDQNOnABC):
 
-#     def make_env_and_successful_return(self, test):
-#         return ABC(discrete=True, partially_observable=True,
-#                    deterministic=test), 1
+    def make_q_func(self, env):
+        return q_functions.FCStateQFunctionWithDiscreteAction(
+            env.observation_space.low.size, env.action_space.n, 10, 10)
+
+    def make_env_and_successful_return(self, test):
+        return ABC(discrete=True, deterministic=test), 1
 
 class _TestDQNOnContinuousABC(_TestDQNOnABC):
 
@@ -146,17 +129,17 @@ class _TestDQNOnContinuousABC(_TestDQNOnABC):
     def make_env_and_successful_return(self, test):
         return ABC(discrete=False, deterministic=test), 1
 
-# class _TestNStepDQNOnContinuousABC(_TestNStepDQNOnABC):
+class _TestNStepDQNOnContinuousABC(_TestNStepDQNOnABC):
 
-#     def make_q_func(self, env):
-#         n_dim_action = env.action_space.low.size
-#         n_dim_obs = env.observation_space.low.size
-#         return q_functions.FCQuadraticStateQFunction(
-#             n_input_channels=n_dim_obs,
-#             n_dim_action=n_dim_action,
-#             n_hidden_channels=20,
-#             n_hidden_layers=2,
-#             action_space=env.action_space)
+    def make_q_func(self, env):
+        n_dim_action = env.action_space.low.size
+        n_dim_obs = env.observation_space.low.size
+        return q_functions.FCQuadraticStateQFunction(
+            n_input_channels=n_dim_obs,
+            n_dim_action=n_dim_action,
+            n_hidden_channels=20,
+            n_hidden_layers=2,
+            action_space=env.action_space)
 
-#     def make_env_and_successful_return(self, test):
-#         return ABC(discrete=False, deterministic=test), 1
+    def make_env_and_successful_return(self, test):
+        return ABC(discrete=False, deterministic=test), 1
