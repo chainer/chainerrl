@@ -235,6 +235,8 @@ def train_agent_async(outdir, processes, make_env,
         else:
             f()
 
+        env.close()
+
     async_.run_async(processes, run_func)
 
     return agent
