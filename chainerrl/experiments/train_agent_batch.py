@@ -156,7 +156,8 @@ def train_agent_batch_with_evaluation(agent,
         log_interval (int): Interval of logging.
         max_episode_len (int): Maximum episode length.
         step_offset (int): Time step from which training starts.
-        return_window_size(int): Size of reward array.
+        return_window_size (int): Number of training episodes used to estimate
+            the average returns of the current agent.
         eval_max_episode_len (int or None): Maximum episode length of
             evaluation runs. If set to None, max_episode_len is used instead.
         eval_env: Environment used for evaluation.
