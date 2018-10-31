@@ -83,8 +83,8 @@ class TestTrainAgentAsync(unittest.TestCase):
         elif self.num_envs > 1:
             self.assertGreater(agent.act_and_train.call_count, steps)
 
-        # All the envs should to be closed
-        for env in envs:
+        # All the envs (including eval envs) should to be closed
+        for env in envs + eval_envs:
             env.close.assert_called_once()
 
         if self.num_envs == 1:
