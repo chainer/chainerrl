@@ -29,6 +29,7 @@ def train_agent_batch(agent, env, steps, outdir, log_interval=None,
         eval_n_runs (int): Number of runs for each time of evaluation.
         eval_interval (int): Interval of evaluation.
         outdir (str): Path to the directory to output things.
+        log_interval (int): Interval of logging.
         max_episode_len (int): Maximum episode length.
         step_offset (int): Time step from which training starts.
         return_window_size (int): Number of training episodes used to estimate
@@ -153,6 +154,7 @@ def train_agent_batch_with_evaluation(agent,
         eval_n_runs (int): Number of runs for each time of evaluation.
         eval_interval (int): Interval of evaluation.
         outdir (str): Path to the directory to output things.
+        log_interval (int): Interval of logging.
         max_episode_len (int): Maximum episode length.
         step_offset (int): Time step from which training starts.
         return_window_size(int): Size of reward array.
