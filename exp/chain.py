@@ -136,6 +136,7 @@ def main():
     parser.add_argument('--reward-scale-factor', type=float, default=1)
     parser.add_argument('--init-method', type=str, default='/out')
     parser.add_argument('--sigmanet', type=str, default='100,100')
+    parser.add_argument('--one-sigma', action='store_true', default=False)
 
     parser.add_argument('--force', type=float, default=0.001)
     parser.add_argument('--scale-sigma', type=float, default=1)
@@ -328,7 +329,8 @@ def main():
                   no_nn=args.no_nn,
                   outdir=args.outdir,
                   algo=args.agent,
-                  sigma_gamma=args.sigma_gamma)
+                  sigma_gamma=args.sigma_gamma,
+                  one_sigma=args.one_sigma)
 
     if args.load:
         agent.load(args.load)

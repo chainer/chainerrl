@@ -163,7 +163,8 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
                  no_nn=False,
                  outdir="results",
                  algo="DQN",
-                 sigma_gamma=0.9):
+                 sigma_gamma=0.9,
+                 one_sigma=False):
         self.model = q_function
         self.q_function = q_function  # For backward compatibility
 
@@ -180,6 +181,7 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
         self.nn = not no_nn
         self.outdir = outdir
         self.algo = algo
+        self.one_sigma = one_sigma
 
         if gpu is not None and gpu >= 0:
             cuda.get_device(gpu).use()
@@ -868,7 +870,10 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
                 if self.use_table:
                     if self.table_sigma:
                         action_value = self.q_table_mu[vel*20+pos, :].copy()
-                        action_value += self.noise_table[vel*20+pos, :] * self.q_table_sigma[vel*20+pos, :]
+                        if self.one_sigma:
+                            action_value += self.noise_table[0, :] * self.q_table_sigma[vel*20+pos, :]
+                        else:
+                            action_value += self.noise_table[vel*20+pos, :] * self.q_table_sigma[vel*20+pos, :]
                         q = action_value.max()
                         greedy_action = cuda.to_cpu(action_value.argmax())
                     else:
@@ -879,12 +884,16 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
                     action_value = self.model(
                         self.batch_states([obs], self.xp, self.phi))
                     table_sigma = self.xp.maximum(self.q_table_sigma[vel*20+pos, :], self.min_sigma)
-                    table_sigma *= self.noise_table[vel*20+pos, :]
+
                     q = float(action_value.max.data)
 
                     if self.head:
                         if self.table_sigma:
-                            greedy_action = cuda.to_cpu(action_value.sample_actions_given_noise(table_sigma).data)[0]
+                            if self.one_sigma:
+                                table_sigma *= self.noise_table[0, :]
+                            else:
+                                table_sigma *= self.noise_table[vel*20+pos, :]
+                                greedy_action = cuda.to_cpu(action_value.sample_actions_given_noise(table_sigma).data)[0]
                         else:
                             greedy_action = cuda.to_cpu(action_value.sample_actions.data)[0]
                     else:
