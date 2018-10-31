@@ -236,6 +236,8 @@ def train_agent_async(outdir, processes, make_env,
             f()
 
         env.close()
+        if eval_env is not env:
+            eval_env.close()
 
     async_.run_async(processes, run_func)
 
