@@ -132,12 +132,40 @@ class TestApplyCategoricalProjectionToManualCases(unittest.TestCase):
         proj = categorical_dqn._apply_categorical_projection(y, y_probs, z)
         xp.testing.assert_allclose(proj, proj_gt, atol=1e-5)
 
+    def _test_inexact_delta_z(self, xp):
+        v_min, v_max = (-1, 1)
+        n_atoms = 4
+        # delta_z=2/3=0.66666... is not exact
+        z = xp.linspace(v_min, v_max, num=n_atoms, dtype=np.float32)
+        y = xp.asarray([
+            [-1, -1, 1, 1],
+            [-1, 0, 1, 1],
+        ], dtype=np.float32)
+        y_probs = xp.asarray([
+            [0.5, 0.1, 0.1, 0.3],
+            [0.5, 0.2, 0.0, 0.3],
+        ], dtype=np.float32)
+        proj_gt = xp.asarray([
+            [0.6, 0.0, 0.0, 0.4],
+            [0.5, 0.1, 0.1, 0.3],
+        ], dtype=np.float32)
+
+        proj = categorical_dqn._apply_categorical_projection(y, y_probs, z)
+        xp.testing.assert_allclose(proj, proj_gt, atol=1e-5)
+
     def test_cpu(self):
         self._test(np)
 
     @testing.attr.gpu
     def test_gpu(self):
         self._test(chainer.cuda.cupy)
+
+    def test_inexact_delta_z_cpu(self):
+        self._test_inexact_delta_z(np)
+
+    @testing.attr.gpu
+    def test_inexact_delta_z_gpu(self):
+        self._test_inexact_delta_z(chainer.cuda.cupy)
 
 
 def make_distrib_ff_q_func(env):
