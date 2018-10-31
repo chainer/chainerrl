@@ -87,7 +87,7 @@ def train_loop(process_idx, env, agent, steps, outdir, counter,
                 for hook in global_step_hooks:
                     hook(env, agent, global_t)
 
-                if global_t > steps or training_done.value:
+                if global_t >= steps or training_done.value:
                     break
 
     except (Exception, KeyboardInterrupt):
