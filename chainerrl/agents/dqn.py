@@ -265,6 +265,7 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
 
         self.q_table_mu = self.xp.asarray(np.ones((20*20, 3)) * -20)
         self.q_table_sigma = self.xp.asarray(np.ones((20*20, 3)) * self.scale_sigma)
+        self.noise_table = self.xp.asarray(np.random.normal((20*20, 3)))
         self.last_score = ""
         self.use_table = use_table
         self.table_lr = table_lr
@@ -867,7 +868,7 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
                 if self.use_table:
                     if self.table_sigma:
                         action_value = self.q_table_mu[vel*20+pos, :].copy()
-                        action_value += self.xp.random.normal(action_value.shape) * self.q_table_sigma[vel*20+pos, :]
+                        action_value += self.noise_table[vel*20+pos, :] * self.q_table_sigma[vel*20+pos, :]
                         q = action_value.max()
                         greedy_action = cuda.to_cpu(action_value.argmax())
                     else:
@@ -878,11 +879,12 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
                     action_value = self.model(
                         self.batch_states([obs], self.xp, self.phi))
                     table_sigma = self.xp.maximum(self.q_table_sigma[vel*20+pos, :], self.min_sigma)
+                    table_sigma *= self.noise_table[vel*20+pos, :]
                     q = float(action_value.max.data)
 
                     if self.head:
                         if self.table_sigma:
-                            greedy_action = cuda.to_cpu(action_value.sample_actions_given_sigma(table_sigma).data)[0]
+                            greedy_action = cuda.to_cpu(action_value.sample_actions_given_noise(table_sigma).data)[0]
                         else:
                             greedy_action = cuda.to_cpu(action_value.sample_actions.data)[0]
                     else:
@@ -963,6 +965,7 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
 
     def stop_episode(self):
         #self.model.reset_noise()
+        self.noise_table = self.xp.asarray(np.random.normal((20*20, 3)))
         self.last_state = None
         self.last_action = None
         if isinstance(self.model, Recurrent):

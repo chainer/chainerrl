@@ -133,6 +133,10 @@ class DiscreteActionValueWithSigma(ActionValue):
         vals = self.q_values.data + sigma * noise
         return chainer.Variable(vals.argmax(axis=1).astype(np.int32))
 
+    def sample_actions_given_noise(self, sigma):
+        vals = self.q_values.data + sigma
+        return chainer.Variable(vals.argmax(axis=1).astype(np.int32))
+
     @cached_property
     def max(self):
         with chainer.force_backprop_mode():
