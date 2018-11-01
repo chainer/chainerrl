@@ -142,6 +142,7 @@ def main():
     parser.add_argument('--scale-sigma', type=float, default=1)
     parser.add_argument('--min-sigma', type=float, default=0)
 
+    parser.add_argument('--fixed-sigma', action='store_true', default=False)
     parser.add_argument('--table-sigma', action='store_true', default=False)
     parser.add_argument('--head', action='store_true', default=False)
     parser.add_argument('--noisy-y', action='store_true', default=False)
@@ -330,7 +331,8 @@ def main():
                   outdir=args.outdir,
                   algo=args.agent,
                   sigma_gamma=args.sigma_gamma,
-                  one_sigma=args.one_sigma)
+                  one_sigma=args.one_sigma,
+                  fixed_sigma=args.fixed_sigma)
 
     if args.load:
         agent.load(args.load)

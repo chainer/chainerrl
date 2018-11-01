@@ -164,7 +164,8 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
                  outdir="results",
                  algo="DQN",
                  sigma_gamma=0.9,
-                 one_sigma=False):
+                 one_sigma=False,
+                 fixed_sigma=False):
         self.model = q_function
         self.q_function = q_function  # For backward compatibility
 
@@ -182,6 +183,7 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
         self.outdir = outdir
         self.algo = algo
         self.one_sigma = one_sigma
+        self.fixed_sigma = fixed_sigma
 
         if gpu is not None and gpu >= 0:
             cuda.get_device(gpu).use()
@@ -862,6 +864,9 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
         #pltax.clear()
 
     def act_and_train(self, obs, reward):
+        if not self.fixed_sigma:
+            self.noise_table = self.xp.asarray(np.random.normal(size=(20*20, 3)))
+
         pos = int(20 * (float(obs[0]) + 1.3) / 2.0)
         vel = int(20 * (float(obs[1]) + 0.08) / 0.16)
 
