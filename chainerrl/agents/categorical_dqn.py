@@ -10,7 +10,6 @@ import chainer.functions as F
 import numpy as np
 
 from chainerrl.agents import dqn
-from pdb import set_trace
 
 def _apply_categorical_projection(y, y_probs, z):
     """Apply categorical projection.
