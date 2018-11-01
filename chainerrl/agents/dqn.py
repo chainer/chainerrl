@@ -267,7 +267,7 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
 
         self.q_table_mu = self.xp.asarray(np.ones((20*20, 3)) * -20)
         self.q_table_sigma = self.xp.asarray(np.ones((20*20, 3)) * self.scale_sigma)
-        self.noise_table = self.xp.asarray(np.random.normal((20*20, 3)))
+        self.noise_table = self.xp.asarray(np.random.normal(size=(20*20, 3)))
         self.last_score = ""
         self.use_table = use_table
         self.table_lr = table_lr
@@ -974,7 +974,7 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
 
     def stop_episode(self):
         #self.model.reset_noise()
-        self.noise_table = self.xp.asarray(np.random.normal((20*20, 3)))
+        self.noise_table = self.xp.asarray(np.random.normal(size=(20*20, 3)))
         self.last_state = None
         self.last_action = None
         if isinstance(self.model, Recurrent):
