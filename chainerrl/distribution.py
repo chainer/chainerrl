@@ -28,7 +28,7 @@ def _wrap_by_variable(x):
 
 def _unwrap_variable(x):
     if isinstance(x, chainer.Variable):
-        return x.data
+        return x.array
     else:
         return x
 
@@ -136,10 +136,10 @@ class CategoricalDistribution(Distribution):
     @cached_property
     def most_probable(self):
         return chainer.Variable(
-            np.argmax(self.all_prob.data, axis=1).astype(np.int32))
+            np.argmax(self.all_prob.array, axis=1).astype(np.int32))
 
     def sample(self):
-        return chainer.Variable(sample_discrete_actions(self.all_prob.data))
+        return chainer.Variable(sample_discrete_actions(self.all_prob.array))
 
     def prob(self, x):
         return F.select_item(self.all_prob, x)
@@ -205,8 +205,8 @@ class SoftmaxDistribution(CategoricalDistribution):
 
     def __repr__(self):
         return 'SoftmaxDistribution(beta={}, min_prob={}) logits:{} probs:{} entropy:{}'.format(  # NOQA
-            self.beta, self.min_prob, self.logits.data,
-            self.all_prob.data, self.entropy.data)
+            self.beta, self.min_prob, self.logits.array,
+            self.all_prob.array, self.entropy.array)
 
     def __getitem__(self, i):
         return SoftmaxDistribution(self.logits[i],
@@ -246,8 +246,8 @@ class MellowmaxDistribution(CategoricalDistribution):
 
     def __repr__(self):
         return 'MellowmaxDistribution(omega={}) values:{} probs:{} entropy:{}'.format(  # NOQA
-            self.omega, self.values.data, self.all_prob.data,
-            self.entropy.data)
+            self.omega, self.values.array, self.all_prob.array,
+            self.entropy.array)
 
     def __getitem__(self, i):
         return MellowmaxDistribution(self.values[i], omega=self.omega)
@@ -295,7 +295,7 @@ class GaussianDistribution(Distribution):
         #   0.5 * (log(2 * pi * var) + 1)
         #   = 0.5 * (log(2 * pi) + log var + 1)
         with chainer.force_backprop_mode():
-            return 0.5 * self.mean.data.shape[1] * (np.log(2 * np.pi) + 1) + \
+            return 0.5 * self.mean.array.shape[1] * (np.log(2 * np.pi) + 1) + \
                 0.5 * F.sum(self.ln_var, axis=1)
 
     def copy(self):
@@ -310,7 +310,7 @@ class GaussianDistribution(Distribution):
 
     def __repr__(self):
         return 'GaussianDistribution mean:{} ln_var:{} entropy:{}'.format(
-            self.mean.data, self.ln_var.data, self.entropy.data)
+            self.mean.array, self.ln_var.array, self.entropy.array)
 
     def __getitem__(self, i):
         return GaussianDistribution(self.mean[i], self.var[i])

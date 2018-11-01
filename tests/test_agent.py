@@ -53,8 +53,8 @@ class TestAttributeSavingMixin(unittest.TestCase):
 
     def test_save_load(self):
         parent = Parent()
-        parent.link.param.data[:] = 1
-        parent.child.link.param.data[:] = 2
+        parent.link.param.array[:] = 1
+        parent.child.link.param.array[:] = 2
         # Save
         dirname = tempfile.mkdtemp()
         parent.save(dirname)
@@ -65,11 +65,11 @@ class TestAttributeSavingMixin(unittest.TestCase):
             os.path.join(dirname, 'child', 'link.npz')))
         # Load
         parent = Parent()
-        self.assertEqual(int(parent.link.param.data), 0)
-        self.assertEqual(int(parent.child.link.param.data), 0)
+        self.assertEqual(int(parent.link.param.array), 0)
+        self.assertEqual(int(parent.child.link.param.array), 0)
         parent.load(dirname)
-        self.assertEqual(int(parent.link.param.data), 1)
-        self.assertEqual(int(parent.child.link.param.data), 2)
+        self.assertEqual(int(parent.link.param.array), 1)
+        self.assertEqual(int(parent.child.link.param.array), 2)
 
     def test_save_load_2(self):
         parent = Parent()

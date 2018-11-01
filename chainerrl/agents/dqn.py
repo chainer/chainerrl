@@ -228,7 +228,7 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
 
         # Update stats
         self.average_loss *= self.average_loss_decay
-        self.average_loss += (1 - self.average_loss_decay) * float(loss.data)
+        self.average_loss += (1 - self.average_loss_decay) * float(loss.array)
 
         self.model.cleargrads()
         loss.backward()
@@ -250,47 +250,46 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
             for _ in episodes:
                 errors_out.append(0.0)
             errors_out_step = []
-        with state_reset(self.model):
-            with state_reset(self.target_model):
-                loss = 0
-                tmp = list(reversed(sorted(
-                    enumerate(episodes), key=lambda x: len(x[1]))))
-                sorted_episodes = [elem[1] for elem in tmp]
-                indices = [elem[0] for elem in tmp]  # argsort
-                max_epi_len = len(sorted_episodes[0])
-                for i in range(max_epi_len):
-                    transitions = []
-                    weights_step = []
-                    for ep, index in zip(sorted_episodes, indices):
-                        if len(ep) <= i:
-                            break
-                        transitions.append(ep[i])
-                        if has_weights:
-                            weights_step.append(weights[index])
-                    batch = batch_experiences(transitions,
-                                              xp=self.xp,
-                                              phi=self.phi,
-                                              batch_states=self.batch_states)
-                    if i == 0:
-                        self.input_initial_batch_to_target_model(batch)
+        with state_reset(self.model), state_reset(self.target_model):
+            loss = 0
+            tmp = list(reversed(sorted(
+                enumerate(episodes), key=lambda x: len(x[1]))))
+            sorted_episodes = [elem[1] for elem in tmp]
+            indices = [elem[0] for elem in tmp]  # argsort
+            max_epi_len = len(sorted_episodes[0])
+            for i in range(max_epi_len):
+                transitions = []
+                weights_step = []
+                for ep, index in zip(sorted_episodes, indices):
+                    if len(ep) <= i:
+                        break
+                    transitions.append(ep[i])
                     if has_weights:
-                        batch['weights'] = self.xp.asarray(
-                            weights_step, dtype=self.xp.float32)
-                    loss += self._compute_loss(batch, self.gamma,
-                                               errors_out=errors_out_step)
-                    if errors_out is not None:
-                        for err, index in zip(errors_out_step, indices):
-                            errors_out[index] += err
-                loss /= max_epi_len
+                        weights_step.append(weights[index])
+                batch = batch_experiences(transitions,
+                                          xp=self.xp,
+                                          phi=self.phi,
+                                          batch_states=self.batch_states)
+                if i == 0:
+                    self.input_initial_batch_to_target_model(batch)
+                if has_weights:
+                    batch['weights'] = self.xp.asarray(
+                        weights_step, dtype=self.xp.float32)
+                loss += self._compute_loss(batch, self.gamma,
+                                           errors_out=errors_out_step)
+                if errors_out is not None:
+                    for err, index in zip(errors_out_step, indices):
+                        errors_out[index] += err
+            loss /= max_epi_len
 
-                # Update stats
-                self.average_loss *= self.average_loss_decay
-                self.average_loss += \
-                    (1 - self.average_loss_decay) * float(loss.data)
+            # Update stats
+            self.average_loss *= self.average_loss_decay
+            self.average_loss += \
+                (1 - self.average_loss_decay) * float(loss.array)
 
-                self.model.cleargrads()
-                loss.backward()
-                self.optimizer.update()
+            self.model.cleargrads()
+            loss.backward()
+            self.optimizer.update()
         if has_weights:
             self.replay_buffer.update_errors(errors_out)
 
@@ -339,7 +338,7 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
         if errors_out is not None:
             del errors_out[:]
             delta = F.sum(abs(y - t), axis=1)
-            delta = cuda.to_cpu(delta.data)
+            delta = cuda.to_cpu(delta.array)
             for e in delta:
                 errors_out.append(e)
 
@@ -353,12 +352,11 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
                                       batch_accumulator=self.batch_accumulator)
 
     def act(self, obs):
-        with chainer.using_config('train', False):
-            with chainer.no_backprop_mode():
-                action_value = self.model(
-                    self.batch_states([obs], self.xp, self.phi))
-                q = float(action_value.max.data)
-                action = cuda.to_cpu(action_value.greedy_actions.data)[0]
+        with chainer.using_config('train', False), chainer.no_backprop_mode():
+            action_value = self.model(
+                self.batch_states([obs], self.xp, self.phi))
+            q = float(action_value.max.array)
+            action = cuda.to_cpu(action_value.greedy_actions.array)[0]
 
         # Update stats
         self.average_q *= self.average_q_decay
@@ -369,13 +367,11 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
 
     def act_and_train(self, obs, reward):
 
-        with chainer.using_config('train', False):
-            with chainer.no_backprop_mode():
-                action_value = self.model(
-                    self.batch_states([obs], self.xp, self.phi))
-                q = float(action_value.max.data)
-                greedy_action = cuda.to_cpu(action_value.greedy_actions.data)[
-                    0]
+        with chainer.using_config('train', False), chainer.no_backprop_mode():
+            action_value = self.model(
+                self.batch_states([obs], self.xp, self.phi))
+            q = float(action_value.max.array)
+            greedy_action = cuda.to_cpu(action_value.greedy_actions.array)[0]
 
         # Update stats
         self.average_q *= self.average_q_decay
@@ -442,4 +438,5 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
         return [
             ('average_q', self.average_q),
             ('average_loss', self.average_loss),
+            ('n_updates', self.optimizer.t),
         ]

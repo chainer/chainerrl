@@ -30,9 +30,9 @@ class RMSpropAsyncRule(optimizer.UpdateRule):
             self.hyperparam.eps = eps
 
     def init_state(self, param):
-        xp = cuda.get_array_module(param.data)
-        with cuda.get_device_from_array(param.data):
-            self.state['ms'] = xp.zeros_like(param.data)
+        xp = cuda.get_array_module(param.array)
+        with cuda.get_device_from_array(param.array):
+            self.state['ms'] = xp.zeros_like(param.array)
 
     def update_core_cpu(self, param):
         grad = param.grad
@@ -43,7 +43,7 @@ class RMSpropAsyncRule(optimizer.UpdateRule):
 
         ms *= hp.alpha
         ms += (1 - hp.alpha) * grad * grad
-        param.data -= hp.lr * grad / numpy.sqrt(ms + hp.eps)
+        param.array -= hp.lr * grad / numpy.sqrt(ms + hp.eps)
 
     def update_core_gpu(self, param):
         grad = param.grad
@@ -55,7 +55,7 @@ class RMSpropAsyncRule(optimizer.UpdateRule):
             '''ms = alpha * ms + (1 - alpha) * grad * grad;
                param -= lr * grad / sqrt(ms + eps);''',
             'rmsprop')(grad, self.hyperparam.lr, self.hyperparam.alpha,
-                       self.hyperparam.eps, param.data, self.state['ms'])
+                       self.hyperparam.eps, param.array, self.state['ms'])
 
 
 class RMSpropAsync(optimizer.GradientMethod):

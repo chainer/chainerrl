@@ -39,7 +39,7 @@ class TestSumArrays(unittest.TestCase):
     def check_forward(self, xs):
         y = chainerrl.functions.weighted_sum_arrays(xs, weights=self.weights)
         correct_y = sum(x * w for x, w in zip(self.xs, self.weights))
-        gradient_check.assert_allclose(correct_y, cuda.to_cpu(y.data))
+        gradient_check.assert_allclose(correct_y, cuda.to_cpu(y.array))
 
     def test_forward_cpu(self):
         self.check_forward(self.xs)
