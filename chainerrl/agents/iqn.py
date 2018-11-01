@@ -126,11 +126,11 @@ class IQN(dqn.DQN):
     """
 
     def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.quantile_thresholds_N = kwargs.get('quantile_thresholds_N', 8)
-        self.quantile_thresholds_N_prime = kwargs.get(
+        self.quantile_thresholds_N = kwargs.pop('quantile_thresholds_N', 8)
+        self.quantile_thresholds_N_prime = kwargs.pop(
             'quantile_thresholds_N_prime', 8)
-        self.quantile_thresholds_K = kwargs.get('quantile_thresholds_K', 32)
+        self.quantile_thresholds_K = kwargs.pop('quantile_thresholds_K', 32)
+        super().__init__(*args, **kwargs)
 
     def _compute_target_values(self, exp_batch, gamma):
         """Compute a batch of target return distributions.
