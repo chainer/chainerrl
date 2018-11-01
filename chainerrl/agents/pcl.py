@@ -304,7 +304,7 @@ class PCL(agent.AttributeSavingMixin, agent.AsyncAgent):
                     if len(ep) <= t:
                         break
                     transitions.append(ep[t])
-                batch = batch_experiences(transitions,
+                batch = batch_experiences([transitions],
                                           xp=self.xp,
                                           phi=self.phi,
                                           gamma=self.gamma,
