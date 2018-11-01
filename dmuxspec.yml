@@ -13,7 +13,7 @@ features:
 - pip:future==0.16.0
 - pip:matplotlib==3.0.0
 hardware:
-- cpu==2
+- cpu==4
 - ram==30000
 - disk==5000
 - gpu==1
