@@ -891,6 +891,7 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
                         if self.table_sigma:
                             if self.one_sigma:
                                 table_sigma *= self.noise_table[0, :]
+                                greedy_action = cuda.to_cpu(action_value.sample_actions_given_noise(table_sigma).data)[0]
                             else:
                                 table_sigma *= self.noise_table[vel*20+pos, :]
                                 greedy_action = cuda.to_cpu(action_value.sample_actions_given_noise(table_sigma).data)[0]
