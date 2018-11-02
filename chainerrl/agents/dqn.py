@@ -165,7 +165,8 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
                  algo="DQN",
                  sigma_gamma=0.9,
                  one_sigma=False,
-                 fixed_sigma=False):
+                 fixed_sigma=False,
+                 table_noise=False):
         self.model = q_function
         self.q_function = q_function  # For backward compatibility
 
@@ -182,10 +183,13 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
         self.nn = not no_nn
         self.outdir = outdir
         self.algo = algo
+
         self.one_sigma = one_sigma
         self.fixed_sigma = fixed_sigma
+        self.table_noise = table_noise
 
-        if self.model is not None and gpu is not None and gpu >= 0:
+
+        if gpu is not None and gpu >= 0:
             cuda.get_device(gpu).use()
             #print(type(self.model.l1.W.data))
             self.model.to_gpu(device=gpu)
@@ -200,6 +204,8 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
             self.xp = self.model.xp
         else:
             self.xp = np
+
+        self.noise_table = self.xp.asarray(np.random.normal(size=(20*20, 3)))
 
         self.replay_buffer = replay_buffer
         self.optimizer = optimizer
@@ -269,7 +275,6 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
 
         self.q_table_mu = self.xp.asarray(np.ones((20*20, 3)) * -20)
         self.q_table_sigma = self.xp.asarray(np.ones((20*20, 3)) * self.scale_sigma)
-        self.noise_table = self.xp.asarray(np.random.normal(size=(20*20, 3)))
         self.last_score = ""
         self.use_table = use_table
         self.table_lr = table_lr
@@ -664,9 +669,7 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
         import cv2
 
         if self.gpu >= 0:
-            #arr = self.xp.asnumpy
-            #else:
-            arr = np.asarray
+            arr = self.xp.asnumpy
         else:
             arr = np.asarray
 
@@ -776,7 +779,7 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
             acts2_soft = get_softmax(self.q_table_mu)
         else:
             acts2 = get_max(self.q_table_mu)
-            acts2_soft = get_softmax(self.q_table_mu)
+            acts2_soft = empty#get_softmax(self.q_table_mu)
             acts = empty
             acts_soft = empty
 
@@ -866,21 +869,29 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
         #pltax.clear()
 
     def act_and_train(self, obs, reward):
-        if not self.fixed_sigma:
-            self.noise_table = self.xp.asarray(np.random.normal(size=(20*20, 3)))
-
         pos = int(20 * (float(obs[0]) + 1.3) / 2.0)
         vel = int(20 * (float(obs[1]) + 0.08) / 0.16)
+
+        if not self.fixed_sigma:
+            self.noise_table = self.xp.asarray(np.random.normal(size=(20*20, 3)))
 
         with chainer.using_config('train', False):
             with chainer.no_backprop_mode():
                 if self.use_table:
                     if self.table_sigma:
                         action_value = self.q_table_mu[vel*20+pos, :].copy()
-                        if self.one_sigma:
-                            action_value += self.noise_table[0, :] * self.q_table_sigma[vel*20+pos, :]
+
+                        if self.table_noise:
+                            if self.one_sigma:
+                                action_value += self.noise_table[0, :] * self.q_table_sigma[vel*20+pos, :]
+                            else:
+                                action_value += self.noise_table[vel*20+pos, :] * self.q_table_sigma[vel*20+pos, :]
                         else:
-                            action_value += self.noise_table[vel*20+pos, :] * self.q_table_sigma[vel*20+pos, :]
+                            #print("a", self.noise_table[vel*20+pos, :])
+                            #print("b", self.xp.random.normal(action_value.shape))
+                            #action_value += self.noise_table[vel*20+pos, :] * self.q_table_sigma[vel*20+pos, :]
+                            action_value += self.xp.random.normal(size=action_value.shape) * self.q_table_sigma[vel*20+pos, :]
+
                         q = action_value.max()
                         greedy_action = cuda.to_cpu(action_value.argmax())
                     else:
@@ -891,17 +902,11 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
                     action_value = self.model(
                         self.batch_states([obs], self.xp, self.phi))
                     table_sigma = self.xp.maximum(self.q_table_sigma[vel*20+pos, :], self.min_sigma)
-
                     q = float(action_value.max.data)
 
                     if self.head:
                         if self.table_sigma:
-                            if self.one_sigma:
-                                table_sigma *= self.noise_table[0, :]
-                                greedy_action = cuda.to_cpu(action_value.sample_actions_given_noise(table_sigma).data)[0]
-                            else:
-                                table_sigma *= self.noise_table[vel*20+pos, :]
-                                greedy_action = cuda.to_cpu(action_value.sample_actions_given_noise(table_sigma).data)[0]
+                            greedy_action = cuda.to_cpu(action_value.sample_actions_given_sigma(table_sigma).data)[0]
                         else:
                             greedy_action = cuda.to_cpu(action_value.sample_actions.data)[0]
                     else:

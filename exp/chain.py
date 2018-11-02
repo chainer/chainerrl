@@ -149,6 +149,7 @@ def main():
     parser.add_argument('--noisy-t', action='store_true', default=False)
     parser.add_argument('--save-img', action='store_true', default=False)
     parser.add_argument('--no-greedy', action='store_true', default=False)
+    parser.add_argument('--table-noise', action='store_true', default=False)
 
     parser.add_argument('--use-table', action='store_true', default=False)
     parser.add_argument('--no-nn', action='store_true', default=False)
@@ -332,7 +333,8 @@ def main():
                   algo=args.agent,
                   sigma_gamma=args.sigma_gamma,
                   one_sigma=args.one_sigma,
-                  fixed_sigma=args.fixed_sigma)
+                  fixed_sigma=args.fixed_sigma,
+                  table_noise=args.table_noise)
 
     if args.load:
         agent.load(args.load)
