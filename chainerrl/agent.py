@@ -222,7 +222,8 @@ class BatchAgent(with_metaclass(ABCMeta, Agent)):
         raise NotImplementedError()
 
     @abstractmethod
-    def batch_observe_and_train(self, batch_obs):
+    def batch_observe_and_train(
+            self, batch_obs, batch_reward, batch_done, batch_reset):
         """Observe a batch of action consequences for training.
 
         Args:
