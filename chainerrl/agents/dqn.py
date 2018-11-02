@@ -664,8 +664,8 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
         import cv2
 
         if self.gpu >= 0:
-            arr = self.xp.asnumpy
-        else:
+            #arr = self.xp.asnumpy
+            #else:
             arr = np.asarray
 
         hdivider = np.zeros((128, 30, 3))
