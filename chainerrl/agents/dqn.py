@@ -667,6 +667,8 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
             #arr = self.xp.asnumpy
             #else:
             arr = np.asarray
+        else:
+            arr = np.asarray
 
         hdivider = np.zeros((128, 30, 3))
         hdivider[:, :, 0] = 0.7
