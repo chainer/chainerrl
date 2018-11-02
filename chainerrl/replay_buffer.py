@@ -170,7 +170,7 @@ class ReplayBuffer(AbstractReplayBuffer):
                 self.memory, maxlen=self.memory.maxlen)
 
     def stop_current_episode(self):
-        if len(self.last_n_transitions) > 0 and len(self.last_n_transitions) < self.num_steps:
+        if 0 < len(self.last_n_transitions) < self.num_steps:
             self.memory.append(copy.copy(self.last_n_transitions))
         self.last_n_transitions.clear()
 
@@ -249,10 +249,10 @@ class PrioritizedReplayBuffer(ReplayBuffer, PriorityWeightError):
         normalize_by_max (bool)
     """
 
-    def __init__(self, capacity=None, alpha=0.6,
-        beta0=0.4, betasteps=2e5, eps=0.01,
-        normalize_by_max=True, error_min=0,
-        error_max=1, num_steps=1):
+    def __init__(self, capacity=None,
+                 alpha=0.6, beta0=0.4, betasteps=2e5, eps=0.01,
+                 normalize_by_max=True, error_min=0,
+                 error_max=1, num_steps=1):
         assert num_steps > 0
         self.num_steps = num_steps
         self.memory = PrioritizedBuffer(capacity=capacity)
@@ -418,12 +418,13 @@ class PrioritizedEpisodicReplayBuffer (
 
 def batch_experiences(experiences, xp, phi, gamma, batch_states=batch_states):
     """Takes a batch of k experiences each of which contains j
+
     consecutive transitions and vectorizes them, where j is between 1 and n.
 
     Args:
         experiences: list? of k experiences, each of which contains between 1
         and n consecutive transitions.
-        E.g. [(s_t, a_t, r_t, s_(t+1), (s_(t+2), ..., s_(t+3)), ... , (s_(t+j),...,s_(t+j+1))]
+        E.g. [(s_t, a_t, r_t, s_(t+1), ... , (s_(t+j),...,s_(t+j+1))]
         xp : Matrix library? Find a better word.
         phi : Preprocessing function (double check)
         batch_states (int): Converts a list to a batch
@@ -436,18 +437,21 @@ def batch_experiences(experiences, xp, phi, gamma, batch_states=batch_states):
         'state': batch_states(
             [elem[0]['state'] for elem in experiences], xp, phi),
         'action': xp.asarray([elem[0]['action'] for elem in experiences]),
-        'reward': xp.asarray([sum((gamma ** i) * exp[i]['reward'] for i in range(len(exp)))for exp in experiences], 
-            dtype=np.float32),
+        'reward': xp.asarray([sum((gamma ** i) * exp[i]['reward']
+                             for i in range(len(exp)))
+                             for exp in experiences],
+                             dtype=np.float32),
         'next_state': batch_states(
-            [elem[len(elem)-1]['next_state'] for elem in experiences], xp, phi),
+                                [elem[len(elem)-1]['next_state']
+                                 for elem in experiences], xp, phi),
         'next_action': xp.asarray(
             [elem[len(elem)-1]['next_action'] for elem in experiences]),
         'is_state_terminal': xp.asarray(
-            [any(transition['is_state_terminal'] for transition in exp) for exp in experiences],
+            [any(transition['is_state_terminal']
+             for transition in exp) for exp in experiences],
             dtype=np.float32),
-        'discount':xp.asarray([(gamma ** len(elem))for elem in experiences], 
-            dtype=np.float32)
-        }
+        'discount': xp.asarray([(gamma ** len(elem))for elem in experiences],
+                               dtype=np.float32)}
 
 
 class ReplayUpdater(object):

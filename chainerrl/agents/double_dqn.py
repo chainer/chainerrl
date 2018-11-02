@@ -31,5 +31,6 @@ class DoubleDQN(dqn.DQN):
 
         batch_rewards = exp_batch['reward']
         batch_terminal = exp_batch['is_state_terminal']
+        discount = exp_batch['discount']
 
-        return batch_rewards + exp_batch['discount'] * (1.0 - batch_terminal) * next_q_max
+        return batch_rewards + discount * (1.0 - batch_terminal) * next_q_max

@@ -11,6 +11,7 @@ import numpy as np
 
 from chainerrl.agents import dqn
 
+
 def _apply_categorical_projection(y, y_probs, z):
     """Apply categorical projection.
 
@@ -99,7 +100,9 @@ class CategoricalDQN(dqn.DQN):
 
         # Tz: (batch_size, n_atoms)
         Tz = (batch_rewards[..., None]
-              + (1.0 - batch_terminal[..., None]) * self.xp.expand_dims(exp_batch['discount'], 1) * z_values[None])
+              + (1.0 - batch_terminal[..., None])
+              * self.xp.expand_dims(exp_batch['discount'], 1)
+              * z_values[None])
         return _apply_categorical_projection(Tz, next_q_max, z_values)
 
     def _compute_y_and_t(self, exp_batch):

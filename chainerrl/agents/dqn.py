@@ -21,6 +21,7 @@ from chainerrl.recurrent import state_reset
 from chainerrl.replay_buffer import batch_experiences
 from chainerrl.replay_buffer import ReplayUpdater
 
+
 def compute_value_loss(y, t, clip_delta=True, batch_accumulator='mean'):
     """Compute a loss for value prediction problem.
 
@@ -210,11 +211,14 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
           None
         """
         has_weight = 'weight' in experiences[0][0]
-        exp_batch = batch_experiences(experiences, xp=self.xp, phi=self.phi, 
-                                    gamma=self.gamma, batch_states=self.batch_states)
+        exp_batch = batch_experiences(
+            experiences, xp=self.xp,
+            phi=self.phi, gamma=self.gamma,
+            batch_states=self.batch_states)
         if has_weight:
-            exp_batch['weights'] = self.xp.asarray([elem[0]['weight'] 
-                for elem in experiences], dtype=self.xp.float32)
+            exp_batch['weights'] = self.xp.asarray(
+                [elem[0]['weight']for elem in experiences],
+                dtype=self.xp.float32)
             if errors_out is None:
                 errors_out = []
         loss = self._compute_loss(exp_batch, errors_out=errors_out)
@@ -262,18 +266,19 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
                     transitions.append(ep[i])
                     if has_weights:
                         weights_step.append(weights[index])
-                batch = batch_experiences([transitions],
-                                            xp=self.xp,
-                                            phi=self.phi, 
-                                            gamma=self.gamma,
-                                            batch_states=self.batch_states)
+                batch = batch_experiences(
+                    [transitions],
+                    xp=self.xp,
+                    phi=self.phi,
+                    gamma=self.gamma,
+                    batch_states=self.batch_states)
                 if i == 0:
                     self.input_initial_batch_to_target_model(batch)
                 if has_weights:
                     batch['weights'] = self.xp.asarray(
                         weights_step, dtype=self.xp.float32)
                 loss += self._compute_loss(batch,
-                                            errors_out=errors_out_step)
+                                           errors_out=errors_out_step)
                 if errors_out is not None:
                     for err, index in zip(errors_out_step, indices):
                         errors_out[index] += err
@@ -298,7 +303,9 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
 
         batch_rewards = exp_batch['reward']
         batch_terminal = exp_batch['is_state_terminal']
-        return batch_rewards + exp_batch['discount'] * (1.0 - batch_terminal) * next_q_max
+        discount = exp_batch['discount']
+
+        return batch_rewards + discount * (1.0 - batch_terminal) * next_q_max
 
     def _compute_y_and_t(self, exp_batch):
         batch_size = exp_batch['reward'].shape[0]

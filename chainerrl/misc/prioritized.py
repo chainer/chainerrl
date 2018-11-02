@@ -307,11 +307,11 @@ class SumTree (object):
     summation over an interval is O(log n) per query
     """
 
-    def __init__(self, bd=None, l=None, r=None, s=0.0):
+    def __init__(self, bd=None, left=None, right=None, s=0.0):
         # bounds, left child, right child, sum
         self.bd = bd
-        self.l = l
-        self.r = r
+        self.left = left
+        self.right = right
         self.s = s
 
     def __str__(self):
@@ -321,16 +321,16 @@ class SumTree (object):
         ret = dict()
         if self.bd is not None and self._isleaf():
             ret[self.bd[0]] = self.s
-        if self.l:
-            ret.update(self.l._dict())
-        if self.r:
-            ret.update(self.r._dict())
+        if self.left:
+            ret.update(self.left._dict())
+        if self.right:
+            ret.update(self.right._dict())
         return ret
 
     def _initdescendant(self):
         if not self._isleaf():
             c = self._center()
-            self.l = SumTree(bd=(self.bd[0], c))._initdescendant()
+            self.left = SumTree(bd=(self.bd[0], c))._initdescendant()
             self.r = SumTree(bd=(c, self.bd[1]))._initdescendant()
         return self
 
@@ -345,21 +345,21 @@ class SumTree (object):
             self.bd = (ix, ix + 1)
         while ix >= self.bd[1]:
             r_bd = (self.bd[1], self.bd[1] * 2 - self.bd[0])
-            l = SumTree(self.bd, self.l, self.r, self.s)
+            left = SumTree(self.bd, self.left, self.r, self.s)
 
-            r = SumTree(bd=r_bd)._initdescendant()
-            self.bd = (l.bd[0], r.bd[1])
-            self.l = l
-            self.r = r
-            # no need to update self.s because self.r.s == 0
+            right = SumTree(bd=r_bd)._initdescendant()
+            self.bd = (left.bd[0], right.bd[1])
+            self.left = left
+            self.right = right
+            # no need to update self.s because self.right.s == 0
         while ix < self.bd[0]:
             l_bd = (self.bd[0] * 2 - self.bd[1], self.bd[0])
-            l = SumTree(bd=l_bd)._initdescendant()
-            r = SumTree(self.bd, self.l, self.r, self.s)
-            self.bd = (l.bd[0], r.bd[1])
-            self.l = l
-            self.r = r
-            # no need to update self.s because self.l.s == 0
+            left = SumTree(bd=l_bd)._initdescendant()
+            right = SumTree(self.bd, self.left, self.right, self.s)
+            self.bd = (left.bd[0], right.bd[1])
+            self.left = left
+            self.right = right
+            # no need to update self.s because self.left.s == 0
 
     def __setitem__(self, ix, val):
         self._allocindex(ix)
