@@ -2,13 +2,14 @@ from __future__ import unicode_literals
 from __future__ import print_function
 from __future__ import division
 from __future__ import absolute_import
+
+import collections
+import copy
 from builtins import *  # NOQA
 from future import standard_library
 standard_library.install_aliases()  # NOQA
 import os
 import tempfile
-import collections
-import copy
 import unittest
 
 from chainer import testing
@@ -36,7 +37,7 @@ class TestReplayBuffer(unittest.TestCase):
         correct_item = collections.deque([], maxlen=num_steps)
         for i in range(num_steps):
             trans1 = dict(state=0, action=1, reward=2, next_state=3,
-                      next_action=4, is_state_terminal=False)
+                          next_action=4, is_state_terminal=False)
             correct_item.append(trans1)
             rbuf.append(**trans1)
         self.assertEqual(len(rbuf), 1)
@@ -58,7 +59,7 @@ class TestReplayBuffer(unittest.TestCase):
             self.assertEqual(s2[1], correct_item2)
         else:
             self.assertEqual(s2[1], correct_item)
-            self.assertEqual(s2[0], correct_item2) 
+            self.assertEqual(s2[0], correct_item2)
 
     def test_save_and_load(self):
         capacity = self.capacity
@@ -72,7 +73,7 @@ class TestReplayBuffer(unittest.TestCase):
         # Add two transitions
         for _ in range(num_steps):
             trans1 = dict(state=0, action=1, reward=2, next_state=3,
-                      next_action=4, is_state_terminal=False)
+                          next_action=4, is_state_terminal=False)
             correct_item.append(trans1)
             rbuf.append(**trans1)
         correct_item2 = copy.deepcopy(correct_item)
@@ -232,7 +233,7 @@ class TestPrioritizedReplayBuffer(unittest.TestCase):
         correct_item = collections.deque([], maxlen=num_steps)
         for _ in range(num_steps):
             trans1 = dict(state=0, action=1, reward=2, next_state=3,
-                      next_action=4, is_state_terminal=False)
+                          next_action=4, is_state_terminal=False)
             correct_item.append(trans1)
             rbuf.append(**trans1)
         self.assertEqual(len(rbuf), 1)
@@ -302,7 +303,8 @@ class TestPrioritizedReplayBuffer(unittest.TestCase):
 
         tempdir = tempfile.mkdtemp()
 
-        rbuf = replay_buffer.PrioritizedReplayBuffer(capacity, num_steps=num_steps)
+        rbuf = replay_buffer.PrioritizedReplayBuffer(capacity,
+                                                     num_steps=num_steps)
 
         # Add two transitions
         correct_item = collections.deque([], maxlen=num_steps)
@@ -325,7 +327,8 @@ class TestPrioritizedReplayBuffer(unittest.TestCase):
         rbuf.save(filename)
 
         # Initialize rbuf
-        rbuf = replay_buffer.PrioritizedReplayBuffer(capacity, num_steps=num_steps)
+        rbuf = replay_buffer.PrioritizedReplayBuffer(capacity,
+                                                     num_steps=num_steps)
 
         # Of course it has no transition yet
         self.assertEqual(len(rbuf), 0)

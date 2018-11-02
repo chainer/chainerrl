@@ -16,6 +16,7 @@ from chainerrl import replay_buffer
 
 from basetest_training import _TestTraining
 
+
 class _TestDQNLike(_TestTraining):
 
     def make_agent(self, env, gpu):
@@ -74,6 +75,7 @@ class _TestDQNOnABC(_TestDQNLike):
     def make_replay_buffer(self, env):
         return replay_buffer.ReplayBuffer(10 ** 5)
 
+
 class _TestDQNOnDiscreteABC(_TestDQNOnABC):
 
     def make_q_func(self, env):
@@ -100,10 +102,12 @@ class _TestDQNOnDiscretePOABC(_TestDQNOnABC):
         return ABC(discrete=True, partially_observable=True,
                    deterministic=test), 1
 
+
 class _TestNStepDQNOnABC(_TestDQNOnABC):
 
     def make_replay_buffer(self, env):
         return replay_buffer.ReplayBuffer(10 ** 5, num_steps=3)
+
 
 class _TestNStepDQNOnDiscreteABC(_TestNStepDQNOnABC):
 
@@ -113,6 +117,7 @@ class _TestNStepDQNOnDiscreteABC(_TestNStepDQNOnABC):
 
     def make_env_and_successful_return(self, test):
         return ABC(discrete=True, deterministic=test), 1
+
 
 class _TestDQNOnContinuousABC(_TestDQNOnABC):
 
@@ -128,6 +133,7 @@ class _TestDQNOnContinuousABC(_TestDQNOnABC):
 
     def make_env_and_successful_return(self, test):
         return ABC(discrete=False, deterministic=test), 1
+
 
 class _TestNStepDQNOnContinuousABC(_TestNStepDQNOnABC):
 

@@ -331,7 +331,7 @@ class SumTree (object):
         if not self._isleaf():
             c = self._center()
             self.left = SumTree(bd=(self.bd[0], c))._initdescendant()
-            self.r = SumTree(bd=(c, self.bd[1]))._initdescendant()
+            self.right = SumTree(bd=(c, self.bd[1]))._initdescendant()
         return self
 
     def _isleaf(self):
@@ -345,7 +345,7 @@ class SumTree (object):
             self.bd = (ix, ix + 1)
         while ix >= self.bd[1]:
             r_bd = (self.bd[1], self.bd[1] * 2 - self.bd[0])
-            left = SumTree(self.bd, self.left, self.r, self.s)
+            left = SumTree(self.bd, self.left, self.right, self.s)
 
             right = SumTree(bd=r_bd)._initdescendant()
             self.bd = (left.bd[0], right.bd[1])
@@ -371,10 +371,10 @@ class SumTree (object):
         else:
             c = self._center()
             if ix < c:
-                self.l._write(ix, val)
+                self.left._write(ix, val)
             else:
-                self.r._write(ix, val)
-            self.s = self.l.s + self.r.s
+                self.right._write(ix, val)
+            self.s = self.left.s + self.right.s
 
     def __delitem__(self, ix):
         self.__setitem__(ix, 0.0)
@@ -389,9 +389,9 @@ class SumTree (object):
         else:
             c = self._center()
             if ix < c:
-                return self.l._read(ix)
+                return self.left._read(ix)
             else:
-                return self.r._read(ix)
+                return self.right._read(ix)
 
     def prioritized_sample(self, n, remove=False):
         assert n >= 0
@@ -416,7 +416,7 @@ class SumTree (object):
         if self._isleaf():
             return self.bd[0], self.s
         else:
-            if cum < self.l.s:
-                return self.l._pick(cum)
+            if cum < self.left.s:
+                return self.left._pick(cum)
             else:
-                return self.r._pick(cum - self.l.s)
+                return self.right._pick(cum - self.left.s)
