@@ -54,7 +54,7 @@ class TestReplayBuffer(unittest.TestCase):
         self.assertEqual(len(rbuf), 2)
         s2 = rbuf.sample(2)
         self.assertEqual(len(s2), 2)
-        if s2[0][num_steps-1]['state'] == 0:
+        if s2[0][num_steps - 1]['state'] == 0:
             self.assertEqual(s2[0], correct_item)
             self.assertEqual(s2[1], correct_item2)
         else:
@@ -103,7 +103,7 @@ class TestReplayBuffer(unittest.TestCase):
 
         # And sampled transitions are exactly what I added!
         s2 = rbuf.sample(2)
-        if s2[0][num_steps-1]['state'] == 0:
+        if s2[0][num_steps - 1]['state'] == 0:
             self.assertEqual(s2[0], correct_item)
             self.assertEqual(s2[1], correct_item2)
         else:
@@ -256,7 +256,7 @@ class TestPrioritizedReplayBuffer(unittest.TestCase):
         self.assertEqual(len(s2), 2)
         del s2[0][0]['weight']
         del s2[1][0]['weight']
-        if s2[0][num_steps-1]['state'] == 1:
+        if s2[0][num_steps - 1]['state'] == 1:
             self.assertEqual(s2[0], correct_item2)
             self.assertEqual(s2[1], correct_item)
         else:
@@ -343,7 +343,7 @@ class TestPrioritizedReplayBuffer(unittest.TestCase):
         s2 = rbuf.sample(2)
         del s2[0][0]['weight']
         del s2[1][0]['weight']
-        if s2[0][num_steps-1]['state'] == 0:
+        if s2[0][num_steps - 1]['state'] == 0:
             self.assertEqual(s2[0], correct_item)
             self.assertEqual(s2[1], correct_item2)
         else:
