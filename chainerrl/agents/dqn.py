@@ -185,7 +185,7 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
         self.one_sigma = one_sigma
         self.fixed_sigma = fixed_sigma
 
-        if gpu is not None and gpu >= 0:
+        if self.models is not None and gpu is not None and gpu >= 0:
             cuda.get_device(gpu).use()
             #print(type(self.model.l1.W.data))
             self.model.to_gpu(device=gpu)
