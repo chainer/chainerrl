@@ -18,7 +18,7 @@ class CategoricalDoubleDQN(categorical_dqn.CategoricalDQN):
     See: http://arxiv.org/abs/1509.06461.
     """
 
-    def _compute_target_values(self, exp_batch, gamma):
+    def _compute_target_values(self, exp_batch):
         """Compute a batch of target return distributions."""
 
         batch_next_state = exp_batch['next_state']
@@ -33,6 +33,7 @@ class CategoricalDoubleDQN(categorical_dqn.CategoricalDQN):
 
         batch_rewards = exp_batch['reward']
         batch_terminal = exp_batch['is_state_terminal']
+        discount = exp_batch['discount']
 
         batch_size = exp_batch['reward'].shape[0]
         z_values = target_next_qout.z_values
@@ -44,5 +45,5 @@ class CategoricalDoubleDQN(categorical_dqn.CategoricalDQN):
 
         # Tz: (batch_size, n_atoms)
         Tz = (batch_rewards[..., None]
-              + (1.0 - batch_terminal[..., None]) * gamma * z_values[None])
+              + (1.0 - batch_terminal[..., None]) * discount[..., None] * z_values[None])
         return apply_categorical_projection(Tz, next_q_max, z_values)

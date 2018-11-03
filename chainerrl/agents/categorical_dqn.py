@@ -152,7 +152,7 @@ class CategoricalDQN(dqn.DQN):
               + (1.0 - batch_terminal[..., None])
               * self.xp.expand_dims(exp_batch['discount'], 1)
               * z_values[None])
-        return _apply_categorical_projection(Tz, next_q_max, z_values)
+        return apply_categorical_projection(Tz, next_q_max, z_values)
 
     def _compute_y_and_t(self, exp_batch):
         """Compute a batch of predicted/target return distributions."""
