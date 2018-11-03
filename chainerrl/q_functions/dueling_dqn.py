@@ -89,6 +89,7 @@ class DistributionalDuelingDQN(
         self.n_atoms = n_atoms
 
         self.z_values = np.linspace(v_min, v_max, num=n_atoms, dtype=np.float32)
+        self.add_persistent('z_values', self.z_values)
 
         super().__init__()
         with self.init_scope():
@@ -122,6 +123,4 @@ class DistributionalDuelingDQN(
         ya, ys = F.broadcast(ya, ys)
         q = ya + ys
 
-        z_values = cuda.get_array_module(x.array).asarray(self.z_values)
-
-        return action_value.DistributionalDiscreteActionValue(q, z_values)
+        return action_value.DistributionalDiscreteActionValue(q, self.z_values)
