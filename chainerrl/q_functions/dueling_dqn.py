@@ -7,6 +7,7 @@ from future import standard_library
 standard_library.install_aliases()  # NOQA
 
 import chainer
+from chainer import cuda
 from chainer import functions as F
 from chainer import links as L
 import numpy as np
@@ -120,4 +121,7 @@ class DistributionalDuelingDQN(
 
         ya, ys = F.broadcast(ya, ys)
         q = ya + ys
-        return action_value.DistributionalDiscreteActionValue(q, self.z_values)
+
+        z_values = cuda.get_array_module(x.array).asarray(self.z_values)
+
+        return action_value.DistributionalDiscreteActionValue(q, z_values)
