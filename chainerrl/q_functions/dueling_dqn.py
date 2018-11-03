@@ -88,10 +88,10 @@ class DistributionalDuelingDQN(
         self.activation = activation
         self.n_atoms = n_atoms
 
+        super().__init__()
         z_values = np.linspace(v_min, v_max, num=n_atoms, dtype=np.float32)
         self.add_persistent('z_values', z_values)
 
-        super().__init__()
         with self.init_scope():
             self.conv_layers = chainer.ChainList(
                 L.Convolution2D(n_input_channels, 32, 8, stride=4,
