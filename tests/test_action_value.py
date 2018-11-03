@@ -28,12 +28,12 @@ class TestDiscreteActionValue(unittest.TestCase):
 
     def test_max(self):
         self.assertIsInstance(self.qout.max, chainer.Variable)
-        np.testing.assert_almost_equal(self.qout.max.data,
+        np.testing.assert_almost_equal(self.qout.max.array,
                                        self.q_values.max(axis=1))
 
     def test_greedy_actions(self):
         self.assertIsInstance(self.qout.greedy_actions, chainer.Variable)
-        np.testing.assert_equal(self.qout.greedy_actions.data,
+        np.testing.assert_equal(self.qout.greedy_actions.array,
                                 self.q_values.argmax(axis=1))
 
     def test_evaluate_actions(self):
@@ -42,7 +42,7 @@ class TestDiscreteActionValue(unittest.TestCase):
         ret = self.qout.evaluate_actions(sample_actions)
         self.assertIsInstance(ret, chainer.Variable)
         for b in range(self.batch_size):
-            self.assertAlmostEqual(ret.data[b],
+            self.assertAlmostEqual(ret.array[b],
                                    self.q_values[b, sample_actions[b]])
 
     def test_compute_advantage(self):
@@ -53,18 +53,25 @@ class TestDiscreteActionValue(unittest.TestCase):
         self.assertIsInstance(ret, chainer.Variable)
         for b in range(self.batch_size):
             if sample_actions[b] == greedy_actions[b]:
-                self.assertAlmostEqual(ret.data[b], 0)
+                self.assertAlmostEqual(ret.array[b], 0)
             else:
                 # An advantage to the optimal policy must be always negative
-                self.assertLess(ret.data[b], 0)
+                self.assertLess(ret.array[b], 0)
                 q = self.q_values[b, sample_actions[b]]
                 v = self.q_values[b, greedy_actions[b]]
                 adv = q - v
-                self.assertAlmostEqual(ret.data[b], adv)
+                self.assertAlmostEqual(ret.array[b], adv)
 
     def test_params(self):
         self.assertEqual(len(self.qout.params), 1)
         self.assertEqual(id(self.qout.params[0]), id(self.qout.q_values))
+
+    def test_getitem(self):
+        sliced = self.qout[:10]
+        np.testing.assert_equal(sliced.q_values.array, self.q_values[:10])
+        self.assertEqual(sliced.n_actions, self.action_size)
+        self.assertIs(sliced.q_values_formatter,
+                      self.qout.q_values_formatter)
 
 
 class TestDistributionalDiscreteActionValue(unittest.TestCase):
@@ -84,7 +91,7 @@ class TestDistributionalDiscreteActionValue(unittest.TestCase):
 
     def test_max(self):
         self.assertIsInstance(self.qout.max, chainer.Variable)
-        np.testing.assert_almost_equal(self.qout.max.data,
+        np.testing.assert_almost_equal(self.qout.max.array,
                                        self.q_values.max(axis=1))
 
     def test_max_as_distribution(self):
@@ -92,12 +99,12 @@ class TestDistributionalDiscreteActionValue(unittest.TestCase):
             self.qout.max_as_distribution, chainer.Variable)
         for b in range(self.batch_size):
             np.testing.assert_almost_equal(
-                self.qout.max_as_distribution.data[b],
-                self.atom_probs[b, self.qout.greedy_actions.data[b]])
+                self.qout.max_as_distribution.array[b],
+                self.atom_probs[b, self.qout.greedy_actions.array[b]])
 
     def test_greedy_actions(self):
         self.assertIsInstance(self.qout.greedy_actions, chainer.Variable)
-        np.testing.assert_equal(self.qout.greedy_actions.data,
+        np.testing.assert_equal(self.qout.greedy_actions.array,
                                 self.q_values.argmax(axis=1))
 
     def test_evaluate_actions(self):
@@ -106,7 +113,7 @@ class TestDistributionalDiscreteActionValue(unittest.TestCase):
         ret = self.qout.evaluate_actions(sample_actions)
         self.assertIsInstance(ret, chainer.Variable)
         for b in range(self.batch_size):
-            self.assertAlmostEqual(ret.data[b],
+            self.assertAlmostEqual(ret.array[b],
                                    self.q_values[b, sample_actions[b]])
 
     def test_evaluate_actions_as_distribution(self):
@@ -116,7 +123,7 @@ class TestDistributionalDiscreteActionValue(unittest.TestCase):
         self.assertIsInstance(ret, chainer.Variable)
         for b in range(self.batch_size):
             np.testing.assert_almost_equal(
-                ret.data[b],
+                ret.array[b],
                 self.atom_probs[b, sample_actions[b]])
 
     def test_compute_advantage(self):
@@ -127,18 +134,27 @@ class TestDistributionalDiscreteActionValue(unittest.TestCase):
         self.assertIsInstance(ret, chainer.Variable)
         for b in range(self.batch_size):
             if sample_actions[b] == greedy_actions[b]:
-                self.assertAlmostEqual(ret.data[b], 0)
+                self.assertAlmostEqual(ret.array[b], 0)
             else:
                 # An advantage to the optimal policy must be always negative
-                self.assertLess(ret.data[b], 0)
+                self.assertLess(ret.array[b], 0)
                 q = self.q_values[b, sample_actions[b]]
                 v = self.q_values[b, greedy_actions[b]]
                 adv = q - v
-                self.assertAlmostEqual(ret.data[b], adv)
+                self.assertAlmostEqual(ret.array[b], adv)
 
     def test_params(self):
         self.assertEqual(len(self.qout.params), 1)
         self.assertIs(self.qout.params[0], self.qout.q_dist)
+
+    def test_getitem(self):
+        sliced = self.qout[:10]
+        np.testing.assert_equal(sliced.q_values.array, self.q_values[:10])
+        np.testing.assert_equal(sliced.z_values, self.z_values)
+        np.testing.assert_equal(sliced.q_dist.array, self.atom_probs[:10])
+        self.assertEqual(sliced.n_actions, self.action_size)
+        self.assertIs(sliced.q_values_formatter,
+                      self.qout.q_values_formatter)
 
 
 class TestQuadraticActionValue(unittest.TestCase):
@@ -157,7 +173,7 @@ class TestQuadraticActionValue(unittest.TestCase):
 
         v_out = q_out.max
         self.assertIsInstance(v_out, chainer.Variable)
-        v_out = v_out.data
+        v_out = v_out.array
 
         np.testing.assert_almost_equal(v_out, v)
 
@@ -178,7 +194,7 @@ class TestQuadraticActionValue(unittest.TestCase):
 
         v_out = q_out.max
         self.assertIsInstance(v_out, chainer.Variable)
-        v_out = v_out.data
+        v_out = v_out.array
 
         # If mu[i] is an valid action, v_out[i] should be v[i]
         mu_is_allowed = np.all(
@@ -193,6 +209,29 @@ class TestQuadraticActionValue(unittest.TestCase):
         np.testing.assert_array_less(
             v_out[mu_is_not_allowed],
             v[mu_is_not_allowed])
+
+    def test_getitem(self):
+        n_batch = 7
+        ndim_action = 3
+        mu = np.random.randn(n_batch, ndim_action).astype(np.float32)
+        mat = np.broadcast_to(
+            np.eye(ndim_action, dtype=np.float32)[None],
+            (n_batch, ndim_action, ndim_action))
+        v = np.random.randn(n_batch).astype(np.float32)
+        min_action, max_action = -1, 1
+        qout = action_value.QuadraticActionValue(
+            chainer.Variable(mu),
+            chainer.Variable(mat),
+            chainer.Variable(v),
+            min_action,
+            max_action,
+        )
+        sliced = qout[:3]
+        np.testing.assert_equal(sliced.mu.array, mu[:3])
+        np.testing.assert_equal(sliced.mat.array, mat[:3])
+        np.testing.assert_equal(sliced.v.array, v[:3])
+        np.testing.assert_equal(sliced.min_action, min_action)
+        np.testing.assert_equal(sliced.max_action, max_action)
 
 
 @testing.parameterize(*testing.product({
@@ -225,22 +264,23 @@ class TestSingleActionValue(unittest.TestCase):
             return
         self.assertIsInstance(self.av.max, chainer.Variable)
         np.testing.assert_almost_equal(
-            self.av.max.data,
-            self.evaluator(self.maximizer()).data)
+            self.av.max.array,
+            self.evaluator(self.maximizer()).array)
 
     def test_greedy_actions(self):
         if not self.has_maximizer:
             return
         self.assertIsInstance(self.av.greedy_actions, chainer.Variable)
-        np.testing.assert_equal(self.av.greedy_actions.data,
-                                self.maximizer().data)
+        np.testing.assert_equal(self.av.greedy_actions.array,
+                                self.maximizer().array)
 
     def test_evaluate_actions(self):
         sample_actions = np.random.randn(
             self.batch_size, self.action_size).astype(np.float32)
         ret = self.av.evaluate_actions(sample_actions)
         self.assertIsInstance(ret, chainer.Variable)
-        np.testing.assert_equal(ret.data, self.evaluator(sample_actions).data)
+        np.testing.assert_equal(
+            ret.array, self.evaluator(sample_actions).array)
 
     def test_compute_advantage(self):
         if not self.has_maximizer:
@@ -250,10 +290,14 @@ class TestSingleActionValue(unittest.TestCase):
         ret = self.av.compute_advantage(sample_actions)
         self.assertIsInstance(ret, chainer.Variable)
         np.testing.assert_equal(
-            ret.data,
-            (self.evaluator(sample_actions).data
-                - self.evaluator(self.maximizer()).data))
+            ret.array,
+            (self.evaluator(sample_actions).array
+                - self.evaluator(self.maximizer()).array))
 
     def test_params(self):
         # no params
         self.assertEqual(len(self.av.params), 0)
+
+    def test_getitem(self):
+        with self.assertRaises(NotImplementedError):
+            self.av[:1]

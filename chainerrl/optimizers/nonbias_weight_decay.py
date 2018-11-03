@@ -28,7 +28,7 @@ class NonbiasWeightDecay(object):
         for name, param in opt.target.namedparams():
             if name == 'b' or name.endswith('/b'):
                 continue
-            p, g = param.data, param.grad
+            p, g = param.array, param.grad
             with cuda.get_device(p) as dev:
                 if int(dev) == -1:
                     g += rate * p

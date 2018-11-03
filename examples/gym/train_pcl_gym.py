@@ -24,7 +24,7 @@ os.environ['OMP_NUM_THREADS'] = '1'  # NOQA
 
 import chainer
 import gym
-gym.undo_logger_setup()  # NOQA
+import gym.spaces
 import gym.wrappers
 import numpy as np
 
@@ -105,12 +105,14 @@ def main():
         else:
             env_seed = 2 ** 32 - 1 - args.seed if test else args.seed
         env.seed(env_seed)
+        # Cast observations to float32 because our model uses float32
+        env = chainerrl.wrappers.CastObservationToFloat32(env)
         if args.monitor and process_idx == 0:
             env = gym.wrappers.Monitor(env, args.outdir)
-        # Scale rewards observed by agents
         if not test:
-            misc.env_modifiers.make_reward_filtered(
-                env, lambda x: x * args.reward_scale_factor)
+            # Scale rewards (and thus returns) to a reasonable range so that
+            # training is easier
+            env = chainerrl.wrappers.ScaleReward(env, args.reward_scale_factor)
         if args.render and process_idx == 0 and not test:
             misc.env_modifiers.make_rendered(env)
         return env
@@ -181,7 +183,6 @@ def main():
         model, opt, replay_buffer=replay_buffer,
         t_max=args.t_max, gamma=0.99,
         tau=args.tau,
-        phi=lambda x: x.astype(np.float32, copy=False),
         rollout_len=args.rollout_len,
         n_times_replay=args.n_times_replay,
         replay_start_size=args.replay_start_size,

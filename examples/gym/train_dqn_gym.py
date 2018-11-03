@@ -24,7 +24,6 @@ import sys
 
 from chainer import optimizers
 import gym
-gym.undo_logger_setup()  # NOQA
 from gym import spaces
 import gym.wrappers
 import numpy as np
@@ -93,13 +92,16 @@ def main():
         # Use different random seeds for train and test envs
         env_seed = 2 ** 32 - 1 - args.seed if test else args.seed
         env.seed(env_seed)
+        # Cast observations to float32 because our model uses float32
+        env = chainerrl.wrappers.CastObservationToFloat32(env)
         if args.monitor:
             env = gym.wrappers.Monitor(env, args.outdir)
         if isinstance(env.action_space, spaces.Box):
             misc.env_modifiers.make_action_filtered(env, clip_action_filter)
         if not test:
-            misc.env_modifiers.make_reward_filtered(
-                env, lambda x: x * args.reward_scale_factor)
+            # Scale rewards (and thus returns) to a reasonable range so that
+            # training is easier
+            env = chainerrl.wrappers.ScaleReward(env, args.reward_scale_factor)
         if ((args.render_eval and test) or
                 (args.render_train and not test)):
             misc.env_modifiers.make_rendered(env)
@@ -169,14 +171,11 @@ def main():
         else:
             rbuf = replay_buffer.ReplayBuffer(rbuf_capacity)
 
-    def phi(obs):
-        return obs.astype(np.float32)
-
     agent = DQN(q_func, opt, rbuf, gpu=args.gpu, gamma=args.gamma,
                 explorer=explorer, replay_start_size=args.replay_start_size,
                 target_update_interval=args.target_update_interval,
                 update_interval=args.update_interval,
-                phi=phi, minibatch_size=args.minibatch_size,
+                minibatch_size=args.minibatch_size,
                 target_update_method=args.target_update_method,
                 soft_update_tau=args.soft_update_tau,
                 episodic_update=args.episodic_replay, episodic_update_len=16)

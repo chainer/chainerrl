@@ -19,6 +19,7 @@ from chainerrl import recurrent  # NOQA
 from chainerrl import replay_buffer  # NOQA
 from chainerrl import v_function  # NOQA
 from chainerrl import v_functions  # NOQA
+from chainerrl import wrappers  # NOQA
 
 # For backward compatibility while avoiding circular import
 policy.SoftmaxPolicy = policies.SoftmaxPolicy
@@ -27,13 +28,7 @@ policy.ContinuousDeterministicPolicy = policies.ContinuousDeterministicPolicy
 policy.FCDeterministicPolicy = policies.FCDeterministicPolicy
 policy.FCBNDeterministicPolicy = policies.FCBNDeterministicPolicy
 policy.FCLSTMDeterministicPolicy = policies.FCLSTMDeterministicPolicy
-policy.FCLSTMDeterministicPolicy = policies.FCLSTMDeterministicPolicy
-policy.GaussianPolicy = policies.GaussianPolicy
 policy.FCGaussianPolicy = policies.FCGaussianPolicy
-policy.LinearGaussianPolicyWithDiagonalCovariance = \
-    policies.LinearGaussianPolicyWithDiagonalCovariance
-policy.LinearGaussianPolicyWithSphericalCovariance = \
-    policies.LinearGaussianPolicyWithSphericalCovariance
 policy.MellowmaxPolicy = policies.MellowmaxPolicy
 
 q_function.DuelingDQN = q_functions.DuelingDQN

@@ -26,7 +26,7 @@ import os
 import chainer
 from chainer import functions as F
 import gym
-gym.undo_logger_setup()  # NOQA
+import gym.spaces
 import gym.wrappers
 import numpy as np
 
@@ -38,7 +38,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--gpu', type=int, default=0,
                         help='GPU device ID. Set to -1 to use CPUs only.')
-    parser.add_argument('--env', type=str, default='Hopper-v1',
+    parser.add_argument('--env', type=str, default='Hopper-v2',
                         help='Gym Env ID')
     parser.add_argument('--seed', type=int, default=0,
                         help='Random seed [0, 2 ** 32)')
@@ -76,8 +76,11 @@ def main():
 
     def make_env(test):
         env = gym.make(args.env)
+        # Use different random seeds for train and test envs
         env_seed = 2 ** 32 - args.seed if test else args.seed
         env.seed(env_seed)
+        # Cast observations to float32 because our model uses float32
+        env = chainerrl.wrappers.CastObservationToFloat32(env)
         if args.monitor:
             env = gym.wrappers.Monitor(env, args.outdir)
         if args.render:
@@ -167,7 +170,6 @@ TRPO only supports gym.spaces.Box or gym.spaces.Discrete action spaces.""")  # N
         vf=vf,
         vf_optimizer=vf_opt,
         obs_normalizer=obs_normalizer,
-        phi=lambda x: x.astype(np.float32, copy=False),
         update_interval=args.trpo_update_interval,
         conjugate_gradient_max_iter=20,
         conjugate_gradient_damping=1e-1,

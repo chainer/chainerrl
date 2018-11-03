@@ -26,10 +26,10 @@ import chainer
 from chainer import functions as F
 from chainer import links as L
 import gym
-gym.undo_logger_setup()  # NOQA
 import gym.wrappers
 import numpy as np
 
+import chainerrl
 from chainerrl.agents import a3c
 from chainerrl import experiments
 from chainerrl import links
@@ -39,10 +39,6 @@ from chainerrl.optimizers import rmsprop_async
 from chainerrl import policies
 from chainerrl.recurrent import RecurrentChainMixin
 from chainerrl import v_function
-
-
-def phi(obs):
-    return obs.astype(np.float32)
 
 
 class A3CFFSoftmax(chainer.ChainList, a3c.A3CModel):
@@ -79,8 +75,7 @@ class A3CLSTMGaussian(chainer.ChainList, a3c.A3CModel, RecurrentChainMixin):
         self.v_head = L.Linear(obs_size, hidden_size)
         self.pi_lstm = L.LSTM(hidden_size, lstm_size)
         self.v_lstm = L.LSTM(hidden_size, lstm_size)
-        self.pi = policies.LinearGaussianPolicyWithDiagonalCovariance(
-            lstm_size, action_size)
+        self.pi = policies.FCGaussianPolicy(lstm_size, action_size)
         self.v = v_function.FCVFunction(lstm_size)
         super().__init__(self.pi_head, self.v_head,
                          self.pi_lstm, self.v_lstm, self.pi, self.v)
@@ -149,12 +144,14 @@ def main():
         process_seed = int(process_seeds[process_idx])
         env_seed = 2 ** 32 - 1 - process_seed if test else process_seed
         env.seed(env_seed)
+        # Cast observations to float32 because our model uses float32
+        env = chainerrl.wrappers.CastObservationToFloat32(env)
         if args.monitor and process_idx == 0:
             env = gym.wrappers.Monitor(env, args.outdir)
-        # Scale rewards observed by agents
         if not test:
-            misc.env_modifiers.make_reward_filtered(
-                env, lambda x: x * args.reward_scale_factor)
+            # Scale rewards (and thus returns) to a reasonable range so that
+            # training is easier
+            env = chainerrl.wrappers.ScaleReward(env, args.reward_scale_factor)
         if args.render and process_idx == 0 and not test:
             misc.env_modifiers.make_rendered(env)
         return env
@@ -181,7 +178,7 @@ def main():
         opt.add_hook(NonbiasWeightDecay(args.weight_decay))
 
     agent = a3c.A3C(model, opt, t_max=args.t_max, gamma=0.99,
-                    beta=args.beta, phi=phi)
+                    beta=args.beta)
     if args.load:
         agent.load(args.load)
 
