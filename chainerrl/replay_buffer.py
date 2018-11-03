@@ -11,6 +11,7 @@ from abc import ABCMeta
 from abc import abstractmethod
 from abc import abstractproperty
 import collections
+import copy
 
 import numpy as np
 import six.moves.cPickle as pickle
@@ -130,19 +131,28 @@ class AbstractEpisodicReplayBuffer(AbstractReplayBuffer):
 
 class ReplayBuffer(AbstractReplayBuffer):
 
-    def __init__(self, capacity=None):
+    def __init__(self, capacity=None, num_steps=1):
+        assert num_steps > 0
+        self.num_steps = num_steps
         self.memory = RandomAccessQueue(maxlen=capacity)
+        self.last_n_transitions = collections.deque([], maxlen=num_steps)
 
     def append(self, state, action, reward, next_state=None, next_action=None,
                is_state_terminal=False):
         experience = dict(state=state, action=action, reward=reward,
                           next_state=next_state, next_action=next_action,
                           is_state_terminal=is_state_terminal)
-        self.memory.append(experience)
+        self.last_n_transitions.append(experience)
+        if is_state_terminal:
+            self.memory.append(copy.copy(self.last_n_transitions))
+            self.last_n_transitions.clear()
+        else:
+            if len(self.last_n_transitions) == self.num_steps:
+                self.memory.append(copy.copy(self.last_n_transitions))
 
-    def sample(self, n):
-        assert len(self.memory) >= n
-        return self.memory.sample(n)
+    def sample(self, num_experiences):
+        assert len(self.memory) >= num_experiences
+        return self.memory.sample(num_experiences)
 
     def __len__(self):
         return len(self.memory)
@@ -160,7 +170,9 @@ class ReplayBuffer(AbstractReplayBuffer):
                 self.memory, maxlen=self.memory.maxlen)
 
     def stop_current_episode(self):
-        pass
+        if 0 < len(self.last_n_transitions) < self.num_steps:
+            self.memory.append(copy.copy(self.last_n_transitions))
+        self.last_n_transitions.clear()
 
 
 class PriorityWeightError(object):
@@ -228,7 +240,7 @@ class PriorityWeightError(object):
 class PrioritizedReplayBuffer(ReplayBuffer, PriorityWeightError):
     """Stochastic Prioritization
 
-    https://arxiv.org/pdf/1511.05952.pdf \S3.3
+    https://arxiv.org/pdf/1511.05952.pdf Section 3.3
     proportional prioritization
 
     Args:
@@ -239,8 +251,12 @@ class PrioritizedReplayBuffer(ReplayBuffer, PriorityWeightError):
 
     def __init__(self, capacity=None,
                  alpha=0.6, beta0=0.4, betasteps=2e5, eps=0.01,
-                 normalize_by_max=True, error_min=0, error_max=1):
+                 normalize_by_max=True, error_min=0,
+                 error_max=1, num_steps=1):
+        assert num_steps > 0
+        self.num_steps = num_steps
         self.memory = PrioritizedBuffer(capacity=capacity)
+        self.last_n_transitions = collections.deque([], maxlen=num_steps)
         PriorityWeightError.__init__(
             self, alpha, beta0, betasteps, eps, normalize_by_max,
             error_min=error_min, error_max=error_max)
@@ -250,7 +266,7 @@ class PrioritizedReplayBuffer(ReplayBuffer, PriorityWeightError):
         sampled, probabilities, min_prob = self.memory.sample(n)
         weights = self.weights_from_probabilities(probabilities, min_prob)
         for e, w in zip(sampled, weights):
-            e['weight'] = w
+            e[0]['weight'] = w
         return sampled
 
     def update_errors(self, errors):
@@ -400,22 +416,42 @@ class PrioritizedEpisodicReplayBuffer (
         assert not self.current_episode
 
 
-def batch_experiences(experiences, xp, phi, batch_states=batch_states):
+def batch_experiences(experiences, xp, phi, gamma, batch_states=batch_states):
+    """Takes a batch of k experiences each of which contains j
+
+    consecutive transitions and vectorizes them, where j is between 1 and n.
+
+    Args:
+        experiences: list? of k experiences, each of which contains between 1
+        and n consecutive transitions.
+        E.g. [(s_t, a_t, r_t, s_(t+1), ... , (s_(t+j),...,s_(t+j+1))]
+        xp : Matrix library? Find a better word.
+        phi : Preprocessing function (double check)
+        batch_states (int): Converts a list to a batch
+    Returns:
+        Returns a dictionary of vectors. State contains the k start states from
+        each set of experiences. The action is ... Reward is discounted reward.
+    """
 
     return {
         'state': batch_states(
-            [elem['state'] for elem in experiences], xp, phi),
-        'action': xp.asarray([elem['action'] for elem in experiences]),
-        'reward': xp.asarray(
-            [elem['reward'] for elem in experiences], dtype=np.float32),
+            [elem[0]['state'] for elem in experiences], xp, phi),
+        'action': xp.asarray([elem[0]['action'] for elem in experiences]),
+        'reward': xp.asarray([sum((gamma ** i) * exp[i]['reward']
+                                  for i in range(len(exp)))
+                              for exp in experiences],
+                             dtype=np.float32),
         'next_state': batch_states(
-            [elem['next_state'] for elem in experiences], xp, phi),
+            [elem[len(elem) - 1]['next_state']
+             for elem in experiences], xp, phi),
         'next_action': xp.asarray(
-            [elem['next_action'] for elem in experiences]),
+            [elem[len(elem) - 1]['next_action'] for elem in experiences]),
         'is_state_terminal': xp.asarray(
-            [elem['is_state_terminal'] for elem in experiences],
-
-            dtype=np.float32)}
+            [any(transition['is_state_terminal']
+                 for transition in exp) for exp in experiences],
+            dtype=np.float32),
+        'discount': xp.asarray([(gamma ** len(elem))for elem in experiences],
+                               dtype=np.float32)}
 
 
 class ReplayUpdater(object):

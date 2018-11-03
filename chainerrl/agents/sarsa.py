@@ -16,7 +16,7 @@ class SARSA(dqn.DQN):
     compute target Q values, thus is an on-policy algorithm.
     """
 
-    def _compute_target_values(self, exp_batch, gamma):
+    def _compute_target_values(self, exp_batch):
 
         batch_next_state = exp_batch['next_state']
         batch_next_action = exp_batch['next_action']
@@ -28,5 +28,6 @@ class SARSA(dqn.DQN):
 
         batch_rewards = exp_batch['reward']
         batch_terminal = exp_batch['is_state_terminal']
+        discount = exp_batch['discount']
 
-        return batch_rewards + self.gamma * (1.0 - batch_terminal) * next_q
+        return batch_rewards + discount * (1.0 - batch_terminal) * next_q

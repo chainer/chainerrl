@@ -120,6 +120,7 @@ def main():
     parser.add_argument('--eval-n-runs', type=int, default=10)
     parser.add_argument('--no-clip-delta',
                         dest='clip_delta', action='store_false')
+    parser.add_argument('--num-step-return', type=int, default=1)
     parser.set_defaults(clip_delta=True)
     parser.add_argument('--agent', type=str, default='DoubleDQN',
                         choices=['DQN', 'DoubleDQN', 'PAL'])
@@ -195,9 +196,11 @@ def main():
         # Anneal beta from beta0 to 1 throughout training
         betasteps = args.steps / args.update_interval
         rbuf = replay_buffer.PrioritizedReplayBuffer(
-            10 ** 6, alpha=0.6, beta0=0.4, betasteps=betasteps)
+            10 ** 6, alpha=0.6,
+            beta0=0.4, betasteps=betasteps,
+            num_steps=args.num_step_return)
     else:
-        rbuf = replay_buffer.ReplayBuffer(10 ** 6)
+        rbuf = replay_buffer.ReplayBuffer(10 ** 6, args.num_step_return)
 
     explorer = explorers.LinearDecayEpsilonGreedy(
         1.0, args.final_epsilon,
