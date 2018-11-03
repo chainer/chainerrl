@@ -9,10 +9,12 @@ standard_library.install_aliases()  # NOQA
 import chainer
 from chainer import functions as F
 from chainer import links as L
+import numpy as np
 
 from chainerrl import action_value
 from chainerrl.links.mlp import MLP
-from chainerrl.q_function import StateQFunction, DistributionalSingleModelStateQFunctionWithDiscreteAction
+from chainerrl.q_function import StateQFunction
+from chainerrl.recurrent import RecurrentChainMixin
 
 
 class DuelingDQN(chainer.Chain, StateQFunction):
@@ -60,7 +62,7 @@ class DuelingDQN(chainer.Chain, StateQFunction):
 
 
 class DistributionalDuelingDQN(
-        DistributionalSingleModelStateQFunctionWithDiscreteAction):
+        chainer.Chain, StateQFunction, RecurrentChainMixin):
     """Distributional dueling fully-connected Q-function with discrete actions.
 
     Args:
@@ -85,6 +87,8 @@ class DistributionalDuelingDQN(
         self.activation = activation
         self.n_atoms = n_atoms
 
+        self.z_values = np.linspace(v_min, v_max, num=n_atoms, dtype=np.float32)
+
         super().__init__()
         with self.init_scope():
             self.conv_layers = chainer.ChainList(
@@ -96,13 +100,7 @@ class DistributionalDuelingDQN(
             self.a_stream = MLP(3136, n_actions * n_atoms, [512])
             self.v_stream = MLP(3136, n_atoms, [512])
 
-        z_values = np.linspace(v_min, v_max, num=n_atoms, dtype=np.float32)
-
-        model = self.model
-
-        super().__init__(model=model, z_values=z_values)
-
-    def model(self, x):
+    def __call__(self, x):
         h = x
         for l in self.conv_layers:
             h = self.activation(l(h))
@@ -122,4 +120,4 @@ class DistributionalDuelingDQN(
 
         ya, ys = F.broadcast(ya, ys)
         q = ya + ys
-        return q
+        return action_value.DistributionalDiscreteActionValue(q, self.z_values)
