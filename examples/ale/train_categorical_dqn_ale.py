@@ -9,7 +9,7 @@ import argparse
 import os
 
 import sys
-sys.path.insert(0, '../..')
+sys.path.insert(0, '.')
 
 import chainer
 import gym
