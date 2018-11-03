@@ -88,8 +88,8 @@ class DistributionalDuelingDQN(
         self.activation = activation
         self.n_atoms = n_atoms
 
-        self.z_values = np.linspace(v_min, v_max, num=n_atoms, dtype=np.float32)
-        self.add_persistent('z_values', self.z_values)
+        z_values = np.linspace(v_min, v_max, num=n_atoms, dtype=np.float32)
+        self.add_persistent('z_values', z_values)
 
         super().__init__()
         with self.init_scope():
