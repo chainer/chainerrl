@@ -98,7 +98,7 @@ class ImplicitQuantileQFunction(chainer.Chain):
 
 def _unwrap_variable(x):
     if isinstance(x, chainer.Variable):
-        return x.data
+        return x.array
     else:
         return x
 
@@ -206,7 +206,7 @@ class IQN(dqn.DQN):
         if errors_out is not None:
             del errors_out[:]
             delta = F.mean(abs(eltwise_loss), axis=(1, 2))
-            errors_out.extend(cuda.to_cpu(delta.data))
+            errors_out.extend(cuda.to_cpu(delta.array))
 
         if self.batch_accumulator == 'sum':
             return F.sum(F.mean(eltwise_loss, axis=2))
@@ -221,8 +221,8 @@ class IQN(dqn.DQN):
             tau2av = self.model(
                 self.batch_states([obs], self.xp, self.phi))
             action_value = tau2av(taus_tilde)
-            q = float(action_value.max.data)
-            greedy_action = cuda.to_cpu(action_value.greedy_actions.data)[0]
+            q = float(action_value.max.array)
+            greedy_action = cuda.to_cpu(action_value.greedy_actions.array)[0]
 
         # Update stats
         self.average_q *= self.average_q_decay
@@ -265,8 +265,8 @@ class IQN(dqn.DQN):
             tau2av = self.model(
                 self.batch_states([obs], self.xp, self.phi))
             action_value = tau2av(taus_tilde)
-            q = float(action_value.max.data)
-            action = cuda.to_cpu(action_value.greedy_actions.data)[0]
+            q = float(action_value.max.array)
+            action = cuda.to_cpu(action_value.greedy_actions.array)[0]
 
         # Update stats
         self.average_q *= self.average_q_decay
