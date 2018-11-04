@@ -73,13 +73,12 @@ def _apply_categorical_projection(y, y_probs, z):
     return z_probs
 
 
-def compute_value_loss(y, t, clip_delta=True, batch_accumulator='mean'):
+def compute_value_loss(y, t, batch_accumulator='mean'):
     """Compute a loss for value prediction problem.
 
     Args:
         y (Variable or ndarray): Predicted values.
         t (Variable or ndarray): Target values.
-        clip_delta (bool): Use the Huber loss function if set True.
         batch_accumulator (str): 'mean' or 'sum'. 'mean' will use the mean of
             the loss values in a batch. 'sum' will use the sum.
     Returns:
@@ -96,15 +95,13 @@ def compute_value_loss(y, t, clip_delta=True, batch_accumulator='mean'):
     return loss
 
 
-def compute_weighted_value_loss(y, t, weights,
-                                clip_delta=True, batch_accumulator='mean'):
+def compute_weighted_value_loss(y, t, weights, batch_accumulator='mean'):
     """Compute a loss for value prediction problem.
 
     Args:
         y (Variable or ndarray): Predicted values.
         t (Variable or ndarray): Target values.
         weights (ndarray): Weights for y, t.
-        clip_delta (bool): Use the Huber loss function if set True.
         batch_accumulator (str): 'mean' will devide loss by batchsize
     Returns:
         (Variable) scalar loss
@@ -193,8 +190,7 @@ class CategoricalDQN(dqn.DQN):
         if 'weights' in exp_batch:
             return compute_weighted_value_loss(
                 y, t, exp_batch['weights'],
-                clip_delta=self.clip_delta,
                 batch_accumulator=self.batch_accumulator)
         else:
-            return compute_value_loss(y, t, clip_delta=self.clip_delta,
+            return compute_value_loss(y, t,
                                       batch_accumulator=self.batch_accumulator)

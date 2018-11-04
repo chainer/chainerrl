@@ -64,17 +64,6 @@ class DuelingDQN(chainer.Chain, StateQFunction):
 class DistributionalDuelingDQN(
         chainer.Chain, StateQFunction, RecurrentChainMixin):
     """Distributional dueling fully-connected Q-function with discrete actions.
-
-    Args:
-        n_dim_obs (int): Number of dimensions of observation space.
-        n_actions (int): Number of actions in action space.
-        n_atoms (int): Number of atoms of return distribution.
-        v_min (float): Minimum value this model can approximate.
-        v_max (float): Maximum value this model can approximate.
-        n_hidden_channels (int): Number of hidden channels.
-        n_hidden_layers (int): Number of hidden layers.
-        nonlinearity (callable): Nonlinearity applied after each hidden layer.
-        last_wscale (float): Weight scale of the last layer.
     """
 
     def __init__(self, n_actions, n_atoms, v_min, v_max,
