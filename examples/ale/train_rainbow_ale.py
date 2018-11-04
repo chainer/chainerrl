@@ -110,12 +110,12 @@ def main():
         os.path.join(args.outdir, 'model'))
 
     # Use the same hyper parameters as https://arxiv.org/abs/1707.06887
-    opt = chainer.optimizers.Adam(2.5e-4, eps=1e-2 / args.batch_size)
+    opt=chainer.optimizers.Adam(2.5e-4, eps = 1e-2 / args.batch_size)
     opt.setup(q_func)
 
-    rbuf = replay_buffer.ReplayBuffer(10 ** 6)
+    rbuf=replay_buffer.ReplayBuffer(10 ** 6)
 
-    explorer = explorers.LinearDecayEpsilonGreedy(
+    explorer=explorers.LinearDecayEpsilonGreedy(
         1.0, args.final_epsilon,
         args.final_exploration_frames,
         lambda: np.random.randint(n_actions))
@@ -125,36 +125,36 @@ def main():
         return np.asarray(x, dtype=np.float32) / 255
 
     agent = chainerrl.agents.CategoricalDQN(
-        q_func, opt, rbuf, gpu=args.gpu, gamma=0.99,
-        explorer=explorer, replay_start_size=args.replay_start_size,
-        target_update_interval=args.target_update_interval,
-        update_interval=args.update_interval,
-        batch_accumulator='mean',
-        phi=phi,
+        q_func, opt, rbuf, gpu = args.gpu, gamma = 0.99,
+        explorer = explorer, replay_start_size = args.replay_start_size,
+        target_update_interval = args.target_update_interval,
+        update_interval = args.update_interval,
+        batch_accumulator = 'mean',
+        phi = phi,
     )
 
     if args.load:
         agent.load(args.load)
 
     if args.demo:
-        eval_stats = experiments.eval_performance(
-            env=eval_env,
-            agent=agent,
-            n_runs=args.eval_n_runs)
+        eval_stats=experiments.eval_performance(
+            env = eval_env,
+            agent = agent,
+            n_runs = args.eval_n_runs)
         print('n_runs: {} mean: {} median: {} stdev {}'.format(
             args.eval_n_runs, eval_stats['mean'], eval_stats['median'],
             eval_stats['stdev']))
     else:
         # In testing DQN, randomly select 5% of actions
-        eval_explorer = explorers.ConstantEpsilonGreedy(
+        eval_explorer=explorers.ConstantEpsilonGreedy(
             args.eval_epsilon, lambda: np.random.randint(n_actions))
         experiments.train_agent_with_evaluation(
-            agent=agent, env=env, steps=args.steps,
-            eval_n_runs=args.eval_n_runs, eval_interval=args.eval_interval,
-            outdir=args.outdir, eval_explorer=eval_explorer,
-            save_best_so_far_agent=False,
-            max_episode_len=args.max_episode_len,
-            eval_env=eval_env,
+            agent = agent, env = env, steps = args.steps,
+            eval_n_runs = args.eval_n_runs, eval_interval = args.eval_interval,
+            outdir = args.outdir, eval_explorer = eval_explorer,
+            save_best_so_far_agent = False,
+            max_episode_len = args.max_episode_len,
+            eval_env = eval_env,
         )
 
 
