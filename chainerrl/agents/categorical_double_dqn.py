@@ -8,7 +8,7 @@ standard_library.install_aliases()  # NOQA
 import chainer
 
 from chainerrl.agents import categorical_dqn
-from chainerrl.agents.categorical_dqn import apply_categorical_projection
+from chainerrl.agents.categorical_dqn import _apply_categorical_projection
 from chainerrl.recurrent import state_kept
 
 
@@ -46,4 +46,4 @@ class CategoricalDoubleDQN(categorical_dqn.CategoricalDQN):
         # Tz: (batch_size, n_atoms)
         Tz = (batch_rewards[..., None]
               + (1.0 - batch_terminal[..., None]) * discount[..., None] * z_values[None])
-        return apply_categorical_projection(Tz, next_q_max, z_values)
+        return _apply_categorical_projection(Tz, next_q_max, z_values)
