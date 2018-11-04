@@ -7,7 +7,6 @@ from future import standard_library
 standard_library.install_aliases()  # NOQA
 
 import chainer
-from chainer import cuda
 from chainer import functions as F
 from chainer import links as L
 import numpy as np

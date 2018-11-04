@@ -20,6 +20,8 @@ from chainerrl import explorers
 from chainerrl import links
 from chainerrl import misc
 from chainerrl.q_functions import DistributionalDuelingDQN
+from chainerrl.q_functions \
+    import DistributionalFCStateQFunctionWithDiscreteAction
 from chainerrl import replay_buffer
 
 import atari_wrappers
@@ -29,7 +31,7 @@ def parse_arch(arch, n_actions, n_atoms, v_min, v_max):
     if arch == 'plain':
         return chainerrl.links.Sequence(
             chainerrl.links.NatureDQNHead(),
-            chainerrl.q_functions.DistributionalFCStateQFunctionWithDiscreteAction(
+            DistributionalFCStateQFunctionWithDiscreteAction(
                 None, n_actions, n_atoms, v_min, v_max,
                 n_hidden_channels=0, n_hidden_layers=0),
         )

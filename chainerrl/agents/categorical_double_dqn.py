@@ -45,5 +45,6 @@ class CategoricalDoubleDQN(categorical_dqn.CategoricalDQN):
 
         # Tz: (batch_size, n_atoms)
         Tz = (batch_rewards[..., None]
-              + (1.0 - batch_terminal[..., None]) * discount[..., None] * z_values[None])
+              + (1.0 - batch_terminal[..., None]) * discount[..., None]
+              * z_values[None])
         return _apply_categorical_projection(Tz, next_q_max, z_values)
