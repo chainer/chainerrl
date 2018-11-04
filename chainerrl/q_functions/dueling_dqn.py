@@ -64,7 +64,7 @@ class DuelingDQN(chainer.Chain, StateQFunction):
 class DistributionalDuelingDQN(
         chainer.Chain, StateQFunction, RecurrentChainMixin):
     """Distributional dueling fully-connected Q-function with discrete actions.
-    
+
     """
 
     def __init__(self, n_actions, n_atoms, v_min, v_max,

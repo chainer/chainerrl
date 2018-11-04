@@ -14,7 +14,7 @@ from chainerrl.recurrent import state_kept
 
 class CategoricalDoubleDQN(categorical_dqn.CategoricalDQN):
     """Categorical Double DQN.
-    
+
     """
 
     def _compute_target_values(self, exp_batch):
