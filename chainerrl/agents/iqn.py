@@ -107,12 +107,23 @@ def compute_eltwise_huber_quantile_loss(y, t, taus):
     """Compute elementwise Huber losses for quantile regression.
 
     Args:
-        y (chainer.Variable): (batch_size, N, N_prime)
-        t (chainer.Variable or ndarray): (batch_size, N, N_prime)
+        y (chainer.Variable): (batch_size, N)
+        t (chainer.Variable or ndarray): (batch_size, N_prime)
         taus (ndarray): (batch_size, N)
+
+    Returns:
+        chainer.Variable: Loss (batch_size, N, N_prime)
     """
+    assert y.shape == taus.shape
+    # (batch_size, N) -> (batch_size, N, 1)
+    y = F.expand_dims(y, axis=2)
+    # (batch_size, N_prime) -> (batch_size, 1, N_prime)
+    t = F.expand_dims(t, axis=1)
+    # (batch_size, N) -> (batch_size, N, 1)
+    taus = F.expand_dims(taus, axis=2)
+    # Broadcast to (batch_size, N, N_prime)
+    y, t, taus = F.broadcast(y, t, taus)
     with chainer.no_backprop_mode():
-        taus = F.broadcast_to(taus[..., None], y.shape)
         I_delta = ((_unwrap_variable(t) - _unwrap_variable(y)) > 0).astype('f')
     eltwise_loss = (abs(taus - I_delta)
                     * F.huber_loss(y, t, delta=1.0, reduce='no'))
@@ -197,10 +208,6 @@ class IQN(dqn.DQN):
         with chainer.no_backprop_mode():
             t = self._compute_target_values(exp_batch, gamma)
 
-        # Broadcast y and t to (batch_size, N, N_prime)
-        y = F.expand_dims(y, axis=2)
-        t = F.expand_dims(t, axis=1)
-        y, t = F.broadcast(y, t)
         eltwise_loss = compute_eltwise_huber_quantile_loss(y, t, taus)
 
         if errors_out is not None:
