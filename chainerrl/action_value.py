@@ -202,7 +202,7 @@ class QuantileDiscreteActionValue(DiscreteActionValue):
     def __init__(self, quantiles, q_values_formatter=lambda x: x):
         assert quantiles.ndim == 3
         self.quantiles = quantiles
-        self.xp = cuda.get_array_module(quantiles.data)
+        self.xp = cuda.get_array_module(quantiles.array)
         self.q_values_formatter = q_values_formatter
 
     @cached_property
@@ -222,14 +222,14 @@ class QuantileDiscreteActionValue(DiscreteActionValue):
                 (batch_size, n_taus).
         """
         if isinstance(actions, chainer.Variable):
-            actions = actions.data
+            actions = actions.array
         return self.quantiles[
             self.xp.arange(self.quantiles.shape[0]), :, actions]
 
     def __repr__(self):
         return 'QuantileDiscreteActionValue greedy_actions:{} q_values:{}'.format(  # NOQA
-            self.greedy_actions.data,
-            self.q_values_formatter(self.q_values.data))
+            self.greedy_actions.array,
+            self.q_values_formatter(self.q_values.array))
 
     @property
     def params(self):
