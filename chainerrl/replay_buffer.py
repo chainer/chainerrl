@@ -144,11 +144,26 @@ class ReplayBuffer(AbstractReplayBuffer):
                           is_state_terminal=is_state_terminal)
         self.last_n_transitions.append(experience)
         if is_state_terminal:
-            self.memory.append(copy.copy(self.last_n_transitions))
-            self.last_n_transitions.clear()
+            while self.last_n_transitions:
+                self.memory.append(copy.copy(self.last_n_transitions))
+                del self.last_n_transitions[0]
+            assert len(self.last_n_transitions) == 0
         else:
             if len(self.last_n_transitions) == self.num_steps:
                 self.memory.append(copy.copy(self.last_n_transitions))
+
+
+    def stop_current_episode(self):
+        # if n-step transition buffer is not full, add entry; 
+        # if n-step transition buffer is indeed full, it has already been added;
+        if 0 < len(self.last_n_transitions) < self.num_steps:
+            self.memory.append(copy.copy(self.last_n_transitions))
+        # avoid duplicate entry 
+        del self.last_n_transitions[0]
+        while self.last_n_transitions:
+            self.memory.append(copy.copy(self.last_n_transitions))
+            del self.last_n_transitions[0]
+        assert len(self.last_n_transitions) == 0
 
     def sample(self, num_experiences):
         assert len(self.memory) >= num_experiences
@@ -168,11 +183,6 @@ class ReplayBuffer(AbstractReplayBuffer):
             # Load v0.2
             self.memory = RandomAccessQueue(
                 self.memory, maxlen=self.memory.maxlen)
-
-    def stop_current_episode(self):
-        if 0 < len(self.last_n_transitions) < self.num_steps:
-            self.memory.append(copy.copy(self.last_n_transitions))
-        self.last_n_transitions.clear()
 
 
 class PriorityWeightError(object):
