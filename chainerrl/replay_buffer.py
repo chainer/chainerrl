@@ -155,7 +155,7 @@ class ReplayBuffer(AbstractReplayBuffer):
 
     def stop_current_episode(self):
         # if n-step transition buffer is not full, add entry; 
-        # if n-step transition buffer is indeed full, it has already been added;
+        # if n-step transition buffer is indeed full, entry has already been added;
         if 0 < len(self.last_n_transitions) < self.num_steps:
             self.memory.append(copy.copy(self.last_n_transitions))
         # avoid duplicate entry 
