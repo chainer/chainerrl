@@ -133,9 +133,9 @@ class MySequence(chainer.Chain):#links.Sequence):
                 return DiscreteActionValueWithSigma(x, sigma, all_sigmas=sigmas)
             else:
                 l1, l2, l3 = self.sigma_nets[0]
-                x = F.relu(l1(input))
-                x = F.relu(l2(x))
-                x = l3(x)
-                return DiscreteActionValueWithSigma(x, F.softplus(x))
+                s = F.relu(l1(input))
+                s = F.relu(l2(x))
+                s = l3(s)
+                return DiscreteActionValueWithSigma(x, F.softplus(s))
         else:
             return DiscreteActionValue(x)

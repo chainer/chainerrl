@@ -569,9 +569,11 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
             if hasattr(qout, 'all_sigmas') and qout.all_sigmas is not None:
                 targets = [batch_q_target]
                 curr = [batch_q]
+                """
                 for sig in qout.all_sigmas:
                     targets.append(batch_sigma_target)
                     curr.append(F.reshape(F.select_item(sig, batch_actions), (batch_size, 1)))
+                """
                 return F.concat(curr, axis=1), F.concat(targets, axis=1), qout.sigmas
             else:
                 return F.concat([batch_q, batch_sigma], axis=1),\
@@ -909,7 +911,8 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
 
                     if self.head:
                         if self.table_sigma:
-                            greedy_action = cuda.to_cpu(action_value.sample_actions_given_sigma(table_sigma).data)[0]
+                            #greedy_action = cuda.to_cpu(action_value.sample_actions_given_sigma(table_sigma).data)[0]
+                            greedy_action = cuda.to_cpu(action_value.greedy_actions.data)[0]
                         else:
                             #greedy_action = cuda.to_cpu(action_value.sample_actions.data)[0]
                             greedy_action = cuda.to_cpu(action_value.greedy_actions.data)[0]
