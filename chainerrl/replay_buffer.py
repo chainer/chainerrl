@@ -422,15 +422,18 @@ def batch_experiences(experiences, xp, phi, gamma, batch_states=batch_states):
     consecutive transitions and vectorizes them, where j is between 1 and n.
 
     Args:
-        experiences: list? of k experiences, each of which contains between 1
-        and n consecutive transitions.
-        E.g. [(s_t, a_t, r_t, s_(t+1), ... , (s_(t+j),...,s_(t+j+1))]
-        xp : Matrix library? Find a better word.
-        phi : Preprocessing function (double check)
-        batch_states (int): Converts a list to a batch
+        experiences: list of experiences. Each experience is a list
+        containing between 1 and n dicts containing
+            state: cupy.ndarray or numpy.ndarray
+            action: int [0, n_action_types)
+            reward: float32
+            is_state_terminal: bool
+            next_state: cupy.ndarray or numpy.ndarray
+        xp : Numpy compatible matrix library: e.g. Numpy or CuPy.
+        phi : Preprocessing function
+        batch_states (int): function that converts a list to a batch
     Returns:
-        Returns a dictionary of vectors. State contains the k start states from
-        each set of experiences. The action is ... Reward is discounted reward.
+        dict of batched transitions
     """
 
     return {

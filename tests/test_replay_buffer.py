@@ -267,12 +267,12 @@ class TestPrioritizedReplayBuffer(unittest.TestCase):
         s3 = rbuf.sample(2)
         self.assertNotAlmostEqual(s3[0][0]['weight'], s3[1][0]['weight'])
 
-        # # Weights should be equal for different but clipped TD-errors
+        # Weights should be equal for different but clipped TD-errors
         rbuf.update_errors([5, 10])
         s3 = rbuf.sample(2)
         self.assertAlmostEqual(s3[0][0]['weight'], s3[1][0]['weight'])
 
-        # # Weights should be equal for the same TD-errors
+        # Weights should be equal for the same TD-errors
         rbuf.update_errors([3.14, 3.14])
         s4 = rbuf.sample(2)
         self.assertAlmostEqual(s4[0][0]['weight'], s4[1][0]['weight'])

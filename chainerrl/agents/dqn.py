@@ -201,12 +201,14 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
 
         This function is thread-safe.
         Args:
-          experiences (list): list of dicts that contains
+          experiences (list): list of lists of dicts. 
+          The dict contains
             state: cupy.ndarray or numpy.ndarray
             action: int [0, n_action_types)
             reward: float32
+            is_state_terminal: bool
             next_state: cupy.ndarray or numpy.ndarray
-            next_legal_actions: list of booleans; True means legal
+            weight (optional): float32
         Returns:
           None
         """
@@ -331,8 +333,7 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
 
 
         Args:
-          experiences (list): see update()'s docstring
-          discount (float): Amount by the Q-values should be discounted
+          exp_batch (dict): A dict of batched arrays of transitions
         Returns:
           Computed loss from the minibatch of experiences
         """
