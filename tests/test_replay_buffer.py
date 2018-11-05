@@ -61,6 +61,24 @@ class TestReplayBuffer(unittest.TestCase):
             self.assertEqual(s2[1], correct_item)
             self.assertEqual(s2[0], correct_item2)
 
+    def test_batch_experiences(self):
+        experiences = []
+        experiences.append(
+            [dict(state=1, action=1, reward=1, next_state=1,
+                      next_action=1, is_state_terminal=False)] * 3)
+        experiences.append([dict(state=1, action=1, reward=1, next_state=1,
+                      next_action=1, is_state_terminal=False)])
+        four_step_transition = [dict(state=1, action=1, reward=1, next_state=1,
+                      next_action=1, is_state_terminal=False)] * 3
+        four_step_transition.append(dict(state=1, action=1, reward=1, next_state=1,
+                      next_action=1, is_state_terminal=True))
+        experiences.append(four_step_transition)
+        batch = replay_buffer.batch_experiences(
+            experiences, np, lambda x: x, 0.99)
+        self.assertEqual(batch['state'][0], 1)
+        self.assertSequenceEqual(list(batch['is_state_terminal']), list(np.asarray([0.0, 0.0, 1.0], dtype=np.float32)))
+
+
     def test_save_and_load(self):
         capacity = self.capacity
         num_steps = self.num_steps
@@ -78,7 +96,7 @@ class TestReplayBuffer(unittest.TestCase):
             rbuf.append(**trans1)
         correct_item2 = copy.deepcopy(correct_item)
         trans2 = dict(state=1, action=1, reward=2, next_state=3,
-                      next_action=4, is_state_terminal=True)
+                      next_action=4, is_state_terminal=False)
         correct_item2.append(trans2)
         rbuf.append(**trans2)
 

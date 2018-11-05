@@ -159,7 +159,8 @@ class ReplayBuffer(AbstractReplayBuffer):
         if 0 < len(self.last_n_transitions) < self.num_steps:
             self.memory.append(copy.copy(self.last_n_transitions))
         # avoid duplicate entry 
-        del self.last_n_transitions[0]
+        if 0 < len(self.last_n_transitions) <= self.num_steps:
+            del self.last_n_transitions[0]
         while self.last_n_transitions:
             self.memory.append(copy.copy(self.last_n_transitions))
             del self.last_n_transitions[0]
@@ -441,7 +442,8 @@ def batch_experiences(experiences, xp, phi, gamma, batch_states=batch_states):
             next_state: cupy.ndarray or numpy.ndarray
         xp : Numpy compatible matrix library: e.g. Numpy or CuPy.
         phi : Preprocessing function
-        batch_states (int): function that converts a list to a batch
+        gamma: discount factor
+        batch_states: function that converts a list to a batch
     Returns:
         dict of batched transitions
     """
