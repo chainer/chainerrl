@@ -94,7 +94,7 @@ class TestReplayBuffer(unittest.TestCase):
                 # e.g. if states are 0,0,0,1 then buffer looks like:
                 # [[0,0,0], [0, 0, 1], [0, 1], [1]]
                 if len(item) < self.num_steps:
-                    self.assertEqual(item[len(item)-1]['state'], 1)
+                    self.assertEqual(item[len(item) - 1]['state'], 1)
                     for i in range(len(item) - 1):
                         self.assertEqual(item[i]['state'], 0)
                 else:
@@ -105,11 +105,11 @@ class TestReplayBuffer(unittest.TestCase):
         experiences = []
         experiences.append(
             [dict(state=1, action=1, reward=1, next_state=1,
-             next_action=1, is_state_terminal=False)] * 3)
+                  next_action=1, is_state_terminal=False)] * 3)
         experiences.append([dict(state=1, action=1, reward=1, next_state=1,
-                            next_action=1, is_state_terminal=False)])
+                                 next_action=1, is_state_terminal=False)])
         four_step_transition = [dict(state=1, action=1, reward=1, next_state=1,
-                                next_action=1, is_state_terminal=False)] * 3
+                                     next_action=1, is_state_terminal=False)] * 3
         four_step_transition.append(dict(
                                     state=1, action=1, reward=1, next_state=1,
                                     next_action=1, is_state_terminal=True))
@@ -119,7 +119,7 @@ class TestReplayBuffer(unittest.TestCase):
         self.assertEqual(batch['state'][0], 1)
         self.assertSequenceEqual(list(batch['is_state_terminal']),
                                  list(np.asarray([0.0, 0.0, 1.0],
-                                      dtype=np.float32)))
+                                                 dtype=np.float32)))
 
     def test_stop_current_episode(self):
         capacity = self.capacity
@@ -138,7 +138,7 @@ class TestReplayBuffer(unittest.TestCase):
         # episode ends
         rbuf.stop_current_episode()
         # episode ends, so we should add n-1 transitions
-        self.assertEqual(len(rbuf), self.num_steps-1)
+        self.assertEqual(len(rbuf), self.num_steps - 1)
 
     def test_save_and_load(self):
         capacity = self.capacity
