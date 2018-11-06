@@ -201,7 +201,7 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
 
         This function is thread-safe.
         Args:
-          experiences (list): list of lists of dicts. 
+          experiences (list): list of lists of dicts.
           The dict contains
             state: cupy.ndarray or numpy.ndarray
             action: int [0, n_action_types)

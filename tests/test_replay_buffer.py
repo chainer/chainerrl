@@ -101,23 +101,25 @@ class TestReplayBuffer(unittest.TestCase):
                     for i in range(len(item) - 1):
                         self.assertEqual(item[i]['state'], 0)
 
-
     def test_batch_experiences(self):
         experiences = []
         experiences.append(
             [dict(state=1, action=1, reward=1, next_state=1,
-                      next_action=1, is_state_terminal=False)] * 3)
+             next_action=1, is_state_terminal=False)] * 3)
         experiences.append([dict(state=1, action=1, reward=1, next_state=1,
-                      next_action=1, is_state_terminal=False)])
+                            next_action=1, is_state_terminal=False)])
         four_step_transition = [dict(state=1, action=1, reward=1, next_state=1,
-                      next_action=1, is_state_terminal=False)] * 3
-        four_step_transition.append(dict(state=1, action=1, reward=1, next_state=1,
-                      next_action=1, is_state_terminal=True))
+                                next_action=1, is_state_terminal=False)] * 3
+        four_step_transition.append(dict(
+                                    state=1, action=1, reward=1, next_state=1,
+                                    next_action=1, is_state_terminal=True))
         experiences.append(four_step_transition)
         batch = replay_buffer.batch_experiences(
             experiences, np, lambda x: x, 0.99)
         self.assertEqual(batch['state'][0], 1)
-        self.assertSequenceEqual(list(batch['is_state_terminal']), list(np.asarray([0.0, 0.0, 1.0], dtype=np.float32)))
+        self.assertSequenceEqual(list(batch['is_state_terminal']),
+                                 list(np.asarray([0.0, 0.0, 1.0],
+                                      dtype=np.float32)))
 
     def test_stop_current_episode(self):
         capacity = self.capacity
@@ -127,7 +129,6 @@ class TestReplayBuffer(unittest.TestCase):
         self.assertEqual(len(rbuf), 0)
 
         # Add one and sample one
-        correct_item = collections.deque([], maxlen=num_steps)
         for i in range(num_steps - 1):
             trans1 = dict(state=0, action=1, reward=2, next_state=3,
                           next_action=4, is_state_terminal=False)
