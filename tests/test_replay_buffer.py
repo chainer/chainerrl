@@ -69,33 +69,26 @@ class TestReplayBuffer(unittest.TestCase):
         self.assertEqual(len(rbuf), 0)
 
         # Add one and sample one
-        correct_item = collections.deque([], maxlen=num_steps)
         for i in range(num_steps):
             trans1 = dict(state=0, action=1, reward=2, next_state=3,
                           next_action=4, is_state_terminal=False)
-            correct_item.append(trans1)
             rbuf.append(**trans1)
         self.assertEqual(len(rbuf), 1)
         s1 = rbuf.sample(1)
         self.assertEqual(len(s1), 1)
-        self.assertEqual(s1[0], correct_item)
 
         # Add two and sample two, which must be unique
-        correct_item2 = copy.deepcopy(correct_item)
         trans2 = dict(state=1, action=1, reward=2, next_state=3,
                       next_action=4, is_state_terminal=True)
-        correct_item2.append(trans2)
         rbuf.append(**trans2)
         self.assertEqual(len(rbuf), self.num_steps + 1)
         s2 = rbuf.sample(self.num_steps + 1)
         self.assertEqual(len(s2), self.num_steps + 1)
         if self.num_steps == 1:
             if s2[0][0]['state'] == 0:
-                self.assertEqual(s2[0], correct_item)
-                self.assertEqual(s2[1], correct_item2)
+                self.assertEqual(s2[1][0]['state'], 1)
             else:
-                self.assertEqual(s2[1], correct_item)
-                self.assertEqual(s2[0], correct_item2)
+                self.assertEqual(s2[1][0]['state'], 0)
         else:
             for item in s2:
                 # e.g. if states are 0,0,0,1 then buffer looks like:
