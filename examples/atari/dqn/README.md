@@ -1,5 +1,5 @@
 # DQN
-This example trains a DQN agent agent, from the following paper: [Human-level control through Deep Reinforcement Learning](https://storage.googleapis.com/deepmind-media/dqn/DQNNaturePaper.pdf). 
+This example trains a DQN agent, from the following paper: [Human-level control through Deep Reinforcement Learning](https://storage.googleapis.com/deepmind-media/dqn/DQNNaturePaper.pdf). 
 
 ## Requirements
 
@@ -13,17 +13,14 @@ python train_dqn.py [options]
 ```
 
 ### Useful Options
-- `--gpu`. Specifies the GPU. If you do not have a GPU on your machine, run the example with the option `--gpu -1`. E.g. `python train_dqn.py -1`.
+- `--gpu`. Specifies the GPU. If you do not have a GPU on your machine, run the example with the option `--gpu -1`. E.g. `python train_dqn.py --gpu -1`.
 - `--env`. Specifies the environment. 
 - `--render`. Add this option to render the states in a GUI window.
 
 To view the full list of options, either view the code or run the example with the `--help` option.
 
-
-``` python ...```
-
 ## Results
-
+These results reflect ChainerRL  `v0.4.0`
 | Game        | Score           |
 | ------------- |:-------------:|
 | Alien | N/A|
