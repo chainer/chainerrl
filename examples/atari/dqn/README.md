@@ -20,7 +20,8 @@ python train_dqn.py [options]
 To view the full list of options, either view the code or run the example with the `--help` option.
 
 ## Results
-These results reflect ChainerRL  `v0.4.0`
+These results reflect ChainerRL  `v0.4.0`.
+
 | Game        | Score           |
 | ------------- |:-------------:|
 | Alien | N/A|
