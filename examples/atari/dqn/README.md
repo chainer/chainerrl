@@ -3,7 +3,7 @@ This example trains
 
 ## Running the Example
 
-``` python ...``
+``` python ...```
 ## Results
 
 | Game        | Score           |
@@ -20,60 +20,45 @@ This example trains
 | Berzerk | N/A|
 | Bowling | N/A|
 | Boxing | N/A|
-
-
-Game 	ROM Name
-Alien 	alien
-Amidar 	amidar
-Assault 	assault
-Asterix 	asterix
-Asteroids 	astroids
-Atlantis 	atlantis
-Bank Heist 	bank_heist
-Battlezone 	battle_zone
-Beamrider 	beam_rider
-Berzerk 	berzerk
-Bowling 	bowling
-Boxing 	boxing
-Carnival 	carnival
-Centipede 	centipede
-Chopper Cmd 	chopper_command
-Crazy Climber 	crazy_climber
-Demon Attack 	demon_attack
-Double Dunk 	double_dunk
-Elevator Action 	elevator_action
-Enduro 	enduro
-Fishing Derby 	fishing_derby
-Freeway 	freeway
-Frostbite 	frostbite
-Gopher 	gopher
-Gravitar 	gravitar
-H.E.R.O. 	hero
-Ice Hockey 	ice_hockey
-James Bond 007 	jamesbond
-Journey Escape 	journey_escape
-Kangaroo 	kangaroo
-Krull 	krull
-Kung-Fu Master 	kung_fu_master
-Montezumas Rev 	montezuma_revenge
-Ms. Pac-Man 	ms_pacman
-Name This Game 	name_this_game
-Phoenix 	phoenix
-Pitfall II 	pitfall
-Pitfall! 	pitfall2
-Pooyan 	pooyan
-Private Eye 	private_eye
-River Raid 	riverraid
-Road Runner 	road_runnerr
-Robot Tank 	robotank
-Seaquest 	seaquest
-Skiing 	skiing
-Solaris 	solaris
-Space Invaders 	space_invaders
-Stargunner 	star_gunner
-Tennis 	tennis
-Time Pilot 	time_pilot
-Tutankham 	tutankham
-Up’n Down 	up_n_down
-Video Pinball 	video_pinball
-Zaxxon 	zaxxon
+| Carnival | N/A|
+| Centipede | N/A|
+| Chopper Cmd | N/A|
+| Crazy Climber | N/A|
+| Demon Attack | N/A|
+| Double Dunk | N/A|
+| Elevator Action | N/A|
+| Enduro | N/A|
+| Fishing Derby | N/A|
+| Freeway | N/A|
+| Frostbite | N/A|
+| Gopher | N/A|
+| Gravitar | N/A|
+| H.E.R.O. | N/A|
+| Ice Hockey | N/A|
+| James Bond 007 | N/A|
+| Journey Escape | N/A|
+| Kangaroo | N/A|
+| Krull | N/A|
+| Kung-Fu Master | N/A|
+| Montezumas Rev | N/A|
+| Ms. Pac-Man | N/A|
+| Name This Game | N/A|
+| Phoenix | N/A|
+| Pitfall II | N/A|
+| Pitfall! | N/A|
+| Pooyan | N/A|
+| Private Eye | N/A|
+| River Raid | N/A|
+| Road Runner | N/A|
+| Robot Tank | N/A|
+| Seaquest | N/A|
+| Skiing | N/A|
+| Solaris | N/A|
+| Space Invaders | N/A|
+| Stargunner | N/A|
+| Tennis | N/A|
+| Time Pilot | N/A|
+| Tutankham | N/A|
+| Up’n Down | N/A|
+| Video Pinball | N/A|
+| Zaxxon | N/A|
