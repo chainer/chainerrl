@@ -535,7 +535,7 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
         if self.head:
             mean = batch_rewards + self.gamma * (1.0 - batch_terminal) * next_q_max
             sigma = self.gamma * target_next_qout.max_sigma
-            return mean, sigma[:, None]
+            return mean, sigma
         else:
             return batch_rewards + self.gamma * (1.0 - batch_terminal) * next_q_max
 
@@ -560,6 +560,7 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
             if self.head:
                 batch_q_target, batch_sigma_target = self._compute_target_values(exp_batch, gamma)
                 batch_q_target = F.reshape(batch_q_target, (batch_size, 1))
+                batch_sigma_target = F.reshape(batch_sigma_target, (batch_size, 1))
             else:
                 batch_q_target = F.reshape(
                     self._compute_target_values(exp_batch, gamma),
@@ -909,10 +910,19 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
 
                     if self.head:
                         if self.table_sigma:
-                            greedy_action = cuda.to_cpu(action_value.sample_actions_given_sigma(table_sigma).data)[0]
+                            if self.table_noise:
+                                if self.one_sigma:
+                                    noise = self.noise_table[0, :] * self.q_table_sigma[vel*20+pos, :]
+                                    greedy_action = cuda.to_cpu(action_value.sample_actions_given_sigma(noise).data)[0]
+                                else:
+                                    noise = self.noise_table[vel*20+pos, :] * self.q_table_sigma[vel*20+pos, :]
+                                    greedy_action = cuda.to_cpu(action_value.sample_actions_given_sigma(noise).data)[0]
+                            else:
+                                sigma = self.q_table_sigma[vel*20+pos, :]
+                                greedy_action = cuda.to_cpu(action_value.sample_actions_given_sigma(sigma).data)[0]
                         else:
-                            #greedy_action = cuda.to_cpu(action_value.sample_actions.data)[0]
-                            greedy_action = cuda.to_cpu(action_value.greedy_actions.data)[0]
+                            greedy_action = cuda.to_cpu(action_value.sample_actions.data)[0]
+                            #greedy_action = cuda.to_cpu(action_value.greedy_actions.data)[0]
                     else:
                         greedy_action = cuda.to_cpu(action_value.greedy_actions.data)[0]
 
