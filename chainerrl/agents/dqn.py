@@ -171,7 +171,7 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
         self.model = q_function
         self.q_function = q_function  # For backward compatibility
 
-        self.render = True
+        self.render = False
         if self.render:
             cv2.namedWindow("vis", cv2.WINDOW_NORMAL)
         #cv2.namedWindow('test', cv2.WINDOW_NORMAL)
@@ -260,6 +260,9 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
         self.vis = vis
         self.video = video
         self.head = head
+
+        if "car" not in env:
+            self.video = False
 
         try:
             self.vis.init_plot()
