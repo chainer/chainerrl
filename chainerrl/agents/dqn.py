@@ -921,7 +921,7 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
                                 sigma = self.q_table_sigma[vel*20+pos, :]
                                 greedy_action = cuda.to_cpu(action_value.sample_actions_given_sigma(sigma).data)[0]
                         else:
-                            greedy_action = cuda.to_cpu(action_value.sample_actions.data)[0]
+                            greedy_action = cuda.to_cpu(action_value.greedy_actions.data)[0]
                             #greedy_action = cuda.to_cpu(action_value.greedy_actions.data)[0]
                     else:
                         greedy_action = cuda.to_cpu(action_value.greedy_actions.data)[0]
