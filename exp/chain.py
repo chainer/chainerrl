@@ -248,7 +248,7 @@ def main():
     if args.no_nn:
         q_func = None
     else:
-        if "-v" in args.env:
+        if "NoFrame" in args.env:
             q_func = MySequence(None, n_actions, head, args.avg)
         else:
             try:
