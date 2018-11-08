@@ -130,6 +130,7 @@ def main():
     parser.add_argument('--adam', action='store_true', default=True)
     parser.add_argument('--orig-noise', action='store_true', default=False)
     parser.add_argument('--last-noise', type=int, default=0)
+    parser.add_argument('--res', type=int, default=20)
     parser.add_argument('--entropy-coef', type=float, default=0)
     parser.add_argument('--sigma-gamma', type=float, default=0.99)
     parser.add_argument('--noise-coef', type=float, default=1)
@@ -337,7 +338,8 @@ def main():
                   one_sigma=args.one_sigma,
                   fixed_sigma=args.fixed_sigma,
                   table_noise=args.table_noise,
-                  gym_env=env)
+                  gym_env=env,
+                  res=args.res)
 
     if args.load:
         agent.load(args.load)

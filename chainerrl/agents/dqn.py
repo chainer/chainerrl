@@ -167,7 +167,8 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
                  one_sigma=False,
                  fixed_sigma=False,
                  table_noise=False,
-                 gym_env=None):
+                 gym_env=None,
+                 res=20):
         self.model = q_function
         self.q_function = q_function  # For backward compatibility
 
@@ -273,7 +274,7 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
         self.conv = False
         #cv2.namedWindow('test', cv2.WINDOW_NORMAL)
 
-        self.res = 20
+        self.res = res
         self.n_states = self.res**gym_env.observation_space.low.shape[0]
         self.n_actions = gym_env.action_space.n
         self.gym_env = gym_env
