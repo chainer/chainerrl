@@ -913,10 +913,10 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
                             if self.table_noise:
                                 if self.one_sigma:
                                     noise = self.noise_table[0, :] * self.q_table_sigma[vel*20+pos, :]
-                                    greedy_action = cuda.to_cpu(action_value.sample_actions_given_sigma(noise).data)[0]
+                                    greedy_action = cuda.to_cpu(action_value.sample_actions_given_noise(noise).data)[0]
                                 else:
                                     noise = self.noise_table[vel*20+pos, :] * self.q_table_sigma[vel*20+pos, :]
-                                    greedy_action = cuda.to_cpu(action_value.sample_actions_given_sigma(noise).data)[0]
+                                    greedy_action = cuda.to_cpu(action_value.sample_actions_given_noise(noise).data)[0]
                             else:
                                 sigma = self.q_table_sigma[vel*20+pos, :]
                                 greedy_action = cuda.to_cpu(action_value.sample_actions_given_sigma(sigma).data)[0]
