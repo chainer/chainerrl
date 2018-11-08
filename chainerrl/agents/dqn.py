@@ -166,11 +166,12 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
                  sigma_gamma=0.9,
                  one_sigma=False,
                  fixed_sigma=False,
-                 table_noise=False):
+                 table_noise=False,
+                 gym_env=None):
         self.model = q_function
         self.q_function = q_function  # For backward compatibility
 
-        self.render = False
+        self.render = True
         if self.render:
             cv2.namedWindow("vis", cv2.WINDOW_NORMAL)
         #cv2.namedWindow('test', cv2.WINDOW_NORMAL)
@@ -269,12 +270,16 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
         self.conv = False
         #cv2.namedWindow('test', cv2.WINDOW_NORMAL)
 
-        self.counts = np.zeros((20, 20, 3))
-        self.counts2 = np.zeros((20, 20, 3))
-        self.visited = np.zeros((20, 20, 3))
+        self.res = 20
+        self.n_states = self.res**gym_env.observation_space.low.shape[0]
+        self.n_actions = gym_env.action_space.n
+        self.gym_env = gym_env
+        self.counts = np.zeros((self.n_states, 3))
+        self.counts2 = np.zeros((self.n_states, 3))
+        self.visited = np.zeros((self.n_states, 3))
 
-        self.q_table_mu = self.xp.asarray(np.ones((20*20, 3)) * -20)
-        self.q_table_sigma = self.xp.asarray(np.ones((20*20, 3)) * self.scale_sigma)
+        self.q_table_mu = self.xp.asarray(np.ones((self.n_states, self.n_actions)) * -20)
+        self.q_table_sigma = self.xp.asarray(np.ones((self.n_states, self.n_actions)) * self.scale_sigma)
         self.last_score = ""
         self.use_table = use_table
         self.table_lr = table_lr
@@ -389,12 +394,13 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
 
             self.q_table_mu[s, a] += lr * (mu_target - self.q_table_mu[s, a])
 
-    def discretize(self, state):
-        pos = (20 * (state[:, 0] + 1.3) / 2.0).astype(np.int32)
-        vel = (20 * (state[:, 1] + 0.08) / 0.16).astype(np.int32)
-        states = vel*20+pos
+    def discretize(self, states):
+        inds = []
+        for state in states:
+            ind = self.to_state_index(state)
+            inds.append(ind)
 
-        return states
+        return self.xp.asarray(inds)
 
     def input_initial_batch_to_target_model(self, batch):
         self.target_model(batch['state'])
@@ -625,13 +631,12 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
                                       batch_accumulator=self.batch_accumulator) + entropy_loss
 
     def act(self, obs):
-        pos = int(20 * (float(obs[0]) + 1.3) / 2.0)
-        vel = int(20 * (float(obs[1]) + 0.08) / 0.16)
+        state_index = self.to_state_index(obs)
 
         with chainer.using_config('train', False):
             with chainer.no_backprop_mode():
                 if self.use_table:
-                    action_value = self.q_table_mu[vel*20+pos, :]
+                    action_value = self.q_table_mu[state_index, :]
                     q = action_value.max()
                     action = cuda.to_cpu(action_value.argmax())
                 else:
@@ -698,7 +703,7 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
                 data /= (max-min)
 
             data = np.clip(data, 0, 1)
-            data = data.reshape((20, 20))
+            data = data.reshape((self.res, self.res))
             data = cv2.resize(data, (128, 128), interpolation=cv2.INTER_NEAREST)
             img = np.dstack([data] * 3)
 
@@ -719,10 +724,10 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
                 means = empty
                 sigmas = empty
 
-            counts = self.counts[:,:,act] / self.counts[:,:,act].max()
+            counts = self.counts[:,act] / self.counts[:,act].max()
             counts = normalize(counts)
 
-            counts2 = self.counts2[:,:,act] / self.counts2[:,:,act].max()
+            counts2 = self.counts2[:,act] / self.counts2[:,act].max()
             counts2 = normalize(counts2)
 
             table_mean = arr(self.q_table_mu[:, act])
@@ -751,7 +756,7 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
         bottom[:, :, 0] = 0.7
         bottom = cv2.putText(bottom, 'step:' + str(self.t) + ' last score:' + self.last_score, (10, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (1,1,1), 2)
 
-        x = np.arange(20)
+        x = np.arange(self.res)
         y = np.arange(20)
         xv, yv = np.meshgrid(x, y)
         xv = xv.astype(np.int32)
@@ -760,7 +765,7 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
 
 
         def get_max(data):
-            acts = np.zeros((20, 20, 3))
+            acts = np.zeros((self.res, self.res, 3))
             #print(xv.flatten(), yv.flatten())
             acts[yv.flatten(), xv.flatten(), arr(data).argmax(axis=1)] = 1
             acts = cv2.resize(acts, (128, 128), interpolation=cv2.INTER_NEAREST)
@@ -768,7 +773,7 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
             return acts
 
         def get_softmax(data):
-            acts = arr(data).reshape((20, 20, 3))
+            acts = arr(data).reshape((self.res, self.res, 3))
             acts = np.exp(acts) / np.exp(acts).sum(axis=2)[:,:,None]
             acts = cv2.resize(acts, (128, 128), interpolation=cv2.INTER_NEAREST)
 
@@ -798,7 +803,8 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
                 empty = estimate(self.xp, vals.q_values.data, vals.sigmas.data, 10).reshape((20, 20, 3))
             empty = cv2.resize(arr(empty), (128, 128), interpolation=cv2.INTER_NEAREST)
 
-        visits = cv2.resize(self.visited, (128, 128), interpolation=cv2.INTER_NEAREST)
+        visits = cv2.resize(self.visited.reshape(self.res, self.res, 3), (128, 128), interpolation=cv2.INTER_NEAREST)
+
 
         #print(acts.shape, divider.shape, empty.shape)
         acts = np.hstack([acts, divider, acts_soft, divider, visits, divider, empty, divider,
@@ -872,9 +878,20 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
 
         #pltax.clear()
 
+    def to_state_index(self, obs):
+        ind = 0
+
+        for i, o in enumerate(obs):
+            low = self.gym_env.observation_space.low[i]
+            range = self.gym_env.observation_space.high[i] - low
+            num = int(self.res * (float(o) - low) / range)
+            num *= self.res**i
+            ind += num
+
+        return ind
+
     def act_and_train(self, obs, reward):
-        pos = int(20 * (float(obs[0]) + 1.3) / 2.0)
-        vel = int(20 * (float(obs[1]) + 0.08) / 0.16)
+        state_index = self.to_state_index(obs)
 
         if not self.fixed_sigma:
             self.noise_table = self.xp.asarray(np.random.normal(size=(20*20, 3)))
@@ -883,42 +900,42 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
             with chainer.no_backprop_mode():
                 if self.use_table:
                     if self.table_sigma:
-                        action_value = self.q_table_mu[vel*20+pos, :].copy()
+                        action_value = self.q_table_mu[state_index, :].copy()
 
                         if self.table_noise:
                             if self.one_sigma:
-                                action_value += self.noise_table[0, :] * self.q_table_sigma[vel*20+pos, :]
+                                action_value += self.noise_table[0, :] * self.q_table_sigma[state_index, :]
                             else:
-                                action_value += self.noise_table[vel*20+pos, :] * self.q_table_sigma[vel*20+pos, :]
+                                action_value += self.noise_table[state_index, :] * self.q_table_sigma[state_index, :]
                         else:
                             #print("a", self.noise_table[vel*20+pos, :])
                             #print("b", self.xp.random.normal(action_value.shape))
                             #action_value += self.noise_table[vel*20+pos, :] * self.q_table_sigma[vel*20+pos, :]
-                            action_value += self.xp.random.normal(size=action_value.shape) * self.q_table_sigma[vel*20+pos, :]
+                            action_value += self.xp.random.normal(size=action_value.shape) * self.q_table_sigma[state_index, :]
 
                         q = action_value.max()
                         greedy_action = cuda.to_cpu(action_value.argmax())
                     else:
-                        action_value = self.q_table_mu[vel*20+pos, :].copy()
+                        action_value = self.q_table_mu[state_index, :].copy()
                         q = action_value.max()
                         greedy_action = cuda.to_cpu(action_value.argmax())
                 else:
                     action_value = self.model(
                         self.batch_states([obs], self.xp, self.phi))
-                    table_sigma = self.xp.maximum(self.q_table_sigma[vel*20+pos, :], self.min_sigma)
+                    table_sigma = self.xp.maximum(self.q_table_sigma[state_index, :], self.min_sigma)
                     q = float(action_value.max.data)
 
                     if self.head:
                         if self.table_sigma:
                             if self.table_noise:
                                 if self.one_sigma:
-                                    noise = self.noise_table[0, :] * self.q_table_sigma[vel*20+pos, :]
+                                    noise = self.noise_table[0, :] * self.q_table_sigma[state_index, :]
                                     greedy_action = cuda.to_cpu(action_value.sample_actions_given_noise(noise).data)[0]
                                 else:
-                                    noise = self.noise_table[vel*20+pos, :] * self.q_table_sigma[vel*20+pos, :]
+                                    noise = self.noise_table[state_index, :] * self.q_table_sigma[state_index, :]
                                     greedy_action = cuda.to_cpu(action_value.sample_actions_given_noise(noise).data)[0]
                             else:
-                                sigma = self.q_table_sigma[vel*20+pos, :]
+                                sigma = self.q_table_sigma[state_index, :]
                                 greedy_action = cuda.to_cpu(action_value.sample_actions_given_sigma(sigma).data)[0]
                         else:
                             greedy_action = cuda.to_cpu(action_value.greedy_actions.data)[0]
@@ -938,10 +955,10 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
 
         if "car" in self.env:
             self.counts *= 0.9999
-            self.counts[vel, pos, action] += 0.0001
+            self.counts[state_index, action] += 0.0001
             self.counts2 *= 0.99
-            self.counts2[vel, pos, action] += 0.01
-            self.visited[vel, pos, action] = 1
+            self.counts2[state_index, action] += 0.01
+            self.visited[state_index, action] = 1
 
         self.t += 1
 
@@ -1047,7 +1064,7 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
                 self.conv = True
 
         stats.append(('est_error', self.est_error))
-        stats.append(('visited_s', np.sum(np.max(self.visited,2))))
+        stats.append(('visited_s', np.sum(np.max(self.visited,1))))
         stats.append(('visited_sa', np.sum(self.visited)))
 
         return stats

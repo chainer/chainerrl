@@ -305,7 +305,7 @@ def main():
 
     def phi(x):
         # Feature extractor
-        if "-v" in args.env:
+        if "NoFrame" in args.env:
             return np.asarray(x, dtype=np.float32) / 255.0
         else:
             return np.asarray(x, dtype=np.float32)
@@ -336,7 +336,8 @@ def main():
                   sigma_gamma=args.sigma_gamma,
                   one_sigma=args.one_sigma,
                   fixed_sigma=args.fixed_sigma,
-                  table_noise=args.table_noise)
+                  table_noise=args.table_noise,
+                  gym_env=env)
 
     if args.load:
         agent.load(args.load)
