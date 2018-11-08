@@ -206,7 +206,7 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
         else:
             self.xp = np
 
-        self.noise_table = self.xp.asarray(np.random.normal(size=(20*20, 3)))
+
 
         self.replay_buffer = replay_buffer
         self.optimizer = optimizer
@@ -274,6 +274,7 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
         self.n_states = self.res**gym_env.observation_space.low.shape[0]
         self.n_actions = gym_env.action_space.n
         self.gym_env = gym_env
+        self.noise_table = self.xp.asarray(np.random.normal(size=(self.n_states, self.n_actions)))
         self.counts = np.zeros((self.n_states, 3))
         self.counts2 = np.zeros((self.n_states, 3))
         self.visited = np.zeros((self.n_states, 3))
@@ -894,7 +895,7 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
         state_index = self.to_state_index(obs)
 
         if not self.fixed_sigma:
-            self.noise_table = self.xp.asarray(np.random.normal(size=(20*20, 3)))
+            self.noise_table = self.xp.asarray(np.random.normal(size=(self.n_states, self.n_actions)))
 
         with chainer.using_config('train', False):
             with chainer.no_backprop_mode():
@@ -953,12 +954,12 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
             self.t, lambda: greedy_action, action_value=action_value)
         #self.logger.info('a:%s', action)
 
-        if "car" in self.env:
-            self.counts *= 0.9999
-            self.counts[state_index, action] += 0.0001
-            self.counts2 *= 0.99
-            self.counts2[state_index, action] += 0.01
-            self.visited[state_index, action] = 1
+        #if "car" in self.env:
+        self.counts *= 0.9999
+        self.counts[state_index, action] += 0.0001
+        self.counts2 *= 0.99
+        self.counts2[state_index, action] += 0.01
+        self.visited[state_index, action] = 1
 
         self.t += 1
 
@@ -1018,7 +1019,7 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
 
     def stop_episode(self):
         #self.model.reset_noise()
-        self.noise_table = self.xp.asarray(np.random.normal(size=(20*20, 3)))
+        self.noise_table = self.xp.asarray(np.random.normal(size=(self.n_states, self.n_actions)))
         self.last_state = None
         self.last_action = None
         if isinstance(self.model, Recurrent):
