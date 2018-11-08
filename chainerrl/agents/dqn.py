@@ -887,7 +887,13 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
 
         for i, o in enumerate(obs):
             low = self.gym_env.observation_space.low[i]
-            range = self.gym_env.observation_space.high[i] - low
+
+            if low < -100:
+                low = -1
+                range = 2
+            else:
+                range = self.gym_env.observation_space.high[i] - low
+
             num = int(self.res * (float(o) - low) / range)
             num *= self.res**i
             ind += num
