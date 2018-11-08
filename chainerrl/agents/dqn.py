@@ -387,10 +387,10 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
 
             if self.algo == "DQN":
                 mu_target = exp_batch['reward'] + gamma * (1-term) * self.q_table_mu[s_n].max(axis=1)
-                sigma_target = gamma * self.q_table_sigma[s_n, self.q_table_mu[s_n].argmax(axis=1)]
+                sigma_target = gamma * (1-term) * self.q_table_sigma[s_n, self.q_table_mu[s_n].argmax(axis=1)]
             else:
                 mu_target = exp_batch['reward'] + gamma * (1-term) * self.q_table_mu[s_n, na]
-                sigma_target = gamma * self.q_table_sigma[s_n, na]
+                sigma_target = gamma * (1-term) * self.q_table_sigma[s_n, na]
 
             #self.q_table_sigma[s_n, na] *= gamma
             #sigma_entropy_grad = ent * 2.0 / np.sum(self.q_table_sigma)
