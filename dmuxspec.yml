@@ -12,6 +12,7 @@ features:
 - pip:atari_py==0.1.1
 - pip:future==0.16.0
 - pip:matplotlib==3.0.0
+- pip:Box2D==2.3.2
 hardware:
 - cpu==4
 - ram==30000
