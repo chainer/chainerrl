@@ -75,7 +75,7 @@ def run_evaluation_episodes(env, agent, n_runs, max_episode_len=None,
             test_r += r
             t += 1
 
-            if info['goal']:
+            if 'goal' in info and info['goal']:
                 goal = 1
 
         #if i == 0:
