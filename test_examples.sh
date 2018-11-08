@@ -12,6 +12,11 @@ python examples/ale/train_dqn_ale.py --env PongNoFrameskip-v4 --steps 100 --repl
 model=$(find $outdir/ale/dqn -name "*_finish")
 python examples/ale/train_dqn_ale.py --env PongNoFrameskip-v4 --demo --load $model --eval-n-runs 1 --outdir $outdir/temp --gpu $gpu
 
+# atari/dqn
+python examples/atari/dqn/train_dqn.py --env PongNoFrameskip-v4 --steps 100 --replay-start-size 50 --outdir $outdir/atari/dqn --gpu $gpu
+model=$(find $outdir/atari/dqn -name "*_finish")
+python examples/atari/dqn/train_dqn.py --env PongNoFrameskip-v4 --demo --load $model --eval-n-runs 1 --outdir $outdir/temp --gpu $gpu
+
 # ale/a3c
 if [[ $gpu -lt 0 ]]; then
   python examples/ale/train_a3c_ale.py 4 --env PongNoFrameskip-v4 --steps 100 --outdir $outdir/ale/a3c
