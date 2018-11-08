@@ -215,13 +215,15 @@ def main():
 
             env._max_episode_steps = args.max_episode_len
 
-        elif "-v" in args.env:
+        elif "NoFrame" in args.env:
             env = atari_wrappers.wrap_deepmind(
                 atari_wrappers.make_atari(args.env),
                 episode_life=not test,
                 clip_rewards=not test,
                 fire_reset=True)
             env.seed(int(env_seed))
+        else:
+            env = gym.make(args.env)
 
         if not test:
             misc.env_modifiers.make_reward_filtered(
