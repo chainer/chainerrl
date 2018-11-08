@@ -108,8 +108,9 @@ class TestReplayBuffer(unittest.TestCase):
                   next_action=1, is_state_terminal=False)] * 3)
         experiences.append([dict(state=1, action=1, reward=1, next_state=1,
                                  next_action=1, is_state_terminal=False)])
-        four_step_transition = [dict(state=1, action=1, reward=1, next_state=1,
-                                     next_action=1, is_state_terminal=False)] * 3
+        four_step_transition = [dict(
+            state=1, action=1, reward=1, next_state=1,
+            next_action=1, is_state_terminal=False)] * 3
         four_step_transition.append(dict(
                                     state=1, action=1, reward=1, next_state=1,
                                     next_action=1, is_state_terminal=True))
