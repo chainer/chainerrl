@@ -279,9 +279,9 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
         self.n_actions = gym_env.action_space.n
         self.gym_env = gym_env
         self.noise_table = self.xp.asarray(np.random.normal(size=(self.n_states, self.n_actions)))
-        self.counts = np.zeros((self.n_states, 3))
-        self.counts2 = np.zeros((self.n_states, 3))
-        self.visited = np.zeros((self.n_states, 3))
+        self.counts = np.zeros((self.n_states, gym_env.action_space.n))
+        self.counts2 = np.zeros((self.n_states, gym_env.action_space.n))
+        self.visited = np.zeros((self.n_states, gym_env.action_space.n))
 
         self.q_table_mu = self.xp.asarray(np.ones((self.n_states, self.n_actions)) * -20)
         self.q_table_sigma = self.xp.asarray(np.ones((self.n_states, self.n_actions)) * self.scale_sigma)
