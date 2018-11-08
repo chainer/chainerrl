@@ -896,6 +896,7 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
                 range = self.gym_env.observation_space.high[i] - low
 
             num = int(self.res * (float(o) - low) / range)
+            num = max(min(num, self.res-1), 0)
             num *= self.res**i
             ind += num
 
