@@ -55,7 +55,10 @@ def run_evaluation_episodes(env, agent, n_runs, max_episode_len=None,
         done = False
         test_r = 0
         t = 0
-        while not (done or t == max_episode_len):
+        info = {}
+        while not (done
+                   or t == max_episode_len
+                   or info.get('needs_reset', False)):
             a = agent.act(obs)
             obs, r, done, info = env.step(a)
             test_r += r

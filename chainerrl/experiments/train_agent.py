@@ -59,7 +59,10 @@ def train_agent(agent, env, steps, outdir, max_episode_len=None,
             for hook in step_hooks:
                 hook(env, agent, t)
 
-            if done or episode_len == max_episode_len or t == steps:
+            if (done
+                    or episode_len == max_episode_len
+                    or t == steps
+                    or info.get('needs_reset', False)):
                 agent.stop_episode_and_train(obs, r, done=done)
                 logger.info('outdir:%s step:%s episode:%s R:%s',
                             outdir, t, episode_idx, episode_r)
