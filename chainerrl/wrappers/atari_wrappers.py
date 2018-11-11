@@ -3,6 +3,8 @@ https://github.com/openai/baselines/blob/master/baselines/common/atari_wrappers.
 """
 
 from collections import deque
+import logging
+import time
 
 import cv2
 import gym
@@ -11,6 +13,8 @@ import numpy as np
 from gym import spaces
 
 cv2.ocl.setUseOpenCL(False)
+
+logger = logging.getLogger(__name__)
 
 
 class NoopResetEnv(gym.Wrapper):
@@ -36,8 +40,8 @@ class NoopResetEnv(gym.Wrapper):
         assert noops > 0
         obs = None
         for _ in range(noops):
-            obs, _, done, _ = self.env.step(self.noop_action)
-            if done:
+            obs, _, done, info = self.env.step(self.noop_action)
+            if done or info.get('needs_reset', False):
                 obs = self.env.reset(**kwargs)
         return obs
 
@@ -54,11 +58,11 @@ class FireResetEnv(gym.Wrapper):
 
     def _reset(self, **kwargs):
         self.env.reset(**kwargs)
-        obs, _, done, _ = self.env.step(1)
-        if done:
+        obs, _, done, info = self.env.step(1)
+        if done or info.get('needs_reset', False):
             self.env.reset(**kwargs)
-        obs, _, done, _ = self.env.step(2)
-        if done:
+        obs, _, done, info = self.env.step(2)
+        if done or info.get('needs_reset', False):
             self.env.reset(**kwargs)
         return obs
 
@@ -74,11 +78,11 @@ class EpisodicLifeEnv(gym.Wrapper):
         """
         gym.Wrapper.__init__(self, env)
         self.lives = 0
-        self.was_real_done = True
+        self.needs_real_reset = True
 
     def _step(self, action):
         obs, reward, done, info = self.env.step(action)
-        self.was_real_done = done
+        self.needs_real_reset = done or info.get('needs_reset', False)
         # check current lives, make loss of life terminal,
         # then update lives to handle bonus lives
         lives = self.env.unwrapped.ale.lives()
@@ -97,7 +101,7 @@ class EpisodicLifeEnv(gym.Wrapper):
         This way all states are still reachable even though lives are episodic,
         and the learner need not know about any of this behind-the-scenes.
         """
-        if self.was_real_done:
+        if self.needs_real_reset:
             obs = self.env.reset(**kwargs)
         else:
             # no-op step to advance from terminal/lost life state
@@ -126,7 +130,7 @@ class MaxAndSkipEnv(gym.Wrapper):
             if i == self._skip - 1:
                 self._obs_buffer[1] = obs
             total_reward += reward
-            if done:
+            if done or info.get('needs_reset', False):
                 break
         # Note that the observation on the done=True frame
         # doesn't matter
@@ -238,9 +242,60 @@ class LazyFrames(object):
         return out
 
 
-def make_atari(env_id):
+class ContinuingTimeLimit(gym.Wrapper):
+    def __init__(self, env, max_episode_seconds=None, max_episode_steps=None):
+        super(ContinuingTimeLimit, self).__init__(env)
+        self._max_episode_seconds = max_episode_seconds
+        self._max_episode_steps = max_episode_steps
+
+        self._elapsed_steps = 0
+        self._episode_started_at = None
+
+    @property
+    def _elapsed_seconds(self):
+        return time.time() - self._episode_started_at
+
+    def _past_limit(self):
+        """Return true if we are past our limit"""
+        if (self._max_episode_steps is not None
+                and self._max_episode_steps <= self._elapsed_steps):
+            logger.debug("Env has passed the step limit defined by TimeLimit.")
+            return True
+
+        if (self._max_episode_seconds is not None
+                and self._max_episode_seconds <= self._elapsed_seconds):
+            logger.debug(
+                "Env has passed the seconds limit defined by TimeLimit.")
+            return True
+
+        return False
+
+    def _step(self, action):
+        assert self._episode_started_at is not None,\
+            "Cannot call env.step() before calling reset()"
+        observation, reward, done, info = self.env.step(action)
+        self._elapsed_steps += 1
+
+        if self._past_limit():
+            if self.metadata.get('semantics.autoreset'):
+                self.reset()  # automatically reset the env
+            info['needs_reset'] = True
+
+        return observation, reward, done, info
+
+    def _reset(self):
+        self._episode_started_at = time.time()
+        self._elapsed_steps = 0
+        return self.env.reset()
+
+
+def make_atari(env_id, max_frames=30 * 60 * 60):
     env = gym.make(env_id)
     assert 'NoFrameskip' in env.spec.id
+    assert isinstance(env, gym.wrappers.TimeLimit)
+    # Unwrap TimeLimit wrapper because we use our own time limits
+    env = env.env
+    env = ContinuingTimeLimit(env, max_episode_steps=max_frames)
     env = NoopResetEnv(env, noop_max=30)
     env = MaxAndSkipEnv(env, skip=4)
     return env
