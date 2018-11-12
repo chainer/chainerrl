@@ -55,7 +55,6 @@ def main():
                         help='Network architecture to use.')
     parser.add_argument('--steps', type=int, default=5 * 10 ** 7,
                         help='Total number of timesteps to train the agent.')
-    #TODO Change eval episode time to cap at 5 mins!
     parser.add_argument('--max-episode-len', type=int,
                         default=30 * 60 * 60 // 4,  # 30 minutes with 60/4 fps
                         help='Maximum number of timesteps for each episode.')
@@ -74,8 +73,7 @@ def main():
     parser.add_argument('--no-clip-delta',
                         dest='clip_delta', action='store_false')
     parser.set_defaults(clip_delta=True)
-    # parser.add_argument('--agent', type=str, default='DoubleDQN',
-    #                     choices=['DQN', 'DoubleDQN', 'PAL'])
+
     parser.add_argument('--logging-level', type=int, default=20,
                         help='Logging level. 10:DEBUG, 20:INFO etc.')
     parser.add_argument('--render', action='store_true', default=False,
@@ -85,8 +83,6 @@ def main():
                              ' are saved as output files.')
     parser.add_argument('--lr', type=float, default=2.5e-4,
                         help='Learning rate.')
-    # parser.add_argument('--prioritized', action='store_true', default=False,
-    #                     help='Use prioritized experience replay.')
     args = parser.parse_args()
 
     import logging
