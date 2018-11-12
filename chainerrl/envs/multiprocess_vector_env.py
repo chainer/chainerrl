@@ -131,4 +131,4 @@ class MultiprocessVectorEnv(chainerrl.env.VectorEnv):
         return len(self.remotes)
 
     def _assert_not_closed(self):
-        assert not self.closed, "Trying to operate on a MultiprocessVectorEnv after calling close()"  # NOQA
+        assert not self.closed, "This env is already closed"
