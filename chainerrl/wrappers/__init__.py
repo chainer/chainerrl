@@ -3,4 +3,6 @@ from chainerrl.wrappers.cast_observation import CastObservationToFloat32  # NOQA
 
 from chainerrl.wrappers.randomize_action import RandomizeAction  # NOQA
 
+from chainerrl.wrappers.render import Render  # NOQA
+
 from chainerrl.wrappers.scale_reward import ScaleReward  # NOQA
