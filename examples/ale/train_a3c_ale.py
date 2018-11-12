@@ -28,7 +28,7 @@ from chainerrl import policy
 from chainerrl.recurrent import RecurrentChainMixin
 from chainerrl import v_function
 
-import atari_wrappers
+from chainerrl.wrappers import atari_wrappers
 
 
 class A3CFF(chainer.ChainList, a3c.A3CModel):

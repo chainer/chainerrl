@@ -26,7 +26,7 @@ from chainerrl import misc
 from chainerrl.q_functions import DuelingDQN
 from chainerrl import replay_buffer
 
-import atari_wrappers
+from chainerrl.wrappers import atari_wrappers
 
 
 class SingleSharedBias(chainer.Chain):

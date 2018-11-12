@@ -28,7 +28,7 @@ from chainerrl import links
 from chainerrl import misc
 from chainerrl.optimizers import rmsprop_async
 
-import atari_wrappers
+from chainerrl.wrappers import atari_wrappers
 
 
 def main():
