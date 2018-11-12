@@ -118,7 +118,7 @@ def main():
                 env, args.outdir,
                 mode='evaluation' if test else 'training')
         if args.render:
-            misc.env_modifiers.make_rendered(env)
+            env = chainerrl.wrappers.Render(env)
         return env
 
     def make_batch_env(test):
