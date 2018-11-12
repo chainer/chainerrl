@@ -26,7 +26,7 @@ from chainerrl import misc
 from chainerrl.q_functions import DuelingDQN
 from chainerrl import replay_buffer
 
-import atari_wrappers
+from chainerrl.wrappers import atari_wrappers
 
 def main():
     parser = argparse.ArgumentParser()
@@ -129,8 +129,6 @@ def main():
             links.NatureDQNHead(),
             L.Linear(512, n_actions),
             DiscreteActionValue)
-
-    parse_arch(args.arch, n_actions)
 
     if args.noisy_net_sigma is not None:
         links.to_factorized_noisy(q_func)
