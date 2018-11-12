@@ -33,7 +33,7 @@ def main():
     parser.add_argument('--outdir', type=str, default='results',
                         help='Directory path to save output files.'
                              ' If it does not exist, it will be created.')
-    parser.add_argument('--env', type=str, default='Humanoid-v1')
+    parser.add_argument('--env', type=str, default='Humanoid-v2')
     parser.add_argument('--seed', type=int, default=0,
                         help='Random seed [0, 2 ** 32)')
     parser.add_argument('--gpu', type=int, default=0)
