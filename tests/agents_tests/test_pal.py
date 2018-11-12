@@ -7,10 +7,13 @@ from future import standard_library
 standard_library.install_aliases()  # NOQA
 
 import basetest_dqn_like as base
+from basetest_training import _TestBatchTrainingMixin
 from chainerrl.agents.pal import PAL
 
 
-class TestPALOnDiscreteABC(base._TestDQNOnDiscreteABC):
+class TestPALOnDiscreteABC(
+        _TestBatchTrainingMixin,
+        base._TestDQNOnDiscreteABC):
 
     def make_dqn_agent(self, env, q_func, opt, explorer, rbuf, gpu):
         return PAL(
@@ -18,7 +21,9 @@ class TestPALOnDiscreteABC(base._TestDQNOnDiscreteABC):
             replay_start_size=100, target_update_interval=100)
 
 
-class TestPALOnContinuousABC(base._TestDQNOnContinuousABC):
+class TestPALOnContinuousABC(
+        _TestBatchTrainingMixin,
+        base._TestDQNOnContinuousABC):
 
     def make_dqn_agent(self, env, q_func, opt, explorer, rbuf, gpu):
         return PAL(
@@ -26,6 +31,7 @@ class TestPALOnContinuousABC(base._TestDQNOnContinuousABC):
             replay_start_size=100, target_update_interval=100)
 
 
+# Batch training with recurrent models is currently not supported
 class TestPALOnDiscretePOABC(base._TestDQNOnDiscretePOABC):
 
     def make_dqn_agent(self, env, q_func, opt, explorer, rbuf, gpu):

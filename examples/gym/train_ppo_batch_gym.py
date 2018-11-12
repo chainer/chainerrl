@@ -19,6 +19,7 @@ import chainer
 from chainer import functions as F
 import gym
 import gym.wrappers
+import numpy as np
 
 import chainerrl
 from chainerrl.agents import a3c
@@ -85,6 +86,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--gpu', type=int, default=0)
     parser.add_argument('--env', type=str, default='Hopper-v2')
+    parser.add_argument('--num-envs', type=int, default=1)
     parser.add_argument('--arch', type=str, default='FFGaussian',
                         choices=('FFSoftmax', 'FFMellowmax',
                                  'FFGaussian'))
@@ -106,8 +108,10 @@ def main():
     parser.add_argument('--load', type=str, default='')
     parser.add_argument('--logger-level', type=int, default=logging.DEBUG)
     parser.add_argument('--monitor', action='store_true')
+    parser.add_argument('--window-size', type=int, default=100)
 
     parser.add_argument('--update-interval', type=int, default=2048)
+    parser.add_argument('--log-interval', type=int, default=1000)
     parser.add_argument('--batchsize', type=int, default=64)
     parser.add_argument('--epochs', type=int, default=10)
     parser.add_argument('--entropy-coef', type=float, default=0.0)
@@ -118,12 +122,19 @@ def main():
     # Set a random seed used in ChainerRL
     misc.set_random_seed(args.seed, gpus=(args.gpu,))
 
+    # Set different random seeds for different subprocesses.
+    # If seed=0 and processes=4, subprocess seeds are [0, 1, 2, 3].
+    # If seed=1 and processes=4, subprocess seeds are [4, 5, 6, 7].
+    process_seeds = np.arange(args.num_envs) + args.seed * args.num_envs
+    assert process_seeds.max() < 2 ** 32
+
     args.outdir = experiments.prepare_output_dir(args, args.outdir)
 
-    def make_env(test):
+    def make_env(process_idx, test):
         env = gym.make(args.env)
         # Use different random seeds for train and test envs
-        env_seed = 2 ** 32 - 1 - args.seed if test else args.seed
+        process_seed = int(process_seeds[process_idx])
+        env_seed = 2 ** 32 - 1 - process_seed if test else process_seed
         env.seed(env_seed)
         # Cast observations to float32 because our model uses float32
         env = chainerrl.wrappers.CastObservationToFloat32(env)
@@ -137,6 +148,12 @@ def main():
             misc.env_modifiers.make_rendered(env)
         return env
 
+    def make_batch_env(test):
+        return chainerrl.envs.MultiprocessVectorEnv(
+            [(lambda: make_env(idx, test))
+             for idx, env in enumerate(range(args.num_envs))])
+
+    # Only for getting timesteps, and obs-action spaces
     sample_env = gym.make(args.env)
     timestep_limit = sample_env.spec.tags.get(
         'wrapper_config.TimeLimit.max_episode_steps')
@@ -173,7 +190,7 @@ def main():
         agent.load(args.load)
 
     if args.demo:
-        env = make_env(True)
+        env = make_batch_env(True)
         eval_stats = experiments.eval_performance(
             env=env,
             agent=agent,
@@ -192,19 +209,21 @@ def main():
 
         # Linearly decay the clipping parameter to zero
         def clip_eps_setter(env, agent, value):
-            agent.clip_eps = max(value, 1e-8)
+            agent.clip_eps = value
 
         clip_eps_decay_hook = experiments.LinearInterpolationHook(
             args.steps, 0.2, 0, clip_eps_setter)
 
-        experiments.train_agent_with_evaluation(
+        experiments.train_agent_batch_with_evaluation(
             agent=agent,
-            env=make_env(False),
-            eval_env=make_env(True),
+            env=make_batch_env(False),
+            eval_env=make_batch_env(True),
             outdir=args.outdir,
             steps=args.steps,
             eval_n_runs=args.eval_n_runs,
             eval_interval=args.eval_interval,
+            log_interval=args.log_interval,
+            return_window_size=args.window_size,
             max_episode_len=timestep_limit,
             save_best_so_far_agent=False,
             step_hooks=[
