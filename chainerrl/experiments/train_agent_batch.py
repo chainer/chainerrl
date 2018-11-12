@@ -85,10 +85,9 @@ def train_agent_batch(agent, env, steps, outdir, log_interval=None,
             #   4. clear the record of the number of steps
             #   5. reset the env to start a new episode
             episode_idx += end
-            recent_returns.extend(
-                np.ma.masked_array(episode_r, not_end).compressed())
-            episode_r *= not_end
-            episode_len *= not_end
+            recent_returns.extend(episode_r[end])
+            episode_r[end] = 0
+            episode_len[end] = 0
             obss = env.reset(not_end)
 
             for _ in range(num_envs):
