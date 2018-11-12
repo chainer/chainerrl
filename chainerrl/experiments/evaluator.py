@@ -14,6 +14,8 @@ import time
 
 import numpy as np
 
+import chainerrl
+
 
 """Columns that describe information about an experiment.
 
@@ -62,8 +64,77 @@ def run_evaluation_episodes(env, agent, n_runs, max_episode_len=None,
         # As mixing float and numpy float causes errors in statistics
         # functions, here every score is cast to float.
         scores.append(float(test_r))
-        logger.info('test episode: %s R: %s', i, test_r)
+        logger.info('evaluation episode %s length:%s R:%s', i, t, test_r)
     return scores
+
+
+def batch_run_evaluation_episodes(
+    env,
+    agent,
+    n_runs,
+    max_episode_len=None,
+    logger=None,
+):
+    """Run multiple evaluation episodes and return returns in a batch manner.
+
+    Args:
+        env (VectorEnv): Environment used for evaluation.
+        agent (Agent): Agent to evaluate.
+        n_runs (int): Number of evaluation runs.
+        max_episode_len (int or None): If specified, episodes
+            longer than this value will be truncated.
+        logger (Logger or None): If specified, the given Logger
+            object will be used for logging results. If not
+            specified, the default logger of this module will
+            be used.
+
+    Returns:
+        List of returns of evaluation runs.
+    """
+    logger = logger or logging.getLogger(__name__)
+    num_envs = env.num_envs
+    episode_returns = []
+    episode_lengths = []
+    episode_r = np.zeros(num_envs, dtype=np.float64)
+    episode_len = np.zeros(num_envs, dtype='i')
+
+    obss = env.reset()
+    rs = np.zeros(num_envs, dtype='f')
+
+    while len(episode_returns) < n_runs:
+        # a_t
+        actions = agent.batch_act(obss)
+        # o_{t+1}, r_{t+1}
+        obss, rs, dones, infos = env.step(actions)
+        episode_r += rs
+        episode_len += 1
+
+        # Compute mask for done and reset
+        if max_episode_len is None:
+            resets = np.zeros(num_envs, dtype=bool)
+        else:
+            resets = (episode_len == max_episode_len)
+        # Agent observes the consequences
+        agent.batch_observe(obss, rs, dones, resets)
+
+        # Make mask. 0 if done/reset, 1 if pass
+        end = np.logical_or(resets, dones)
+        not_end = np.logical_not(end)
+
+        episode_returns.extend(episode_r[end])
+        episode_lengths.extend(episode_len[end])
+        episode_r[end] = 0
+        episode_len[end] = 0
+        obss = env.reset(not_end)
+
+    episode_returns = episode_returns[:n_runs]
+    episode_lengths = episode_lengths[:n_runs]
+
+    for i, (epi_len, epi_ret) in enumerate(
+            zip(episode_lengths, episode_returns)):
+        logger.info('evaluation episode %s length: %s R: %s',
+                    i, epi_len, epi_ret)
+    return [float(r) for r in episode_returns]
 
 
 def eval_performance(env, agent, n_runs, max_episode_len=None,
@@ -82,10 +153,16 @@ def eval_performance(env, agent, n_runs, max_episode_len=None,
     Returns:
         Dict of statistics.
     """
-    scores = run_evaluation_episodes(
-        env, agent, n_runs,
-        max_episode_len=max_episode_len,
-        logger=logger)
+    if isinstance(env, chainerrl.env.VectorEnv):
+        scores = batch_run_evaluation_episodes(
+            env, agent, n_runs,
+            max_episode_len=max_episode_len,
+            logger=logger)
+    else:
+        scores = run_evaluation_episodes(
+            env, agent, n_runs,
+            max_episode_len=max_episode_len,
+            logger=logger)
     stats = dict(
         mean=statistics.mean(scores),
         median=statistics.median(scores),

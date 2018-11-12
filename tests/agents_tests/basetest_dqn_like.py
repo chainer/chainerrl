@@ -68,7 +68,7 @@ class _TestDQNOnABC(_TestDQNLike):
         return LinearDecayEpsilonGreedy(1.0, 0.1, 1000, random_action_func)
 
     def make_optimizer(self, env, q_func):
-        opt = optimizers.Adam()
+        opt = optimizers.Adam(1e-2)
         opt.setup(q_func)
         return opt
 

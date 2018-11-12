@@ -402,7 +402,7 @@ class PrioritizedEpisodicReplayBuffer (
 
 def batch_experiences(experiences, xp, phi, batch_states=batch_states):
 
-    return {
+    batch_exp = {
         'state': batch_states(
             [elem['state'] for elem in experiences], xp, phi),
         'action': xp.asarray([elem['action'] for elem in experiences]),
@@ -410,12 +410,13 @@ def batch_experiences(experiences, xp, phi, batch_states=batch_states):
             [elem['reward'] for elem in experiences], dtype=np.float32),
         'next_state': batch_states(
             [elem['next_state'] for elem in experiences], xp, phi),
-        'next_action': xp.asarray(
-            [elem['next_action'] for elem in experiences]),
         'is_state_terminal': xp.asarray(
             [elem['is_state_terminal'] for elem in experiences],
-
             dtype=np.float32)}
+    if all(elem['next_action'] is not None for elem in experiences):
+        batch_exp['next_action'] = xp.asarray(
+            [elem['next_action'] for elem in experiences])
+    return batch_exp
 
 
 class ReplayUpdater(object):

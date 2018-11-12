@@ -13,6 +13,7 @@ from chainer import testing
 import numpy as np
 
 import basetest_dqn_like as base
+from basetest_training import _TestBatchTrainingMixin
 import chainerrl
 from chainerrl.agents import categorical_dqn
 from chainerrl.agents import CategoricalDQN
@@ -198,7 +199,8 @@ def make_distrib_recurrent_q_func(env):
     )
 
 
-class TestCategoricalDQNOnDiscreteABC(base._TestDQNOnDiscreteABC):
+class TestCategoricalDQNOnDiscreteABC(
+        _TestBatchTrainingMixin, base._TestDQNOnDiscreteABC):
 
     def make_q_func(self, env):
         return make_distrib_ff_q_func(env)
