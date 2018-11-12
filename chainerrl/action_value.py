@@ -203,6 +203,7 @@ class QuantileDiscreteActionValue(DiscreteActionValue):
         assert quantiles.ndim == 3
         self.quantiles = quantiles
         self.xp = cuda.get_array_module(quantiles.array)
+        self.n_actions = quantiles.shape[2]
         self.q_values_formatter = q_values_formatter
 
     @cached_property
@@ -234,6 +235,12 @@ class QuantileDiscreteActionValue(DiscreteActionValue):
     @property
     def params(self):
         return (self.quantiles,)
+
+    def __getitem__(self, i):
+        return QuantileDiscreteActionValue(
+            quantiles=self.quantiles[i],
+            q_values_formatter=self.q_values_formatter,
+        )
 
 
 class QuadraticActionValue(ActionValue):
