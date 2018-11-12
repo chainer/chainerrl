@@ -77,6 +77,8 @@ class ImplicitQuantileQFunction(chainer.Chain):
         """
         batch_size = x.shape[0]
         psi_x = self.psi(x)
+        assert psi_x.ndim == 2
+        assert psi_x.shape[0] == batch_size
         hidden_size = psi_x.shape[1]
 
         def evaluate_with_quantile_thresholds(taus):
@@ -84,11 +86,16 @@ class ImplicitQuantileQFunction(chainer.Chain):
             assert taus.shape[0] == batch_size
             n_taus = taus.shape[1]
             phi_taus = self.phi(taus)
+            assert phi_taus.ndim == 3
+            assert phi_taus.shape == (batch_size, n_taus, hidden_size)
             psi_x_b = F.broadcast_to(
                 F.expand_dims(psi_x, axis=1), phi_taus.shape)
             h = psi_x_b * phi_taus
             h = F.reshape(h, (-1, hidden_size))
+            assert h.shape == (batch_size * n_taus, hidden_size)
             h = self.f(h)
+            assert h.ndim == 2
+            assert h.shape[0] == batch_size * n_taus
             n_actions = h.shape[-1]
             h = F.reshape(h, (batch_size, n_taus, n_actions))
             return QuantileDiscreteActionValue(h)
@@ -216,8 +223,10 @@ class IQN(dqn.DQN):
             errors_out.extend(cuda.to_cpu(delta.array))
 
         if self.batch_accumulator == 'sum':
+            # mean over N_prime, then sum over (batch_size, N)
             return F.sum(F.mean(eltwise_loss, axis=2))
         else:
+            # mean over (batch_size, N_prime), then sum over N
             return F.sum(F.mean(eltwise_loss, axis=(0, 2)))
 
     def act_and_train(self, obs, reward):
