@@ -121,12 +121,10 @@ def batch_run_evaluation_episodes(
         end = np.logical_or(resets, dones)
         not_end = np.logical_not(end)
 
-        episode_returns.extend(
-            np.ma.masked_array(episode_r, not_end).compressed())
-        episode_lengths.extend(
-            np.ma.masked_array(episode_len, not_end).compressed())
-        episode_r *= not_end
-        episode_len *= not_end
+        episode_returns.extend(episode_r[end])
+        episode_lengths.extend(episode_len[end])
+        episode_r[end] = 0
+        episode_len[end] = 0
         obss = env.reset(not_end)
 
     episode_returns = episode_returns[:n_runs]
