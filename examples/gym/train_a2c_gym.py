@@ -148,7 +148,7 @@ def main():
             misc.env_modifiers.make_reward_filtered(
                 env, lambda x: x * args.reward_scale_factor)
         if args.render and process_idx == 0 and not test:
-            misc.env_modifiers.make_rendered(env)
+            env = chainerrl.wrappers.Render(env)
         return env
 
     def make_batch_env(test):

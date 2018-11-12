@@ -145,7 +145,7 @@ def main():
             # training is easier
             env = chainerrl.wrappers.ScaleReward(env, args.reward_scale_factor)
         if args.render:
-            misc.env_modifiers.make_rendered(env)
+            env = chainerrl.wrappers.Render(env)
         return env
 
     def make_batch_env(test):
