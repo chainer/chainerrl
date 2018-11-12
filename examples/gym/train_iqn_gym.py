@@ -86,7 +86,7 @@ def main():
                 env, lambda x: x * args.reward_scale_factor)
         if ((args.render_eval and test) or
                 (args.render_train and not test)):
-            misc.env_modifiers.make_rendered(env)
+            env = chainerrl.wrappers.Render(env)
         return env
 
     env = make_env(test=False)
