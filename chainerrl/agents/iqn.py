@@ -38,7 +38,7 @@ class CosineBasisLinearReLU(chainer.Chain):
         taus = F.reshape(taus, (-1, 1))
         taus = F.broadcast_to(taus, (batch_size * n_taus, self.n_bases))
         xp = self.xp
-        coef = xp.arange(self.n_bases, dtype=np.float32) * np.pi
+        coef = xp.arange(1, self.n_bases + 1, dtype=np.float32) * np.pi
         coef = xp.broadcast_to(coef, (batch_size * n_taus, self.n_bases))
         out = F.relu(self.linear(F.cos(coef * taus)))
         return F.reshape(out, (batch_size, n_taus, self.out_size))
