@@ -447,7 +447,7 @@ def batch_experiences(experiences, xp, phi, gamma, batch_states=batch_states):
         dict of batched transitions
     """
 
-    return {
+    batch_exp = {
         'state': batch_states(
             [elem[0]['state'] for elem in experiences], xp, phi),
         'action': xp.asarray([elem[0]['action'] for elem in experiences]),
@@ -456,16 +456,19 @@ def batch_experiences(experiences, xp, phi, gamma, batch_states=batch_states):
                               for exp in experiences],
                              dtype=np.float32),
         'next_state': batch_states(
-            [elem[len(elem) - 1]['next_state']
+            [elem[-1]['next_state']
              for elem in experiences], xp, phi),
-        'next_action': xp.asarray(
-            [elem[len(elem) - 1]['next_action'] for elem in experiences]),
         'is_state_terminal': xp.asarray(
             [any(transition['is_state_terminal']
                  for transition in exp) for exp in experiences],
             dtype=np.float32),
         'discount': xp.asarray([(gamma ** len(elem))for elem in experiences],
                                dtype=np.float32)}
+    if all(
+        elem[-1]['next_action'] is not None for elem in experiences):
+        batch_exp['next_action'] = xp.asarray(
+            [elem[-1]['next_action'] for elem in experiences])
+    return batch_exp
 
 
 class ReplayUpdater(object):

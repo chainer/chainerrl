@@ -9,6 +9,8 @@ standard_library.install_aliases()  # NOQA
 import basetest_dqn_like as base
 from chainerrl.agents import SARSA
 
+# Sarsa does not support batch training
+
 
 class TestSARSAOnDiscreteABC(base._TestDQNOnDiscreteABC):
 

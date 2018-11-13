@@ -9,9 +9,12 @@ standard_library.install_aliases()  # NOQA
 from chainerrl.agents.double_pal import DoublePAL
 
 import basetest_dqn_like
+from basetest_training import _TestBatchTrainingMixin
 
 
-class TestDoublePALOnDiscreteABC(basetest_dqn_like._TestDQNOnDiscreteABC):
+class TestDoublePALOnDiscreteABC(
+        _TestBatchTrainingMixin,
+        basetest_dqn_like._TestDQNOnDiscreteABC):
 
     def make_dqn_agent(self, env, q_func, opt, explorer, rbuf, gpu):
         return DoublePAL(
@@ -19,7 +22,9 @@ class TestDoublePALOnDiscreteABC(basetest_dqn_like._TestDQNOnDiscreteABC):
             replay_start_size=100, target_update_interval=100)
 
 
-class TestDoublePALOnContinuousABC(basetest_dqn_like._TestDQNOnContinuousABC):
+class TestDoublePALOnContinuousABC(
+        _TestBatchTrainingMixin,
+        basetest_dqn_like._TestDQNOnContinuousABC):
 
     def make_dqn_agent(self, env, q_func, opt, explorer, rbuf, gpu):
         return DoublePAL(

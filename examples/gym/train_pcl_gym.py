@@ -114,7 +114,7 @@ def main():
             # training is easier
             env = chainerrl.wrappers.ScaleReward(env, args.reward_scale_factor)
         if args.render and process_idx == 0 and not test:
-            misc.env_modifiers.make_rendered(env)
+            env = chainerrl.wrappers.Render(env)
         return env
 
     sample_env = gym.make(args.env)

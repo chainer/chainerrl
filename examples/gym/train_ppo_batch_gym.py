@@ -1,13 +1,10 @@
-"""An example of training A3C against OpenAI Gym Envs.
+"""An example of training PPO against OpenAI Gym Envs.
 
-This script is an example of training a A3C agent against OpenAI Gym envs.
+This script is an example of training a PPO agent against OpenAI Gym envs.
 Both discrete and continuous action spaces are supported.
 
 To solve CartPole-v0, run:
-    python train_a3c_gym.py 8 --env CartPole-v0
-
-To solve InvertedPendulum-v1, run:
-    python train_a3c_gym.py 8 --env InvertedPendulum-v1 --arch LSTMGaussian --t-max 50  # noqa
+    python train_ppo_gym.py --env CartPole-v0
 """
 from __future__ import division
 from __future__ import print_function
@@ -17,28 +14,21 @@ from builtins import *  # NOQA
 from future import standard_library
 standard_library.install_aliases()  # NOQA
 import argparse
-import os
-
-# This prevents numpy from using multiple threads
-os.environ['OMP_NUM_THREADS'] = '1'  # NOQA
 
 import chainer
 from chainer import functions as F
-from chainer import links as L
 import gym
 import gym.wrappers
 import numpy as np
 
 import chainerrl
 from chainerrl.agents import a3c
+from chainerrl.agents import PPO
 from chainerrl import experiments
 from chainerrl import links
 from chainerrl import misc
 from chainerrl.optimizers.nonbias_weight_decay import NonbiasWeightDecay
-from chainerrl.optimizers import rmsprop_async
 from chainerrl import policies
-from chainerrl.recurrent import RecurrentChainMixin
-from chainerrl import v_function
 
 
 class A3CFFSoftmax(chainer.ChainList, a3c.A3CModel):
@@ -67,73 +57,75 @@ class A3CFFMellowmax(chainer.ChainList, a3c.A3CModel):
         return self.pi(state), self.v(state)
 
 
-class A3CLSTMGaussian(chainer.ChainList, a3c.A3CModel, RecurrentChainMixin):
-    """An example of A3C recurrent Gaussian policy."""
+class A3CFFGaussian(chainer.Chain, a3c.A3CModel):
+    """An example of A3C feedforward Gaussian policy."""
 
-    def __init__(self, obs_size, action_size, hidden_size=200, lstm_size=128):
-        self.pi_head = L.Linear(obs_size, hidden_size)
-        self.v_head = L.Linear(obs_size, hidden_size)
-        self.pi_lstm = L.LSTM(hidden_size, lstm_size)
-        self.v_lstm = L.LSTM(hidden_size, lstm_size)
-        self.pi = policies.FCGaussianPolicy(lstm_size, action_size)
-        self.v = v_function.FCVFunction(lstm_size)
-        super().__init__(self.pi_head, self.v_head,
-                         self.pi_lstm, self.v_lstm, self.pi, self.v)
+    def __init__(self, obs_size, action_space,
+                 n_hidden_layers=2, n_hidden_channels=64,
+                 bound_mean=None):
+        assert bound_mean in [False, True]
+        super().__init__()
+        hidden_sizes = (n_hidden_channels,) * n_hidden_layers
+        with self.init_scope():
+            self.pi = policies.FCGaussianPolicyWithStateIndependentCovariance(
+                obs_size, action_space.low.size,
+                n_hidden_layers, n_hidden_channels,
+                var_type='diagonal', nonlinearity=F.tanh,
+                bound_mean=bound_mean,
+                min_action=action_space.low, max_action=action_space.high,
+                mean_wscale=1e-2)
+            self.v = links.MLP(obs_size, 1, hidden_sizes=hidden_sizes)
 
     def pi_and_v(self, state):
-
-        def forward(head, lstm, tail):
-            h = F.relu(head(state))
-            h = lstm(h)
-            return tail(h)
-
-        pout = forward(self.pi_head, self.pi_lstm, self.pi)
-        vout = forward(self.v_head, self.v_lstm, self.v)
-
-        return pout, vout
+        return self.pi(state), self.v(state)
 
 
 def main():
     import logging
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('processes', type=int)
-    parser.add_argument('--env', type=str, default='CartPole-v0')
-    parser.add_argument('--arch', type=str, default='FFSoftmax',
-                        choices=('FFSoftmax', 'FFMellowmax', 'LSTMGaussian'))
+    parser.add_argument('--gpu', type=int, default=0)
+    parser.add_argument('--env', type=str, default='Hopper-v2')
+    parser.add_argument('--num-envs', type=int, default=1)
+    parser.add_argument('--arch', type=str, default='FFGaussian',
+                        choices=('FFSoftmax', 'FFMellowmax',
+                                 'FFGaussian'))
+    parser.add_argument('--bound-mean', action='store_true')
     parser.add_argument('--seed', type=int, default=0,
                         help='Random seed [0, 2 ** 32)')
     parser.add_argument('--outdir', type=str, default='results',
                         help='Directory path to save output files.'
                              ' If it does not exist, it will be created.')
-    parser.add_argument('--t-max', type=int, default=5)
-    parser.add_argument('--beta', type=float, default=1e-2)
-    parser.add_argument('--profile', action='store_true')
-    parser.add_argument('--steps', type=int, default=8 * 10 ** 7)
-    parser.add_argument('--eval-interval', type=int, default=10 ** 5)
+    parser.add_argument('--steps', type=int, default=10 ** 6)
+    parser.add_argument('--eval-interval', type=int, default=10000)
     parser.add_argument('--eval-n-runs', type=int, default=10)
     parser.add_argument('--reward-scale-factor', type=float, default=1e-2)
-    parser.add_argument('--rmsprop-epsilon', type=float, default=1e-1)
+    parser.add_argument('--standardize-advantages', action='store_true')
     parser.add_argument('--render', action='store_true', default=False)
-    parser.add_argument('--lr', type=float, default=7e-4)
+    parser.add_argument('--lr', type=float, default=3e-4)
     parser.add_argument('--weight-decay', type=float, default=0.0)
     parser.add_argument('--demo', action='store_true', default=False)
     parser.add_argument('--load', type=str, default='')
     parser.add_argument('--logger-level', type=int, default=logging.DEBUG)
     parser.add_argument('--monitor', action='store_true')
+    parser.add_argument('--window-size', type=int, default=100)
+
+    parser.add_argument('--update-interval', type=int, default=2048)
+    parser.add_argument('--log-interval', type=int, default=1000)
+    parser.add_argument('--batchsize', type=int, default=64)
+    parser.add_argument('--epochs', type=int, default=10)
+    parser.add_argument('--entropy-coef', type=float, default=0.0)
     args = parser.parse_args()
 
     logging.basicConfig(level=args.logger_level)
 
-    # Set a random seed used in ChainerRL.
-    # If you use more than one processes, the results will be no longer
-    # deterministic even with the same random seed.
-    misc.set_random_seed(args.seed)
+    # Set a random seed used in ChainerRL
+    misc.set_random_seed(args.seed, gpus=(args.gpu,))
 
     # Set different random seeds for different subprocesses.
     # If seed=0 and processes=4, subprocess seeds are [0, 1, 2, 3].
     # If seed=1 and processes=4, subprocess seeds are [4, 5, 6, 7].
-    process_seeds = np.arange(args.processes) + args.seed * args.processes
+    process_seeds = np.arange(args.num_envs) + args.seed * args.num_envs
     assert process_seeds.max() < 2 ** 32
 
     args.outdir = experiments.prepare_output_dir(args, args.outdir)
@@ -146,44 +138,59 @@ def main():
         env.seed(env_seed)
         # Cast observations to float32 because our model uses float32
         env = chainerrl.wrappers.CastObservationToFloat32(env)
-        if args.monitor and process_idx == 0:
+        if args.monitor:
             env = gym.wrappers.Monitor(env, args.outdir)
         if not test:
             # Scale rewards (and thus returns) to a reasonable range so that
             # training is easier
             env = chainerrl.wrappers.ScaleReward(env, args.reward_scale_factor)
-        if args.render and process_idx == 0 and not test:
+        if args.render:
             env = chainerrl.wrappers.Render(env)
         return env
 
+    def make_batch_env(test):
+        return chainerrl.envs.MultiprocessVectorEnv(
+            [(lambda: make_env(idx, test))
+             for idx, env in enumerate(range(args.num_envs))])
+
+    # Only for getting timesteps, and obs-action spaces
     sample_env = gym.make(args.env)
     timestep_limit = sample_env.spec.tags.get(
         'wrapper_config.TimeLimit.max_episode_steps')
     obs_space = sample_env.observation_space
     action_space = sample_env.action_space
 
+    # Normalize observations based on their empirical mean and variance
+    obs_normalizer = chainerrl.links.EmpiricalNormalization(
+        obs_space.low.size, clip_threshold=5)
+
     # Switch policy types accordingly to action space types
-    if args.arch == 'LSTMGaussian':
-        model = A3CLSTMGaussian(obs_space.low.size, action_space.low.size)
-    elif args.arch == 'FFSoftmax':
+    if args.arch == 'FFSoftmax':
         model = A3CFFSoftmax(obs_space.low.size, action_space.n)
     elif args.arch == 'FFMellowmax':
         model = A3CFFMellowmax(obs_space.low.size, action_space.n)
+    elif args.arch == 'FFGaussian':
+        model = A3CFFGaussian(obs_space.low.size, action_space,
+                              bound_mean=args.bound_mean)
 
-    opt = rmsprop_async.RMSpropAsync(
-        lr=args.lr, eps=args.rmsprop_epsilon, alpha=0.99)
+    opt = chainer.optimizers.Adam(alpha=args.lr, eps=1e-5)
     opt.setup(model)
-    opt.add_hook(chainer.optimizer.GradientClipping(40))
     if args.weight_decay > 0:
         opt.add_hook(NonbiasWeightDecay(args.weight_decay))
+    agent = PPO(model, opt,
+                obs_normalizer=obs_normalizer,
+                gpu=args.gpu,
+                update_interval=args.update_interval,
+                minibatch_size=args.batchsize, epochs=args.epochs,
+                clip_eps_vf=None, entropy_coef=args.entropy_coef,
+                standardize_advantages=args.standardize_advantages,
+                )
 
-    agent = a3c.A3C(model, opt, t_max=args.t_max, gamma=0.99,
-                    beta=args.beta)
     if args.load:
         agent.load(args.load)
 
     if args.demo:
-        env = make_env(0, True)
+        env = make_batch_env(True)
         eval_stats = experiments.eval_performance(
             env=env,
             agent=agent,
@@ -193,16 +200,37 @@ def main():
             args.eval_n_runs, eval_stats['mean'], eval_stats['median'],
             eval_stats['stdev']))
     else:
-        experiments.train_agent_async(
+        # Linearly decay the learning rate to zero
+        def lr_setter(env, agent, value):
+            agent.optimizer.alpha = value
+
+        lr_decay_hook = experiments.LinearInterpolationHook(
+            args.steps, args.lr, 0, lr_setter)
+
+        # Linearly decay the clipping parameter to zero
+        def clip_eps_setter(env, agent, value):
+            agent.clip_eps = value
+
+        clip_eps_decay_hook = experiments.LinearInterpolationHook(
+            args.steps, 0.2, 0, clip_eps_setter)
+
+        experiments.train_agent_batch_with_evaluation(
             agent=agent,
+            env=make_batch_env(False),
+            eval_env=make_batch_env(True),
             outdir=args.outdir,
-            processes=args.processes,
-            make_env=make_env,
-            profile=args.profile,
             steps=args.steps,
             eval_n_runs=args.eval_n_runs,
             eval_interval=args.eval_interval,
-            max_episode_len=timestep_limit)
+            log_interval=args.log_interval,
+            return_window_size=args.window_size,
+            max_episode_len=timestep_limit,
+            save_best_so_far_agent=False,
+            step_hooks=[
+                lr_decay_hook,
+                clip_eps_decay_hook,
+            ],
+        )
 
 
 if __name__ == '__main__':

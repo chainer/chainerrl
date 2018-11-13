@@ -76,7 +76,7 @@ def main():
             # training is easier
             env = chainerrl.wrappers.ScaleReward(env, args.reward_scale_factor)
         if args.render and not test:
-            misc.env_modifiers.make_rendered(env)
+            env = chainerrl.wrappers.Render(env)
         return env
 
     train_env = make_env(test=False)
