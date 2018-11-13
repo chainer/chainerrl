@@ -173,3 +173,69 @@ class AsyncAgent(with_metaclass(ABCMeta, Agent)):
     def shared_attributes(self):
         """Tuple of names of shared attributes."""
         pass
+
+
+class BatchAgent(with_metaclass(ABCMeta, Agent)):
+    """Abstract agent class that can interact with a batch of envs."""
+
+    @abstractmethod
+    def batch_act(self, batch_obs):
+        """Select a batch of actions for evaluation.
+
+        Args:
+            batch_obs (Sequence of ~object): Observations.
+
+        Returns:
+            Sequence of ~object: Actions.
+        """
+        raise NotImplementedError()
+
+    @abstractmethod
+    def batch_act_and_train(self, batch_obs):
+        """Select a batch of actions for training.
+
+        Args:
+            batch_obs (Sequence of ~object): Observations.
+
+        Returns:
+            Sequence of ~object: Actions.
+        """
+        raise NotImplementedError()
+
+    @abstractmethod
+    def batch_observe(self, batch_obs, batch_reward, batch_done, batch_reset):
+        """Observe a batch of action consequences for evaluation.
+
+        Args:
+            batch_obs (Sequence of ~object): Observations.
+            batch_reward (Sequence of float): Rewards.
+            batch_done (Sequence of boolean): Boolean values where True
+                indicates the current state is terminal.
+            batch_reset (Sequence of boolean): Boolean values where True
+                indicates the current episode will be reset, even if the
+                current state is not terminal.
+
+
+        Returns:
+            None
+        """
+        raise NotImplementedError()
+
+    @abstractmethod
+    def batch_observe_and_train(
+            self, batch_obs, batch_reward, batch_done, batch_reset):
+        """Observe a batch of action consequences for training.
+
+        Args:
+            batch_obs (Sequence of ~object): Observations.
+            batch_reward (Sequence of float): Rewards.
+            batch_done (Sequence of boolean): Boolean values where True
+                indicates the current state is terminal.
+            batch_reset (Sequence of boolean): Boolean values where True
+                indicates the current episode will be reset, even if the
+                current state is not terminal.
+
+        Returns:
+            None
+        """
+        raise NotImplementedError()

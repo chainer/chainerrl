@@ -30,3 +30,10 @@ class SARSA(dqn.DQN):
         batch_terminal = exp_batch['is_state_terminal']
 
         return batch_rewards + self.gamma * (1.0 - batch_terminal) * next_q
+
+    def batch_act_and_train(self, batch_obs):
+        raise NotImplementedError('SARSA does not support batch training')
+
+    def batch_observe_and_train(self, batch_obs, batch_reward,
+                                batch_done, batch_reset):
+        raise NotImplementedError('SARSA does not support batch training')

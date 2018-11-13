@@ -84,7 +84,7 @@ def main():
         if args.monitor:
             env = gym.wrappers.Monitor(env, args.outdir)
         if args.render:
-            chainerrl.misc.env_modifiers.make_rendered(env)
+            env = chainerrl.wrappers.Render(env)
         return env
 
     env = make_env(test=False)
