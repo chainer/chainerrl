@@ -8,8 +8,6 @@ standard_library.install_aliases()  # NOQA
 import argparse
 import os
 
-import chainer
-from chainer import functions as F
 from chainer import links as L
 from chainer import optimizers
 import gym
@@ -23,10 +21,10 @@ from chainerrl import experiments
 from chainerrl import explorers
 from chainerrl import links
 from chainerrl import misc
-from chainerrl.q_functions import DuelingDQN
 from chainerrl import replay_buffer
 
 from chainerrl.wrappers import atari_wrappers
+
 
 def main():
     parser = argparse.ArgumentParser()
