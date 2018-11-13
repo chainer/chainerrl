@@ -120,9 +120,9 @@ def main():
 
     n_actions = env.action_space.n
     q_func = links.Sequence(
-            links.NatureDQNHead(),
-            L.Linear(512, n_actions),
-            DiscreteActionValue)
+        links.NatureDQNHead(),
+        L.Linear(512, n_actions),
+        DiscreteActionValue)
 
     if args.noisy_net_sigma is not None:
         links.to_factorized_noisy(q_func)
