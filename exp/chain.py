@@ -143,6 +143,7 @@ def main():
     parser.add_argument('--scale-sigma', type=float, default=1)
     parser.add_argument('--min-sigma', type=float, default=0)
 
+    parser.add_argument('--trap', action='store_true', default=False)
     parser.add_argument('--fixed-sigma', action='store_true', default=False)
     parser.add_argument('--table-sigma', action='store_true', default=False)
     parser.add_argument('--head', action='store_true', default=False)
