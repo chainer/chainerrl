@@ -47,10 +47,6 @@ def main():
                         help='Final value of epsilon during training.')
     parser.add_argument('--eval-epsilon', type=float, default=0.05,
                         help='Exploration epsilon used during eval episodes.')
-    parser.add_argument('--noisy-net-sigma', type=float, default=None)
-    parser.add_argument('--arch', type=str, default='doubledqn',
-                        choices=['nature', 'nips', 'dueling', 'doubledqn'],
-                        help='Network architecture to use.')
     parser.add_argument('--steps', type=int, default=5 * 10 ** 7,
                         help='Total number of timesteps to train the agent.')
     parser.add_argument('--max-episode-len', type=int,
@@ -124,17 +120,12 @@ def main():
         L.Linear(512, n_actions),
         DiscreteActionValue)
 
-    if args.noisy_net_sigma is not None:
-        links.to_factorized_noisy(q_func)
-        # Turn off explorer
-        explorer = explorers.Greedy()
-
     # Draw the computational graph and save it in the output directory.
     chainerrl.misc.draw_computational_graph(
         [q_func(np.zeros((4, 84, 84), dtype=np.float32)[None])],
         os.path.join(args.outdir, 'model'))
 
-    # Use the same hyper parameters as the Nature paper's
+    # Use the same hyperparameters as the Nature paper
     opt = optimizers.RMSpropGraves(
         lr=args.lr, alpha=0.95, momentum=0.0, eps=1e-2)
 
