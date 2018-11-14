@@ -22,7 +22,7 @@ from chainerrl.optimizers.nonbias_weight_decay import NonbiasWeightDecay
 from chainerrl import policy
 from chainerrl import v_function
 
-import atari_wrappers
+from chainerrl.wrappers import atari_wrappers
 
 
 class A3CFF(chainer.ChainList, A3CModel):
