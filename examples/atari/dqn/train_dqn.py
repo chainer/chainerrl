@@ -8,8 +8,6 @@ standard_library.install_aliases()  # NOQA
 import argparse
 import os
 
-import chainer
-from chainer import functions as F
 from chainer import links as L
 from chainer import optimizers
 import gym
@@ -23,57 +21,9 @@ from chainerrl import experiments
 from chainerrl import explorers
 from chainerrl import links
 from chainerrl import misc
-from chainerrl.q_functions import DuelingDQN
 from chainerrl import replay_buffer
 
-import atari_wrappers
-
-
-class SingleSharedBias(chainer.Chain):
-    """Single shared bias used in the Double DQN paper.
-
-    You can add this link after a Linear layer with nobias=True to implement a
-    Linear layer with a single shared bias parameter.
-
-    See http://arxiv.org/abs/1509.06461.
-    """
-
-    def __init__(self):
-        super().__init__()
-        with self.init_scope():
-            self.bias = chainer.Parameter(0, shape=1)
-
-    def __call__(self, x):
-        return x + F.broadcast_to(self.bias, x.shape)
-
-
-def parse_arch(arch, n_actions):
-    if arch == 'nature':
-        return links.Sequence(
-            links.NatureDQNHead(),
-            L.Linear(512, n_actions),
-            DiscreteActionValue)
-    elif arch == 'doubledqn':
-        return links.Sequence(
-            links.NatureDQNHead(),
-            L.Linear(512, n_actions, nobias=True),
-            SingleSharedBias(),
-            DiscreteActionValue)
-    elif arch == 'nips':
-        return links.Sequence(
-            links.NIPSDQNHead(),
-            L.Linear(256, n_actions),
-            DiscreteActionValue)
-    elif arch == 'dueling':
-        return DuelingDQN(n_actions)
-    else:
-        raise RuntimeError('Not supported architecture: {}'.format(arch))
-
-
-def parse_agent(agent):
-    return {'DQN': agents.DQN,
-            'DoubleDQN': agents.DoubleDQN,
-            'PAL': agents.PAL}[agent]
+from chainerrl.wrappers import atari_wrappers
 
 
 def main():
@@ -93,9 +43,9 @@ def main():
                         type=int, default=10 ** 6,
                         help='Timesteps after which we stop ' +
                         'annealing exploration rate')
-    parser.add_argument('--final-epsilon', type=float, default=0.01,
+    parser.add_argument('--final-epsilon', type=float, default=0.1,
                         help='Final value of epsilon during training.')
-    parser.add_argument('--eval-epsilon', type=float, default=0.001,
+    parser.add_argument('--eval-epsilon', type=float, default=0.05,
                         help='Exploration epsilon used during eval episodes.')
     parser.add_argument('--noisy-net-sigma', type=float, default=None)
     parser.add_argument('--arch', type=str, default='doubledqn',
@@ -110,7 +60,7 @@ def main():
                         help='Minimum replay buffer size before ' +
                         'performing gradient updates.')
     parser.add_argument('--target-update-interval',
-                        type=int, default=3 * 10 ** 4,
+                        type=int, default=1 * 10 ** 4,
                         help='Frequency (in timesteps) at which ' +
                         'the target network is updated.')
     parser.add_argument('--eval-interval', type=int, default=10 ** 5,
@@ -121,8 +71,7 @@ def main():
     parser.add_argument('--no-clip-delta',
                         dest='clip_delta', action='store_false')
     parser.set_defaults(clip_delta=True)
-    parser.add_argument('--agent', type=str, default='DoubleDQN',
-                        choices=['DQN', 'DoubleDQN', 'PAL'])
+
     parser.add_argument('--logging-level', type=int, default=20,
                         help='Logging level. 10:DEBUG, 20:INFO etc.')
     parser.add_argument('--render', action='store_true', default=False,
@@ -132,8 +81,6 @@ def main():
                              ' are saved as output files.')
     parser.add_argument('--lr', type=float, default=2.5e-4,
                         help='Learning rate.')
-    parser.add_argument('--prioritized', action='store_true', default=False,
-                        help='Use prioritized experience replay.')
     args = parser.parse_args()
 
     import logging
@@ -172,7 +119,10 @@ def main():
     eval_env = make_env(test=True)
 
     n_actions = env.action_space.n
-    q_func = parse_arch(args.arch, n_actions)
+    q_func = links.Sequence(
+        links.NatureDQNHead(),
+        L.Linear(512, n_actions),
+        DiscreteActionValue)
 
     if args.noisy_net_sigma is not None:
         links.to_factorized_noisy(q_func)
@@ -190,14 +140,7 @@ def main():
 
     opt.setup(q_func)
 
-    # Select a replay buffer to use
-    if args.prioritized:
-        # Anneal beta from beta0 to 1 throughout training
-        betasteps = args.steps / args.update_interval
-        rbuf = replay_buffer.PrioritizedReplayBuffer(
-            10 ** 6, alpha=0.6, beta0=0.4, betasteps=betasteps)
-    else:
-        rbuf = replay_buffer.ReplayBuffer(10 ** 6)
+    rbuf = replay_buffer.ReplayBuffer(10 ** 6)
 
     explorer = explorers.LinearDecayEpsilonGreedy(
         1.0, args.final_epsilon,
@@ -208,7 +151,7 @@ def main():
         # Feature extractor
         return np.asarray(x, dtype=np.float32) / 255
 
-    Agent = parse_agent(args.agent)
+    Agent = agents.DQN
     agent = Agent(q_func, opt, rbuf, gpu=args.gpu, gamma=0.99,
                   explorer=explorer, replay_start_size=args.replay_start_size,
                   target_update_interval=args.target_update_interval,
