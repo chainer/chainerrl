@@ -16,34 +16,54 @@ from chainerrl.action_value import QuantileDiscreteActionValue
 from chainerrl.agents import dqn
 
 
-class CosineBasisLinearReLU(chainer.Chain):
+def cosine_basis_functions(x, n_basis_functions=64):
+    """Cosine basis functions used to embed quantile thresholds.
 
-    def __init__(self, n_bases, out_size):
+    Args:
+        x (ndarray): Input.
+        n_basis_functions (int): Number of cosine basis functions.
+
+    Returns:
+        ndarray: Embedding with shape of (x.shape + (n_basis_functions,)).
+    """
+    xp = chainer.cuda.get_array_module(x)
+    # Equation (4) in the IQN paper has an error stating i=0,...,n-1.
+    # Actually i=1,...,n is correct (personal communication)
+    i_pi = xp.arange(1, n_basis_functions + 1, dtype=np.float32) * np.pi
+    embedding = xp.cos(x[..., None] * i_pi)
+    assert embedding.shape == x.shape + (n_basis_functions,)
+    return embedding
+
+
+class CosineBasisLinear(chainer.Chain):
+    """Linear layer following cosine basis functions.
+
+    Args:
+        n_basis_functions (int): Number of cosine basis functions.
+        out_size (int): Output size.
+    """
+
+    def __init__(self, n_basis_functions, out_size):
         super().__init__()
         with self.init_scope():
-            self.linear = L.Linear(n_bases, out_size)
-        self.n_bases = n_bases
+            self.linear = L.Linear(n_basis_functions, out_size)
+        self.n_basis_functions = n_basis_functions
         self.out_size = out_size
 
-    def __call__(self, taus):
+    def __call__(self, x):
         """Evaluate.
 
         Args:
-            taus (chainer.Variable or ndarray): Quantile thresholds
-                (batch_size, n_taus).
+            x (ndarray): Input.
+
         Returns:
-            chainer.Variable: (batch_size, n_taus, hidden_size).
+            chainer.Variable: Output with shape of (x.shape + (out_size,)).
         """
-        batch_size, n_taus = taus.shape
-        taus = F.reshape(taus, (-1, 1))
-        taus = F.broadcast_to(taus, (batch_size * n_taus, self.n_bases))
-        xp = self.xp
-        # Equation (4) in the IQN paper has an error stating n=0,...,n-1.
-        # Actually n=1,...,n is correct (personal communication)
-        coef = xp.arange(1, self.n_bases + 1, dtype=np.float32) * np.pi
-        coef = xp.broadcast_to(coef, (batch_size * n_taus, self.n_bases))
-        out = F.relu(self.linear(F.cos(coef * taus)))
-        return F.reshape(out, (batch_size, n_taus, self.out_size))
+        h = cosine_basis_functions(x, self.n_basis_functions)
+        h = F.reshape(h, (-1, self.n_basis_functions))
+        out = self.linear(h)
+        out = F.reshape(out, x.shape + (self.out_size,))
+        return out
 
 
 class ImplicitQuantileQFunction(chainer.Chain):

@@ -34,7 +34,10 @@ class TestIQNOnDiscreteABC(base._TestDQNOnDiscreteABC):
                 L.Linear(obs_size, hidden_size),
                 F.relu,
             ),
-            phi=iqn.CosineBasisLinearReLU(64, hidden_size),
+            phi=chainer.Sequential(
+                chainerrl.agents.iqn.CosineBasisLinear(32, hidden_size),
+                F.relu,
+            ),
             f=L.Linear(hidden_size, env.action_space.n),
         )
 
@@ -106,5 +109,31 @@ class TestComputeEltwiseHuberQuantileLoss(unittest.TestCase):
                     self.assertAlmostEqual(
                         scalar_grad.array,
                         correct_scalar_grad.array,
+                        places=5,
+                    )
+
+
+@testing.parameterize(*testing.product({
+    'batch_size': [1, 3],
+    'm': [1, 5],
+    'n_basis_functions': [1, 7],
+}))
+class TestCosineBasisFunctions(unittest.TestCase):
+
+    def test(self):
+        batch_size = self.batch_size
+        m = self.m
+        n_basis_functions = self.n_basis_functions
+
+        x = np.random.uniform(size=(batch_size, m)).astype('f')
+        y = iqn.cosine_basis_functions(x, n_basis_functions=n_basis_functions)
+        self.assertEqual(y.shape, (batch_size, m, n_basis_functions))
+
+        for i in range(batch_size):
+            for j in range(m):
+                for k in range(n_basis_functions):
+                    self.assertAlmostEqual(
+                        y[i, j, k],
+                        np.cos(x[i, j] * (k + 1) * np.pi),
                         places=5,
                     )

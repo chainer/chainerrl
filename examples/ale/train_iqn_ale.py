@@ -109,7 +109,10 @@ def main():
             F.relu,
             functools.partial(F.reshape, shape=(-1, 3136)),
         ),
-        phi=chainerrl.agents.iqn.CosineBasisLinearReLU(64, 3136),
+        phi=chainer.Sequential(
+            chainerrl.agents.iqn.CosineBasisLinear(64, 3136),
+            F.relu,
+        ),
         f=chainer.Sequential(
             L.Linear(None, 512),
             F.relu,

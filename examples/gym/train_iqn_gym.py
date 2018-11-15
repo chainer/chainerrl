@@ -101,7 +101,10 @@ def main():
             L.Linear(obs_size, hidden_size),
             F.relu,
         ),
-        phi=chainerrl.agents.iqn.CosineBasisLinearReLU(64, hidden_size),
+        phi=chainer.Sequential(
+            chainerrl.agents.iqn.CosineBasisLinear(64, hidden_size),
+            F.relu,
+        ),
         f=L.Linear(hidden_size, env.action_space.n),
     )
     # Use epsilon-greedy for exploration
