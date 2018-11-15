@@ -20,8 +20,7 @@ from chainerrl import experiments
 from chainerrl import explorers
 from chainerrl import misc
 from chainerrl import replay_buffer
-
-import atari_wrappers
+from chainerrl.wrappers import atari_wrappers
 
 
 def main():
