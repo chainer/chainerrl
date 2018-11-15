@@ -144,9 +144,9 @@ class IQN(dqn.DQN):
     """
 
     def __init__(self, *args, **kwargs):
-        self.quantile_thresholds_N = kwargs.pop('quantile_thresholds_N', 8)
+        self.quantile_thresholds_N = kwargs.pop('quantile_thresholds_N', 64)
         self.quantile_thresholds_N_prime = kwargs.pop(
-            'quantile_thresholds_N_prime', 8)
+            'quantile_thresholds_N_prime', 64)
         self.quantile_thresholds_K = kwargs.pop('quantile_thresholds_K', 32)
         super().__init__(*args, **kwargs)
 
