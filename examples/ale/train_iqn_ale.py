@@ -59,8 +59,8 @@ def main():
                              ' are saved as output files.')
     parser.add_argument('--batch-accumulator', type=str, default='mean',
                         choices=['mean', 'sum'])
-    parser.add_argument('--quantile-thresholds-N', type=int, default=8)
-    parser.add_argument('--quantile-thresholds-N-prime', type=int, default=8)
+    parser.add_argument('--quantile-thresholds-N', type=int, default=64)
+    parser.add_argument('--quantile-thresholds-N-prime', type=int, default=64)
     parser.add_argument('--quantile-thresholds-K', type=int, default=32)
     args = parser.parse_args()
 
