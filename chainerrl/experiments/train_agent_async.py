@@ -98,7 +98,7 @@ def train_loop(process_idx, env, agent, steps, outdir, counter,
             logger.warning('Saved the current model to %s', dirname)
         raise
 
-    if global_t == steps + 1:
+    if global_t == steps:
         # Save the final model
         dirname = os.path.join(outdir, '{}_finish'.format(steps))
         agent.save(dirname)
