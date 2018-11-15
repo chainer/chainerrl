@@ -5,6 +5,7 @@ from __future__ import absolute_import
 from builtins import *  # NOQA
 from future import standard_library
 standard_library.install_aliases()  # NOQA
+import os
 import tempfile
 import unittest
 
@@ -99,3 +100,7 @@ class TestTrainAgentAsync(unittest.TestCase):
             self.assertEqual(args[1], agent)
             # step starts with 1
             self.assertEqual(args[2], i + 1)
+
+        # Agent should be saved
+        agent.save.assert_called_once_with(
+            os.path.join(outdir, '{}_finish'.format(steps)))
