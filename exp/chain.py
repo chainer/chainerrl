@@ -143,6 +143,7 @@ def main():
     parser.add_argument('--scale-sigma', type=float, default=1)
     parser.add_argument('--min-sigma', type=float, default=0)
     parser.add_argument('--reward-noise', type=float, default=0)
+    parser.add_argument('--state-noise', type=float, default=0)
 
     parser.add_argument('--trap', action='store_true', default=False)
     parser.add_argument('--fixed-sigma', action='store_true', default=False)
@@ -214,7 +215,9 @@ def main():
                 else:
                     reward = -1.0
 
-                e.state = (position, velocity)
+                if not test:
+                    position += np.random.normal() * args.state_noise * (e.max_position - e.min_position)
+                    velocity += np.random.normal() * args.state_noise * e.max_speed * 2.0
 
                 return np.array(e.state), reward, done, {'goal': goal}
 
