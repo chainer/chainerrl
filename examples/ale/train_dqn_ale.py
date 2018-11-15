@@ -26,7 +26,7 @@ from chainerrl import misc
 from chainerrl.q_functions import DuelingDQN
 from chainerrl import replay_buffer
 
-import atari_wrappers
+from chainerrl.wrappers import atari_wrappers
 
 
 class SingleSharedBias(chainer.Chain):
@@ -184,7 +184,7 @@ def main():
         [q_func(np.zeros((4, 84, 84), dtype=np.float32)[None])],
         os.path.join(args.outdir, 'model'))
 
-    # Use the same hyper parameters as the Nature paper's
+    # Use the Nature paper's hyperparameters
     opt = optimizers.RMSpropGraves(
         lr=args.lr, alpha=0.95, momentum=0.0, eps=1e-2)
 

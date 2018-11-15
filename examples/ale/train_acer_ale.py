@@ -28,7 +28,7 @@ from chainerrl.optimizers.nonbias_weight_decay import NonbiasWeightDecay
 from chainerrl.optimizers import rmsprop_async
 from chainerrl.replay_buffer import EpisodicReplayBuffer
 
-import atari_wrappers
+from chainerrl.wrappers import atari_wrappers
 
 
 def main():
