@@ -173,7 +173,7 @@ class TestQuantileDiscreteActionValue(unittest.TestCase):
     def test_q_values(self):
         self.assertIsInstance(self.av.q_values, chainer.Variable)
         np.testing.assert_almost_equal(
-                self.av.q_values.array, self.q_values)
+            self.av.q_values.array, self.q_values)
 
     def test_evaluate_actions_as_quantiles(self):
         sample_actions = np.random.randint(self.action_size,
