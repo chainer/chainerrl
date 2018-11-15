@@ -112,13 +112,15 @@ def _unwrap_variable(x):
         return x
 
 
-def compute_eltwise_huber_quantile_loss(y, t, taus):
+def compute_eltwise_huber_quantile_loss(y, t, taus, huber_loss_threshold=1.0):
     """Compute elementwise Huber losses for quantile regression.
 
     Args:
         y (chainer.Variable): (batch_size, N)
         t (chainer.Variable or ndarray): (batch_size, N_prime)
         taus (ndarray): (batch_size, N)
+        huber_loss_threshold (float): Threshold of Huber loss. In the IQN
+            paper, this is denoted by kappa.
 
     Returns:
         chainer.Variable: Loss (batch_size, N, N_prime)
@@ -134,8 +136,9 @@ def compute_eltwise_huber_quantile_loss(y, t, taus):
     y, t, taus = F.broadcast(y, t, taus)
     with chainer.no_backprop_mode():
         I_delta = ((_unwrap_variable(t) - _unwrap_variable(y)) > 0).astype('f')
-    eltwise_loss = (abs(taus - I_delta)
-                    * F.huber_loss(y, t, delta=1.0, reduce='no'))
+    eltwise_huber_loss = F.huber_loss(
+        y, t, delta=huber_loss_threshold, reduce='no')
+    eltwise_loss = abs(taus - I_delta) * eltwise_huber_loss
     return eltwise_loss
 
 
