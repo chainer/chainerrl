@@ -464,8 +464,7 @@ def batch_experiences(experiences, xp, phi, gamma, batch_states=batch_states):
             dtype=np.float32),
         'discount': xp.asarray([(gamma ** len(elem))for elem in experiences],
                                dtype=np.float32)}
-    if all(
-        elem[-1]['next_action'] is not None for elem in experiences):
+    if all(elem[-1]['next_action'] is not None for elem in experiences):
         batch_exp['next_action'] = xp.asarray(
             [elem[-1]['next_action'] for elem in experiences])
     return batch_exp
