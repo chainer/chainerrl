@@ -38,6 +38,8 @@ class CosineBasisLinearReLU(chainer.Chain):
         taus = F.reshape(taus, (-1, 1))
         taus = F.broadcast_to(taus, (batch_size * n_taus, self.n_bases))
         xp = self.xp
+        # Equation (4) in the IQN paper has an error stating n=0,...,n-1.
+        # Actually n=1,...,n is correct (personal communication)
         coef = xp.arange(1, self.n_bases + 1, dtype=np.float32) * np.pi
         coef = xp.broadcast_to(coef, (batch_size * n_taus, self.n_bases))
         out = F.relu(self.linear(F.cos(coef * taus)))
@@ -141,9 +143,21 @@ class IQN(dqn.DQN):
     """Implicit Quantile Networks.
 
     See https://arxiv.org/abs/1806.06923.
+
+    Args:
+        quantile_thresholds_N (int): Number of quantile thresholds used in
+            quantile regression.
+        quantile_thresholds_N_prime (int): Number of quantile thresholds used
+            to sample from the return distribution at the next state.
+        quantile_thresholds_K (int): Number of quantile thresholds used to
+            compute greedy actions.
+
+    For other arguments, see chainerrl.agents.DQN.
     """
 
     def __init__(self, *args, **kwargs):
+        # N=N'=64 and K=32 were used in the IQN paper's experiments
+        # (personal communication)
         self.quantile_thresholds_N = kwargs.pop('quantile_thresholds_N', 64)
         self.quantile_thresholds_N_prime = kwargs.pop(
             'quantile_thresholds_N_prime', 64)
