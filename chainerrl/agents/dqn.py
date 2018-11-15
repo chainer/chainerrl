@@ -265,15 +265,16 @@ class DQN(agent.AttributeSavingMixin, agent.BatchAgent):
                 for ep, index in zip(sorted_episodes, indices):
                     if len(ep) <= i:
                         break
-                    transitions.append(ep[i])
+                    transitions.append([ep[i]])
                     if has_weights:
                         weights_step.append(weights[index])
                 batch = batch_experiences(
-                    [transitions],
+                    transitions,
                     xp=self.xp,
                     phi=self.phi,
                     gamma=self.gamma,
                     batch_states=self.batch_states)
+                assert len(batch['state']) == len(transitions)
                 if i == 0:
                     self.input_initial_batch_to_target_model(batch)
                 if has_weights:
