@@ -216,10 +216,15 @@ def main():
                     reward = -1.0
 
                 if not test:
-                    position += np.random.normal() * args.state_noise * (e.max_position - e.min_position)
-                    velocity += np.random.normal() * args.state_noise * e.max_speed * 2.0
+                    e.state = (position, velocity)
+                    a = position + np.random.normal() * args.state_noise * (e.max_position - e.min_position)
+                    b = velocity + np.random.normal() * args.state_noise * e.max_speed * 2.0
+                    state = np.array((a, b))
+                else:
+                    e.state = (position, velocity)
+                    state = np.array(e.state)
 
-                return np.array(e.state), reward, done, {'goal': goal}
+                return state, reward, done, {'goal': goal}
 
             e.step = step
 
