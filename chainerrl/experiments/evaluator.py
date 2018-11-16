@@ -117,6 +117,9 @@ def batch_run_evaluation_episodes(
             resets = np.zeros(num_envs, dtype=bool)
         else:
             resets = (episode_len == max_episode_len)
+        resets = np.logical_or(
+            resets, [info.get('needs_reset', False) for info in infos])
+
         # Agent observes the consequences
         agent.batch_observe(obss, rs, dones, resets)
 
