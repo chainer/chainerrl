@@ -58,7 +58,7 @@ def train_agent_batch(agent, env, steps, outdir, log_interval=None,
         agent.t = step_offset
 
     try:
-        while t < steps:
+        while True:
             # a_t
             actions = agent.batch_act_and_train(obss)
             # o_{t+1}, r_{t+1}
@@ -88,9 +88,6 @@ def train_agent_batch(agent, env, steps, outdir, log_interval=None,
             #   5. reset the env to start a new episode
             episode_idx += end
             recent_returns.extend(episode_r[end])
-            episode_r[end] = 0
-            episode_len[end] = 0
-            obss = env.reset(not_end)
 
             for _ in range(num_envs):
                 t += 1
@@ -115,6 +112,14 @@ def train_agent_batch(agent, env, steps, outdir, log_interval=None,
                     if (successful_score is not None and
                             evaluator.max_score >= successful_score):
                         break
+
+            if t >= steps:
+                break
+
+            # Start new episodes if needed
+            episode_r[end] = 0
+            episode_len[end] = 0
+            obss = env.reset(not_end)
 
     except (Exception, KeyboardInterrupt):
         # Save the current model before being killed
