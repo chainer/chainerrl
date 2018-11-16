@@ -141,3 +141,72 @@ class TestAsyncEvaluator(unittest.TestCase):
             self.assertEqual(agent.save.call_count, 2)
         else:
             self.assertEqual(agent.save.call_count, 0)
+
+
+class TestRunEvaluationEpisode(unittest.TestCase):
+
+    def test_needs_reset(self):
+        agent = mock.Mock()
+        env = mock.Mock()
+        # Reaches the terminal state after five actions
+        env.reset.side_effect = [('state', 0), ('state', 4)]
+        env.step.side_effect = [
+            (('state', 1), 0, False, {}),
+            (('state', 2), 0, False, {}),
+            (('state', 3), 0, False, {'needs_reset': True}),
+            (('state', 5), -0.5, False, {}),
+            (('state', 6), 0, False, {}),
+            (('state', 7), 1, True, {}),
+        ]
+        scores = chainerrl.experiments.evaluator.run_evaluation_episodes(
+            env, agent, n_runs=2)
+        self.assertAlmostEqual(len(scores), 2)
+        self.assertAlmostEqual(scores[0], 0)
+        self.assertAlmostEqual(scores[1], 0.5)
+
+
+class TestBatchRunEvaluationEpisode(unittest.TestCase):
+
+    def test_needs_reset(self):
+        agent = mock.Mock()
+        agent.batch_act.side_effect = [[1, 1]] * 5
+
+        def make_env(idx):
+            env = mock.Mock()
+            if idx == 0:
+                # First episode: 0 -> 1 -> 2 -> 3 (reset)
+                # Second episode: 4 -> 5 -> 6 -> 7 (done)
+                env.reset.side_effect = [('state', 0), ('state', 4)]
+                env.step.side_effect = [
+                    (('state', 1), 0, False, {}),
+                    (('state', 2), 0, False, {}),
+                    (('state', 3), 0, False, {'needs_reset': True}),
+                    (('state', 5), -0.5, False, {}),
+                    (('state', 6), 0, False, {}),
+                    (('state', 7), 1, True, {}),
+                ]
+            else:
+                # First episode: 0 -> 1 (reset)
+                # Second episode: 2 -> 3 (reset)
+                # Third episode: 4 -> 5 -> 6 -> 7 (done)
+                env.reset.side_effect = [
+                    ('state', 0), ('state', 2), ('state', 4)]
+                env.step.side_effect = [
+                    (('state', 1), 2, False, {'needs_reset': True}),
+                    (('state', 3), 3, False, {'needs_reset': True}),
+                    (('state', 5), -0.5, False, {}),
+                    (('state', 6), 0, False, {}),
+                    (('state', 7), 1, True, {}),
+                ]
+            return env
+
+        vec_env = chainerrl.envs.SerialVectorEnv(
+            [make_env(i) for i in range(2)])
+
+        scores = chainerrl.experiments.evaluator.batch_run_evaluation_episodes(
+            vec_env, agent, n_runs=4)
+        self.assertAlmostEqual(len(scores), 4)
+        self.assertAlmostEqual(scores[0], 2)
+        self.assertAlmostEqual(scores[1], 3)
+        self.assertAlmostEqual(scores[2], 0)
+        self.assertAlmostEqual(scores[3], 0.5)
