@@ -3,8 +3,6 @@ https://github.com/openai/baselines/blob/master/baselines/common/atari_wrappers.
 """
 
 from collections import deque
-import logging
-import time
 
 import cv2
 import gym
@@ -12,9 +10,9 @@ import numpy as np
 
 from gym import spaces
 
-cv2.ocl.setUseOpenCL(False)
+import chainerrl
 
-logger = logging.getLogger(__name__)
+cv2.ocl.setUseOpenCL(False)
 
 
 class NoopResetEnv(gym.Wrapper):
@@ -248,7 +246,8 @@ def make_atari(env_id, max_frames=30 * 60 * 60):
     assert isinstance(env, gym.wrappers.TimeLimit)
     # Unwrap TimeLimit wrapper because we use our own time limits
     env = env.env
-    env = ContinuingTimeLimit(env, max_episode_steps=max_frames)
+    env = chainerrl.wrappers.ContinuingTimeLimit(
+        env, max_episode_steps=max_frames)
     env = NoopResetEnv(env, noop_max=30)
     env = MaxAndSkipEnv(env, skip=4)
     return env
