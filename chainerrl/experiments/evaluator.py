@@ -104,7 +104,7 @@ def batch_run_evaluation_episodes(
     obss = env.reset()
     rs = np.zeros(num_envs, dtype='f')
 
-    while len(episode_returns) < n_runs:
+    while True:
         # a_t
         actions = agent.batch_act(obss)
         # o_{t+1}, r_{t+1}
@@ -129,6 +129,10 @@ def batch_run_evaluation_episodes(
 
         episode_returns.extend(episode_r[end])
         episode_lengths.extend(episode_len[end])
+
+        if len(episode_returns) >= n_runs:
+            break
+
         episode_r[end] = 0
         episode_len[end] = 0
         obss = env.reset(not_end)
