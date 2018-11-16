@@ -23,7 +23,7 @@ class TestTrainAgentBatch(unittest.TestCase):
 
     def test(self):
 
-        steps = 5
+        steps = 6
 
         outdir = tempfile.mkdtemp()
 
