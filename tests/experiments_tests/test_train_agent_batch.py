@@ -100,3 +100,58 @@ class TestTrainAgentBatch(unittest.TestCase):
             self.assertEqual(args[1], agent)
             # step starts with 1
             self.assertEqual(args[2], i + 1)
+
+
+class TestTrainAgentBatchNeedsReset(unittest.TestCase):
+
+    def test_needs_reset(self):
+        steps = 10
+
+        outdir = tempfile.mkdtemp()
+
+        agent = mock.Mock()
+        agent.batch_act_and_train.side_effect = [[1, 1]] * 5
+
+        def make_env(idx):
+            env = mock.Mock()
+            if idx == 0:
+                # First episode: 0 -> 1 -> 2 -> 3 (reset)
+                # Second episode: 4 -> 5 -> 6 -> 7 (done)
+                env.reset.side_effect = [('state', 0), ('state', 4)]
+                env.step.side_effect = [
+                    (('state', 1), 0, False, {}),
+                    (('state', 2), 0, False, {}),
+                    (('state', 3), 0, False, {'needs_reset': True}),
+                    (('state', 5), -0.5, False, {}),
+                    (('state', 6), 0, False, {}),
+                    (('state', 7), 1, True, {}),
+                ]
+            else:
+                # First episode: 0 -> 1 (reset)
+                # Second episode: 2 -> 3 (reset)
+                # Third episode: 4 -> 5 -> 6 -> 7 (done)
+                env.reset.side_effect = [
+                    ('state', 0), ('state', 2), ('state', 4)]
+                env.step.side_effect = [
+                    (('state', 1), 0, False, {'needs_reset': True}),
+                    (('state', 3), 0, False, {'needs_reset': True}),
+                    (('state', 5), -0.5, False, {}),
+                    (('state', 6), 0, False, {}),
+                    (('state', 7), 1, True, {}),
+                ]
+            return env
+
+        vec_env = chainerrl.envs.SerialVectorEnv(
+            [make_env(i) for i in range(2)])
+
+        chainerrl.experiments.train_agent_batch(
+            agent=agent,
+            env=vec_env,
+            steps=steps,
+            outdir=outdir,
+        )
+
+        self.assertEqual(vec_env.envs[0].reset.call_count, 2)
+        self.assertEqual(vec_env.envs[0].step.call_count, 5)
+        self.assertEqual(vec_env.envs[1].reset.call_count, 3)
+        self.assertEqual(vec_env.envs[1].step.call_count, 5)
