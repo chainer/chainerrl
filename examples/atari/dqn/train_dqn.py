@@ -174,10 +174,10 @@ def main():
     else:
         experiments.train_agent_with_evaluation(
             agent=agent, env=env, steps=args.steps,
-            eval_n_runs=args.eval_n_runs, eval_interval=args.eval_interval,
+            eval_n_episodes=args.eval_n_runs, eval_interval=args.eval_interval,
             outdir=args.outdir,
             save_best_so_far_agent=False,
-            max_episode_len=args.max_episode_len,
+            train_max_episode_len=args.max_episode_len,
             eval_env=eval_env,
         )
 

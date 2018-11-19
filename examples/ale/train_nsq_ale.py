@@ -159,9 +159,9 @@ def main():
             make_agent=make_agent,
             profile=args.profile,
             steps=args.steps,
-            eval_n_runs=args.eval_n_runs,
+            eval_n_episodes=args.eval_n_runs,
             eval_interval=args.eval_interval,
-            max_episode_len=args.max_episode_len,
+            train_max_episode_len=args.max_episode_len,
             global_step_hooks=[lr_decay_hook],
             save_best_so_far_agent=False,
         )
