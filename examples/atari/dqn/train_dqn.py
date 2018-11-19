@@ -39,31 +39,32 @@ def main():
                         help='GPU to use, set to -1 if no GPU.')
     parser.add_argument('--demo', action='store_true', default=False)
     parser.add_argument('--load', type=str, default=None)
-    parser.add_argument('--final-exploration-frames',
-                        type=int, default=10 ** 6,
-                        help='Timesteps after which we stop ' +
-                        'annealing exploration rate')
+    # timesteps after which we stop annealing exploration rate
+    final_exploration_frames = 10 ** 6
+
     parser.add_argument('--final-epsilon', type=float, default=0.1,
                         help='Final value of epsilon during training.')
     parser.add_argument('--eval-epsilon', type=float, default=0.05,
                         help='Exploration epsilon used during eval episodes.')
-    parser.add_argument('--steps', type=int, default=5 * 10 ** 7,
-                        help='Total number of timesteps to train the agent.')
+    # Total number of timesteps to train the agent.
+    steps = 5 * 10 ** 7
+
     parser.add_argument('--max-episode-len', type=int,
                         default=30 * 60 * 60 // 4,  # 30 minutes with 60/4 fps
                         help='Maximum number of timesteps for each episode.')
-    parser.add_argument('--replay-start-size', type=int, default=5 * 10 ** 4,
-                        help='Minimum replay buffer size before ' +
-                        'performing gradient updates.')
-    parser.add_argument('--target-update-interval',
-                        type=int, default=1 * 10 ** 4,
-                        help='Frequency (in timesteps) at which ' +
-                        'the target network is updated.')
-    parser.add_argument('--eval-interval', type=int, default=10 ** 5,
-                        help='Frequency (in timesteps) of evaluation phase.')
+    # Minimum replay buffer size before performing gradient updates.
+    replay_start_size = 5 * 10 ** 4
+    # Frequency (in timesteps) at which the target network is updated.
+    target_update_interval = 10 ** 4
+
+    # Frequency (in timesteps) of evaluation phase.
+    eval_interval = 250000
+
     parser.add_argument('--update-interval', type=int, default=4,
                         help='Frequency (in timesteps) of network updates.')
-    parser.add_argument('--eval-n-runs', type=int, default=10)
+    # number of evaluation episodes in intermediate evaluations.
+    eval_n_runs = 10
+
     parser.add_argument('--no-clip-delta',
                         dest='clip_delta', action='store_false')
     parser.set_defaults(clip_delta=True)
@@ -135,7 +136,7 @@ def main():
 
     explorer = explorers.LinearDecayEpsilonGreedy(
         1.0, args.final_epsilon,
-        args.final_exploration_frames,
+        final_exploration_frames,
         lambda: np.random.randint(n_actions))
 
     def phi(x):
@@ -144,8 +145,8 @@ def main():
 
     Agent = agents.DQN
     agent = Agent(q_func, opt, rbuf, gpu=args.gpu, gamma=0.99,
-                  explorer=explorer, replay_start_size=args.replay_start_size,
-                  target_update_interval=args.target_update_interval,
+                  explorer=explorer, replay_start_size=replay_start_size,
+                  target_update_interval=target_update_interval,
                   clip_delta=args.clip_delta,
                   update_interval=args.update_interval,
                   batch_accumulator='sum',
@@ -158,19 +159,44 @@ def main():
         eval_stats = experiments.eval_performance(
             env=eval_env,
             agent=agent,
-            n_runs=args.eval_n_runs)
+            n_runs=eval_n_runs)
         print('n_runs: {} mean: {} median: {} stdev {}'.format(
             args.eval_n_runs, eval_stats['mean'], eval_stats['median'],
             eval_stats['stdev']))
     else:
         experiments.train_agent_with_evaluation(
-            agent=agent, env=env, steps=args.steps,
-            eval_n_runs=args.eval_n_runs, eval_interval=args.eval_interval,
+            agent=agent, env=env, steps=steps,
+            eval_n_runs=eval_n_runs, eval_interval=eval_interval,
             outdir=args.outdir,
             save_best_so_far_agent=False,
             max_episode_len=args.max_episode_len,
             eval_env=eval_env,
         )
+
+        best = 0
+        for root, dirs, files in os.walk(args.outdir):
+            for directory in dirs:
+                print(directory)
+                timestep = int(directory)
+                if timestep > best:
+                    best = timestep
+        dir_of_best_network = os.path.join(args.outdir, str(best))
+        agent.load(dir_of_best_network)
+
+        # run 30 evaluation episodes, each capped at 5 mins of play
+        stats = chainerrl.experiments.evaluator.eval_performance(
+            eval_env, agent, 30, max_episode_len=4500, logger=None)
+        print("-----------------------------------------------------")
+        print("Overall Results of the 30 evaluation episodes of the \n"
+              + "best scoring network during training.")
+        print("-----------------------------------------------------")
+        print("Mean score: **" + str(stats['mean'])
+              + "** (score reported in paper)")
+        print("Median score: " + str(stats['median']))
+        print("Stdev score: " + str(stats['stdev']))
+        print("Max score: " + str(stats['max']))
+        print("Min score: " + str(stats['min']))
+        print("-----------------------------------------------------")
 
 
 if __name__ == '__main__':
