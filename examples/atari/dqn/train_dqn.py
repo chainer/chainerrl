@@ -44,8 +44,8 @@ def main():
 
     parser.add_argument('--final-epsilon', type=float, default=0.1,
                         help='Final value of epsilon during training.')
-    parser.add_argument('--eval-epsilon', type=float, default=0.05,
-                        help='Exploration epsilon used during eval episodes.')
+    # Exploration epsilon used during evaluation episodes.
+    eval_epsilon = 0.05
     # Total number of timesteps to train the agent.
     steps = 5 * 10 ** 7
 
@@ -103,7 +103,7 @@ def main():
         env.seed(int(env_seed))
         if test:
             # Randomize actions like epsilon-greedy in evaluation as well
-            env = chainerrl.wrappers.RandomizeAction(env, args.eval_epsilon)
+            env = chainerrl.wrappers.RandomizeAction(env, eval_epsilon)
         if args.monitor:
             env = gym.wrappers.Monitor(
                 env, args.outdir,
@@ -169,7 +169,6 @@ def main():
             eval_n_runs=eval_n_runs, eval_interval=eval_interval,
             outdir=args.outdir,
             save_best_so_far_agent=False,
-            max_episode_len=args.max_episode_len,
             eval_env=eval_env,
         )
 
