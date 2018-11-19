@@ -139,7 +139,7 @@ def train_agent_with_evaluation(agent,
         eval_max_episode_len = train_max_episode_len
 
     evaluator = Evaluator(agent=agent,
-                          n_runs=eval_n_runs,
+                          n_runs=eval_n_episodes,
                           eval_interval=eval_interval, outdir=outdir,
                           max_episode_len=eval_max_episode_len,
                           env=eval_env,

@@ -52,7 +52,7 @@ class _TestTraining(unittest.TestCase):
         # Train
         train_agent_with_evaluation(
             agent=agent, env=env, steps=steps, outdir=self.tmpdir,
-            eval_interval=200, eval_n_runs=5, successful_score=1,
+            eval_interval=200, eval_n_episodes=5, successful_score=1,
             eval_env=test_env)
 
         agent.stop_episode()
@@ -134,7 +134,7 @@ class _TestBatchTrainingMixin(object):
             steps=steps,
             outdir=self.tmpdir,
             eval_interval=200,
-            eval_n_episodes=5,
+            eval_n_runs=5,
             successful_score=1,
             eval_env=test_env,
         )
