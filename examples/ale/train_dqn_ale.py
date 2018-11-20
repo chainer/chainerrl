@@ -234,7 +234,6 @@ def main():
             eval_n_runs=args.eval_n_runs, eval_interval=args.eval_interval,
             outdir=args.outdir,
             save_best_so_far_agent=False,
-            max_episode_len=args.max_episode_len,
             eval_env=eval_env,
         )
 
