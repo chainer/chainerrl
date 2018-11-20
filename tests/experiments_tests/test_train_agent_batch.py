@@ -18,12 +18,13 @@ import chainerrl
 @testing.parameterize(*testing.product({
     'num_envs': [1, 2],
     'max_episode_len': [None, 2],
+    'steps': [5, 6],
 }))
 class TestTrainAgentBatch(unittest.TestCase):
 
     def test(self):
 
-        steps = 6
+        steps = self.steps
 
         outdir = tempfile.mkdtemp()
 
@@ -70,8 +71,15 @@ class TestTrainAgentBatch(unittest.TestCase):
         for env in vec_env.envs:
             if self.max_episode_len is None:
                 if self.num_envs == 1:
-                    # Both in the beginning and after termination
-                    self.assertEqual(env.reset.call_count, 2)
+                    if self.steps == 6:
+                        # In the beginning and after 5 iterations
+                        self.assertEqual(env.reset.call_count, 2)
+                    else:
+                        assert steps == 5
+                        # Only in the beginning. While the last state is
+                        # terminal, env.reset should not be called because
+                        # training is complete.
+                        self.assertEqual(env.reset.call_count, 1)
                 elif self.num_envs == 2:
                     # Only in the beginning
                     self.assertEqual(env.reset.call_count, 1)
