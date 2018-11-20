@@ -63,8 +63,7 @@ def main():
 
     parser.add_argument('--update-interval', type=int, default=4,
                         help='Frequency (in timesteps) of network updates.')
-    # number of evaluation episodes in intermediate evaluations.
-    eval_n_runs = 10
+    parser.add_argument('--eval-n-runs', type=int, default=30)
 
     parser.add_argument('--no-clip-delta',
                         dest='clip_delta', action='store_false')
@@ -80,6 +79,8 @@ def main():
     parser.add_argument('--lr', type=float, default=2.5e-4,
                         help='Learning rate.')
     args = parser.parse_args()
+
+    eval_n_runs = args.eval_n_runs
 
     import logging
     logging.basicConfig(level=args.logging_level)
@@ -187,7 +188,7 @@ def main():
 
             # run 30 evaluation episodes, each capped at 5 mins of play
             stats = chainerrl.experiments.evaluator.eval_performance(
-                eval_env, agent, 30, max_episode_len=4500, logger=None)
+                eval_env, agent, eval_n_runs, max_episode_len=4500, logger=None)
             print("-----------------------------------------------------")
             print("Overall Results of the 30 evaluation episodes of the \n"
                   + "best scoring network during training.")
