@@ -56,11 +56,9 @@ def train_loop(process_idx, env, agent, steps, outdir, counter,
             for hook in global_step_hooks:
                 hook(env, agent, global_t)
 
-            if (done
-                    or episode_len == max_episode_len
-                    or info.get('needs_reset', False)
-                    or global_t >= steps
-                    or training_done.value):
+            reset = (episode_len == max_episode_len
+                     or info.get('needs_reset', False))
+            if done or reset or global_t >= steps or training_done.value:
                 agent.stop_episode_and_train(obs, r, done)
 
                 if process_idx == 0:
