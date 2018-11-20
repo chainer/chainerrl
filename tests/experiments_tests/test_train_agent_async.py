@@ -116,7 +116,8 @@ class TestTrainLoop(unittest.TestCase):
 
         agent = mock.Mock()
         env = mock.Mock()
-        # Reaches the terminal state after five actions
+        # First episode: 0 -> 1 -> 2 -> 3 (reset)
+        # Second episode: 4 -> 5 -> 6 -> 7 (done)
         env.reset.side_effect = [('state', 0), ('state', 4)]
         env.step.side_effect = [
             (('state', 1), 0, False, {}),
