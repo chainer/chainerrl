@@ -188,7 +188,8 @@ def main():
 
             # run 30 evaluation episodes, each capped at 5 mins of play
             stats = chainerrl.experiments.evaluator.eval_performance(
-                eval_env, agent, eval_n_runs, max_episode_len=4500, logger=None)
+                eval_env, agent, eval_n_runs,
+                max_episode_len=4500, logger=None)
             print("-----------------------------------------------------")
             print("Overall Results of the 30 evaluation episodes of the \n"
                   + "best scoring network during training.")
