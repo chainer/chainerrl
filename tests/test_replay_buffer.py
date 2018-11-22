@@ -519,15 +519,15 @@ class TestBatchExperiences(unittest.TestCase):
     def test_batch_experiences(self):
         experiences = []
         experiences.append(
-            [dict(state=1, action=1, reward=1, next_state=1,
-                  next_action=1, is_state_terminal=False)] * 3)
+            [dict(state=1, action=1, reward=1, next_state=i,
+                  next_action=1, is_state_terminal=False) for i in range(3)])
         experiences.append([dict(state=1, action=1, reward=1, next_state=1,
                                  next_action=1, is_state_terminal=False)])
         four_step_transition = [dict(
             state=1, action=1, reward=1, next_state=1,
             next_action=1, is_state_terminal=False)] * 3
         four_step_transition.append(dict(
-                                    state=1, action=1, reward=1, next_state=1,
+                                    state=1, action=1, reward=1, next_state=5,
                                     next_action=1, is_state_terminal=True))
         experiences.append(four_step_transition)
         batch = replay_buffer.batch_experiences(
@@ -536,3 +536,8 @@ class TestBatchExperiences(unittest.TestCase):
         self.assertSequenceEqual(list(batch['is_state_terminal']),
                                  list(np.asarray([0.0, 0.0, 1.0],
                                                  dtype=np.float32)))
+        self.assertSequenceEqual(list(batch['discount']),
+                                 list(np.asarray([0.99 ** 3, 0.99 **  1, 0.99 ** 4],
+                                                 dtype=np.float32)))
+        self.assertSequenceEqual(list(batch['next_state']),
+                                 list(np.asarray([2, 1, 5])))
