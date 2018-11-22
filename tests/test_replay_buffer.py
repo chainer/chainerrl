@@ -101,27 +101,6 @@ class TestReplayBuffer(unittest.TestCase):
                     for i in range(len(item) - 1):
                         self.assertEqual(item[i]['state'], 0)
 
-    def test_batch_experiences(self):
-        experiences = []
-        experiences.append(
-            [dict(state=1, action=1, reward=1, next_state=1,
-                  next_action=1, is_state_terminal=False)] * 3)
-        experiences.append([dict(state=1, action=1, reward=1, next_state=1,
-                                 next_action=1, is_state_terminal=False)])
-        four_step_transition = [dict(
-            state=1, action=1, reward=1, next_state=1,
-            next_action=1, is_state_terminal=False)] * 3
-        four_step_transition.append(dict(
-                                    state=1, action=1, reward=1, next_state=1,
-                                    next_action=1, is_state_terminal=True))
-        experiences.append(four_step_transition)
-        batch = replay_buffer.batch_experiences(
-            experiences, np, lambda x: x, 0.99)
-        self.assertEqual(batch['state'][0], 1)
-        self.assertSequenceEqual(list(batch['is_state_terminal']),
-                                 list(np.asarray([0.0, 0.0, 1.0],
-                                                 dtype=np.float32)))
-
     def test_stop_current_episode(self):
         capacity = self.capacity
         num_steps = self.num_steps
@@ -533,3 +512,26 @@ class TestReplayBufferFail(unittest.TestCase):
         self._sample1()
         self._set1()
         self.assertRaises(AssertionError, self._set1)
+
+class TestBatchExperiences(unittest.TestCase):
+
+    def test_batch_experiences(self):
+        experiences = []
+        experiences.append(
+            [dict(state=1, action=1, reward=1, next_state=1,
+                  next_action=1, is_state_terminal=False)] * 3)
+        experiences.append([dict(state=1, action=1, reward=1, next_state=1,
+                                 next_action=1, is_state_terminal=False)])
+        four_step_transition = [dict(
+            state=1, action=1, reward=1, next_state=1,
+            next_action=1, is_state_terminal=False)] * 3
+        four_step_transition.append(dict(
+                                    state=1, action=1, reward=1, next_state=1,
+                                    next_action=1, is_state_terminal=True))
+        experiences.append(four_step_transition)
+        batch = replay_buffer.batch_experiences(
+            experiences, np, lambda x: x, 0.99)
+        self.assertEqual(batch['state'][0], 1)
+        self.assertSequenceEqual(list(batch['is_state_terminal']),
+                                 list(np.asarray([0.0, 0.0, 1.0],
+                                                 dtype=np.float32)))
