@@ -513,6 +513,7 @@ class TestReplayBufferFail(unittest.TestCase):
         self._set1()
         self.assertRaises(AssertionError, self._set1)
 
+
 class TestBatchExperiences(unittest.TestCase):
 
     def test_batch_experiences(self):
