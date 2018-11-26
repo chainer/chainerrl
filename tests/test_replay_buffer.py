@@ -43,7 +43,7 @@ class TestReplayBuffer(unittest.TestCase):
         self.assertEqual(len(rbuf), 1)
         s1 = rbuf.sample(1)
         self.assertEqual(len(s1), 1)
-        self.assertEqual(s1[0], correct_item)
+        self.assertEqual(s1[0], list(correct_item))
 
         # Add two and sample two, which must be unique
         correct_item2 = copy.deepcopy(correct_item)
@@ -55,11 +55,11 @@ class TestReplayBuffer(unittest.TestCase):
         s2 = rbuf.sample(2)
         self.assertEqual(len(s2), 2)
         if s2[0][num_steps - 1]['state'] == 0:
-            self.assertEqual(s2[0], correct_item)
-            self.assertEqual(s2[1], correct_item2)
+            self.assertEqual(s2[0], list(correct_item))
+            self.assertEqual(s2[1], list(correct_item2))
         else:
-            self.assertEqual(s2[1], correct_item)
-            self.assertEqual(s2[0], correct_item2)
+            self.assertEqual(s2[1], list(correct_item))
+            self.assertEqual(s2[0], list(correct_item2))
 
     def test_append_and_terminate(self):
         capacity = self.capacity
@@ -163,11 +163,11 @@ class TestReplayBuffer(unittest.TestCase):
         # And sampled transitions are exactly what I added!
         s2 = rbuf.sample(2)
         if s2[0][num_steps - 1]['state'] == 0:
-            self.assertEqual(s2[0], correct_item)
-            self.assertEqual(s2[1], correct_item2)
+            self.assertEqual(s2[0], list(correct_item))
+            self.assertEqual(s2[1], list(correct_item2))
         else:
-            self.assertEqual(s2[0], correct_item2)
-            self.assertEqual(s2[1], correct_item)
+            self.assertEqual(s2[0], list(correct_item2))
+            self.assertEqual(s2[1], list(correct_item))
 
 
 @testing.parameterize(*testing.product(
@@ -301,7 +301,7 @@ class TestPrioritizedReplayBuffer(unittest.TestCase):
         self.assertEqual(len(s1), 1)
         self.assertAlmostEqual(s1[0][0]['weight'], 1.0)
         del s1[0][0]['weight']
-        self.assertEqual(s1[0], correct_item)
+        self.assertEqual(s1[0], list(correct_item))
 
         # Add two and sample two, which must be unique
         correct_item2 = copy.deepcopy(correct_item)
@@ -316,11 +316,11 @@ class TestPrioritizedReplayBuffer(unittest.TestCase):
         del s2[0][0]['weight']
         del s2[1][0]['weight']
         if s2[0][num_steps - 1]['state'] == 1:
-            self.assertEqual(s2[0], correct_item2)
-            self.assertEqual(s2[1], correct_item)
+            self.assertEqual(s2[0], list(correct_item2))
+            self.assertEqual(s2[1], list(correct_item))
         else:
-            self.assertEqual(s2[0], correct_item)
-            self.assertEqual(s2[1], correct_item2)
+            self.assertEqual(s2[0], list(correct_item))
+            self.assertEqual(s2[1], list(correct_item2))
 
         # Weights should be different for different TD-errors
         s3 = rbuf.sample(2)
@@ -403,11 +403,11 @@ class TestPrioritizedReplayBuffer(unittest.TestCase):
         del s2[0][0]['weight']
         del s2[1][0]['weight']
         if s2[0][num_steps - 1]['state'] == 0:
-            self.assertEqual(s2[0], correct_item)
-            self.assertEqual(s2[1], correct_item2)
+            self.assertEqual(s2[0], list(correct_item))
+            self.assertEqual(s2[1], list(correct_item2))
         else:
-            self.assertEqual(s2[0], correct_item2)
-            self.assertEqual(s2[1], correct_item)
+            self.assertEqual(s2[0], list(correct_item2))
+            self.assertEqual(s2[1], list(correct_item))
 
 
 def exp_return_of_episode(episode):

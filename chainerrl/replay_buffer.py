@@ -11,7 +11,6 @@ from abc import ABCMeta
 from abc import abstractmethod
 from abc import abstractproperty
 import collections
-import copy
 
 import numpy as np
 import six.moves.cPickle as pickle
@@ -145,23 +144,23 @@ class ReplayBuffer(AbstractReplayBuffer):
         self.last_n_transitions.append(experience)
         if is_state_terminal:
             while self.last_n_transitions:
-                self.memory.append(copy.copy(self.last_n_transitions))
+                self.memory.append(list(self.last_n_transitions))
                 del self.last_n_transitions[0]
             assert len(self.last_n_transitions) == 0
         else:
             if len(self.last_n_transitions) == self.num_steps:
-                self.memory.append(copy.copy(self.last_n_transitions))
+                self.memory.append(list(self.last_n_transitions))
 
     def stop_current_episode(self):
         # if n-step transition hist is not full, add transition;
         # if n-step hist is indeed full, transition has already been added;
         if 0 < len(self.last_n_transitions) < self.num_steps:
-            self.memory.append(copy.copy(self.last_n_transitions))
+            self.memory.append(list(self.last_n_transitions))
         # avoid duplicate entry
         if 0 < len(self.last_n_transitions) <= self.num_steps:
             del self.last_n_transitions[0]
         while self.last_n_transitions:
-            self.memory.append(copy.copy(self.last_n_transitions))
+            self.memory.append(list(self.last_n_transitions))
             del self.last_n_transitions[0]
         assert len(self.last_n_transitions) == 0
 
