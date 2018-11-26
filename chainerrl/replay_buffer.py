@@ -163,6 +163,16 @@ class ReplayBuffer(AbstractReplayBuffer):
         pass
 
 
+class HindsightReplayBuffer(ReplayBuffer):
+    """Hindsight Replay Buffer
+
+    https://arxiv.org/abs/1707.01495
+
+    """
+
+    def __init__(self, capacity=None):
+        super(HindsightReplayBuffer, self).__init__(capacity)
+
 class PriorityWeightError(object):
     """For proportional prioritization
 
