@@ -173,6 +173,7 @@ class HindsightReplayBuffer(ReplayBuffer):
     def __init__(self, capacity=None):
         super(HindsightReplayBuffer, self).__init__(capacity)
 
+
 class PriorityWeightError(object):
     """For proportional prioritization
 
