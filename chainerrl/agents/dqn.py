@@ -201,28 +201,29 @@ class DQN(agent.AttributeSavingMixin, agent.BatchAgent):
 
         This function is thread-safe.
         Args:
-          experiences (list): list of dict that contains
+          experiences (list): list of lists of dicts.
+          The dict contains
             state: cupy.ndarray or numpy.ndarray
             action: int [0, n_action_types)
             reward: float32
+            is_state_terminal: bool
             next_state: cupy.ndarray or numpy.ndarray
-            next_legal_actions: list of booleans; True means legal
-          gamma (float): discount factor
+            weight (optional): float32
         Returns:
           None
         """
-
-        has_weight = 'weight' in experiences[0]
-        exp_batch = batch_experiences(experiences, xp=self.xp, phi=self.phi,
-                                      batch_states=self.batch_states)
+        has_weight = 'weight' in experiences[0][0]
+        exp_batch = batch_experiences(
+            experiences, xp=self.xp,
+            phi=self.phi, gamma=self.gamma,
+            batch_states=self.batch_states)
         if has_weight:
             exp_batch['weights'] = self.xp.asarray(
-                [elem['weight'] for elem in experiences],
+                [elem[0]['weight']for elem in experiences],
                 dtype=self.xp.float32)
             if errors_out is None:
                 errors_out = []
-        loss = self._compute_loss(
-            exp_batch, self.gamma, errors_out=errors_out)
+        loss = self._compute_loss(exp_batch, errors_out=errors_out)
         if has_weight:
             self.replay_buffer.update_errors(errors_out)
 
@@ -250,6 +251,7 @@ class DQN(agent.AttributeSavingMixin, agent.BatchAgent):
             for _ in episodes:
                 errors_out.append(0.0)
             errors_out_step = []
+
         with state_reset(self.model), state_reset(self.target_model):
             loss = 0
             tmp = list(reversed(sorted(
@@ -263,19 +265,22 @@ class DQN(agent.AttributeSavingMixin, agent.BatchAgent):
                 for ep, index in zip(sorted_episodes, indices):
                     if len(ep) <= i:
                         break
-                    transitions.append(ep[i])
+                    transitions.append([ep[i]])
                     if has_weights:
                         weights_step.append(weights[index])
-                batch = batch_experiences(transitions,
-                                          xp=self.xp,
-                                          phi=self.phi,
-                                          batch_states=self.batch_states)
+                batch = batch_experiences(
+                    transitions,
+                    xp=self.xp,
+                    phi=self.phi,
+                    gamma=self.gamma,
+                    batch_states=self.batch_states)
+                assert len(batch['state']) == len(transitions)
                 if i == 0:
                     self.input_initial_batch_to_target_model(batch)
                 if has_weights:
                     batch['weights'] = self.xp.asarray(
                         weights_step, dtype=self.xp.float32)
-                loss += self._compute_loss(batch, self.gamma,
+                loss += self._compute_loss(batch,
                                            errors_out=errors_out_step)
                 if errors_out is not None:
                     for err, index in zip(errors_out_step, indices):
@@ -293,7 +298,7 @@ class DQN(agent.AttributeSavingMixin, agent.BatchAgent):
         if has_weights:
             self.replay_buffer.update_errors(errors_out)
 
-    def _compute_target_values(self, exp_batch, gamma):
+    def _compute_target_values(self, exp_batch):
         batch_next_state = exp_batch['next_state']
 
         target_next_qout = self.target_model(batch_next_state)
@@ -301,10 +306,11 @@ class DQN(agent.AttributeSavingMixin, agent.BatchAgent):
 
         batch_rewards = exp_batch['reward']
         batch_terminal = exp_batch['is_state_terminal']
+        discount = exp_batch['discount']
 
-        return batch_rewards + self.gamma * (1.0 - batch_terminal) * next_q_max
+        return batch_rewards + discount * (1.0 - batch_terminal) * next_q_max
 
-    def _compute_y_and_t(self, exp_batch, gamma):
+    def _compute_y_and_t(self, exp_batch):
         batch_size = exp_batch['reward'].shape[0]
 
         # Compute Q-values for current states
@@ -318,22 +324,21 @@ class DQN(agent.AttributeSavingMixin, agent.BatchAgent):
 
         with chainer.no_backprop_mode():
             batch_q_target = F.reshape(
-                self._compute_target_values(exp_batch, gamma),
+                self._compute_target_values(exp_batch),
                 (batch_size, 1))
 
         return batch_q, batch_q_target
 
-    def _compute_loss(self, exp_batch, gamma, errors_out=None):
+    def _compute_loss(self, exp_batch, errors_out=None):
         """Compute the Q-learning loss for a batch of experiences
 
 
         Args:
-          experiences (list): see update()'s docstring
-          gamma (float): discount factor
+          exp_batch (dict): A dict of batched arrays of transitions
         Returns:
-          loss
+          Computed loss from the minibatch of experiences
         """
-        y, t = self._compute_y_and_t(exp_batch, gamma)
+        y, t = self._compute_y_and_t(exp_batch)
 
         if errors_out is not None:
             del errors_out[:]
