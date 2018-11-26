@@ -1,3 +1,4 @@
+import codecs
 from setuptools import find_packages
 from setuptools import setup
 import sys
@@ -28,7 +29,7 @@ if sys.version_info < (3, 5):
 setup(name='chainerrl',
       version='0.5.0',
       description='ChainerRL, a deep reinforcement learning library',
-      long_description=open('README.md').read(),
+      long_description=codecs.open('README.md', 'r', encoding='utf-8').read(),
       long_description_content_type='text/markdown',
       author='Yasuhiro Fujita',
       author_email='fujita@preferred.jp',
