@@ -89,6 +89,7 @@ def main():
     parser.add_argument('--use-sdl', action='store_true', default=False)
     parser.add_argument('--final-exploration-frames',
                         type=int, default=1000)
+    parser.add_argument('--init-epsilon', type=float, default=1.0)
     parser.add_argument('--final-epsilon', type=float, default=0.1)
     parser.add_argument('--eval-epsilon', type=float, default=0.05)
     parser.add_argument('--arch', type=str, default='nature',
@@ -289,7 +290,7 @@ def main():
     rbuf = replay_buffer.ReplayBuffer(args.buffer_size)
 
     explorer = explorers.LinearDecayEpsilonGreedy(
-        1.0, args.final_epsilon,
+        args.init_epsilon, args.final_epsilon,
         args.final_exploration_frames,
         lambda: np.random.randint(n_actions))
 
