@@ -79,10 +79,10 @@ class TestPPO(unittest.TestCase):
             steps=steps,
             outdir=self.tmpdir,
             eval_interval=200,
-            eval_n_runs=50,
+            eval_n_episodes=50,
             successful_score=successful_return,
             eval_env=test_env,
-            max_episode_len=max_episode_len,
+            train_max_episode_len=max_episode_len,
         )
 
         agent.stop_episode()
