@@ -303,10 +303,11 @@ class PCL(agent.AttributeSavingMixin, agent.AsyncAgent):
                 for ep in sorted_episodes:
                     if len(ep) <= t:
                         break
-                    transitions.append(ep[t])
+                    transitions.append([ep[t]])
                 batch = batch_experiences(transitions,
                                           xp=self.xp,
                                           phi=self.phi,
+                                          gamma=self.gamma,
                                           batch_states=self.batch_states)
                 batchsize = batch['action'].shape[0]
                 if next_action_distrib is not None:

@@ -17,7 +17,7 @@ class DoubleDQN(dqn.DQN):
     See: http://arxiv.org/abs/1509.06461.
     """
 
-    def _compute_target_values(self, exp_batch, gamma):
+    def _compute_target_values(self, exp_batch):
 
         batch_next_state = exp_batch['next_state']
 
@@ -31,5 +31,6 @@ class DoubleDQN(dqn.DQN):
 
         batch_rewards = exp_batch['reward']
         batch_terminal = exp_batch['is_state_terminal']
+        discount = exp_batch['discount']
 
-        return batch_rewards + self.gamma * (1.0 - batch_terminal) * next_q_max
+        return batch_rewards + discount * (1.0 - batch_terminal) * next_q_max

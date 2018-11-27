@@ -87,7 +87,7 @@ def train_loop(process_idx, env, agent, steps, outdir, counter,
                 for hook in global_step_hooks:
                     hook(env, agent, global_t)
 
-                if global_t > steps or training_done.value:
+                if global_t >= steps or training_done.value:
                     break
 
     except (Exception, KeyboardInterrupt):
@@ -98,7 +98,7 @@ def train_loop(process_idx, env, agent, steps, outdir, counter,
             logger.warning('Saved the current model to %s', dirname)
         raise
 
-    if global_t == steps + 1:
+    if global_t == steps:
         # Save the final model
         dirname = os.path.join(outdir, '{}_finish'.format(steps))
         agent.save(dirname)
@@ -234,6 +234,10 @@ def train_agent_async(outdir, processes, make_env,
                             'profile-{}.out'.format(os.getpid()))
         else:
             f()
+
+        env.close()
+        if eval_env is not env:
+            eval_env.close()
 
     async_.run_async(processes, run_func)
 
