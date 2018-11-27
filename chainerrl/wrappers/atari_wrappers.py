@@ -10,6 +10,8 @@ import numpy as np
 
 from gym import spaces
 
+import chainerrl
+
 cv2.ocl.setUseOpenCL(False)
 
 
@@ -36,8 +38,8 @@ class NoopResetEnv(gym.Wrapper):
         assert noops > 0
         obs = None
         for _ in range(noops):
-            obs, _, done, _ = self.env.step(self.noop_action)
-            if done:
+            obs, _, done, info = self.env.step(self.noop_action)
+            if done or info.get('needs_reset', False):
                 obs = self.env.reset(**kwargs)
         return obs
 
@@ -54,11 +56,11 @@ class FireResetEnv(gym.Wrapper):
 
     def _reset(self, **kwargs):
         self.env.reset(**kwargs)
-        obs, _, done, _ = self.env.step(1)
-        if done:
+        obs, _, done, info = self.env.step(1)
+        if done or info.get('needs_reset', False):
             self.env.reset(**kwargs)
-        obs, _, done, _ = self.env.step(2)
-        if done:
+        obs, _, done, info = self.env.step(2)
+        if done or info.get('needs_reset', False):
             self.env.reset(**kwargs)
         return obs
 
@@ -74,11 +76,11 @@ class EpisodicLifeEnv(gym.Wrapper):
         """
         gym.Wrapper.__init__(self, env)
         self.lives = 0
-        self.was_real_done = True
+        self.needs_real_reset = True
 
     def _step(self, action):
         obs, reward, done, info = self.env.step(action)
-        self.was_real_done = done
+        self.needs_real_reset = done or info.get('needs_reset', False)
         # check current lives, make loss of life terminal,
         # then update lives to handle bonus lives
         lives = self.env.unwrapped.ale.lives()
@@ -97,7 +99,7 @@ class EpisodicLifeEnv(gym.Wrapper):
         This way all states are still reachable even though lives are episodic,
         and the learner need not know about any of this behind-the-scenes.
         """
-        if self.was_real_done:
+        if self.needs_real_reset:
             obs = self.env.reset(**kwargs)
         else:
             # no-op step to advance from terminal/lost life state
@@ -126,7 +128,7 @@ class MaxAndSkipEnv(gym.Wrapper):
             if i == self._skip - 1:
                 self._obs_buffer[1] = obs
             total_reward += reward
-            if done:
+            if done or info.get('needs_reset', False):
                 break
         # Note that the observation on the done=True frame
         # doesn't matter
@@ -238,9 +240,14 @@ class LazyFrames(object):
         return out
 
 
-def make_atari(env_id):
+def make_atari(env_id, max_frames=30 * 60 * 60):
     env = gym.make(env_id)
     assert 'NoFrameskip' in env.spec.id
+    assert isinstance(env, gym.wrappers.TimeLimit)
+    # Unwrap TimeLimit wrapper because we use our own time limits
+    env = env.env
+    env = chainerrl.wrappers.ContinuingTimeLimit(
+        env, max_episode_steps=max_frames)
     env = NoopResetEnv(env, noop_max=30)
     env = MaxAndSkipEnv(env, skip=4)
     return env

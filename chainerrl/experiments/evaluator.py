@@ -55,7 +55,10 @@ def run_evaluation_episodes(env, agent, n_runs, max_episode_len=None,
         done = False
         test_r = 0
         t = 0
-        while not (done or t == max_episode_len):
+        info = {}
+        while not (done
+                   or t == max_episode_len
+                   or info.get('needs_reset', False)):
             a = agent.act(obs)
             obs, r, done, info = env.step(a)
             test_r += r
@@ -101,7 +104,7 @@ def batch_run_evaluation_episodes(
     obss = env.reset()
     rs = np.zeros(num_envs, dtype='f')
 
-    while len(episode_returns) < n_runs:
+    while True:
         # a_t
         actions = agent.batch_act(obss)
         # o_{t+1}, r_{t+1}
@@ -114,6 +117,9 @@ def batch_run_evaluation_episodes(
             resets = np.zeros(num_envs, dtype=bool)
         else:
             resets = (episode_len == max_episode_len)
+        resets = np.logical_or(
+            resets, [info.get('needs_reset', False) for info in infos])
+
         # Agent observes the consequences
         agent.batch_observe(obss, rs, dones, resets)
 
@@ -123,6 +129,10 @@ def batch_run_evaluation_episodes(
 
         episode_returns.extend(episode_r[end])
         episode_lengths.extend(episode_len[end])
+
+        if len(episode_returns) >= n_runs:
+            break
+
         episode_r[end] = 0
         episode_len[end] = 0
         obss = env.reset(not_end)
