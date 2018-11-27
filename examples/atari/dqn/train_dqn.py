@@ -67,6 +67,7 @@ def main():
                         help='Frequency (in timesteps) of evaluation phase.')
     parser.add_argument('--update-interval', type=int, default=4,
                         help='Frequency (in timesteps) of network updates.')
+    parser.add_argument('--eval-n-steps', type=int, default=None)
     parser.add_argument('--eval-n-runs', type=int, default=10)
     parser.add_argument('--no-clip-delta',
                         dest='clip_delta', action='store_false')
@@ -174,7 +175,9 @@ def main():
     else:
         experiments.train_agent_with_evaluation(
             agent=agent, env=env, steps=args.steps,
-            eval_n_episodes=args.eval_n_runs, eval_interval=args.eval_interval,
+            eval_n_steps=args.eval_n_steps,
+            eval_n_episodes=args.eval_n_runs, 
+            eval_interval=args.eval_interval,
             outdir=args.outdir,
             save_best_so_far_agent=False,
             train_max_episode_len=args.max_episode_len,

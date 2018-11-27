@@ -32,14 +32,14 @@ _basic_columns = ('steps', 'episodes', 'elapsed', 'mean',
                   'median', 'stdev', 'max', 'min')
 
 
-def run_evaluation_episodes(env, agent, n_runs, max_episode_len=None,
+def run_evaluation_episodes(env, agent, n_episodes, max_episode_len=None,
                             logger=None):
     """Run multiple evaluation episodes and return returns.
 
     Args:
         env (Environment): Environment used for evaluation
         agent (Agent): Agent to evaluate.
-        n_runs (int): Number of evaluation runs.
+        n_episodes (int): Number of evaluation runs.
         max_episode_len (int or None): If specified, episodes longer than this
             value will be truncated.
         logger (Logger or None): If specified, the given Logger object will be
@@ -50,7 +50,7 @@ def run_evaluation_episodes(env, agent, n_runs, max_episode_len=None,
     """
     logger = logger or logging.getLogger(__name__)
     scores = []
-    for i in range(n_runs):
+    for i in range(n_episodes):
         obs = env.reset()
         done = False
         test_r = 0
@@ -71,7 +71,7 @@ def run_evaluation_episodes(env, agent, n_runs, max_episode_len=None,
 def batch_run_evaluation_episodes(
     env,
     agent,
-    n_runs,
+    n_episodes,
     max_episode_len=None,
     logger=None,
 ):
@@ -80,7 +80,7 @@ def batch_run_evaluation_episodes(
     Args:
         env (VectorEnv): Environment used for evaluation.
         agent (Agent): Agent to evaluate.
-        n_runs (int): Number of evaluation runs.
+        n_episodes (int): Number of evaluation runs.
         max_episode_len (int or None): If specified, episodes
             longer than this value will be truncated.
         logger (Logger or None): If specified, the given Logger
@@ -101,7 +101,7 @@ def batch_run_evaluation_episodes(
     obss = env.reset()
     rs = np.zeros(num_envs, dtype='f')
 
-    while len(episode_returns) < n_runs:
+    while len(episode_returns) < n_episodes:
         # a_t
         actions = agent.batch_act(obss)
         # o_{t+1}, r_{t+1}
@@ -127,8 +127,8 @@ def batch_run_evaluation_episodes(
         episode_len[end] = 0
         obss = env.reset(not_end)
 
-    episode_returns = episode_returns[:n_runs]
-    episode_lengths = episode_lengths[:n_runs]
+    episode_returns = episode_returns[:n_episodes]
+    episode_lengths = episode_lengths[:n_episodes]
 
     for i, (epi_len, epi_ret) in enumerate(
             zip(episode_lengths, episode_returns)):
@@ -137,14 +137,14 @@ def batch_run_evaluation_episodes(
     return [float(r) for r in episode_returns]
 
 
-def eval_performance(env, agent, n_runs, max_episode_len=None,
+def eval_performance(env, agent, n_episodes, max_episode_len=None,
                      logger=None):
     """Run multiple evaluation episodes and return statistics.
 
     Args:
         env (Environment): Environment used for evaluation
         agent (Agent): Agent to evaluate.
-        n_runs (int): Number of evaluation runs.
+        n_episodes (int): Number of evaluation episodes.
         max_episode_len (int or None): If specified, episodes longer than this
             value will be truncated.
         logger (Logger or None): If specified, the given Logger object will be
@@ -155,18 +155,18 @@ def eval_performance(env, agent, n_runs, max_episode_len=None,
     """
     if isinstance(env, chainerrl.env.VectorEnv):
         scores = batch_run_evaluation_episodes(
-            env, agent, n_runs,
+            env, agent, n_episodes,
             max_episode_len=max_episode_len,
             logger=logger)
     else:
         scores = run_evaluation_episodes(
-            env, agent, n_runs,
+            env, agent, n_episodes,
             max_episode_len=max_episode_len,
             logger=logger)
     stats = dict(
         mean=statistics.mean(scores),
         median=statistics.median(scores),
-        stdev=statistics.stdev(scores) if n_runs >= 2 else 0.0,
+        stdev=statistics.stdev(scores) if n_episodes >= 2 else 0.0,
         max=np.max(scores),
         min=np.min(scores))
     return stats
@@ -189,7 +189,8 @@ class Evaluator(object):
     Args:
         agent (Agent): Agent to evaluate.
         env (Env): Env to evaluate the agent on.
-        n_runs (int): Number of episodes used in each evaluation.
+        n_steps (int): Number of timesteps used in each evaluation.
+        n_episodes (int): Number of episodes used in each evaluation.
         eval_interval (int): Interval of evaluations in steps.
         outdir (str): Path to a directory to save things.
         max_episode_len (int): Maximum length of episodes used in evaluations.
@@ -202,7 +203,8 @@ class Evaluator(object):
     def __init__(self,
                  agent,
                  env,
-                 n_runs,
+                 n_steps,
+                 n_episodes,
                  eval_interval,
                  outdir,
                  max_episode_len=None,
@@ -210,11 +212,18 @@ class Evaluator(object):
                  save_best_so_far_agent=True,
                  logger=None,
                  ):
+        try:
+            assert (n_steps is None) != (n_episodes is None)
+        except AssertionError as error:
+            print("One of n_steps or n_episodes must be None. " +
+                  "Either we evaluate for a specified number " + 
+                  "of episodes or for a specified number of timesteps.")
+            raise error
         self.agent = agent
         self.env = env
         self.max_score = np.finfo(np.float32).min
         self.start_time = time.time()
-        self.n_runs = n_runs
+        self.n_episodes = n_episodes
         self.eval_interval = eval_interval
         self.outdir = outdir
         self.max_episode_len = max_episode_len
@@ -232,7 +241,7 @@ class Evaluator(object):
 
     def evaluate_and_update_max_score(self, t, episodes):
         eval_stats = eval_performance(
-            self.env, self.agent, self.n_runs,
+            self.env, self.agent, self.n_episodes,
             max_episode_len=self.max_episode_len,
             logger=self.logger)
         elapsed = time.time() - self.start_time
@@ -267,7 +276,7 @@ class AsyncEvaluator(object):
     """Object that is responsible for evaluating asynchronous multiple agents.
 
     Args:
-        n_runs (int): Number of episodes used in each evaluation.
+        n_episodes (int): Number of episodes used in each evaluation.
         eval_interval (int): Interval of evaluations in steps.
         outdir (str): Path to a directory to save things.
         max_episode_len (int): Maximum length of episodes used in evaluations.
@@ -278,7 +287,7 @@ class AsyncEvaluator(object):
     """
 
     def __init__(self,
-                 n_runs,
+                 n_episodes,
                  eval_interval,
                  outdir,
                  max_episode_len=None,
@@ -288,7 +297,7 @@ class AsyncEvaluator(object):
                  ):
 
         self.start_time = time.time()
-        self.n_runs = n_runs
+        self.n_episodes = n_episodes
         self.eval_interval = eval_interval
         self.outdir = outdir
         self.max_episode_len = max_episode_len
@@ -314,7 +323,7 @@ class AsyncEvaluator(object):
 
     def evaluate_and_update_max_score(self, t, episodes, env, agent):
         eval_stats = eval_performance(
-            env, agent, self.n_runs,
+            env, agent, self.n_episodes,
             max_episode_len=self.max_episode_len,
             logger=self.logger)
         elapsed = time.time() - self.start_time

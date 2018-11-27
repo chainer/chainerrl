@@ -91,6 +91,7 @@ def train_agent(agent, env, steps, outdir, max_episode_len=None,
 def train_agent_with_evaluation(agent,
                                 env,
                                 steps,
+                                eval_n_steps,
                                 eval_n_episodes,
                                 eval_interval,
                                 outdir,
@@ -109,7 +110,8 @@ def train_agent_with_evaluation(agent,
         agent: A chainerrl.agent.Agent
         env: Environment train the agent against.
         steps (int): Total number of timesteps for training.
-        eval_n_episodes (int): Number of episodes at each evaluation phase
+        eval_n_steps (int): Number of timesteps at each evaluation phase.
+        eval_n_episodes (int): Number of episodes at each evaluation phase.
         eval_interval (int): Interval of evaluation.
         outdir (str): Path to the directory to output data.
         train_max_episode_len (int): Maximum episode length during training.
@@ -139,7 +141,8 @@ def train_agent_with_evaluation(agent,
         eval_max_episode_len = train_max_episode_len
 
     evaluator = Evaluator(agent=agent,
-                          n_runs=eval_n_episodes,
+                          n_steps=eval_n_steps,
+                          n_episodes=eval_n_episodes,
                           eval_interval=eval_interval, outdir=outdir,
                           max_episode_len=eval_max_episode_len,
                           env=eval_env,
