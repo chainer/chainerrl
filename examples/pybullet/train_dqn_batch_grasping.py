@@ -75,9 +75,6 @@ def main():
                         type=int, default=10 ** 6)
     parser.add_argument('--final-epsilon', type=float, default=0.1)
     parser.add_argument('--steps', type=int, default=10 ** 7)
-    parser.add_argument('--max-episode-len', type=int,
-                        default=30 * 60 * 60 // 4,  # 30 minutes with 60/4 fps
-                        help='Maximum number of steps for each episode.')
     parser.add_argument('--replay-start-size', type=int, default=5 * 10 ** 4)
     parser.add_argument('--target-update-interval',
                         type=int, default=3 * 10 ** 4)
@@ -213,7 +210,6 @@ def main():
             eval_interval=args.eval_interval,
             outdir=args.outdir,
             save_best_so_far_agent=False,
-            max_episode_len=args.max_episode_len,
             log_interval=1000,
         )
 
