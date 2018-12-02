@@ -63,7 +63,7 @@ class MySequence(chainer.Chain):#links.Sequence):
                     ll = L.Linear(100, acts)
                     #net.append(ll)
                     self.add_link(str(n)+'_ll', ll)
-                    self.sigma_nets.append(l1)
+                    self.sigma_nets.append(ll)
 
                     continue
 
