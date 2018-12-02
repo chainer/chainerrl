@@ -124,7 +124,7 @@ class DiscreteActionValueWithSigma(ActionValue):
 
     @cached_property
     def sample_actions(self):
-        noise = self.xp.random.standard_normal(self.sigmas.shape)
+        noise = self.xp.random.standard_normal(self.xp.sqrt(self.xp.absolute(self.sigmas.shape)))
         vals = self.q_values.data + self.sigmas.data * noise
         return chainer.Variable(vals.argmax(axis=1).astype(np.int32))
 
