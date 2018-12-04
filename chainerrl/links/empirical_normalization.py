@@ -23,12 +23,13 @@ class EmpiricalNormalization(chainer.Link):
     """
 
     def __init__(self, shape, batch_axis=0, eps=1e-2, dtype=np.float32,
-                 until=None):
+                 until=None, clip_threshold=None):
         super(EmpiricalNormalization, self).__init__()
         dtype = np.dtype(dtype)
         self.batch_axis = batch_axis
         self.eps = dtype.type(eps)
         self.until = until
+        self.clip_threshold = clip_threshold
         self._mean = np.expand_dims(np.zeros(shape, dtype=dtype), batch_axis)
         self._var = np.expand_dims(np.ones(shape, dtype=dtype), batch_axis)
         self.count = 0
@@ -103,7 +104,11 @@ class EmpiricalNormalization(chainer.Link):
         if update:
             self.experience(x)
 
-        return (x - mean) * std_inv
+        normalized = (x - mean) * std_inv
+        if self.clip_threshold is not None:
+            normalized = xp.clip(
+                normalized, -self.clip_threshold, self.clip_threshold)
+        return normalized
 
     def inverse(self, y):
         xp = self.xp

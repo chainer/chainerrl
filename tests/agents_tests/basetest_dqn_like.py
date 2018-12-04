@@ -68,7 +68,7 @@ class _TestDQNOnABC(_TestDQNLike):
         return LinearDecayEpsilonGreedy(1.0, 0.1, 1000, random_action_func)
 
     def make_optimizer(self, env, q_func):
-        opt = optimizers.Adam()
+        opt = optimizers.Adam(1e-2)
         opt.setup(q_func)
         return opt
 
@@ -103,7 +103,39 @@ class _TestDQNOnDiscretePOABC(_TestDQNOnABC):
                    deterministic=test), 1
 
 
+class _TestNStepDQNOnABC(_TestDQNOnABC):
+
+    def make_replay_buffer(self, env):
+        return replay_buffer.ReplayBuffer(10 ** 5, num_steps=3)
+
+
+class _TestNStepDQNOnDiscreteABC(_TestNStepDQNOnABC):
+
+    def make_q_func(self, env):
+        return q_functions.FCStateQFunctionWithDiscreteAction(
+            env.observation_space.low.size, env.action_space.n, 10, 10)
+
+    def make_env_and_successful_return(self, test):
+        return ABC(discrete=True, deterministic=test), 1
+
+
 class _TestDQNOnContinuousABC(_TestDQNOnABC):
+
+    def make_q_func(self, env):
+        n_dim_action = env.action_space.low.size
+        n_dim_obs = env.observation_space.low.size
+        return q_functions.FCQuadraticStateQFunction(
+            n_input_channels=n_dim_obs,
+            n_dim_action=n_dim_action,
+            n_hidden_channels=20,
+            n_hidden_layers=2,
+            action_space=env.action_space)
+
+    def make_env_and_successful_return(self, test):
+        return ABC(discrete=False, deterministic=test), 1
+
+
+class _TestNStepDQNOnContinuousABC(_TestNStepDQNOnABC):
 
     def make_q_func(self, env):
         n_dim_action = env.action_space.low.size

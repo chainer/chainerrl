@@ -17,6 +17,7 @@ import gym
 import gym.wrappers
 import numpy as np
 
+import chainerrl
 from chainerrl.action_value import DiscreteActionValue
 from chainerrl.agents import acer
 from chainerrl.distribution import SoftmaxDistribution
@@ -27,7 +28,7 @@ from chainerrl.optimizers.nonbias_weight_decay import NonbiasWeightDecay
 from chainerrl.optimizers import rmsprop_async
 from chainerrl.replay_buffer import EpisodicReplayBuffer
 
-import atari_wrappers
+from chainerrl.wrappers import atari_wrappers
 
 
 def main():
@@ -141,7 +142,7 @@ def main():
                 env, args.outdir,
                 mode='evaluation' if test else 'training')
         if args.render:
-            misc.env_modifiers.make_rendered(env)
+            env = chainerrl.wrappers.Render(env)
         return env
 
     if args.demo:

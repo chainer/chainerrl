@@ -26,7 +26,7 @@ from chainerrl import misc
 from chainerrl.q_functions import DuelingDQN
 from chainerrl import replay_buffer
 
-import atari_wrappers
+from chainerrl.wrappers import atari_wrappers
 
 
 class SingleSharedBias(chainer.Chain):
@@ -120,6 +120,7 @@ def main():
     parser.add_argument('--eval-n-runs', type=int, default=10)
     parser.add_argument('--no-clip-delta',
                         dest='clip_delta', action='store_false')
+    parser.add_argument('--num-step-return', type=int, default=1)
     parser.set_defaults(clip_delta=True)
     parser.add_argument('--agent', type=str, default='DoubleDQN',
                         choices=['DQN', 'DoubleDQN', 'PAL'])
@@ -165,7 +166,7 @@ def main():
                 env, args.outdir,
                 mode='evaluation' if test else 'training')
         if args.render:
-            misc.env_modifiers.make_rendered(env)
+            env = chainerrl.wrappers.Render(env)
         return env
 
     env = make_env(test=False)
@@ -184,7 +185,7 @@ def main():
         [q_func(np.zeros((4, 84, 84), dtype=np.float32)[None])],
         os.path.join(args.outdir, 'model'))
 
-    # Use the same hyper parameters as the Nature paper's
+    # Use the Nature paper's hyperparameters
     opt = optimizers.RMSpropGraves(
         lr=args.lr, alpha=0.95, momentum=0.0, eps=1e-2)
 
@@ -195,9 +196,11 @@ def main():
         # Anneal beta from beta0 to 1 throughout training
         betasteps = args.steps / args.update_interval
         rbuf = replay_buffer.PrioritizedReplayBuffer(
-            10 ** 6, alpha=0.6, beta0=0.4, betasteps=betasteps)
+            10 ** 6, alpha=0.6,
+            beta0=0.4, betasteps=betasteps,
+            num_steps=args.num_step_return)
     else:
-        rbuf = replay_buffer.ReplayBuffer(10 ** 6)
+        rbuf = replay_buffer.ReplayBuffer(10 ** 6, args.num_step_return)
 
     explorer = explorers.LinearDecayEpsilonGreedy(
         1.0, args.final_epsilon,
@@ -231,10 +234,10 @@ def main():
     else:
         experiments.train_agent_with_evaluation(
             agent=agent, env=env, steps=args.steps,
-            eval_n_runs=args.eval_n_runs, eval_interval=args.eval_interval,
+            eval_n_episodes=args.eval_n_runs, eval_interval=args.eval_interval,
             outdir=args.outdir,
             save_best_so_far_agent=False,
-            max_episode_len=args.max_episode_len,
+            train_max_episode_len=args.max_episode_len,
             eval_env=eval_env,
         )
 

@@ -28,7 +28,7 @@ from chainerrl import links
 from chainerrl import misc
 from chainerrl.optimizers import rmsprop_async
 
-import atari_wrappers
+from chainerrl.wrappers import atari_wrappers
 
 
 def main():
@@ -96,7 +96,7 @@ def main():
                 env, args.outdir,
                 mode='evaluation' if test else 'training')
         if args.render:
-            misc.env_modifiers.make_rendered(env)
+            env = chainerrl.wrappers.Render(env)
         return env
 
     sample_env = make_env(0, test=False)

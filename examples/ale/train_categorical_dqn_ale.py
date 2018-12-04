@@ -19,7 +19,7 @@ from chainerrl import explorers
 from chainerrl import misc
 from chainerrl import replay_buffer
 
-import atari_wrappers
+from chainerrl.wrappers import atari_wrappers
 
 
 def main():
@@ -87,7 +87,7 @@ def main():
                 env, args.outdir,
                 mode='evaluation' if test else 'training')
         if args.render:
-            misc.env_modifiers.make_rendered(env)
+            env = chainerrl.wrappers.Render(env)
         return env
 
     env = make_env(test=False)
@@ -148,10 +148,10 @@ def main():
     else:
         experiments.train_agent_with_evaluation(
             agent=agent, env=env, steps=args.steps,
-            eval_n_runs=args.eval_n_runs, eval_interval=args.eval_interval,
+            eval_n_episodes=args.eval_n_runs, eval_interval=args.eval_interval,
             outdir=args.outdir,
             save_best_so_far_agent=False,
-            max_episode_len=args.max_episode_len,
+            train_max_episode_len=args.max_episode_len,
             eval_env=eval_env,
         )
 

@@ -6,10 +6,13 @@ from future import standard_library
 standard_library.install_aliases()  # NOQA
 
 import basetest_dqn_like as base
+from basetest_training import _TestBatchTrainingMixin
 from chainerrl.agents.residual_dqn import ResidualDQN
 
 
-class TestResidualDQNOnDiscreteABC(base._TestDQNOnDiscreteABC):
+class TestResidualDQNOnDiscreteABC(
+        _TestBatchTrainingMixin,
+        base._TestDQNOnDiscreteABC):
 
     def make_dqn_agent(self, env, q_func, opt, explorer, rbuf, gpu):
         return ResidualDQN(
@@ -18,7 +21,9 @@ class TestResidualDQNOnDiscreteABC(base._TestDQNOnDiscreteABC):
             grad_scale=1e-1)
 
 
-class TestResidualDQNOnContinuousABC(base._TestDQNOnContinuousABC):
+class TestResidualDQNOnContinuousABC(
+        _TestBatchTrainingMixin,
+        base._TestDQNOnContinuousABC):
 
     def make_dqn_agent(self, env, q_func, opt, explorer, rbuf, gpu):
         return ResidualDQN(
@@ -27,6 +32,7 @@ class TestResidualDQNOnContinuousABC(base._TestDQNOnContinuousABC):
             grad_scale=1e-1)
 
 
+# Batch training with recurrent models is currently not supported
 class TestResidualDQNOnDiscretePOABC(base._TestDQNOnDiscretePOABC):
 
     def make_dqn_agent(self, env, q_func, opt, explorer, rbuf, gpu):

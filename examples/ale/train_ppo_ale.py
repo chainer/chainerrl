@@ -12,6 +12,7 @@ import gym
 import gym.wrappers
 import numpy as np
 
+import chainerrl
 from chainerrl.agents.a3c import A3CModel
 from chainerrl.agents import PPO
 from chainerrl import experiments
@@ -21,7 +22,7 @@ from chainerrl.optimizers.nonbias_weight_decay import NonbiasWeightDecay
 from chainerrl import policy
 from chainerrl import v_function
 
-import atari_wrappers
+from chainerrl.wrappers import atari_wrappers
 
 
 class A3CFF(chainer.ChainList, A3CModel):
@@ -102,7 +103,7 @@ def main():
                 env, args.outdir,
                 mode='evaluation' if test else 'training')
         if args.render:
-            misc.env_modifiers.make_rendered(env)
+            env = chainerrl.wrappers.Render(env)
         return env
 
     env = make_env(test=False)
@@ -151,7 +152,7 @@ def main():
 
         # Linearly decay the clipping parameter to zero
         def clip_eps_setter(env, agent, value):
-            agent.clip_eps = value
+            agent.clip_eps = max(value, 1e-8)
 
         clip_eps_decay_hook = experiments.LinearInterpolationHook(
             args.steps, 0.1, 0, clip_eps_setter)
@@ -162,9 +163,9 @@ def main():
             eval_env=eval_env,
             outdir=args.outdir,
             steps=args.steps,
-            eval_n_runs=args.eval_n_runs,
+            eval_n_episodes=args.eval_n_runs,
             eval_interval=args.eval_interval,
-            max_episode_len=args.max_episode_len,
+            train_max_episode_len=args.max_episode_len,
             save_best_so_far_agent=False,
             step_hooks=[
                 lr_decay_hook,

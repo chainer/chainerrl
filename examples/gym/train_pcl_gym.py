@@ -114,7 +114,7 @@ def main():
             # training is easier
             env = chainerrl.wrappers.ScaleReward(env, args.reward_scale_factor)
         if args.render and process_idx == 0 and not test:
-            misc.env_modifiers.make_rendered(env)
+            env = chainerrl.wrappers.Render(env)
         return env
 
     sample_env = gym.make(args.env)
@@ -223,9 +223,9 @@ def main():
                 eval_env=make_env(0, test=True),
                 outdir=args.outdir,
                 steps=args.steps,
-                eval_n_runs=args.eval_n_runs,
+                eval_n_episodes=args.eval_n_runs,
                 eval_interval=args.eval_interval,
-                max_episode_len=timestep_limit)
+                train_max_episode_len=timestep_limit)
 
 
 if __name__ == '__main__':

@@ -28,7 +28,7 @@ from chainerrl import policy
 from chainerrl.recurrent import RecurrentChainMixin
 from chainerrl import v_function
 
-import atari_wrappers
+from chainerrl.wrappers import atari_wrappers
 
 
 class A3CFF(chainer.ChainList, a3c.A3CModel):
@@ -160,7 +160,7 @@ def main():
                 env, args.outdir,
                 mode='evaluation' if test else 'training')
         if args.render:
-            misc.env_modifiers.make_rendered(env)
+            env = chainerrl.wrappers.Render(env)
         return env
 
     if args.demo:
