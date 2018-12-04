@@ -266,13 +266,14 @@ def main():
         q_func = None
     else:
         if "NoFrame" in args.env:
-            q_func = MySequence(None, n_actions, head, args.avg)
+            q_func = MySequence(None, n_actions, head, args.avg, scale_sigma=args.scale_sigma)
         else:
             try:
                 n_obs = env.observation_space.n
             except:
                 n_obs = env.observation_space.shape[0]
-            q_func = MySequence(n_obs, n_actions, head, args.avg, args.sigmanet, shared=args.share_net)
+            q_func = MySequence(n_obs, n_actions, head, args.avg, args.sigmanet,
+                shared=args.share_net, scale_sigma=args.scale_sigma)
 
     """
     # Draw the computational graph and save it in the output directory.
