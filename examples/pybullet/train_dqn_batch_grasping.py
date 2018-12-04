@@ -123,6 +123,8 @@ def main():
         from pybullet_envs.bullet.kuka_diverse_object_gym_env import KukaDiverseObjectEnv  # NOQA
         process_seed = int(process_seeds[idx])
         env_seed = 2 ** 32 - 1 - process_seed if test else process_seed
+        # Set a random seed for this subprocess
+        misc.set_random_seed(env_seed)
         env = KukaDiverseObjectEnv(
             isDiscrete=True,
             renders=args.render and (args.demo or not test),
