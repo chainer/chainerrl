@@ -23,8 +23,6 @@ from chainerrl import explorers
 from chainerrl import misc
 from chainerrl import replay_buffer
 
-from chainerrl.wrappers import atari_wrappers
-
 
 class CastAction(gym.ActionWrapper):
     """Cast actions to a given type."""
@@ -35,6 +33,17 @@ class CastAction(gym.ActionWrapper):
 
     def _action(self, action):
         return self.type_(action)
+
+
+class TransposeObservation(gym.ObservationWrapper):
+    """Transpose observations."""
+
+    def __init__(self, env, axes):
+        super().__init__(env)
+        self._axes = axes
+
+    def _observation(self, observation):
+        return observation.transpose(*self._axes)
 
 
 class SingleSharedBias(chainer.Chain):
@@ -120,11 +129,8 @@ def main():
             height=84,
             width=84,
         )
-        env = atari_wrappers.wrap_deepmind(
-            env,
-            episode_life=False,
-            clip_rewards=False,
-        )
+        # (84, 84, 3) -> (3, 84, 84)
+        env = TransposeObservation(env, (2, 0, 1))
         env = CastAction(env, int)
         env.seed(int(env_seed))
         if args.monitor:
@@ -157,7 +163,7 @@ def main():
 
     # Draw the computational graph and save it in the output directory.
     chainerrl.misc.draw_computational_graph(
-        [q_func(np.zeros((4, 84, 84), dtype=np.float32)[None])],
+        [q_func(np.zeros((3, 84, 84), dtype=np.float32)[None])],
         os.path.join(args.outdir, 'model'))
 
     # Use the hyper parameters of the Nature paper
