@@ -10,7 +10,7 @@ from chainerrl import links
 import numpy as np
 
 class MySequence(chainer.Chain):#links.Sequence):
-    def __init__(self, obs, acts, head=False, mean=1, sigmanet="100,100", shared=True, scale_sigma=1):
+    def __init__(self, obs, acts, head=False, mean=1, sigmanet="100,100", shared=True, scale_sigma=1, share_grad=False):
         """
         if head:
             super().__init__(
@@ -39,6 +39,7 @@ class MySequence(chainer.Chain):#links.Sequence):
         self.scale_sigma = scale_sigma
 
         self.shared = shared
+        self.share_grad = share_grad
 
         self.sigma_nets = []
 
@@ -132,7 +133,11 @@ class MySequence(chainer.Chain):#links.Sequence):
 
                     if self.shared:
                         layer = self.sigma_nets[i]
-                        sigmas.append(layer(h2.data) * self.scale_sigma)
+
+                        if self.share_grad:
+                            sigmas.append(layer(h2.data) * self.scale_sigma)
+                        else:
+                            sigmas.append(layer(h2) * self.scale_sigma)
                     else:
                         layers = self.sigma_nets[i]
                         x2 = input

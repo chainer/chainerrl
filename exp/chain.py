@@ -140,6 +140,7 @@ def main():
     parser.add_argument('--sigmanet', type=str, default='100,100')
     parser.add_argument('--one-sigma', action='store_true', default=False)
     parser.add_argument('--share-net', action='store_true', default=False)
+    parser.add_argument('--share-gradient', action='store_true', default=False)
 
     parser.add_argument('--force', type=float, default=0.001)
     parser.add_argument('--scale-sigma', type=float, default=1)
@@ -273,7 +274,7 @@ def main():
             except:
                 n_obs = env.observation_space.shape[0]
             q_func = MySequence(n_obs, n_actions, head, args.avg, args.sigmanet,
-                shared=args.share_net, scale_sigma=args.scale_sigma)
+                shared=args.share_net, scale_sigma=args.scale_sigma, share_grad=args.share_gradient)
 
     """
     # Draw the computational graph and save it in the output directory.
