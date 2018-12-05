@@ -6,6 +6,7 @@ from builtins import *  # NOQA
 from future import standard_library
 standard_library.install_aliases()  # NOQA
 import argparse
+import functools
 import os
 
 import chainer
@@ -143,8 +144,8 @@ def main():
 
     def make_batch_env(test):
         return chainerrl.envs.MultiprocessVectorEnv(
-            [(lambda: make_env(idx, test))
-             for idx, env in enumerate(range(args.num_envs))])
+            [functools.partial(make_env, idx, test)
+                for idx in range(args.num_envs)])
 
     eval_env = make_batch_env(test=False)
     n_actions = eval_env.action_space.n
