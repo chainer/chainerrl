@@ -23,7 +23,7 @@ class TestTrainAgentAsync(unittest.TestCase):
 
     def test(self):
 
-        steps = 5
+        steps = 50
 
         outdir = tempfile.mkdtemp()
 
@@ -59,13 +59,20 @@ class TestTrainAgentAsync(unittest.TestCase):
             else:
                 return envs[process_idx]
 
-        hook = mock.Mock()
-
         # Mock states cannot be shared among processes. To check states of mock
         # objects, threading is used instead of multiprocessing.
         # Because threading.Thread does not have .exitcode attribute, we
         # add the attribute manually to avoid an exception.
         import threading
+
+        # Mock.call_args_list does not seem thread-safe
+        hook_lock = threading.Lock()
+        hook = mock.Mock()
+
+        def hook_locked(*args, **kwargs):
+            with hook_lock:
+                return hook(*args, **kwargs)
+
         with mock.patch('multiprocessing.Process', threading.Thread),\
             mock.patch.object(
                 threading.Thread, 'exitcode', create=True, new=0):
@@ -76,7 +83,7 @@ class TestTrainAgentAsync(unittest.TestCase):
                 steps=steps,
                 outdir=outdir,
                 max_episode_len=self.max_episode_len,
-                global_step_hooks=[hook],
+                global_step_hooks=[hook_locked],
             )
 
         if self.num_envs == 1:
