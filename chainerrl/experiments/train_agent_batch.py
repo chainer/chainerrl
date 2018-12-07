@@ -86,6 +86,7 @@ def train_agent_batch(agent, env, steps, outdir, log_interval=None,
             #   3. clear the record of rewards
             #   4. clear the record of the number of steps
             #   5. reset the env to start a new episode
+            # 3-5 are skipped when training is already finished.
             episode_idx += end
             recent_returns.extend(episode_r[end])
 
