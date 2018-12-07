@@ -81,7 +81,7 @@ class CategoricalDQN(dqn.DQN):
     DistributionalDiscreteActionValue and clip_delta is ignored.
     """
 
-    def _compute_target_values(self, exp_batch, gamma):
+    def _compute_target_values(self, exp_batch):
         """Compute a batch of target return distributions."""
 
         batch_next_state = exp_batch['next_state']
@@ -100,10 +100,12 @@ class CategoricalDQN(dqn.DQN):
 
         # Tz: (batch_size, n_atoms)
         Tz = (batch_rewards[..., None]
-              + (1.0 - batch_terminal[..., None]) * gamma * z_values[None])
+              + (1.0 - batch_terminal[..., None])
+              * self.xp.expand_dims(exp_batch['discount'], 1)
+              * z_values[None])
         return _apply_categorical_projection(Tz, next_q_max, z_values)
 
-    def _compute_y_and_t(self, exp_batch, gamma):
+    def _compute_y_and_t(self, exp_batch):
         """Compute a batch of predicted/target return distributions."""
 
         batch_size = exp_batch['reward'].shape[0]
@@ -120,14 +122,14 @@ class CategoricalDQN(dqn.DQN):
         assert batch_q.shape == (batch_size, n_atoms)
 
         with chainer.no_backprop_mode():
-            batch_q_target = self._compute_target_values(exp_batch, gamma)
+            batch_q_target = self._compute_target_values(exp_batch)
             assert batch_q_target.shape == (batch_size, n_atoms)
 
         return batch_q, batch_q_target
 
-    def _compute_loss(self, exp_batch, gamma, errors_out=None):
+    def _compute_loss(self, exp_batch, errors_out=None):
         """Compute a loss of categorical DQN."""
-        y, t = self._compute_y_and_t(exp_batch, gamma)
+        y, t = self._compute_y_and_t(exp_batch)
         # Minimize the cross entropy
         # y is clipped to avoid log(0)
         eltwise_loss = -t * F.log(F.clip(y, 1e-10, 1.))

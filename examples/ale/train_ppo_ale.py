@@ -163,7 +163,7 @@ def main():
             eval_env=eval_env,
             outdir=args.outdir,
             steps=args.steps,
-            eval_n_runs=args.eval_n_runs,
+            eval_n_episodes=args.eval_n_runs,
             eval_interval=args.eval_interval,
             save_best_so_far_agent=False,
             step_hooks=[
