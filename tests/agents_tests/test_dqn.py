@@ -53,6 +53,28 @@ class TestDQNOnDiscretePOABC(base._TestDQNOnDiscretePOABC):
                    episodic_update=True)
 
 
+class TestNStepDQNOnDiscreteABC(base._TestNStepDQNOnDiscreteABC):
+
+    def make_dqn_agent(self, env, q_func, opt, explorer, rbuf, gpu):
+        return DQN(q_func, opt, rbuf, gpu=gpu, gamma=0.9, explorer=explorer,
+                   replay_start_size=100, target_update_interval=100)
+
+
+class TestNStepDQNOnDiscreteABCBoltzmann(base._TestNStepDQNOnDiscreteABC):
+
+    def make_dqn_agent(self, env, q_func, opt, explorer, rbuf, gpu):
+        explorer = chainerrl.explorers.Boltzmann()
+        return DQN(q_func, opt, rbuf, gpu=gpu, gamma=0.9, explorer=explorer,
+                   replay_start_size=100, target_update_interval=100)
+
+
+class TestNStepDQNOnContinuousABC(base._TestNStepDQNOnContinuousABC):
+
+    def make_dqn_agent(self, env, q_func, opt, explorer, rbuf, gpu):
+        return DQN(q_func, opt, rbuf, gpu=gpu, gamma=0.9, explorer=explorer,
+                   replay_start_size=100, target_update_interval=100)
+
+
 def _huber_loss_1(a):
     if abs(a) < 1:
         return 0.5 * a ** 2

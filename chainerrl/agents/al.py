@@ -29,7 +29,7 @@ class AL(dqn.DQN):
         self.alpha = kwargs.pop('alpha', 0.9)
         super().__init__(*args, **kwargs)
 
-    def _compute_y_and_t(self, exp_batch, gamma):
+    def _compute_y_and_t(self, exp_batch):
 
         batch_state = exp_batch['state']
         batch_size = len(exp_batch['reward'])
@@ -56,7 +56,7 @@ class AL(dqn.DQN):
             batch_terminal = exp_batch['is_state_terminal']
 
             # T Q: Bellman operator
-            t_q = batch_rewards + self.gamma * \
+            t_q = batch_rewards + exp_batch['discount'] * \
                 (1.0 - batch_terminal) * next_q_max
 
             # T_AL Q: advantage learning operator
