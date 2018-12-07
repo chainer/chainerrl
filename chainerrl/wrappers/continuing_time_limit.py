@@ -16,7 +16,7 @@ class ContinuingTimeLimit(gym.Wrapper):
     each episode, except that done=False is returned and that
     info['needs_reset'] is set to True when past the limit.
 
-    Code that calls env.step is repsonsible for checking the info dict, the
+    Code that calls env.step is responsible for checking the info dict, the
     fourth returned value, and resetting the env if it has the 'needs_reset'
     key and its value is True.
 
