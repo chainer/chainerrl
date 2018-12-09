@@ -163,9 +163,9 @@ def main():
             eval_env=eval_env,
             outdir=args.outdir,
             steps=args.steps,
-            eval_n_runs=args.eval_n_runs,
+            eval_n_episodes=args.eval_n_runs,
             eval_interval=args.eval_interval,
-            max_episode_len=args.max_episode_len,
+            train_max_episode_len=args.max_episode_len,
             save_best_so_far_agent=False,
             step_hooks=[
                 lr_decay_hook,

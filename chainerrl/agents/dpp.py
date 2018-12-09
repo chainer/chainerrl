@@ -26,7 +26,7 @@ class AbstractDPP(with_metaclass(ABCMeta, DQN)):
     def _l_operator(self, qout):
         raise NotImplementedError()
 
-    def _compute_target_values(self, exp_batch, gamma):
+    def _compute_target_values(self, exp_batch):
 
         batch_next_state = exp_batch['next_state']
 
@@ -37,9 +37,9 @@ class AbstractDPP(with_metaclass(ABCMeta, DQN)):
         batch_terminal = exp_batch['is_state_terminal']
 
         return (batch_rewards +
-                self.gamma * (1 - batch_terminal) * next_q_expect)
+                exp_batch['discount'] * (1 - batch_terminal) * next_q_expect)
 
-    def _compute_y_and_t(self, exp_batch, gamma):
+    def _compute_y_and_t(self, exp_batch):
 
         batch_state = exp_batch['state']
         batch_size = len(exp_batch['reward'])
@@ -65,7 +65,7 @@ class AbstractDPP(with_metaclass(ABCMeta, DQN)):
 
             # r + g * LQ'(s_{t+1},a)
             batch_q_target = F.reshape(
-                self._compute_target_values(exp_batch, gamma), (batch_size, 1))
+                self._compute_target_values(exp_batch), (batch_size, 1))
 
             # Q'(s_t,a_t) + r + g * LQ'(s_{t+1},a) - LQ'(s_t,a)
             t = target_q + batch_q_target - target_q_expect
