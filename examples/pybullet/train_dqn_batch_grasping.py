@@ -6,6 +6,7 @@ from builtins import *  # NOQA
 from future import standard_library
 standard_library.install_aliases()  # NOQA
 import argparse
+import functools
 import os
 
 import chainer
@@ -123,6 +124,8 @@ def main():
         from pybullet_envs.bullet.kuka_diverse_object_gym_env import KukaDiverseObjectEnv  # NOQA
         process_seed = int(process_seeds[idx])
         env_seed = 2 ** 32 - 1 - process_seed if test else process_seed
+        # Set a random seed for this subprocess
+        misc.set_random_seed(env_seed)
         env = KukaDiverseObjectEnv(
             isDiscrete=True,
             renders=args.render and (args.demo or not test),
@@ -141,8 +144,8 @@ def main():
 
     def make_batch_env(test):
         return chainerrl.envs.MultiprocessVectorEnv(
-            [(lambda: make_env(idx, test))
-             for idx, env in enumerate(range(args.num_envs))])
+            [functools.partial(make_env, idx, test)
+                for idx in range(args.num_envs)])
 
     eval_env = make_batch_env(test=False)
     n_actions = eval_env.action_space.n
