@@ -14,6 +14,7 @@ from chainer import functions as F
 from chainer import links as L
 from chainer import optimizers
 import gym
+import gym.spaces
 import numpy as np
 
 import chainerrl
@@ -47,6 +48,29 @@ class TransposeObservation(gym.ObservationWrapper):
         return observation.transpose(*self._axes)
 
 
+class ObserveElapsedSteps(gym.Wrapper):
+    """Observe the number of elapsed steps in an episode."""
+
+    def __init__(self, env, max_steps):
+        super().__init__(env)
+        self._max_steps = max_steps
+        self._elapsed_steps = 0
+        self.observation_space = gym.spaces.Tuple((
+            env.observation_space,
+            gym.spaces.Discrete(self._max_steps + 1),
+        ))
+
+    def reset(self):
+        self._elapsed_steps = 0
+        return self.env.reset(), self._elapsed_steps
+
+    def _step(self, action):
+        observation, reward, done, info = self.env.step(action)
+        self._elapsed_steps += 1
+        assert self._elapsed_steps <= self._max_steps
+        return (observation, self._elapsed_steps), reward, done, info
+
+
 class SingleSharedBias(chainer.Chain):
     """Single shared bias used in the Double DQN paper.
 
@@ -63,6 +87,38 @@ class SingleSharedBias(chainer.Chain):
 
     def __call__(self, x):
         return x + F.broadcast_to(self.bias, x.shape)
+
+
+class GraspingQFunction(chainer.Chain):
+
+    def __init__(self, n_actions):
+        super().__init__()
+        with self.init_scope():
+            self.image2hidden = chainer.Sequential(
+                L.Convolution2D(None, 32, 8, stride=4),
+                F.relu,
+                L.Convolution2D(None, 64, 4, stride=2),
+                F.relu,
+                L.Convolution2D(None, 64, 3, stride=1),
+                F.relu,
+                functools.partial(F.reshape, shape=(-1, 3136)),
+            )
+            self.vec2hidden = chainer.Sequential(
+                L.Linear(None, 3136),
+                F.relu,
+            )
+            self.hidden2out = chainer.Sequential(
+                L.Linear(None, 512),
+                F.relu,
+                L.Linear(None, n_actions, nobias=True),
+                SingleSharedBias(),
+                DiscreteActionValue,
+            )
+
+    def forward(self, x):
+        image, vec = x
+        h = self.image2hidden(image) * self.vec2hidden(vec)
+        return self.hidden2out(h)
 
 
 def parse_agent(agent):
@@ -119,6 +175,8 @@ def main():
     args.outdir = experiments.prepare_output_dir(args, args.outdir)
     print('Output files are saved in {}'.format(args.outdir))
 
+    max_episode_steps = 8
+
     def make_env(idx, test):
         # Use different random seeds for train and test envs
         from pybullet_envs.bullet.kuka_diverse_object_gym_env import KukaDiverseObjectEnv  # NOQA
@@ -131,9 +189,11 @@ def main():
             renders=args.render and (args.demo or not test),
             height=84,
             width=84,
+            maxSteps=max_episode_steps,
         )
         # (84, 84, 3) -> (3, 84, 84)
         env = TransposeObservation(env, (2, 0, 1))
+        env = ObserveElapsedSteps(env, max_episode_steps)
         env = CastAction(env, int)
         env.seed(int(env_seed))
         if args.monitor:
@@ -150,23 +210,15 @@ def main():
     eval_env = make_batch_env(test=False)
     n_actions = eval_env.action_space.n
 
-    q_func = chainerrl.links.Sequence(
-        L.Convolution2D(None, 32, 8, stride=4),
-        F.relu,
-        L.Convolution2D(None, 64, 4, stride=2),
-        F.relu,
-        L.Convolution2D(None, 64, 3, stride=1),
-        F.relu,
-        L.Linear(None, 512),
-        F.relu,
-        L.Linear(None, n_actions, nobias=True),
-        SingleSharedBias(),
-        DiscreteActionValue,
-    )
+    q_func = GraspingQFunction(n_actions)
 
     # Draw the computational graph and save it in the output directory.
+    fake_obs = (
+        np.zeros((3, 84, 84), dtype=np.float32)[None],
+        np.zeros(max_episode_steps + 1, dtype=np.float32)[None],
+    )
     chainerrl.misc.draw_computational_graph(
-        [q_func(np.zeros((3, 84, 84), dtype=np.float32)[None])],
+        [q_func(fake_obs)],
         os.path.join(args.outdir, 'model'))
 
     # Use the hyper parameters of the Nature paper
@@ -187,7 +239,17 @@ def main():
 
     def phi(x):
         # Feature extractor
-        return np.asarray(x, dtype=np.float32) / 255
+        image, elapsed_steps = x
+        # Normalize RGB values: [0, 255] -> [0, 1]
+        norm_image = np.asarray(image, dtype=np.float32) / 255
+        # Represent elapsed steps as a one-hot vector
+        elapsed_steps_vec = np.zeros(max_episode_steps + 1, dtype=np.float32)
+        elapsed_steps_vec[elapsed_steps] = 1
+        return norm_image, elapsed_steps_vec
+
+    def batch_states(obss, xp, phi):
+        return chainer.dataset.concat_examples(
+            [phi(obs) for obs in obss], device=args.gpu)
 
     agent = chainerrl.agents.DoubleDQN(
         q_func, opt, rbuf, gpu=args.gpu, gamma=0.99,
@@ -196,6 +258,7 @@ def main():
         update_interval=args.update_interval,
         batch_accumulator='sum',
         phi=phi,
+        batch_states=batch_states,
     )
 
     if args.load:
