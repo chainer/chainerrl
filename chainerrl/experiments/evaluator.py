@@ -340,7 +340,7 @@ class Evaluator(object):
 
     def evaluate_and_update_max_score(self, t, episodes):
         eval_stats = eval_performance(
-            self.env, self.agent, self.n_episodes,
+            self.env, self.agent, None, self.n_episodes,
             max_episode_len=self.max_episode_len,
             logger=self.logger)
         elapsed = time.time() - self.start_time
@@ -422,7 +422,7 @@ class AsyncEvaluator(object):
 
     def evaluate_and_update_max_score(self, t, episodes, env, agent):
         eval_stats = eval_performance(
-            env, agent, self.n_episodes,
+            env, agent, None, self.n_episodes,
             max_episode_len=self.max_episode_len,
             logger=self.logger)
         elapsed = time.time() - self.start_time
