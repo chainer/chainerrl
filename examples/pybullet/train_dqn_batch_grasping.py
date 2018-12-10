@@ -91,21 +91,17 @@ class SingleSharedBias(chainer.Chain):
 
 class GraspingQFunction(chainer.Chain):
 
-    def __init__(self, n_actions):
+    def __init__(self, n_actions, max_episode_steps):
         super().__init__()
         with self.init_scope():
+            self.embed = L.EmbedID(max_episode_steps + 1, 3136)
             self.image2hidden = chainer.Sequential(
                 L.Convolution2D(None, 32, 8, stride=4),
                 F.relu,
                 L.Convolution2D(None, 64, 4, stride=2),
                 F.relu,
                 L.Convolution2D(None, 64, 3, stride=1),
-                F.relu,
                 functools.partial(F.reshape, shape=(-1, 3136)),
-            )
-            self.vec2hidden = chainer.Sequential(
-                L.Linear(None, 3136),
-                F.relu,
             )
             self.hidden2out = chainer.Sequential(
                 L.Linear(None, 512),
@@ -116,8 +112,8 @@ class GraspingQFunction(chainer.Chain):
             )
 
     def forward(self, x):
-        image, vec = x
-        h = self.image2hidden(image) * self.vec2hidden(vec)
+        image, steps = x
+        h = self.image2hidden(image) * F.sigmoid(self.embed(steps))
         return self.hidden2out(h)
 
 
@@ -210,12 +206,12 @@ def main():
     eval_env = make_batch_env(test=False)
     n_actions = eval_env.action_space.n
 
-    q_func = GraspingQFunction(n_actions)
+    q_func = GraspingQFunction(n_actions, max_episode_steps)
 
     # Draw the computational graph and save it in the output directory.
     fake_obs = (
         np.zeros((3, 84, 84), dtype=np.float32)[None],
-        np.zeros(max_episode_steps + 1, dtype=np.float32)[None],
+        np.zeros(1, dtype=np.int32)[None],
     )
     chainerrl.misc.draw_computational_graph(
         [q_func(fake_obs)],
@@ -242,10 +238,7 @@ def main():
         image, elapsed_steps = x
         # Normalize RGB values: [0, 255] -> [0, 1]
         norm_image = np.asarray(image, dtype=np.float32) / 255
-        # Represent elapsed steps as a one-hot vector
-        elapsed_steps_vec = np.zeros(max_episode_steps + 1, dtype=np.float32)
-        elapsed_steps_vec[elapsed_steps] = 1
-        return norm_image, elapsed_steps_vec
+        return norm_image, elapsed_steps
 
     def batch_states(obss, xp, phi):
         return chainer.dataset.concat_examples(
