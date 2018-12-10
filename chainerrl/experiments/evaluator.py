@@ -32,6 +32,53 @@ _basic_columns = ('steps', 'episodes', 'elapsed', 'mean',
                   'median', 'stdev', 'max', 'min')
 
 
+def run_evaluation_steps(env, agent, n_steps, max_episode_len=None,
+                         logger=None):
+    """Run evaluation episodes for a specified number of timesteps
+
+    and return the episode returns.
+
+    Args:
+        env (Environment): Environment used for evaluation
+        agent (Agent): Agent to evaluate.
+        n_steps (int): Number of timesteps to evaluate the agent for.
+        max_episode_len (int or None): If specified, episodes longer than this
+            value will be truncated.
+        logger (Logger or None): If specified, the given Logger object will be
+            used for logging results. If not specified, the default logger of
+            this module will be used.
+    Returns:
+        List of returns of evaluation runs.
+    """
+    logger = logger or logging.getLogger(__name__)
+    scores = []
+
+    obs = env.reset()
+    done = False
+    episode_len = 0
+    test_r = 0
+    for t in range(n_steps):
+        if done or episode_len == max_episode_len:
+            logger.info('evaluation episode %s length:%s R:%s',
+                        len(scores), episode_len, test_r)
+            done = False
+            agent.stop_episode()
+            obs = env.reset()
+            episode_len = 0
+            scores.append(float(test_r))
+            test_r = 0
+
+        a = agent.act(obs)
+        obs, r, done, info = env.step(a)
+        test_r += r
+        episode_len += 1
+
+    if len(scores) == 0:
+        scores.append(float(test_r))
+        logger.info('evaluation episode %s length:%s R:%s',
+                    len(scores), episode_len, test_r)
+    return scores
+
 def run_evaluation_episodes(env, agent, n_episodes, max_episode_len=None,
                             logger=None):
     """Run multiple evaluation episodes and return returns.
@@ -137,7 +184,7 @@ def batch_run_evaluation_episodes(
     return [float(r) for r in episode_returns]
 
 
-def eval_performance(env, agent, n_episodes, max_episode_len=None,
+def eval_performance(env, agent, n_steps, n_episodes, max_episode_len=None,
                      logger=None):
     """Run multiple evaluation episodes and return statistics.
 
@@ -153,16 +200,25 @@ def eval_performance(env, agent, n_episodes, max_episode_len=None,
     Returns:
         Dict of statistics.
     """
+
+    assert (n_steps is None) != (n_episodes is None) 
+
     if isinstance(env, chainerrl.env.VectorEnv):
         scores = batch_run_evaluation_episodes(
-            env, agent, n_episodes,
+            env, agent, n_runs,
             max_episode_len=max_episode_len,
             logger=logger)
     else:
-        scores = run_evaluation_episodes(
-            env, agent, n_episodes,
-            max_episode_len=max_episode_len,
-            logger=logger)
+        if n_steps:
+            scores = run_evaluation_steps(
+                env, agent, n_steps,
+                max_episode_len=max_episode_len,
+                logger=logger)
+        else:  
+            scores = run_evaluation_episodes(
+                env, agent, n_episodes,
+                max_episode_len=max_episode_len,
+                logger=logger)
     stats = dict(
         mean=statistics.mean(scores),
         median=statistics.median(scores),
@@ -287,7 +343,7 @@ class AsyncEvaluator(object):
     """
 
     def __init__(self,
-                 n_episodes,
+                 n_runs,
                  eval_interval,
                  outdir,
                  max_episode_len=None,
@@ -297,7 +353,7 @@ class AsyncEvaluator(object):
                  ):
 
         self.start_time = time.time()
-        self.n_episodes = n_episodes
+        self.n_episodes = n_runs
         self.eval_interval = eval_interval
         self.outdir = outdir
         self.max_episode_len = max_episode_len

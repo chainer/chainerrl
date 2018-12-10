@@ -182,7 +182,8 @@ def train_agent_batch_with_evaluation(agent,
         eval_max_episode_len = max_episode_len
 
     evaluator = Evaluator(agent=agent,
-                          n_runs=eval_n_runs,
+                          n_steps=None,
+                          n_episodes=eval_n_runs,
                           eval_interval=eval_interval, outdir=outdir,
                           max_episode_len=eval_max_episode_len,
                           env=eval_env,
