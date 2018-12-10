@@ -129,6 +129,7 @@ def batch_run_evaluation_episodes(
     Args:
         env (VectorEnv): Environment used for evaluation.
         agent (Agent): Agent to evaluate.
+        n_steps (int): Number of total timesteps to evaluate the agent.
         n_episodes (int): Number of evaluation runs.
         max_episode_len (int or None): If specified, episodes
             longer than this value will be truncated.
