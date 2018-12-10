@@ -12,7 +12,7 @@ def batch_states(states, xp, phi):
     Return:
         the object which will be given as input to the model.
     """
-    if xp is chainer.cuda.cupy:
+    if chainer.cuda.available and xp is chainer.cuda.cupy:
         # GPU
         device = chainer.cuda.Device().id
     else:
