@@ -73,6 +73,7 @@ def run_evaluation_steps(env, agent, n_steps, max_episode_len=None,
         test_r += r
         episode_len += 1
 
+    # If all steps were used for a single unfinished episode
     if len(scores) == 0:
         scores.append(float(test_r))
         logger.info('evaluation episode %s length:%s R:%s',
@@ -118,6 +119,7 @@ def run_evaluation_episodes(env, agent, n_episodes, max_episode_len=None,
 def batch_run_evaluation_episodes(
     env,
     agent,
+    n_steps,
     n_episodes,
     max_episode_len=None,
     logger=None,
@@ -138,19 +140,30 @@ def batch_run_evaluation_episodes(
     Returns:
         List of returns of evaluation runs.
     """
+    assert (n_steps is None) != (n_episodes is None)
+
     logger = logger or logging.getLogger(__name__)
     num_envs = env.num_envs
-    episode_returns = []
-    episode_lengths = []
+    episode_returns = dict()
+    episode_lengths = dict()
+    episode_start = np.zeros(num_envs, dtype='i')
+    episode_indices = np.zeros(num_envs, dtype='i')
+    episode_idx = 0
+    for i in range(num_envs):
+        episode_indices[i] = episode_idx
+        episode_idx += 1
     episode_r = np.zeros(num_envs, dtype=np.float64)
     episode_len = np.zeros(num_envs, dtype='i')
 
     obss = env.reset()
     rs = np.zeros(num_envs, dtype='f')
 
-    while len(episode_returns) < n_episodes:
+    termination_conditions = False
+    timestep = 0
+    while not termination_conditions:
         # a_t
         actions = agent.batch_act(obss)
+        timestep += 1
         # o_{t+1}, r_{t+1}
         obss, rs, dones, infos = env.step(actions)
         episode_r += rs
@@ -168,20 +181,50 @@ def batch_run_evaluation_episodes(
         end = np.logical_or(resets, dones)
         not_end = np.logical_not(end)
 
-        episode_returns.extend(episode_r[end])
-        episode_lengths.extend(episode_len[end])
+        for index in range(len(end)):
+            if end[index]:
+                episode_returns[episode_indices[index]] = episode_r[end]
+                episode_lengths[episode_indices[index]] = episode_len[end]
+
         episode_r[end] = 0
         episode_len[end] = 0
+        episode_start[end] = timestep
+        for index in range(len(end)):
+            if end[index]:
+                episode_indices[end] = episode_idx
+                episode_idx += 1
         obss = env.reset(not_end)
 
-    episode_returns = episode_returns[:n_episodes]
-    episode_lengths = episode_lengths[:n_episodes]
+
+        eval_episode_returns = []
+        eval_episode_lens = []
+        completed_episode = 0
+        total_time = 0
+        while completed_episode in episode_returns:
+            eval_episode_returns.append(episode_returns[completed_episode])
+            eval_episode_lens.append(episode_lengths[completed_episode])
+            total_time += episode_lengths[completed_episode]
+            completed_episodes += 1
+            if n_steps is not None:
+                if total_time > n_steps:
+                    termination_conditions = True
+                    eval_episode_returns = eval_episode_returns[:-1]
+                    eval_episode_lens = eval_episode_lens[:-1]
+            else:
+                termination_conditions = completed_episode >= n_episodes
+                eval_episode_returns = eval_episode_returns[:n_episodes]
+                eval_episode_lens = eval_episode_lens[:n_episodes]
+        #special case
+        if n_steps is not None and completed_episode == 0 and episode_len[0] >= n_steps:
+            eval_episode_returns = episode_r[0]
+            eval_episode_lens = n_steps
+            termination_conditions = True
 
     for i, (epi_len, epi_ret) in enumerate(
-            zip(episode_lengths, episode_returns)):
+            zip(eval_episode_lens, eval_episode_returns)):
         logger.info('evaluation episode %s length: %s R: %s',
                     i, epi_len, epi_ret)
-    return [float(r) for r in episode_returns]
+    return [float(r) for r in eval_episode_returns]
 
 
 def eval_performance(env, agent, n_steps, n_episodes, max_episode_len=None,
@@ -205,7 +248,7 @@ def eval_performance(env, agent, n_steps, n_episodes, max_episode_len=None,
 
     if isinstance(env, chainerrl.env.VectorEnv):
         scores = batch_run_evaluation_episodes(
-            env, agent, n_runs,
+            env, agent, n_steps, n_episodes,
             max_episode_len=max_episode_len,
             logger=logger)
     else:
@@ -222,7 +265,7 @@ def eval_performance(env, agent, n_steps, n_episodes, max_episode_len=None,
     stats = dict(
         mean=statistics.mean(scores),
         median=statistics.median(scores),
-        stdev=statistics.stdev(scores) if n_episodes >= 2 else 0.0,
+        stdev=statistics.stdev(scores) if len(scores) >= 2 else 0.0,
         max=np.max(scores),
         min=np.min(scores))
     return stats
