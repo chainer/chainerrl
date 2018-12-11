@@ -232,10 +232,6 @@ def main():
         norm_image = np.asarray(image, dtype=np.float32) / 255
         return norm_image, elapsed_steps
 
-    def batch_states(obss, xp, phi):
-        return chainer.dataset.concat_examples(
-            [phi(obs) for obs in obss], device=args.gpu)
-
     agent = chainerrl.agents.DoubleDQN(
         q_func, opt, rbuf, gpu=args.gpu, gamma=0.99,
         explorer=explorer, replay_start_size=args.replay_start_size,
@@ -243,7 +239,6 @@ def main():
         update_interval=args.update_interval,
         batch_accumulator='sum',
         phi=phi,
-        batch_states=batch_states,
     )
 
     if args.load:
