@@ -74,25 +74,12 @@ class ObserveElapsedSteps(gym.Wrapper):
         return (observation, self._elapsed_steps), reward, done, info
 
 
-class SingleSharedBias(chainer.Chain):
-    """Single shared bias used in the Double DQN paper.
-
-    You can add this link after a Linear layer with nobias=True to implement a
-    Linear layer with a single shared bias parameter.
-
-    See http://arxiv.org/abs/1509.06461.
-    """
-
-    def __init__(self):
-        super().__init__()
-        with self.init_scope():
-            self.bias = chainer.Parameter(0, shape=1)
-
-    def __call__(self, x):
-        return x + F.broadcast_to(self.bias, x.shape)
-
-
 class GraspingQFunction(chainer.Chain):
+    """Q-function model for the grasping env.
+
+    This model takes an 84x84 2D image and an integer that indicates the
+    number of elapsed steps in an episode as input and outputs action values.
+    """
 
     def __init__(self, n_actions, max_episode_steps):
         super().__init__()
@@ -109,8 +96,7 @@ class GraspingQFunction(chainer.Chain):
             self.hidden2out = chainer.Sequential(
                 L.Linear(None, 512),
                 F.relu,
-                L.Linear(None, n_actions, nobias=True),
-                SingleSharedBias(),
+                L.Linear(None, n_actions),
                 DiscreteActionValue,
             )
 
