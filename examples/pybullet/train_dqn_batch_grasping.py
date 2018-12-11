@@ -48,7 +48,11 @@ class TransposeObservation(gym.ObservationWrapper):
 
 
 class ObserveElapsedSteps(gym.Wrapper):
-    """Observe the number of elapsed steps in an episode."""
+    """Observe the number of elapsed steps in an episode.
+
+    A new observation will be a tuple of an original observation and an integer
+    that is equal to the elapsed steps in an episode.
+    """
 
     def __init__(self, env, max_steps):
         super().__init__(env)
@@ -123,26 +127,39 @@ def main():
                              ' If it does not exist, it will be created.')
     parser.add_argument('--seed', type=int, default=0,
                         help='Random seed [0, 2 ** 31)')
-    parser.add_argument('--gpu', type=int, default=0)
-    parser.add_argument('--demo', action='store_true', default=False)
-    parser.add_argument('--load', type=str, default=None)
-    parser.add_argument('--final-exploration-frames',
-                        type=int, default=10 ** 6)
-    parser.add_argument('--final-epsilon', type=float, default=0.1)
-    parser.add_argument('--steps', type=int, default=10 ** 7)
-    parser.add_argument('--replay-start-size', type=int, default=5 * 10 ** 4)
+    parser.add_argument('--gpu', type=int, default=0,
+                        help='GPU to use, set to -1 if no GPU.')
+    parser.add_argument('--demo', action='store_true', default=False,
+                        help='Evaluate the agent without training.')
+    parser.add_argument('--load', type=str, default=None,
+                        help='Load a saved agent from a given directory.')
+    parser.add_argument('--final-exploration-steps',
+                        type=int, default=10 ** 6,
+                        help='Timesteps after which we stop'
+                             ' annealing exploration rate')
+    parser.add_argument('--final-epsilon', type=float, default=0.1,
+                        help='Final value of epsilon during training.')
+    parser.add_argument('--steps', type=int, default=2 * 10 ** 6,
+                        help='Total number of timesteps to train the agent.')
+    parser.add_argument('--replay-start-size', type=int, default=5 * 10 ** 4,
+                        help='Minimum replay buffer size before'
+                             ' performing gradient updates.')
     parser.add_argument('--target-update-interval',
                         type=int, default=3 * 10 ** 4)
-    parser.add_argument('--eval-interval', type=int, default=10 ** 5)
-    parser.add_argument('--update-interval', type=int, default=4)
-    parser.add_argument('--eval-n-runs', type=int, default=10)
+    parser.add_argument('--target-update-interval',
+                        type=int, default=1 * 10 ** 4,
+                        help='Frequency (in timesteps) at which'
+                             ' the target network is updated.')
+    parser.add_argument('--eval-interval', type=int, default=10 ** 5,
+                        help='Frequency (in timesteps) of evaluation phase.')
+    parser.add_argument('--update-interval', type=int, default=1,
+                        help='Frequency (in timesteps) of network updates.')
+    parser.add_argument('--eval-n-runs', type=int, default=100,
+                        help='Number of episodes used for evaluation.')
     parser.add_argument('--logging-level', type=int, default=20,
                         help='Logging level. 10:DEBUG, 20:INFO etc.')
     parser.add_argument('--render', action='store_true', default=False,
                         help='Render env states in a GUI window.')
-    parser.add_argument('--monitor', action='store_true', default=False,
-                        help='Monitor env. Videos and additional information'
-                             ' are saved as output files.')
     parser.add_argument('--lr', type=float, default=6.25e-5,
                         help='Learning rate')
     parser.add_argument('--num-envs', type=int, default=1,
@@ -167,8 +184,8 @@ def main():
     max_episode_steps = 8
 
     def make_env(idx, test):
-        # Use different random seeds for train and test envs
         from pybullet_envs.bullet.kuka_diverse_object_gym_env import KukaDiverseObjectEnv  # NOQA
+        # Use different random seeds for train and test envs
         process_seed = int(process_seeds[idx])
         env_seed = 2 ** 32 - 1 - process_seed if test else process_seed
         # Set a random seed for this subprocess
@@ -185,10 +202,6 @@ def main():
         env = ObserveElapsedSteps(env, max_episode_steps)
         env = CastAction(env, int)
         env.seed(int(env_seed))
-        if args.monitor:
-            env = gym.wrappers.Monitor(
-                env, args.outdir,
-                mode='evaluation' if test else 'training')
         return env
 
     def make_batch_env(test):
@@ -223,7 +236,7 @@ def main():
 
     explorer = explorers.LinearDecayEpsilonGreedy(
         1.0, args.final_epsilon,
-        args.final_exploration_frames,
+        args.final_exploration_steps,
         lambda: np.random.randint(n_actions))
 
     def phi(x):
