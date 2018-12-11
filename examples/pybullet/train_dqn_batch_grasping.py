@@ -19,7 +19,6 @@ import numpy as np
 
 import chainerrl
 from chainerrl.action_value import DiscreteActionValue
-from chainerrl import agents
 from chainerrl import experiments
 from chainerrl import explorers
 from chainerrl import misc
@@ -115,12 +114,6 @@ class GraspingQFunction(chainer.Chain):
         image, steps = x
         h = self.image2hidden(image) * F.sigmoid(self.embed(steps))
         return self.hidden2out(h)
-
-
-def parse_agent(agent):
-    return {'DQN': agents.DQN,
-            'DoubleDQN': agents.DoubleDQN,
-            'PAL': agents.PAL}[agent]
 
 
 def main():
