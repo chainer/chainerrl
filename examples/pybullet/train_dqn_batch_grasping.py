@@ -203,6 +203,7 @@ def main():
             height=84,
             width=84,
             maxSteps=max_episode_steps,
+            isTest=test,
         )
         # (84, 84, 3) -> (3, 84, 84)
         env = TransposeObservation(env, (2, 0, 1))
@@ -222,7 +223,7 @@ def main():
             [functools.partial(make_env, idx, test)
                 for idx in range(args.num_envs)])
 
-    eval_env = make_batch_env(test=False)
+    eval_env = make_batch_env(test=True)
     n_actions = eval_env.action_space.n
 
     q_func = GraspingQFunction(n_actions, max_episode_steps)
