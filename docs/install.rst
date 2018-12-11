@@ -16,8 +16,10 @@ ChainerRL can be installed via PyPI:
 
  pip install chainerrl
 
-It can also be installed from the source code:
+The recommended way to install ChainerRL is through the source code:
 
 ::
 
+ git clone https://github.com/chainer/chainerrl.git
+ cd chainerrl
  python setup.py install
