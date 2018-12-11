@@ -148,6 +148,8 @@ def main():
                         help='Learning rate')
     parser.add_argument('--num-envs', type=int, default=1,
                         help='Number of envs run in parallel.')
+    parser.add_argument('--batch-size', type=int, default=32,
+                        help='Batch size used for training.')
     args = parser.parse_args()
 
     import logging
@@ -231,8 +233,14 @@ def main():
         return norm_image, elapsed_steps
 
     agent = chainerrl.agents.DoubleDQN(
-        q_func, opt, rbuf, gpu=args.gpu, gamma=0.99,
-        explorer=explorer, replay_start_size=args.replay_start_size,
+        q_func,
+        opt,
+        rbuf,
+        gpu=args.gpu,
+        gamma=0.99,
+        explorer=explorer,
+        minibatch_size=args.batch_size,
+        replay_start_size=args.replay_start_size,
         target_update_interval=args.target_update_interval,
         update_interval=args.update_interval,
         batch_accumulator='sum',
