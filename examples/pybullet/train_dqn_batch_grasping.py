@@ -74,6 +74,24 @@ class ObserveElapsedSteps(gym.Wrapper):
         return (observation, self._elapsed_steps), reward, done, info
 
 
+class RecordMovie(gym.Wrapper):
+    """Record MP4 videos using pybullet's logging API."""
+
+    def __init__(self, env, dirname):
+        super().__init__(env)
+        self._episode_idx = -1
+        self._dirname = dirname
+
+    def reset(self):
+        obs = self.env.reset()
+        self._episode_idx += 1
+        import pybullet
+        pybullet.startStateLogging(
+            pybullet.STATE_LOGGING_VIDEO_MP4,
+            os.path.join(self._dirname, '{}.mp4'.format(self._episode_idx)))
+        return obs
+
+
 class GraspingQFunction(chainer.Chain):
     """Q-function model for the grasping env.
 
@@ -150,6 +168,9 @@ def main():
                         help='Number of envs run in parallel.')
     parser.add_argument('--batch-size', type=int, default=32,
                         help='Batch size used for training.')
+    parser.add_argument('--record', action='store_true', default=False,
+                        help='Record videos of evaluation envs.'
+                             ' --render should also be specified.')
     args = parser.parse_args()
 
     import logging
@@ -188,6 +209,12 @@ def main():
         env = ObserveElapsedSteps(env, max_episode_steps)
         env = CastAction(env, int)
         env.seed(int(env_seed))
+        if test and args.record:
+            assert args.render,\
+                'To use --record, --render needs be specified.'
+            video_dir = os.path.join(args.outdir, 'video_{}'.format(idx))
+            os.mkdir(video_dir)
+            env = RecordMovie(env, video_dir)
         return env
 
     def make_batch_env(test):
