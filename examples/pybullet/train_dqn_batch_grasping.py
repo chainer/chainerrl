@@ -120,18 +120,16 @@ def main():
     parser.add_argument('--load', type=str, default=None,
                         help='Load a saved agent from a given directory.')
     parser.add_argument('--final-exploration-steps',
-                        type=int, default=10 ** 6,
+                        type=int, default=5 * 10 ** 5,
                         help='Timesteps after which we stop'
                              ' annealing exploration rate')
-    parser.add_argument('--final-epsilon', type=float, default=0.1,
+    parser.add_argument('--final-epsilon', type=float, default=0.2,
                         help='Final value of epsilon during training.')
     parser.add_argument('--steps', type=int, default=2 * 10 ** 6,
                         help='Total number of timesteps to train the agent.')
     parser.add_argument('--replay-start-size', type=int, default=5 * 10 ** 4,
                         help='Minimum replay buffer size before'
                              ' performing gradient updates.')
-    parser.add_argument('--target-update-interval',
-                        type=int, default=3 * 10 ** 4)
     parser.add_argument('--target-update-interval',
                         type=int, default=1 * 10 ** 4,
                         help='Frequency (in timesteps) at which'
