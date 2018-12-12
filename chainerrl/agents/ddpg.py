@@ -255,7 +255,7 @@ class DDPG(AttributeSavingMixin, Agent):
     def update(self, experiences, errors_out=None):
         """Update the model from experiences"""
 
-        batch = batch_experiences(experiences, self.xp, self.phi)
+        batch = batch_experiences(experiences, self.xp, self.phi, self.gamma)
         self.critic_optimizer.update(lambda: self.compute_critic_loss(batch))
         self.actor_optimizer.update(lambda: self.compute_actor_loss(batch))
 
@@ -273,7 +273,7 @@ class DDPG(AttributeSavingMixin, Agent):
                     break
                 transitions.append(ep[i])
             batch = batch_experiences(
-                transitions, xp=self.xp, phi=self.phi)
+                transitions, xp=self.xp, phi=self.phi, gamma=self.gamma)
             batches.append(batch)
 
         with self.model.state_reset(), self.target_model.state_reset():

@@ -140,9 +140,9 @@ def main():
             eval_env=eval_env,
             outdir=args.outdir,
             steps=args.steps,
-            eval_n_runs=args.eval_n_runs,
+            eval_n_episodes=args.eval_n_runs,
             eval_interval=args.eval_interval,
-            max_episode_len=timestep_limit)
+            train_max_episode_len=timestep_limit)
 
 
 if __name__ == '__main__':
