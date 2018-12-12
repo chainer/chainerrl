@@ -211,7 +211,7 @@ def batch_run_evaluation_episodes(
             eval_episode_returns.append(episode_returns[completed_episode])
             eval_episode_lens.append(episode_lengths[completed_episode])
             total_time += episode_lengths[completed_episode]
-            completed_episodes += 1
+            completed_episode += 1
             if n_steps is not None:
                 if total_time > n_steps:
                     termination_conditions = True
