@@ -31,62 +31,14 @@ min: minimum value of returns of evaluation runs
 _basic_columns = ('steps', 'episodes', 'elapsed', 'mean',
                   'median', 'stdev', 'max', 'min')
 
-
-def run_evaluation_steps(env, agent, n_steps, max_episode_len=None,
-                         logger=None):
-    """Run evaluation episodes for a specified number of timesteps
-
-    and return the episode returns.
-
-    Args:
-        env (Environment): Environment used for evaluation
-        agent (Agent): Agent to evaluate.
-        n_steps (int): Number of timesteps to evaluate the agent for.
-        max_episode_len (int or None): If specified, episodes longer than this
-            value will be truncated.
-        logger (Logger or None): If specified, the given Logger object will be
-            used for logging results. If not specified, the default logger of
-            this module will be used.
-    Returns:
-        List of returns of evaluation runs.
-    """
-    logger = logger or logging.getLogger(__name__)
-    scores = []
-
-    obs = env.reset()
-    done = False
-    episode_len = 0
-    test_r = 0
-    for t in range(n_steps):
-        if done or episode_len == max_episode_len:
-            logger.info('evaluation episode %s length:%s R:%s',
-                        len(scores), episode_len, test_r)
-            done = False
-            agent.stop_episode()
-            obs = env.reset()
-            episode_len = 0
-            scores.append(float(test_r))
-            test_r = 0
-
-        a = agent.act(obs)
-        obs, r, done, info = env.step(a)
-        test_r += r
-        episode_len += 1
-
-    # If all steps were used for a single unfinished episode
-    if len(scores) == 0:
-        scores.append(float(test_r))
-        logger.info('evaluation episode %s length:%s R:%s',
-                    len(scores), episode_len, test_r)
-    return scores
-
-def run_evaluation_episodes(env, agent, n_episodes, max_episode_len=None,
-                            logger=None):
+def run_evaluation_episodes(env, agent, n_steps, n_episodes, 
+                            max_episode_len=None, logger=None):
     """Run multiple evaluation episodes and return returns.
 
     Args:
         env (Environment): Environment used for evaluation
         agent (Agent): Agent to evaluate.
+        n_steps (int): Number of timesteps to evaluate for.
         n_episodes (int): Number of evaluation runs.
         max_episode_len (int or None): If specified, episodes longer than this
             value will be truncated.
@@ -96,28 +48,51 @@ def run_evaluation_episodes(env, agent, n_episodes, max_episode_len=None,
     Returns:
         List of returns of evaluation runs.
     """
+
+    assert (n_steps is None) != (n_episodes is None)
+
     logger = logger or logging.getLogger(__name__)
     scores = []
-    for i in range(n_episodes):
-        obs = env.reset()
-        done = False
-        test_r = 0
-        t = 0
-        info = {}
-        while not (done
-                   or t == max_episode_len
-                   or info.get('needs_reset', False)):
-            a = agent.act(obs)
-            obs, r, done, info = env.step(a)
-            test_r += r
-            t += 1
-        agent.stop_episode()
-        # As mixing float and numpy float causes errors in statistics
-        # functions, here every score is cast to float.
-        scores.append(float(test_r))
-        logger.info('evaluation episode %s length:%s R:%s', i, t, test_r)
-    return scores
+    terminate = False
+    timestep = 0
 
+    obs = env.reset()
+    done = False
+    test_r = 0
+    episode_len = 0
+    info = {}
+
+    while not terminate:
+        a = agent.act(obs)
+        obs, r, done, info = env.step(a)
+        test_r += r
+        episode_len += 1
+        n_steps += 1
+        if done
+           or episode_len == max_episode_len
+           or info.get('needs_reset', False):
+            agent.stop_episode()
+            # As mixing float and numpy float causes errors in statistics
+            # functions, here every score is cast to float.
+            scores.append(float(test_r))
+            logger.info('evaluation episode %s length:%s R:%s', i, t, test_r)
+
+            obs = env.reset()
+            done = False
+            test_r = 0
+            episode_len = 0
+            info = {}
+        if n_steps is None:
+            terminate = len(scores) >= n_episodes
+        else:
+            terminate = timestep >= n_steps
+
+    # If all steps were used for a single unfinished episode
+    if len(scores) == 0:
+        scores.append(float(test_r))
+        logger.info('evaluation episode %s length:%s R:%s',
+                    len(scores), episode_len, test_r)
+    return scores
 
 def batch_run_evaluation_episodes(
     env,
@@ -258,17 +233,11 @@ def eval_performance(env, agent, n_steps, n_episodes, max_episode_len=None,
             env, agent, n_steps, n_episodes,
             max_episode_len=max_episode_len,
             logger=logger)
-    else:
-        if n_steps:
-            scores = run_evaluation_steps(
-                env, agent, n_steps,
-                max_episode_len=max_episode_len,
-                logger=logger)
-        else:  
-            scores = run_evaluation_episodes(
-                env, agent, n_episodes,
-                max_episode_len=max_episode_len,
-                logger=logger)
+    else:  
+        scores = run_evaluation_episodes(
+            env, agent, n_steps, n_episodes,
+            max_episode_len=max_episode_len,
+            logger=logger)
     stats = dict(
         mean=statistics.mean(scores),
         median=statistics.median(scores),
