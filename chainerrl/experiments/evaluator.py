@@ -31,7 +31,8 @@ min: minimum value of returns of evaluation runs
 _basic_columns = ('steps', 'episodes', 'elapsed', 'mean',
                   'median', 'stdev', 'max', 'min')
 
-def run_evaluation_episodes(env, agent, n_steps, n_episodes, 
+
+def run_evaluation_episodes(env, agent, n_steps, n_episodes,
                             max_episode_len=None, logger=None):
     """Run multiple evaluation episodes and return returns.
 
@@ -67,15 +68,15 @@ def run_evaluation_episodes(env, agent, n_steps, n_episodes,
         obs, r, done, info = env.step(a)
         test_r += r
         episode_len += 1
-        n_steps += 1
-        if done
-           or episode_len == max_episode_len
-           or info.get('needs_reset', False):
+        timestep += 1
+        if (done or episode_len == max_episode_len
+                or info.get('needs_reset', False)):
             agent.stop_episode()
+            logger.info('evaluation episode %s length:%s R:%s',
+                        len(scores), episode_len, test_r)
             # As mixing float and numpy float causes errors in statistics
             # functions, here every score is cast to float.
             scores.append(float(test_r))
-            logger.info('evaluation episode %s length:%s R:%s', i, t, test_r)
 
             obs = env.reset()
             done = False
@@ -93,6 +94,7 @@ def run_evaluation_episodes(env, agent, n_steps, n_episodes,
         logger.info('evaluation episode %s length:%s R:%s',
                     len(scores), episode_len, test_r)
     return scores
+
 
 def batch_run_evaluation_episodes(
     env,
@@ -177,7 +179,6 @@ def batch_run_evaluation_episodes(
                 episode_idx += 1
         obss = env.reset(not_end)
 
-
         eval_episode_returns = []
         eval_episode_lens = []
         completed_episode = 0
@@ -196,8 +197,10 @@ def batch_run_evaluation_episodes(
                 termination_conditions = completed_episode >= n_episodes
                 eval_episode_returns = eval_episode_returns[:n_episodes]
                 eval_episode_lens = eval_episode_lens[:n_episodes]
-        #special case
-        if n_steps is not None and completed_episode == 0 and episode_len[0] >= n_steps:
+        # special case
+        if (n_steps is not None
+                and completed_episode == 0
+                and episode_len[0] >= n_steps):
             eval_episode_returns = episode_r[0]
             eval_episode_lens = n_steps
             termination_conditions = True
@@ -226,14 +229,14 @@ def eval_performance(env, agent, n_steps, n_episodes, max_episode_len=None,
         Dict of statistics.
     """
 
-    assert (n_steps is None) != (n_episodes is None) 
+    assert (n_steps is None) != (n_episodes is None)
 
     if isinstance(env, chainerrl.env.VectorEnv):
         scores = batch_run_evaluation_episodes(
             env, agent, n_steps, n_episodes,
             max_episode_len=max_episode_len,
             logger=logger)
-    else:  
+    else:
         scores = run_evaluation_episodes(
             env, agent, n_steps, n_episodes,
             max_episode_len=max_episode_len,
@@ -291,7 +294,7 @@ class Evaluator(object):
             assert (n_steps is None) != (n_episodes is None)
         except AssertionError as error:
             print("One of n_steps or n_episodes must be None. " +
-                  "Either we evaluate for a specified number " + 
+                  "Either we evaluate for a specified number " +
                   "of episodes or for a specified number of timesteps.")
             raise error
         self.agent = agent
