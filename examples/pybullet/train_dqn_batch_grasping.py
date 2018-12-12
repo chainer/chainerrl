@@ -171,6 +171,8 @@ def main():
     parser.add_argument('--record', action='store_true', default=False,
                         help='Record videos of evaluation envs.'
                              ' --render should also be specified.')
+    parser.add_argument('--gamma', type=float, default=0.99,
+                        help='Discount factor.')
     args = parser.parse_args()
 
     import logging
@@ -265,7 +267,7 @@ def main():
         opt,
         rbuf,
         gpu=args.gpu,
-        gamma=0.99,
+        gamma=args.gamma,
         explorer=explorer,
         minibatch_size=args.batch_size,
         replay_start_size=args.replay_start_size,
