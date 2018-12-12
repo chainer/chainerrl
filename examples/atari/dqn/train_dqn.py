@@ -175,7 +175,8 @@ def main():
         eval_stats = experiments.eval_performance(
             env=eval_env,
             agent=agent,
-            n_runs=eval_n_episodes)
+            n_steps=None,
+            n_episodes=eval_n_episodes)
         print('n_runs: {} mean: {} median: {} stdev {}'.format(
             eval_n_episodes, eval_stats['mean'], eval_stats['median'],
             eval_stats['stdev']))
