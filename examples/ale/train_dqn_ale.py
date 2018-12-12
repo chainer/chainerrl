@@ -103,9 +103,9 @@ def main():
                         help='Network architecture to use.')
     parser.add_argument('--steps', type=int, default=5 * 10 ** 7,
                         help='Total number of timesteps to train the agent.')
-    parser.add_argument('--max-episode-len', type=int,
-                        default=30 * 60 * 60 // 4,  # 30 minutes with 60/4 fps
-                        help='Maximum number of timesteps for each episode.')
+    parser.add_argument('--max-frames', type=int,
+                        default=30 * 60 * 60,  # 30 minutes with 60 fps
+                        help='Maximum number of frames for each episode.')
     parser.add_argument('--replay-start-size', type=int, default=5 * 10 ** 4,
                         help='Minimum replay buffer size before ' +
                         'performing gradient updates.')
@@ -120,6 +120,7 @@ def main():
     parser.add_argument('--eval-n-runs', type=int, default=10)
     parser.add_argument('--no-clip-delta',
                         dest='clip_delta', action='store_false')
+    parser.add_argument('--num-step-return', type=int, default=1)
     parser.set_defaults(clip_delta=True)
     parser.add_argument('--agent', type=str, default='DoubleDQN',
                         choices=['DQN', 'DoubleDQN', 'PAL'])
@@ -153,7 +154,7 @@ def main():
         # Use different random seeds for train and test envs
         env_seed = test_seed if test else train_seed
         env = atari_wrappers.wrap_deepmind(
-            atari_wrappers.make_atari(args.env),
+            atari_wrappers.make_atari(args.env, max_frames=args.max_frames),
             episode_life=not test,
             clip_rewards=not test)
         env.seed(int(env_seed))
@@ -195,9 +196,11 @@ def main():
         # Anneal beta from beta0 to 1 throughout training
         betasteps = args.steps / args.update_interval
         rbuf = replay_buffer.PrioritizedReplayBuffer(
-            10 ** 6, alpha=0.6, beta0=0.4, betasteps=betasteps)
+            10 ** 6, alpha=0.6,
+            beta0=0.4, betasteps=betasteps,
+            num_steps=args.num_step_return)
     else:
-        rbuf = replay_buffer.ReplayBuffer(10 ** 6)
+        rbuf = replay_buffer.ReplayBuffer(10 ** 6, args.num_step_return)
 
     explorer = explorers.LinearDecayEpsilonGreedy(
         1.0, args.final_epsilon,
@@ -231,10 +234,9 @@ def main():
     else:
         experiments.train_agent_with_evaluation(
             agent=agent, env=env, steps=args.steps,
-            eval_n_runs=args.eval_n_runs, eval_interval=args.eval_interval,
+            eval_n_episodes=args.eval_n_runs, eval_interval=args.eval_interval,
             outdir=args.outdir,
             save_best_so_far_agent=False,
-            max_episode_len=args.max_episode_len,
             eval_env=eval_env,
         )
 

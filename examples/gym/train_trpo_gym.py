@@ -200,9 +200,9 @@ TRPO only supports gym.spaces.Box or gym.spaces.Discrete action spaces.""")  # N
             eval_env=make_env(test=True),
             outdir=args.outdir,
             steps=args.steps,
-            eval_n_runs=args.eval_n_runs,
+            eval_n_episodes=args.eval_n_runs,
             eval_interval=args.eval_interval,
-            max_episode_len=timestep_limit,
+            train_max_episode_len=timestep_limit,
         )
 
 

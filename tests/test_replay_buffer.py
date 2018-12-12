@@ -2,6 +2,9 @@ from __future__ import unicode_literals
 from __future__ import print_function
 from __future__ import division
 from __future__ import absolute_import
+
+import collections
+import copy
 from builtins import *  # NOQA
 from future import standard_library
 standard_library.install_aliases()  # NOQA
@@ -18,52 +21,124 @@ from chainerrl import replay_buffer
 @testing.parameterize(*testing.product(
     {
         'capacity': [100, None],
+        'num_steps': [1, 3]
     }
 ))
 class TestReplayBuffer(unittest.TestCase):
 
     def test_append_and_sample(self):
         capacity = self.capacity
-        rbuf = replay_buffer.ReplayBuffer(capacity)
+        num_steps = self.num_steps
+        rbuf = replay_buffer.ReplayBuffer(capacity, num_steps)
 
         self.assertEqual(len(rbuf), 0)
 
         # Add one and sample one
-        trans1 = dict(state=0, action=1, reward=2, next_state=3,
-                      next_action=4, is_state_terminal=True)
-        rbuf.append(**trans1)
+        correct_item = collections.deque([], maxlen=num_steps)
+        for i in range(num_steps):
+            trans1 = dict(state=0, action=1, reward=2, next_state=3,
+                          next_action=4, is_state_terminal=False)
+            correct_item.append(trans1)
+            rbuf.append(**trans1)
         self.assertEqual(len(rbuf), 1)
         s1 = rbuf.sample(1)
         self.assertEqual(len(s1), 1)
-        self.assertEqual(s1[0], trans1)
+        self.assertEqual(s1[0], list(correct_item))
+
+        # Add two and sample two, which must be unique
+        correct_item2 = copy.deepcopy(correct_item)
+        trans2 = dict(state=1, action=1, reward=2, next_state=3,
+                      next_action=4, is_state_terminal=False)
+        correct_item2.append(trans2)
+        rbuf.append(**trans2)
+        self.assertEqual(len(rbuf), 2)
+        s2 = rbuf.sample(2)
+        self.assertEqual(len(s2), 2)
+        if s2[0][num_steps - 1]['state'] == 0:
+            self.assertEqual(s2[0], list(correct_item))
+            self.assertEqual(s2[1], list(correct_item2))
+        else:
+            self.assertEqual(s2[1], list(correct_item))
+            self.assertEqual(s2[0], list(correct_item2))
+
+    def test_append_and_terminate(self):
+        capacity = self.capacity
+        num_steps = self.num_steps
+        rbuf = replay_buffer.ReplayBuffer(capacity, num_steps)
+
+        self.assertEqual(len(rbuf), 0)
+
+        # Add one and sample one
+        for i in range(num_steps):
+            trans1 = dict(state=0, action=1, reward=2, next_state=3,
+                          next_action=4, is_state_terminal=False)
+            rbuf.append(**trans1)
+        self.assertEqual(len(rbuf), 1)
+        s1 = rbuf.sample(1)
+        self.assertEqual(len(s1), 1)
 
         # Add two and sample two, which must be unique
         trans2 = dict(state=1, action=1, reward=2, next_state=3,
                       next_action=4, is_state_terminal=True)
         rbuf.append(**trans2)
-        self.assertEqual(len(rbuf), 2)
-        s2 = rbuf.sample(2)
-        self.assertEqual(len(s2), 2)
-        if s2[0]['state'] == 0:
-            self.assertEqual(s2[0], trans1)
-            self.assertEqual(s2[1], trans2)
+        self.assertEqual(len(rbuf), self.num_steps + 1)
+        s2 = rbuf.sample(self.num_steps + 1)
+        self.assertEqual(len(s2), self.num_steps + 1)
+        if self.num_steps == 1:
+            if s2[0][0]['state'] == 0:
+                self.assertEqual(s2[1][0]['state'], 1)
+            else:
+                self.assertEqual(s2[1][0]['state'], 0)
         else:
-            self.assertEqual(s2[0], trans2)
-            self.assertEqual(s2[1], trans1)
+            for item in s2:
+                # e.g. if states are 0,0,0,1 then buffer looks like:
+                # [[0,0,0], [0, 0, 1], [0, 1], [1]]
+                if len(item) < self.num_steps:
+                    self.assertEqual(item[len(item) - 1]['state'], 1)
+                    for i in range(len(item) - 1):
+                        self.assertEqual(item[i]['state'], 0)
+                else:
+                    for i in range(len(item) - 1):
+                        self.assertEqual(item[i]['state'], 0)
+
+    def test_stop_current_episode(self):
+        capacity = self.capacity
+        num_steps = self.num_steps
+        rbuf = replay_buffer.ReplayBuffer(capacity, num_steps)
+
+        self.assertEqual(len(rbuf), 0)
+
+        # Add one and sample one
+        for i in range(num_steps - 1):
+            trans1 = dict(state=0, action=1, reward=2, next_state=3,
+                          next_action=4, is_state_terminal=False)
+            rbuf.append(**trans1)
+        # we haven't experienced n transitions yet
+        self.assertEqual(len(rbuf), 0)
+        # episode ends
+        rbuf.stop_current_episode()
+        # episode ends, so we should add n-1 transitions
+        self.assertEqual(len(rbuf), self.num_steps - 1)
 
     def test_save_and_load(self):
         capacity = self.capacity
+        num_steps = self.num_steps
 
         tempdir = tempfile.mkdtemp()
 
-        rbuf = replay_buffer.ReplayBuffer(capacity)
+        rbuf = replay_buffer.ReplayBuffer(capacity, num_steps)
 
+        correct_item = collections.deque([], maxlen=num_steps)
         # Add two transitions
-        trans1 = dict(state=0, action=1, reward=2, next_state=3,
-                      next_action=4, is_state_terminal=True)
-        rbuf.append(**trans1)
+        for _ in range(num_steps):
+            trans1 = dict(state=0, action=1, reward=2, next_state=3,
+                          next_action=4, is_state_terminal=False)
+            correct_item.append(trans1)
+            rbuf.append(**trans1)
+        correct_item2 = copy.deepcopy(correct_item)
         trans2 = dict(state=1, action=1, reward=2, next_state=3,
-                      next_action=4, is_state_terminal=True)
+                      next_action=4, is_state_terminal=False)
+        correct_item2.append(trans2)
         rbuf.append(**trans2)
 
         # Now it has two transitions
@@ -87,12 +162,12 @@ class TestReplayBuffer(unittest.TestCase):
 
         # And sampled transitions are exactly what I added!
         s2 = rbuf.sample(2)
-        if s2[0]['state'] == 0:
-            self.assertEqual(s2[0], trans1)
-            self.assertEqual(s2[1], trans2)
+        if s2[0][num_steps - 1]['state'] == 0:
+            self.assertEqual(s2[0], list(correct_item))
+            self.assertEqual(s2[1], list(correct_item2))
         else:
-            self.assertEqual(s2[0], trans2)
-            self.assertEqual(s2[1], trans1)
+            self.assertEqual(s2[0], list(correct_item2))
+            self.assertEqual(s2[1], list(correct_item))
 
 
 @testing.parameterize(*testing.product(
@@ -196,6 +271,7 @@ class TestEpisodicReplayBuffer(unittest.TestCase):
 @testing.parameterize(*testing.product(
     {
         'capacity': [100, None],
+        'num_steps': [1],
         'normalize_by_max': ['batch', 'memory'],
     }
 ))
@@ -203,55 +279,62 @@ class TestPrioritizedReplayBuffer(unittest.TestCase):
 
     def test_append_and_sample(self):
         capacity = self.capacity
+        num_steps = self.num_steps
         rbuf = replay_buffer.PrioritizedReplayBuffer(
             capacity,
             normalize_by_max=self.normalize_by_max,
-            error_max=5)
+            error_max=5,
+            num_steps=num_steps)
 
         self.assertEqual(len(rbuf), 0)
 
         # Add one and sample one
-        trans1 = dict(state=0, action=1, reward=2, next_state=3,
-                      next_action=4, is_state_terminal=True)
-        rbuf.append(**trans1)
+        correct_item = collections.deque([], maxlen=num_steps)
+        for _ in range(num_steps):
+            trans1 = dict(state=0, action=1, reward=2, next_state=3,
+                          next_action=4, is_state_terminal=False)
+            correct_item.append(trans1)
+            rbuf.append(**trans1)
         self.assertEqual(len(rbuf), 1)
         s1 = rbuf.sample(1)
         rbuf.update_errors([3.14])
         self.assertEqual(len(s1), 1)
-        self.assertAlmostEqual(s1[0]['weight'], 1.0)
-        del s1[0]['weight']
-        self.assertEqual(s1[0], trans1)
+        self.assertAlmostEqual(s1[0][0]['weight'], 1.0)
+        del s1[0][0]['weight']
+        self.assertEqual(s1[0], list(correct_item))
 
         # Add two and sample two, which must be unique
+        correct_item2 = copy.deepcopy(correct_item)
         trans2 = dict(state=1, action=1, reward=2, next_state=3,
                       next_action=4, is_state_terminal=True)
+        correct_item2.append(trans2)
         rbuf.append(**trans2)
         self.assertEqual(len(rbuf), 2)
         s2 = rbuf.sample(2)
         rbuf.update_errors([3.14, 2.71])
         self.assertEqual(len(s2), 2)
-        del s2[0]['weight']
-        del s2[1]['weight']
-        if s2[0]['state'] == 0:
-            self.assertEqual(s2[0], trans1)
-            self.assertEqual(s2[1], trans2)
+        del s2[0][0]['weight']
+        del s2[1][0]['weight']
+        if s2[0][num_steps - 1]['state'] == 1:
+            self.assertEqual(s2[0], list(correct_item2))
+            self.assertEqual(s2[1], list(correct_item))
         else:
-            self.assertEqual(s2[0], trans2)
-            self.assertEqual(s2[1], trans1)
+            self.assertEqual(s2[0], list(correct_item))
+            self.assertEqual(s2[1], list(correct_item2))
 
         # Weights should be different for different TD-errors
         s3 = rbuf.sample(2)
-        self.assertNotAlmostEqual(s3[0]['weight'], s3[1]['weight'])
+        self.assertNotAlmostEqual(s3[0][0]['weight'], s3[1][0]['weight'])
 
         # Weights should be equal for different but clipped TD-errors
         rbuf.update_errors([5, 10])
         s3 = rbuf.sample(2)
-        self.assertAlmostEqual(s3[0]['weight'], s3[1]['weight'])
+        self.assertAlmostEqual(s3[0][0]['weight'], s3[1][0]['weight'])
 
         # Weights should be equal for the same TD-errors
         rbuf.update_errors([3.14, 3.14])
         s4 = rbuf.sample(2)
-        self.assertAlmostEqual(s4[0]['weight'], s4[1]['weight'])
+        self.assertAlmostEqual(s4[0][0]['weight'], s4[1][0]['weight'])
 
     def test_capacity(self):
         capacity = self.capacity
@@ -275,17 +358,24 @@ class TestPrioritizedReplayBuffer(unittest.TestCase):
 
     def test_save_and_load(self):
         capacity = self.capacity
+        num_steps = self.num_steps
 
         tempdir = tempfile.mkdtemp()
 
-        rbuf = replay_buffer.PrioritizedReplayBuffer(capacity)
+        rbuf = replay_buffer.PrioritizedReplayBuffer(capacity,
+                                                     num_steps=num_steps)
 
         # Add two transitions
-        trans1 = dict(state=0, action=1, reward=2, next_state=3,
-                      next_action=4, is_state_terminal=True)
-        rbuf.append(**trans1)
+        correct_item = collections.deque([], maxlen=num_steps)
+        for _ in range(num_steps):
+            trans1 = dict(state=0, action=1, reward=2, next_state=3,
+                          next_action=4, is_state_terminal=False)
+            correct_item.append(trans1)
+            rbuf.append(**trans1)
+        correct_item2 = copy.deepcopy(correct_item)
         trans2 = dict(state=1, action=1, reward=2, next_state=3,
                       next_action=4, is_state_terminal=True)
+        correct_item2.append(trans2)
         rbuf.append(**trans2)
 
         # Now it has two transitions
@@ -296,7 +386,8 @@ class TestPrioritizedReplayBuffer(unittest.TestCase):
         rbuf.save(filename)
 
         # Initialize rbuf
-        rbuf = replay_buffer.PrioritizedReplayBuffer(capacity)
+        rbuf = replay_buffer.PrioritizedReplayBuffer(capacity,
+                                                     num_steps=num_steps)
 
         # Of course it has no transition yet
         self.assertEqual(len(rbuf), 0)
@@ -309,14 +400,14 @@ class TestPrioritizedReplayBuffer(unittest.TestCase):
 
         # And sampled transitions are exactly what I added!
         s2 = rbuf.sample(2)
-        del s2[0]['weight']
-        del s2[1]['weight']
-        if s2[0]['state'] == 0:
-            self.assertEqual(s2[0], trans1)
-            self.assertEqual(s2[1], trans2)
+        del s2[0][0]['weight']
+        del s2[1][0]['weight']
+        if s2[0][num_steps - 1]['state'] == 0:
+            self.assertEqual(s2[0], list(correct_item))
+            self.assertEqual(s2[1], list(correct_item2))
         else:
-            self.assertEqual(s2[0], trans2)
-            self.assertEqual(s2[1], trans1)
+            self.assertEqual(s2[0], list(correct_item2))
+            self.assertEqual(s2[1], list(correct_item))
 
 
 def exp_return_of_episode(episode):
@@ -421,3 +512,33 @@ class TestReplayBufferFail(unittest.TestCase):
         self._sample1()
         self._set1()
         self.assertRaises(AssertionError, self._set1)
+
+
+class TestBatchExperiences(unittest.TestCase):
+
+    def test_batch_experiences(self):
+        experiences = []
+        experiences.append(
+            [dict(state=1, action=1, reward=1, next_state=i,
+                  next_action=1, is_state_terminal=False) for i in range(3)])
+        experiences.append([dict(state=1, action=1, reward=1, next_state=1,
+                                 next_action=1, is_state_terminal=False)])
+        four_step_transition = [dict(
+            state=1, action=1, reward=1, next_state=1,
+            next_action=1, is_state_terminal=False)] * 3
+        four_step_transition.append(dict(
+                                    state=1, action=1, reward=1, next_state=5,
+                                    next_action=1, is_state_terminal=True))
+        experiences.append(four_step_transition)
+        batch = replay_buffer.batch_experiences(
+            experiences, np, lambda x: x, 0.99)
+        self.assertEqual(batch['state'][0], 1)
+        self.assertSequenceEqual(list(batch['is_state_terminal']),
+                                 list(np.asarray([0.0, 0.0, 1.0],
+                                                 dtype=np.float32)))
+        self.assertSequenceEqual(list(batch['discount']),
+                                 list(np.asarray([
+                                      0.99 ** 3, 0.99 ** 1, 0.99 ** 4],
+                                     dtype=np.float32)))
+        self.assertSequenceEqual(list(batch['next_state']),
+                                 list(np.asarray([2, 1, 5])))
