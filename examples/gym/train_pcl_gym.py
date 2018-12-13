@@ -224,6 +224,7 @@ def main():
                 eval_env=make_env(0, test=True),
                 outdir=args.outdir,
                 steps=args.steps,
+                eval_n_steps=None,
                 eval_n_episodes=args.eval_n_runs,
                 eval_interval=args.eval_interval,
                 train_max_episode_len=timestep_limit)
