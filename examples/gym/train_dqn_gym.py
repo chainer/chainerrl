@@ -198,6 +198,7 @@ def main():
     else:
         experiments.train_agent_with_evaluation(
             agent=agent, env=env, steps=args.steps,
+            eval_n_steps=None,
             eval_n_episodes=args.eval_n_runs, eval_interval=args.eval_interval,
             outdir=args.outdir, eval_env=eval_env,
             train_max_episode_len=timestep_limit)

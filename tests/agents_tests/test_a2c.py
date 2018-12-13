@@ -86,7 +86,8 @@ class TestA2C(unittest.TestCase):
         eval_returns = batch_run_evaluation_episodes(
             test_env,
             agent,
-            n_runs=n_test_runs,
+            n_steps=None,
+            n_episodes=n_test_runs,
         )
         test_env.close()
         n_succeeded = np.sum(np.asarray(eval_returns) >= successful_return)
