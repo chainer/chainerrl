@@ -78,6 +78,12 @@ The following papers have been implemented in ChainerRL:
 - [Sample Efficient Actor-Critic with Experience Replay](https://arxiv.org/pdf/1611.01224.pdf)
 - [Bridging the Gap Between Value and Policy Based Reinforcement Learning](https://arxiv.org/pdf/1702.08892.pdf)
 
+
+## Visualization
+
+ChainerRL has a set of accompanying [visualization tools](https://github.com/chainer/chainerrl-visualizer) in order to aid developers' ability to understand and debug their RL agents. With this visualization tool, the behavior of ChainerRL agents can be easily inspected from a browser UI.
+
+
 ## Environments
 
 Environments that support the subset of OpenAI Gym's interface (`reset` and `step` methods) can be used.
