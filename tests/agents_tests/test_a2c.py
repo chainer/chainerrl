@@ -75,6 +75,7 @@ class TestA2C(unittest.TestCase):
             outdir=self.tmpdir,
             log_interval=10,
             eval_interval=200,
+            eval_n_steps=None,
             eval_n_runs=50,
             successful_score=1,
             eval_env=test_env,
