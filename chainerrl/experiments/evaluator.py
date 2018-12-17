@@ -167,15 +167,15 @@ def batch_run_evaluation_episodes(
 
         for index in range(len(end)):
             if end[index]:
-                episode_returns[episode_indices[index]] = episode_r[end]
-                episode_lengths[episode_indices[index]] = episode_len[end]
+                episode_returns[episode_indices[index]] = episode_r[index]
+                episode_lengths[episode_indices[index]] = episode_len[index]
 
         episode_r[end] = 0
         episode_len[end] = 0
         episode_start[end] = timestep
         for index in range(len(end)):
             if end[index]:
-                episode_indices[end] = episode_idx
+                episode_indices[index] = episode_idx
                 episode_idx += 1
         obss = env.reset(not_end)
 
@@ -201,7 +201,7 @@ def batch_run_evaluation_episodes(
         if (n_steps is not None
                 and completed_episode == 0
                 and episode_len[0] >= n_steps):
-            eval_episode_returns = episode_r[0]
+            eval_episode_returns = [episode_r[0]]
             eval_episode_lens = n_steps
             termination_conditions = True
 
