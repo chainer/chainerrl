@@ -205,6 +205,7 @@ def main():
             eval_env=make_batch_env(test=True),
             steps=args.steps,
             log_interval=args.log_interval,
+            eval_n_steps=None,
             eval_n_runs=args.eval_n_runs,
             eval_interval=args.eval_interval,
             outdir=args.outdir,
