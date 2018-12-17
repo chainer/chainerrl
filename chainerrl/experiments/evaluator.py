@@ -127,7 +127,6 @@ def batch_run_evaluation_episodes(
     num_envs = env.num_envs
     episode_returns = dict()
     episode_lengths = dict()
-    episode_start = np.zeros(num_envs, dtype='i')
     episode_indices = np.zeros(num_envs, dtype='i')
     episode_idx = 0
     for i in range(num_envs):
@@ -169,14 +168,11 @@ def batch_run_evaluation_episodes(
             if end[index]:
                 episode_returns[episode_indices[index]] = episode_r[index]
                 episode_lengths[episode_indices[index]] = episode_len[index]
+                episode_indices[index] = episode_idx
+                episode_idx += 1
 
         episode_r[end] = 0
         episode_len[end] = 0
-        episode_start[end] = timestep
-        for index in range(len(end)):
-            if end[index]:
-                episode_indices[index] = episode_idx
-                episode_idx += 1
         obss = env.reset(not_end)
 
         eval_episode_returns = []
@@ -193,16 +189,19 @@ def batch_run_evaluation_episodes(
                     termination_conditions = True
                     eval_episode_returns = eval_episode_returns[:-1]
                     eval_episode_lens = eval_episode_lens[:-1]
+                    break
             else:
-                termination_conditions = completed_episode >= n_episodes
-                eval_episode_returns = eval_episode_returns[:n_episodes]
-                eval_episode_lens = eval_episode_lens[:n_episodes]
+                if completed_episode >= n_episodes:
+                    termination_conditions = True
+                    eval_episode_returns = eval_episode_returns[:n_episodes]
+                    eval_episode_lens = eval_episode_lens[:n_episodes]
+                    break
         # special case
         if (n_steps is not None
                 and completed_episode == 0
                 and episode_len[0] >= n_steps):
             eval_episode_returns = [episode_r[0]]
-            eval_episode_lens = n_steps
+            eval_episode_lens = [n_steps]
             termination_conditions = True
 
     for i, (epi_len, epi_ret) in enumerate(
