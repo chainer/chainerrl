@@ -79,6 +79,7 @@ class TestPPO(unittest.TestCase):
             steps=steps,
             outdir=self.tmpdir,
             eval_interval=200,
+            eval_n_steps=None,
             eval_n_episodes=50,
             successful_score=successful_return,
             eval_env=test_env,
