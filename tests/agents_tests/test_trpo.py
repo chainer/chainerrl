@@ -203,6 +203,7 @@ class TestTRPO(unittest.TestCase):
             steps=steps,
             outdir=self.tmpdir,
             eval_interval=200,
+            eval_n_steps=None,
             eval_n_episodes=5,
             successful_score=successful_return,
             train_max_episode_len=max_episode_len,
