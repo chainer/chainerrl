@@ -49,7 +49,6 @@ def run_evaluation_episodes(env, agent, n_steps, n_episodes,
     Returns:
         List of returns of evaluation runs.
     """
-
     assert (n_steps is None) != (n_episodes is None)
 
     logger = logger or logging.getLogger(__name__)
@@ -57,42 +56,38 @@ def run_evaluation_episodes(env, agent, n_steps, n_episodes,
     terminate = False
     timestep = 0
 
-    obs = env.reset()
-    done = False
-    test_r = 0
-    episode_len = 0
-    info = {}
-
+    reset = True
     while not terminate:
+        if reset:
+            obs = env.reset()
+            done = False
+            test_r = 0
+            episode_len = 0
+            info = {}
         a = agent.act(obs)
         obs, r, done, info = env.step(a)
         test_r += r
         episode_len += 1
         timestep += 1
-        if (done or episode_len == max_episode_len
-                or info.get('needs_reset', False)):
+        reset = (done or episode_len == max_episode_len
+                    or info.get('needs_reset', False))
+        if reset:
             agent.stop_episode()
             logger.info('evaluation episode %s length:%s R:%s',
                         len(scores), episode_len, test_r)
             # As mixing float and numpy float causes errors in statistics
             # functions, here every score is cast to float.
             scores.append(float(test_r))
-
-            obs = env.reset()
-            done = False
-            test_r = 0
-            episode_len = 0
-            info = {}
         if n_steps is None:
             terminate = len(scores) >= n_episodes
         else:
             terminate = timestep >= n_steps
-
     # If all steps were used for a single unfinished episode
     if len(scores) == 0:
         scores.append(float(test_r))
         logger.info('evaluation episode %s length:%s R:%s',
                     len(scores), episode_len, test_r)
+    print("About to return!")
     return scores
 
 

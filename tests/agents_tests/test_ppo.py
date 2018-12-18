@@ -93,7 +93,8 @@ class TestPPO(unittest.TestCase):
         eval_returns = run_evaluation_episodes(
             test_env,
             agent,
-            n_runs=n_test_runs,
+            n_steps=None,
+            n_episodes=n_test_runs,
             max_episode_len=max_episode_len,
         )
         n_succeeded = np.sum(np.asarray(eval_returns) >= successful_return)
@@ -221,7 +222,8 @@ class TestBatchPPO(unittest.TestCase):
         eval_returns = batch_run_evaluation_episodes(
             test_env,
             agent,
-            n_runs=n_test_runs,
+            n_steps=None,
+            n_episodes=n_test_runs,
             max_episode_len=max_episode_len,
         )
         test_env.close()

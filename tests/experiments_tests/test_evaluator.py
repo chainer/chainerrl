@@ -37,7 +37,8 @@ class TestEvaluator(unittest.TestCase):
         evaluator = chainerrl.experiments.evaluator.Evaluator(
             agent=agent,
             env=env,
-            n_runs=self.n_runs,
+            n_steps=None,
+            n_episodes=self.n_runs,
             eval_interval=3,
             outdir=outdir,
             max_episode_len=None,
@@ -160,7 +161,7 @@ class TestRunEvaluationEpisode(unittest.TestCase):
             (('state', 7), 1, True, {}),
         ]
         scores = chainerrl.experiments.evaluator.run_evaluation_episodes(
-            env, agent, n_runs=2)
+            env, agent, n_steps=None, n_episodes=2)
         self.assertAlmostEqual(len(scores), 2)
         self.assertAlmostEqual(scores[0], 0)
         self.assertAlmostEqual(scores[1], 0.5)
@@ -205,7 +206,7 @@ class TestBatchRunEvaluationEpisode(unittest.TestCase):
             [make_env(i) for i in range(2)])
 
         scores = chainerrl.experiments.evaluator.batch_run_evaluation_episodes(
-            vec_env, agent, n_runs=4)
+            vec_env, agent, n_steps=None, n_episodes=4)
         self.assertAlmostEqual(len(scores), 4)
         self.assertAlmostEqual(scores[0], 2)
         self.assertAlmostEqual(scores[1], 3)
