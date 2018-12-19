@@ -196,7 +196,7 @@ class TestBatchRunEvaluationEpisode(unittest.TestCase):
                 env.step.side_effect = [
                     (('state', 1), 2, False, {'needs_reset': True}),
                     (('state', 3), 3, False, {'needs_reset': True}),
-                    (('state', 5), -0.5, False, {}),
+                    (('state', 5), -0.6, False, {}),
                     (('state', 6), 0, False, {}),
                     (('state', 7), 1, True, {}),
                 ]
@@ -208,7 +208,7 @@ class TestBatchRunEvaluationEpisode(unittest.TestCase):
         scores = chainerrl.experiments.evaluator.batch_run_evaluation_episodes(
             vec_env, agent, n_steps=None, n_episodes=4)
         self.assertAlmostEqual(len(scores), 4)
-        self.assertAlmostEqual(scores[0], 2)
-        self.assertAlmostEqual(scores[1], 3)
-        self.assertAlmostEqual(scores[2], 0)
-        self.assertAlmostEqual(scores[3], 0.5)
+        self.assertAlmostEqual(scores[0], 0)
+        self.assertAlmostEqual(scores[1], 2)
+        self.assertAlmostEqual(scores[2], 3)
+        self.assertAlmostEqual(scores[3], 0.4)
