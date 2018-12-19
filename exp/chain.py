@@ -140,6 +140,7 @@ def main():
     parser.add_argument('--sigmanet', type=str, default='100,100')
     parser.add_argument('--one-sigma', action='store_true', default=False)
     parser.add_argument('--share-net', action='store_true', default=False)
+    parser.add_argument('--swingup', action='store_true', default=False)
     parser.add_argument('--share-gradient', action='store_true', default=False)
 
     parser.add_argument('--force', type=float, default=0.001)
@@ -192,15 +193,51 @@ def main():
             env = GridEnv(args.outdir, chain_len, save_img=args.save_img,)
         elif args.env == "pole":
             env = gym.make("CartPole-v0")
-            e = env.env
+            e = env.unwrapped
+            import math
 
-            def reset():
-                s = np.zeros(4)
-                s[:2] = np.random.uniform(low=-0.05, high=0.05, size=2)
-                s[2:] = np.random.uniform(low=np.pi-0.05, high=np.pi+0.05, size=2)
-                e.state = s
-                e.steps_beyond_done = None
-                return np.array(e.state)
+
+            if args.swingup:
+                def step(action):
+                    state = e.state
+                    x, x_dot, theta, theta_dot = state
+                    force = e.force_mag if action==1 else -e.force_mag
+                    costheta = math.cos(theta)
+                    sintheta = math.sin(theta)
+                    temp = (force + e.polemass_length * theta_dot * theta_dot * sintheta) / e.total_mass
+                    thetaacc = (e.gravity * sintheta - costheta* temp) / (e.length * (4.0/3.0 - e.masspole * costheta * costheta / e.total_mass))
+                    xacc  = temp - e.polemass_length * thetaacc * costheta / e.total_mass
+                    if e.kinematics_integrator == 'euler':
+                        x  = x + e.tau * x_dot
+                        x_dot = x_dot + e.tau * xacc
+                        theta = theta + e.tau * theta_dot
+                        theta_dot = theta_dot + e.tau * thetaacc
+                    else: # semi-implicit euler
+                        x_dot = x_dot + e.tau * xacc
+                        x  = x + e.tau * x_dot
+                        theta_dot = theta_dot + e.tau * thetaacc
+                        theta = theta + e.tau * theta_dot
+                    e.state = (x,x_dot,theta,theta_dot)
+
+                    # compute costs - saturation cost
+                    goal = np.array([0.0, e.length])
+                    pole_x = e.length*np.sin(theta)
+                    pole_y = e.length*np.cos(theta)
+                    position = np.array([e.state[0] + pole_x, pole_y])
+                    squared_distance = np.sum((position - goal)**2)
+                    squared_sigma = 0.25**2
+                    costs = 1 - np.exp(-0.5*squared_distance/squared_sigma)
+
+                    return np.array(e.state), -costs, False, {}
+
+                def reset():
+                    #self.state = self.np_random.normal(loc=np.array([0.0, 0.0, 30*(2*np.pi)/360, 0.0]), scale=np.array([0.0, 0.0, 0.0, 0.0]))
+                    e.state = e.np_random.normal(loc=np.array([0.0, 0.0, np.pi, 0.0]), scale=np.array([0.02, 0.02, 0.02, 0.02]))
+                    e.steps_beyond_done = None
+                    return np.array(e.state)
+
+                e.step = step
+                e.reset = reset
 
             #e.reset = reset
             env._max_episode_steps = args.max_episode_len
