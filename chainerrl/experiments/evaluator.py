@@ -70,7 +70,7 @@ def run_evaluation_episodes(env, agent, n_steps, n_episodes,
         episode_len += 1
         timestep += 1
         reset = (done or episode_len == max_episode_len
-                    or info.get('needs_reset', False))
+                 or info.get('needs_reset', False))
         if reset:
             agent.stop_episode()
             logger.info('evaluation episode %s length:%s R:%s',
@@ -195,7 +195,7 @@ def batch_run_evaluation_episodes(
             eval_episode_lens = [n_steps]
             termination_conditions = True
 
-        if termination_conditions == True:
+        if termination_conditions:
             break
         else:
             obss = env.reset(not_end)
