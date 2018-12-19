@@ -192,6 +192,18 @@ def main():
             env = GridEnv(args.outdir, chain_len, save_img=args.save_img,)
         elif args.env == "pole":
             env = gym.make("CartPole-v0")
+            e = env.env
+
+            def reset():
+                s = np.zeros(4)
+                s[:2] = np.random.uniform(low=-0.05, high=0.05, size=2)
+                s[2:] = np.random.uniform(low=np.pi-0.05, high=np.pi+0.05, size=2)
+                e.state = s
+                e.steps_beyond_done = None
+                return np.array(e.state)
+
+            #e.reset = reset
+            env._max_episode_steps = args.max_episode_len
         elif args.env == "acrobot":
             env = gym.make("Acrobot-v1")
         elif args.env == "car":
@@ -249,6 +261,9 @@ def main():
 
         if args.render:
             misc.env_modifiers.make_rendered(env, mode='rgb_array')
+
+        if args.monitor:
+            env = gym.wrappers.Monitor(env, args.outdir)
 
         return env
 
