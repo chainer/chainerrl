@@ -143,8 +143,51 @@ class TestAsyncEvaluator(unittest.TestCase):
         else:
             self.assertEqual(agent.save.call_count, 0)
 
-
+@testing.parameterize(
+    *testing.product({
+        'n_episodes': [None, 1],
+        'n_timesteps': [2, 5, 6],
+    })
+)
 class TestRunEvaluationEpisode(unittest.TestCase):
+
+    def test_timesteps(self):
+        agent = mock.Mock()
+        env = mock.Mock()
+        # First episode: 0 -> 1 -> 2 -> 3 (reset)
+        # Second episode: 4 -> 5 -> 6 -> 7 (done)
+        env.reset.side_effect = [('state', 0), ('state', 4)]
+        env.step.side_effect = [
+            (('state', 1), 0.1, False, {}),
+            (('state', 2), 0.2, False, {}),
+            (('state', 3), 0.3, False, {'needs_reset': True}),
+            (('state', 5), -0.5, False, {}),
+            (('state', 6), 0, False, {}),
+            (('state', 7), 1, True, {}),
+        ]
+
+        if self.n_episodes:
+            with self.assertRaises(AssertionError) as _:
+                    scores = chainerrl.experiments.evaluator.run_evaluation_episodes(
+                    env, agent,
+                    n_steps=self.n_timesteps,
+                    n_episodes=self.n_episodes)
+        else:
+            scores = chainerrl.experiments.evaluator.run_evaluation_episodes(
+                env, agent,
+                n_steps=self.n_timesteps,
+                n_episodes=self.n_episodes)
+            if self.n_timesteps == 2:
+                self.assertAlmostEqual(len(scores), 1)
+                self.assertAlmostEqual(scores[0], 0.3)
+            elif self.n_timesteps == 5:
+                self.assertAlmostEqual(len(scores), 1)
+                self.assertAlmostEqual(scores[0], 0.6)
+            else:
+                self.assertAlmostEqual(len(scores), 2)
+                self.assertAlmostEqual(scores[0], 0.6)
+                self.assertAlmostEqual(scores[1], 0.5)
+
 
     def test_needs_reset(self):
         agent = mock.Mock()
@@ -205,6 +248,9 @@ class TestBatchRunEvaluationEpisode(unittest.TestCase):
         vec_env = chainerrl.envs.SerialVectorEnv(
             [make_env(i) for i in range(2)])
 
+        # First Env: [1 2 (3_a) 5 6 (7_a)]
+        # Second Env: [(1) (3_b) 5 6 (7_b)]
+        # Results: (1), (3a), (3b), (7b)
         scores = chainerrl.experiments.evaluator.batch_run_evaluation_episodes(
             vec_env, agent, n_steps=None, n_episodes=4)
         self.assertAlmostEqual(len(scores), 4)

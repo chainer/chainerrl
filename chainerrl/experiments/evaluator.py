@@ -87,7 +87,6 @@ def run_evaluation_episodes(env, agent, n_steps, n_episodes,
         scores.append(float(test_r))
         logger.info('evaluation episode %s length:%s R:%s',
                     len(scores), episode_len, test_r)
-    print("About to return!")
     return scores
 
 
