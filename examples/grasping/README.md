@@ -1,6 +1,6 @@
-# Examples for a Bullet-based grasping manipulation environment
+# Bullet-based robotic grasping
 
-This directory contains example scripts that learns to grasp objects in an environment simulated by Bullet, a physics simulator.
+This directory contains example scripts that learn to grasp objects in an environment simulated by Bullet, a physics simulator.
 
 ![Grasping](../../assets/grasping.gif)
 
@@ -19,7 +19,7 @@ This directory contains example scripts that learns to grasp objects in an envir
 
 python examples/pybullet/train_dqn_batch_grasping.py
 
-# Train with 96 simulators run in parallel
+# Train with 96 simulators run in parallel, which is faster
 
 python examples/pybullet/train_dqn_batch_grasping.py --num-envs 96
 
