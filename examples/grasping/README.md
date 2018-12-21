@@ -2,6 +2,8 @@
 
 This directory contains example scripts that learns to grasp objects in an environment simulated by Bullet, a physics simulator.
 
+![Grasping](../../assets/grasping.gif)
+
 ## Files
 
 - `train_dqn_batch_grasping.py`: DoubleDQN + prioritized experience replay
