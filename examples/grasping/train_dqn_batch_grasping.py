@@ -210,7 +210,10 @@ def main():
         # (84, 84, 3) -> (3, 84, 84)
         env = TransposeObservation(env, (2, 0, 1))
         env = ObserveElapsedSteps(env, max_episode_steps)
-        env = CastAction(env, int)
+        # KukaDiverseObjectEnv internally asserts int actions and does not
+        # accept python-future's newint.
+        import __builtin__
+        env = CastAction(env, __builtin__.int)
         env.seed(int(env_seed))
         if test and args.record:
             assert args.render,\
