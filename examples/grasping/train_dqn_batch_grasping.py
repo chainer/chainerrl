@@ -118,7 +118,7 @@ class GraspingQFunction(chainer.Chain):
                 DiscreteActionValue,
             )
 
-    def forward(self, x):
+    def __call__(self, x):
         image, steps = x
         h = self.image2hidden(image) * F.sigmoid(self.embed(steps))
         return self.hidden2out(h)
