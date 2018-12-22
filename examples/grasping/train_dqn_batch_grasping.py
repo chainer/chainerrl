@@ -103,7 +103,7 @@ class GraspingQFunction(chainer.Chain):
         super().__init__()
         with self.init_scope():
             self.embed = L.EmbedID(max_episode_steps + 1, 3136)
-            self.image2hidden = chainer.Sequential(
+            self.image2hidden = chainerrl.links.Sequence(
                 L.Convolution2D(None, 32, 8, stride=4),
                 F.relu,
                 L.Convolution2D(None, 64, 4, stride=2),
@@ -111,7 +111,7 @@ class GraspingQFunction(chainer.Chain):
                 L.Convolution2D(None, 64, 3, stride=1),
                 functools.partial(F.reshape, shape=(-1, 3136)),
             )
-            self.hidden2out = chainer.Sequential(
+            self.hidden2out = chainerrl.links.Sequence(
                 L.Linear(None, 512),
                 F.relu,
                 L.Linear(None, n_actions),
