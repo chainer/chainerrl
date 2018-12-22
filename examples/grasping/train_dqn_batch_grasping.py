@@ -212,8 +212,7 @@ def main():
         env = ObserveElapsedSteps(env, max_episode_steps)
         # KukaDiverseObjectEnv internally asserts int actions and does not
         # accept python-future's newint.
-        import __builtin__
-        env = CastAction(env, __builtin__.int)
+        env = CastAction(env, __builtins__.int)
         env.seed(int(env_seed))
         if test and args.record:
             assert args.render,\
