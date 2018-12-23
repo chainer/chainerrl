@@ -235,7 +235,7 @@ def main():
     # Draw the computational graph and save it in the output directory.
     fake_obs = (
         np.zeros((3, 84, 84), dtype=np.float32)[None],
-        np.zeros(1, dtype=np.int32)[None],
+        np.zeros((), dtype=np.int32)[None],
     )
     chainerrl.misc.draw_computational_graph(
         [q_func(fake_obs)],
