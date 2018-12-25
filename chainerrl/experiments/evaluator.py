@@ -295,6 +295,7 @@ class Evaluator(object):
         self.env = env
         self.max_score = np.finfo(np.float32).min
         self.start_time = time.time()
+        self.n_steps = n_steps
         self.n_episodes = n_episodes
         self.eval_interval = eval_interval
         self.outdir = outdir
@@ -313,7 +314,7 @@ class Evaluator(object):
 
     def evaluate_and_update_max_score(self, t, episodes):
         eval_stats = eval_performance(
-            self.env, self.agent, None, self.n_episodes,
+            self.env, self.agent, self.n_steps, self.n_episodes,
             max_episode_len=self.max_episode_len,
             logger=self.logger)
         elapsed = time.time() - self.start_time
