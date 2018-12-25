@@ -175,10 +175,10 @@ class TestRunEvaluationEpisode(unittest.TestCase):
 
         if self.n_episodes:
             with self.assertRaises(AssertionError):
-                    scores = evaluator.run_evaluation_episodes(
-                        env, agent,
-                        n_steps=self.n_timesteps,
-                        n_episodes=self.n_episodes)
+                scores = evaluator.run_evaluation_episodes(
+                    env, agent,
+                    n_steps=self.n_timesteps,
+                    n_episodes=self.n_episodes)
         else:
             scores = evaluator.run_evaluation_episodes(
                 env, agent,
@@ -269,9 +269,9 @@ class TestBatchRunEvaluationEpisode(unittest.TestCase):
             # First Env:  [1   2   (3_a)  5  6   (7_a)]
             # Second Env: [(1)(3_b) 5     6 (7_b)]
             scores = evaluator.batch_run_evaluation_episodes(
-                    vec_env, agent,
-                    n_steps=self.n_timesteps,
-                    n_episodes=self.n_episodes)
+                vec_env, agent,
+                n_steps=self.n_timesteps,
+                n_episodes=self.n_episodes)
             if self.n_timesteps == 2:
                 self.assertAlmostEqual(len(scores), 1)
                 self.assertAlmostEqual(scores[0], 0.1)
