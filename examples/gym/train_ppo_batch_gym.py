@@ -222,7 +222,7 @@ def main():
             outdir=args.outdir,
             steps=args.steps,
             eval_n_steps=None,
-            eval_n_runs=args.eval_n_runs,
+            eval_n_episodes=args.eval_n_runs,
             eval_interval=args.eval_interval,
             log_interval=args.log_interval,
             return_window_size=args.window_size,

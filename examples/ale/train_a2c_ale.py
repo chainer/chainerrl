@@ -167,7 +167,7 @@ def main():
             eval_env=make_batch_env(test=True),
             steps=args.steps,
             eval_n_steps=None,
-            eval_n_runs=args.eval_n_runs,
+            eval_n_episodes=args.eval_n_runs,
             eval_interval=args.eval_interval,
             outdir=args.outdir,
             save_best_so_far_agent=False,

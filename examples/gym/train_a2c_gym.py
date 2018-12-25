@@ -206,7 +206,7 @@ def main():
             steps=args.steps,
             log_interval=args.log_interval,
             eval_n_steps=None,
-            eval_n_runs=args.eval_n_runs,
+            eval_n_episodes=args.eval_n_runs,
             eval_interval=args.eval_interval,
             outdir=args.outdir,
         )

@@ -209,7 +209,7 @@ class TestBatchPPO(unittest.TestCase):
             outdir=self.tmpdir,
             eval_interval=200,
             eval_n_steps=None,
-            eval_n_runs=50,
+            eval_n_episodes=50,
             successful_score=successful_return,
             eval_env=test_env,
             log_interval=100,

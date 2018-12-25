@@ -141,7 +141,7 @@ class _TestBatchTrainingMixin(object):
             outdir=self.tmpdir,
             eval_interval=200,
             eval_n_steps=None,
-            eval_n_runs=5,
+            eval_n_episodes=5,
             successful_score=1,
             eval_env=test_env,
         )
