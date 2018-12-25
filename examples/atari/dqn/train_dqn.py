@@ -47,7 +47,6 @@ def main():
                         help='Final value of epsilon during training.')
     parser.add_argument('--eval-epsilon', type=float, default=0.05,
                         help='Exploration epsilon used during eval episodes.')
-    parser.add_argument('--noisy-net-sigma', type=float, default=None)
     parser.add_argument('--arch', type=str, default='doubledqn',
                         choices=['nature', 'nips', 'dueling', 'doubledqn'],
                         help='Network architecture to use.')
@@ -131,11 +130,6 @@ def main():
         links.NatureDQNHead(),
         L.Linear(512, n_actions),
         DiscreteActionValue)
-
-    if args.noisy_net_sigma is not None:
-        links.to_factorized_noisy(q_func)
-        # Turn off explorer
-        explorer = explorers.Greedy()
 
     # Draw the computational graph and save it in the output directory.
     chainerrl.misc.draw_computational_graph(
