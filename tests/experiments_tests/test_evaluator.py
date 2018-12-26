@@ -19,7 +19,8 @@ from chainerrl.experiments import evaluator
 @testing.parameterize(
     *testing.product({
         'save_best_so_far_agent': [True, False],
-        'n_episodes': [1, 2],
+        'n_steps': [None, 1, 2],
+        'n_episodes': [None, 1, 2],
     })
 )
 class TestEvaluator(unittest.TestCase):
@@ -35,51 +36,68 @@ class TestEvaluator(unittest.TestCase):
         env.reset.return_value = 'obs'
         env.step.return_value = ('obs', 0, True, {})
 
-        agent_evaluator = evaluator.Evaluator(
-            agent=agent,
-            env=env,
-            n_steps=None,
-            n_episodes=self.n_episodes,
-            eval_interval=3,
-            outdir=outdir,
-            max_episode_len=None,
-            step_offset=0,
-            save_best_so_far_agent=self.save_best_so_far_agent,
-        )
-
-        agent_evaluator.evaluate_if_necessary(t=1, episodes=1)
-        self.assertEqual(agent.act.call_count, 0)
-
-        agent_evaluator.evaluate_if_necessary(t=2, episodes=2)
-        self.assertEqual(agent.act.call_count, 0)
-
-        # First evaluation
-        agent_evaluator.evaluate_if_necessary(t=3, episodes=3)
-        self.assertEqual(agent.act.call_count, self.n_episodes)
-        self.assertEqual(agent.stop_episode.call_count, self.n_episodes)
-        if self.save_best_so_far_agent:
-            self.assertEqual(agent.save.call_count, 1)
+        both_none = self.n_steps is None and self.n_episodes is None
+        either_none = (self.n_steps is None) != (self.n_episodes is None)
+        if not (either_none) or both_none:
+            with self.assertRaises(AssertionError):
+                agent_evaluator = evaluator.Evaluator(
+                    agent=agent,
+                    env=env,
+                    n_steps=self.n_steps,
+                    n_episodes=self.n_episodes,
+                    eval_interval=3,
+                    outdir=outdir,
+                    max_episode_len=None,
+                    step_offset=0,
+                    save_best_so_far_agent=self.save_best_so_far_agent,
+                )
         else:
-            self.assertEqual(agent.save.call_count, 0)
+            value = self.n_steps or self.n_episodes
+            agent_evaluator = evaluator.Evaluator(
+                    agent=agent,
+                    env=env,
+                    n_steps=self.n_steps,
+                    n_episodes=self.n_episodes,
+                    eval_interval=3,
+                    outdir=outdir,
+                    max_episode_len=None,
+                    step_offset=0,
+                    save_best_so_far_agent=self.save_best_so_far_agent,
+                )
 
-        # Second evaluation with the same score
-        agent_evaluator.evaluate_if_necessary(t=6, episodes=6)
-        self.assertEqual(agent.act.call_count, 2 * self.n_episodes)
-        self.assertEqual(agent.stop_episode.call_count, 2 * self.n_episodes)
-        if self.save_best_so_far_agent:
-            self.assertEqual(agent.save.call_count, 1)
-        else:
-            self.assertEqual(agent.save.call_count, 0)
+            agent_evaluator.evaluate_if_necessary(t=1, episodes=1)
+            self.assertEqual(agent.act.call_count, 0)
 
-        # Third evaluation with a better score
-        env.step.return_value = ('obs', 1, True, {})
-        agent_evaluator.evaluate_if_necessary(t=9, episodes=9)
-        self.assertEqual(agent.act.call_count, 3 * self.n_episodes)
-        self.assertEqual(agent.stop_episode.call_count, 3 * self.n_episodes)
-        if self.save_best_so_far_agent:
-            self.assertEqual(agent.save.call_count, 2)
-        else:
-            self.assertEqual(agent.save.call_count, 0)
+            agent_evaluator.evaluate_if_necessary(t=2, episodes=2)
+            self.assertEqual(agent.act.call_count, 0)
+
+            # First evaluation
+            agent_evaluator.evaluate_if_necessary(t=3, episodes=3)
+            self.assertEqual(agent.act.call_count, value)
+            self.assertEqual(agent.stop_episode.call_count, value)
+            if self.save_best_so_far_agent:
+                self.assertEqual(agent.save.call_count, 1)
+            else:
+                self.assertEqual(agent.save.call_count, 0)
+
+            # Second evaluation with the same score
+            agent_evaluator.evaluate_if_necessary(t=6, episodes=6)
+            self.assertEqual(agent.act.call_count, 2 * value)
+            self.assertEqual(agent.stop_episode.call_count, 2 * value)
+            if self.save_best_so_far_agent:
+                self.assertEqual(agent.save.call_count, 1)
+            else:
+                self.assertEqual(agent.save.call_count, 0)
+
+            # Third evaluation with a better score
+            env.step.return_value = ('obs', 1, True, {})
+            agent_evaluator.evaluate_if_necessary(t=9, episodes=9)
+            self.assertEqual(agent.act.call_count, 3 * value)
+            self.assertEqual(agent.stop_episode.call_count, 3 * value)
+            if self.save_best_so_far_agent:
+                self.assertEqual(agent.save.call_count, 2)
+            else:
+                self.assertEqual(agent.save.call_count, 0)
 
 
 @testing.parameterize(
