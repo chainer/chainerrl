@@ -53,16 +53,16 @@ class TestEvaluator(unittest.TestCase):
         else:
             value = self.n_steps or self.n_episodes
             agent_evaluator = evaluator.Evaluator(
-                    agent=agent,
-                    env=env,
-                    n_steps=self.n_steps,
-                    n_episodes=self.n_episodes,
-                    eval_interval=3,
-                    outdir=outdir,
-                    max_episode_len=None,
-                    step_offset=0,
-                    save_best_so_far_agent=self.save_best_so_far_agent,
-                )
+                agent=agent,
+                env=env,
+                n_steps=self.n_steps,
+                n_episodes=self.n_episodes,
+                eval_interval=3,
+                outdir=outdir,
+                max_episode_len=None,
+                step_offset=0,
+                save_best_so_far_agent=self.save_best_so_far_agent,
+            )
 
             agent_evaluator.evaluate_if_necessary(t=1, episodes=1)
             self.assertEqual(agent.act.call_count, 0)
