@@ -36,9 +36,8 @@ class TestEvaluator(unittest.TestCase):
         env.reset.return_value = 'obs'
         env.step.return_value = ('obs', 0, True, {})
 
-        both_none = self.n_steps is None and self.n_episodes is None
         either_none = (self.n_steps is None) != (self.n_episodes is None)
-        if not (either_none) or both_none:
+        if not either_none:
             with self.assertRaises(AssertionError):
                 agent_evaluator = evaluator.Evaluator(
                     agent=agent,
