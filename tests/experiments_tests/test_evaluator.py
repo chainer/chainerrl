@@ -19,7 +19,7 @@ from chainerrl.experiments import evaluator
 @testing.parameterize(
     *testing.product({
         'save_best_so_far_agent': [True, False],
-        'n_runs': [1, 2],
+        'n_episodes': [1, 2],
     })
 )
 class TestEvaluator(unittest.TestCase):
@@ -39,7 +39,7 @@ class TestEvaluator(unittest.TestCase):
             agent=agent,
             env=env,
             n_steps=None,
-            n_episodes=self.n_runs,
+            n_episodes=self.n_episodes,
             eval_interval=3,
             outdir=outdir,
             max_episode_len=None,
@@ -55,8 +55,8 @@ class TestEvaluator(unittest.TestCase):
 
         # First evaluation
         agent_evaluator.evaluate_if_necessary(t=3, episodes=3)
-        self.assertEqual(agent.act.call_count, self.n_runs)
-        self.assertEqual(agent.stop_episode.call_count, self.n_runs)
+        self.assertEqual(agent.act.call_count, self.n_episodes)
+        self.assertEqual(agent.stop_episode.call_count, self.n_episodes)
         if self.save_best_so_far_agent:
             self.assertEqual(agent.save.call_count, 1)
         else:
@@ -64,8 +64,8 @@ class TestEvaluator(unittest.TestCase):
 
         # Second evaluation with the same score
         agent_evaluator.evaluate_if_necessary(t=6, episodes=6)
-        self.assertEqual(agent.act.call_count, 2 * self.n_runs)
-        self.assertEqual(agent.stop_episode.call_count, 2 * self.n_runs)
+        self.assertEqual(agent.act.call_count, 2 * self.n_episodes)
+        self.assertEqual(agent.stop_episode.call_count, 2 * self.n_episodes)
         if self.save_best_so_far_agent:
             self.assertEqual(agent.save.call_count, 1)
         else:
@@ -74,8 +74,8 @@ class TestEvaluator(unittest.TestCase):
         # Third evaluation with a better score
         env.step.return_value = ('obs', 1, True, {})
         agent_evaluator.evaluate_if_necessary(t=9, episodes=9)
-        self.assertEqual(agent.act.call_count, 3 * self.n_runs)
-        self.assertEqual(agent.stop_episode.call_count, 3 * self.n_runs)
+        self.assertEqual(agent.act.call_count, 3 * self.n_episodes)
+        self.assertEqual(agent.stop_episode.call_count, 3 * self.n_episodes)
         if self.save_best_so_far_agent:
             self.assertEqual(agent.save.call_count, 2)
         else:
@@ -85,7 +85,7 @@ class TestEvaluator(unittest.TestCase):
 @testing.parameterize(
     *testing.product({
         'save_best_so_far_agent': [True, False],
-        'n_runs': [1, 2],
+        'n_episodes': [1, 2],
     })
 )
 class TestAsyncEvaluator(unittest.TestCase):
@@ -102,7 +102,7 @@ class TestAsyncEvaluator(unittest.TestCase):
         env.step.return_value = ('obs', 0, True, {})
 
         agent_evaluator = evaluator.AsyncEvaluator(
-            n_runs=self.n_runs,
+            n_runs=self.n_episodes,
             eval_interval=3,
             outdir=outdir,
             max_episode_len=None,
@@ -121,8 +121,8 @@ class TestAsyncEvaluator(unittest.TestCase):
         # First evaluation
         agent_evaluator.evaluate_if_necessary(
             t=3, episodes=3, env=env, agent=agent)
-        self.assertEqual(agent.act.call_count, self.n_runs)
-        self.assertEqual(agent.stop_episode.call_count, self.n_runs)
+        self.assertEqual(agent.act.call_count, self.n_episodes)
+        self.assertEqual(agent.stop_episode.call_count, self.n_episodes)
         if self.save_best_so_far_agent:
             self.assertEqual(agent.save.call_count, 1)
         else:
@@ -131,8 +131,8 @@ class TestAsyncEvaluator(unittest.TestCase):
         # Second evaluation with the same score
         agent_evaluator.evaluate_if_necessary(
             t=6, episodes=6, env=env, agent=agent)
-        self.assertEqual(agent.act.call_count, 2 * self.n_runs)
-        self.assertEqual(agent.stop_episode.call_count, 2 * self.n_runs)
+        self.assertEqual(agent.act.call_count, 2 * self.n_episodes)
+        self.assertEqual(agent.stop_episode.call_count, 2 * self.n_episodes)
         if self.save_best_so_far_agent:
             self.assertEqual(agent.save.call_count, 1)
         else:
@@ -142,8 +142,8 @@ class TestAsyncEvaluator(unittest.TestCase):
         env.step.return_value = ('obs', 1, True, {})
         agent_evaluator.evaluate_if_necessary(
             t=9, episodes=9, env=env, agent=agent)
-        self.assertEqual(agent.act.call_count, 3 * self.n_runs)
-        self.assertEqual(agent.stop_episode.call_count, 3 * self.n_runs)
+        self.assertEqual(agent.act.call_count, 3 * self.n_episodes)
+        self.assertEqual(agent.stop_episode.call_count, 3 * self.n_episodes)
         if self.save_best_so_far_agent:
             self.assertEqual(agent.save.call_count, 2)
         else:
