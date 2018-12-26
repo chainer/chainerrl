@@ -28,7 +28,6 @@ def train_loop(process_idx, env, agent, steps, outdir, counter,
 
     try:
 
-        total_r = 0
         episode_r = 0
         global_t = 0
         local_t = 0
@@ -41,19 +40,34 @@ def train_loop(process_idx, env, agent, steps, outdir, counter,
 
         while True:
 
-            total_r += r
+            # a_t
+            a = agent.act_and_train(obs, r)
+            # o_{t+1}, r_{t+1}
+            obs, r, done, info = env.step(a)
+            local_t += 1
             episode_r += r
+            episode_len += 1
 
-            if done or episode_len == max_episode_len:
-                with episodes_counter.get_lock():
-                    episodes_counter.value += 1
-                    global_episodes = episodes_counter.value
+            # Get and increment the global counter
+            with counter.get_lock():
+                counter.value += 1
+                global_t = counter.value
+
+            for hook in global_step_hooks:
+                hook(env, agent, global_t)
+
+            reset = (episode_len == max_episode_len
+                     or info.get('needs_reset', False))
+            if done or reset or global_t >= steps or training_done.value:
                 agent.stop_episode_and_train(obs, r, done)
+
                 if process_idx == 0:
                     logger.info(
                         'outdir:%s global_step:%s local_step:%s R:%s',
                         outdir, global_t, local_t, episode_r)
                     logger.info('statistics:%s', agent.get_statistics())
+
+                # Evaluate the current agent
                 if evaluator is not None:
                     eval_score = evaluator.evaluate_if_necessary(
                         t=global_t, episodes=global_episodes,
@@ -68,27 +82,19 @@ def train_loop(process_idx, env, agent, steps, outdir, counter,
                         # Break immediately in order to avoid an additional
                         # call of agent.act_and_train
                         break
+
+                with episodes_counter.get_lock():
+                    episodes_counter.value += 1
+                    global_episodes = episodes_counter.value
+
+                if global_t >= steps or training_done.value:
+                    break
+
+                # Start a new episode
                 episode_r = 0
+                episode_len = 0
                 obs = env.reset()
                 r = 0
-                done = False
-                episode_len = 0
-            else:
-                a = agent.act_and_train(obs, r)
-                obs, r, done, info = env.step(a)
-
-                # Get and increment the global counter
-                with counter.get_lock():
-                    counter.value += 1
-                    global_t = counter.value
-                local_t += 1
-                episode_len += 1
-
-                for hook in global_step_hooks:
-                    hook(env, agent, global_t)
-
-                if global_t > steps or training_done.value:
-                    break
 
     except (Exception, KeyboardInterrupt):
         if process_idx == 0:
@@ -98,7 +104,7 @@ def train_loop(process_idx, env, agent, steps, outdir, counter,
             logger.warning('Saved the current model to %s', dirname)
         raise
 
-    if global_t == steps + 1:
+    if global_t == steps:
         # Save the final model
         dirname = os.path.join(outdir, '{}_finish'.format(steps))
         agent.save(dirname)
@@ -234,6 +240,10 @@ def train_agent_async(outdir, processes, make_env,
                             'profile-{}.out'.format(os.getpid()))
         else:
             f()
+
+        env.close()
+        if eval_env is not env:
+            eval_env.close()
 
     async_.run_async(processes, run_func)
 

@@ -203,9 +203,10 @@ class TestTRPO(unittest.TestCase):
             steps=steps,
             outdir=self.tmpdir,
             eval_interval=200,
-            eval_n_runs=5,
+            eval_n_steps=None,
+            eval_n_episodes=5,
             successful_score=successful_return,
-            max_episode_len=max_episode_len,
+            train_max_episode_len=max_episode_len,
         )
 
         agent.stop_episode()

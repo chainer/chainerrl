@@ -24,7 +24,7 @@ from chainerrl.q_functions \
     import DistributionalFCStateQFunctionWithDiscreteAction
 from chainerrl import replay_buffer
 
-import atari_wrappers
+from chainerrl.wrappers import atari_wrappers
 
 
 def parse_arch(arch, n_actions, n_atoms, v_min, v_max):
@@ -67,10 +67,10 @@ def main():
                         choices=['plain', 'dueling'],
                         help='Network architecture to use.')
     parser.add_argument('--steps', type=int, default=10 ** 7)
-    parser.add_argument('--max-episode-len', type=int,
-                        default=5 * 60 * 60 // 4,  # 5 minutes with 60/4 fps
-                        help='Maximum number of steps for each episode.')
-    parser.add_argument('--replay-start-size', type=int, default=8 * 10 ** 4)
+    parser.add_argument('--max-frames', type=int,
+                        default=30 * 60 * 60,  # 30 minutes with 60 fps
+                        help='Maximum number of frames for each episode.')
+    parser.add_argument('--replay-start-size', type=int, default=5 * 10 ** 4)
     parser.add_argument('--target-update-interval',
                         type=int, default=3.2 * 10 ** 4)
     parser.add_argument('--eval-interval', type=int, default=10 ** 5)
@@ -108,7 +108,7 @@ def main():
         # Use different random seeds for train and test envs
         env_seed = test_seed if test else train_seed
         env = atari_wrappers.wrap_deepmind(
-            atari_wrappers.make_atari(args.env),
+            atari_wrappers.make_atari(args.env, max_frames=args.max_frames),
             episode_life=not test,
             clip_rewards=not test)
         env.seed(int(env_seed))
@@ -120,7 +120,7 @@ def main():
                 env, args.outdir,
                 mode='evaluation' if test else 'training')
         if args.render:
-            misc.env_modifiers.make_rendered(env)
+            env = chainerrl.wrappers.Render(env)
         return env
 
     env = make_env(test=False)
@@ -191,10 +191,9 @@ def main():
     else:
         experiments.train_agent_with_evaluation(
             agent=agent, env=env, steps=args.steps,
-            eval_n_runs=args.eval_n_runs, eval_interval=args.eval_interval,
+            eval_n_episodes=args.eval_n_runs, eval_interval=args.eval_interval,
             outdir=args.outdir,
             save_best_so_far_agent=False,
-            max_episode_len=args.max_episode_len,
             eval_env=eval_env,
         )
 

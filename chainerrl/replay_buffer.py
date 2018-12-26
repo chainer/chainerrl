@@ -11,7 +11,6 @@ from abc import ABCMeta
 from abc import abstractmethod
 from abc import abstractproperty
 import collections
-import copy
 
 import numpy as np
 import six.moves.cPickle as pickle
@@ -144,11 +143,26 @@ class ReplayBuffer(AbstractReplayBuffer):
                           is_state_terminal=is_state_terminal)
         self.last_n_transitions.append(experience)
         if is_state_terminal:
-            self.memory.append(copy.copy(self.last_n_transitions))
-            self.last_n_transitions.clear()
+            while self.last_n_transitions:
+                self.memory.append(list(self.last_n_transitions))
+                del self.last_n_transitions[0]
+            assert len(self.last_n_transitions) == 0
         else:
             if len(self.last_n_transitions) == self.num_steps:
-                self.memory.append(copy.copy(self.last_n_transitions))
+                self.memory.append(list(self.last_n_transitions))
+
+    def stop_current_episode(self):
+        # if n-step transition hist is not full, add transition;
+        # if n-step hist is indeed full, transition has already been added;
+        if 0 < len(self.last_n_transitions) < self.num_steps:
+            self.memory.append(list(self.last_n_transitions))
+        # avoid duplicate entry
+        if 0 < len(self.last_n_transitions) <= self.num_steps:
+            del self.last_n_transitions[0]
+        while self.last_n_transitions:
+            self.memory.append(list(self.last_n_transitions))
+            del self.last_n_transitions[0]
+        assert len(self.last_n_transitions) == 0
 
     def sample(self, num_experiences):
         assert len(self.memory) >= num_experiences
@@ -168,11 +182,6 @@ class ReplayBuffer(AbstractReplayBuffer):
             # Load v0.2
             self.memory = RandomAccessQueue(
                 self.memory, maxlen=self.memory.maxlen)
-
-    def stop_current_episode(self):
-        if 0 < len(self.last_n_transitions) < self.num_steps:
-            self.memory.append(copy.copy(self.last_n_transitions))
-        self.last_n_transitions.clear()
 
 
 class PriorityWeightError(object):
@@ -422,18 +431,22 @@ def batch_experiences(experiences, xp, phi, gamma, batch_states=batch_states):
     consecutive transitions and vectorizes them, where j is between 1 and n.
 
     Args:
-        experiences: list? of k experiences, each of which contains between 1
-        and n consecutive transitions.
-        E.g. [(s_t, a_t, r_t, s_(t+1), ... , (s_(t+j),...,s_(t+j+1))]
-        xp : Matrix library? Find a better word.
-        phi : Preprocessing function (double check)
-        batch_states (int): Converts a list to a batch
+        experiences: list of experiences. Each experience is a list
+        containing between 1 and n dicts containing
+            state: cupy.ndarray or numpy.ndarray
+            action: int [0, n_action_types)
+            reward: float32
+            is_state_terminal: bool
+            next_state: cupy.ndarray or numpy.ndarray
+        xp : Numpy compatible matrix library: e.g. Numpy or CuPy.
+        phi : Preprocessing function
+        gamma: discount factor
+        batch_states: function that converts a list to a batch
     Returns:
-        Returns a dictionary of vectors. State contains the k start states from
-        each set of experiences. The action is ... Reward is discounted reward.
+        dict of batched transitions
     """
 
-    return {
+    batch_exp = {
         'state': batch_states(
             [elem[0]['state'] for elem in experiences], xp, phi),
         'action': xp.asarray([elem[0]['action'] for elem in experiences]),
@@ -442,16 +455,18 @@ def batch_experiences(experiences, xp, phi, gamma, batch_states=batch_states):
                               for exp in experiences],
                              dtype=np.float32),
         'next_state': batch_states(
-            [elem[len(elem) - 1]['next_state']
+            [elem[-1]['next_state']
              for elem in experiences], xp, phi),
-        'next_action': xp.asarray(
-            [elem[len(elem) - 1]['next_action'] for elem in experiences]),
         'is_state_terminal': xp.asarray(
             [any(transition['is_state_terminal']
                  for transition in exp) for exp in experiences],
             dtype=np.float32),
         'discount': xp.asarray([(gamma ** len(elem))for elem in experiences],
                                dtype=np.float32)}
+    if all(elem[-1]['next_action'] is not None for elem in experiences):
+        batch_exp['next_action'] = xp.asarray(
+            [elem[-1]['next_action'] for elem in experiences])
+    return batch_exp
 
 
 class ReplayUpdater(object):

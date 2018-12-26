@@ -9,6 +9,7 @@ standard_library.install_aliases()  # NOQA
 from chainer import testing
 
 import basetest_dqn_like as base
+from basetest_training import _TestBatchTrainingMixin
 from chainerrl.agents.dpp import DPP
 from chainerrl.agents.dpp import DPPGreedy
 from chainerrl.agents.dpp import DPPL
@@ -25,7 +26,9 @@ def parse_dpp_agent(dpp_type):
         'dpp_type': ['DPP', 'DPPL', 'DPPGreedy'],
     })
 )
-class TestDPPOnDiscreteABC(base._TestDQNOnDiscreteABC):
+class TestDPPOnDiscreteABC(
+        _TestBatchTrainingMixin,
+        base._TestDQNOnDiscreteABC):
 
     def make_dqn_agent(self, env, q_func, opt, explorer, rbuf, gpu):
         agent_class = parse_dpp_agent(self.dpp_type)
@@ -40,7 +43,9 @@ class TestDPPOnDiscreteABC(base._TestDQNOnDiscreteABC):
         'dpp_type': ['DPPGreedy'],
     })
 )
-class TestDPPOnContinuousABC(base._TestDQNOnContinuousABC):
+class TestDPPOnContinuousABC(
+        _TestBatchTrainingMixin,
+        base._TestDQNOnContinuousABC):
 
     def make_dqn_agent(self, env, q_func, opt, explorer, rbuf, gpu):
         agent_class = parse_dpp_agent(self.dpp_type)

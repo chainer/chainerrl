@@ -7,10 +7,13 @@ from builtins import *  # NOQA
 standard_library.install_aliases()  # NOQA
 
 import basetest_dqn_like as base
+from basetest_training import _TestBatchTrainingMixin
 from chainerrl.agents.al import AL
 
 
-class TestALOnDiscreteABC(base._TestDQNOnDiscreteABC):
+class TestALOnDiscreteABC(
+        _TestBatchTrainingMixin,
+        base._TestDQNOnDiscreteABC):
 
     def make_dqn_agent(self, env, q_func, opt, explorer, rbuf, gpu):
         return AL(
@@ -18,7 +21,9 @@ class TestALOnDiscreteABC(base._TestDQNOnDiscreteABC):
             replay_start_size=100, target_update_interval=100)
 
 
-class TestALOnContinuousABC(base._TestDQNOnContinuousABC):
+class TestALOnContinuousABC(
+        _TestBatchTrainingMixin,
+        base._TestDQNOnContinuousABC):
 
     def make_dqn_agent(self, env, q_func, opt, explorer, rbuf, gpu):
         return AL(
@@ -26,6 +31,7 @@ class TestALOnContinuousABC(base._TestDQNOnContinuousABC):
             replay_start_size=100, target_update_interval=100)
 
 
+# Batch training with recurrent models is currently not supported
 class TestALOnDiscretePOABC(base._TestDQNOnDiscretePOABC):
 
     def make_dqn_agent(self, env, q_func, opt, explorer, rbuf, gpu):

@@ -27,3 +27,29 @@ class Env(with_metaclass(ABCMeta, object)):
     @abstractmethod
     def close(self):
         raise NotImplementedError()
+
+
+class VectorEnv(with_metaclass(ABCMeta, object)):
+    """Parallel RL learning environments."""
+
+    @abstractmethod
+    def step(self, action):
+        raise NotImplementedError()
+
+    @abstractmethod
+    def reset(self, mask):
+        """Reset envs.
+
+        Args:
+            mask (Sequence of bool): Mask array that specifies which env to
+                skip. If omitted, all the envs are reset.
+        """
+        raise NotImplementedError()
+
+    @abstractmethod
+    def seed(self, seeds):
+        raise NotImplementedError()
+
+    @abstractmethod
+    def close(self):
+        raise NotImplementedError()

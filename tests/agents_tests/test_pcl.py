@@ -215,9 +215,10 @@ class TestPCL(unittest.TestCase):
                 eval_env=make_env(0, True),
                 outdir=self.outdir,
                 steps=steps,
-                max_episode_len=2,
+                train_max_episode_len=2,
                 eval_interval=200,
-                eval_n_runs=5,
+                eval_n_steps=None,
+                eval_n_episodes=5,
                 successful_score=1)
 
         agent.stop_episode()

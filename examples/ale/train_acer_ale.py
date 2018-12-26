@@ -17,6 +17,7 @@ import gym
 import gym.wrappers
 import numpy as np
 
+import chainerrl
 from chainerrl.action_value import DiscreteActionValue
 from chainerrl.agents import acer
 from chainerrl.distribution import SoftmaxDistribution
@@ -27,7 +28,7 @@ from chainerrl.optimizers.nonbias_weight_decay import NonbiasWeightDecay
 from chainerrl.optimizers import rmsprop_async
 from chainerrl.replay_buffer import EpisodicReplayBuffer
 
-import atari_wrappers
+from chainerrl.wrappers import atari_wrappers
 
 
 def main():
@@ -46,9 +47,9 @@ def main():
     parser.add_argument('--beta', type=float, default=1e-2)
     parser.add_argument('--profile', action='store_true')
     parser.add_argument('--steps', type=int, default=10 ** 7)
-    parser.add_argument('--max-episode-len', type=int,
-                        default=5 * 60 * 60 // 4,  # 5 minutes with 60/4 fps
-                        help='Maximum number of steps for each episode.')
+    parser.add_argument('--max-frames', type=int,
+                        default=30 * 60 * 60,  # 30 minutes with 60 fps
+                        help='Maximum number of frames for each episode.')
     parser.add_argument('--lr', type=float, default=7e-4)
     parser.add_argument('--eval-interval', type=int, default=10 ** 5)
     parser.add_argument('--eval-n-runs', type=int, default=10)
@@ -132,7 +133,7 @@ def main():
         process_seed = process_seeds[process_idx]
         env_seed = 2 ** 31 - 1 - process_seed if test else process_seed
         env = atari_wrappers.wrap_deepmind(
-            atari_wrappers.make_atari(args.env),
+            atari_wrappers.make_atari(args.env, max_frames=args.max_frames),
             episode_life=not test,
             clip_rewards=not test)
         env.seed(int(env_seed))
@@ -141,7 +142,7 @@ def main():
                 env, args.outdir,
                 mode='evaluation' if test else 'training')
         if args.render:
-            misc.env_modifiers.make_rendered(env)
+            env = chainerrl.wrappers.Render(env)
         return env
 
     if args.demo:
@@ -171,7 +172,6 @@ def main():
             steps=args.steps,
             eval_n_runs=args.eval_n_runs,
             eval_interval=args.eval_interval,
-            max_episode_len=args.max_episode_len,
             global_step_hooks=[lr_decay_hook],
             save_best_so_far_agent=False,
         )

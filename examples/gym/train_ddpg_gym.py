@@ -33,7 +33,7 @@ def main():
     parser.add_argument('--outdir', type=str, default='results',
                         help='Directory path to save output files.'
                              ' If it does not exist, it will be created.')
-    parser.add_argument('--env', type=str, default='Humanoid-v1')
+    parser.add_argument('--env', type=str, default='Humanoid-v2')
     parser.add_argument('--seed', type=int, default=0,
                         help='Random seed [0, 2 ** 32)')
     parser.add_argument('--gpu', type=int, default=0)
@@ -93,7 +93,7 @@ def main():
             # training is easier
             env = chainerrl.wrappers.ScaleReward(env, args.reward_scale_factor)
         if args.render and not test:
-            misc.env_modifiers.make_rendered(env)
+            env = chainerrl.wrappers.Render(env)
         return env
 
     env = make_env(test=False)
@@ -171,9 +171,9 @@ def main():
         experiments.train_agent_with_evaluation(
             agent=agent, env=env, steps=args.steps,
             eval_env=eval_env,
-            eval_n_runs=args.eval_n_runs, eval_interval=args.eval_interval,
+            eval_n_episodes=args.eval_n_runs, eval_interval=args.eval_interval,
             outdir=args.outdir,
-            max_episode_len=timestep_limit)
+            train_max_episode_len=timestep_limit)
 
 
 if __name__ == '__main__':

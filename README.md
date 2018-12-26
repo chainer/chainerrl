@@ -1,4 +1,4 @@
-<div align="center"><img src="assets/ChainerRL.png" width="400"/></div>
+<div align="center"><img src="https://raw.githubusercontent.com/chainer/chainerrl/master/assets/ChainerRL.png" width="400"/></div>
 
 # ChainerRL
 [![Build Status](https://travis-ci.org/chainer/chainerrl.svg?branch=master)](https://travis-ci.org/chainer/chainerrl)
@@ -10,6 +10,7 @@ ChainerRL is a deep reinforcement learning library that implements various state
 
 ![Breakout](assets/breakout.gif)
 ![Humanoid](assets/humanoid.gif)
+![Grasping](assets/grasping.gif)
 
 ## Installation
 
@@ -77,6 +78,12 @@ The following papers have been implemented in ChainerRL:
 - [Trust Region Policy Optimization](https://arxiv.org/pdf/1502.05477.pdf)
 - [Sample Efficient Actor-Critic with Experience Replay](https://arxiv.org/pdf/1611.01224.pdf)
 - [Bridging the Gap Between Value and Policy Based Reinforcement Learning](https://arxiv.org/pdf/1702.08892.pdf)
+
+
+## Visualization
+
+ChainerRL has a set of accompanying [visualization tools](https://github.com/chainer/chainerrl-visualizer) in order to aid developers' ability to understand and debug their RL agents. With this visualization tool, the behavior of ChainerRL agents can be easily inspected from a browser UI.
+
 
 ## Environments
 
