@@ -187,7 +187,7 @@ class IQN(dqn.DQN):
         self.quantile_thresholds_K = kwargs.pop('quantile_thresholds_K', 32)
         super().__init__(*args, **kwargs)
 
-    def _compute_target_values(self, exp_batch, gamma):
+    def _compute_target_values(self, exp_batch):
         """Compute a batch of target return distributions.
 
         Returns:
@@ -208,15 +208,19 @@ class IQN(dqn.DQN):
 
         batch_rewards = exp_batch['reward']
         batch_terminal = exp_batch['is_state_terminal']
+        batch_discount = exp_batch['discount']
         assert batch_rewards.shape == (batch_size,)
         assert batch_terminal.shape == (batch_size,)
+        assert batch_discount.shape == (batch_size,)
         batch_rewards = F.broadcast_to(
             batch_rewards[..., None], target_next_maxz.shape)
         batch_terminal = F.broadcast_to(
             batch_terminal[..., None], target_next_maxz.shape)
+        batch_discount = F.broadcast_to(
+            batch_discount[..., None], target_next_maxz.shape)
 
         return (batch_rewards
-                + gamma * (1.0 - batch_terminal) * target_next_maxz)
+                + batch_discount * (1.0 - batch_terminal) * target_next_maxz)
 
     def _compute_y_and_taus(self, exp_batch):
         """Compute a batch of predicted return distributions.
@@ -241,7 +245,7 @@ class IQN(dqn.DQN):
 
         return y, taus
 
-    def _compute_loss(self, exp_batch, gamma, errors_out=None):
+    def _compute_loss(self, exp_batch, errors_out=None):
         """Compute a loss.
 
         Returns:
@@ -250,7 +254,7 @@ class IQN(dqn.DQN):
         """
         y, taus = self._compute_y_and_taus(exp_batch)
         with chainer.no_backprop_mode():
-            t = self._compute_target_values(exp_batch, gamma)
+            t = self._compute_target_values(exp_batch)
 
         eltwise_loss = compute_eltwise_huber_quantile_loss(y, t, taus)
 
