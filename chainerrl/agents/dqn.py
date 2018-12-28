@@ -12,6 +12,7 @@ from logging import getLogger
 import chainer
 from chainer import cuda
 import chainer.functions as F
+import numpy as np
 
 from chainerrl import agent
 from chainerrl.misc.batch_states import batch_states
@@ -20,6 +21,34 @@ from chainerrl.recurrent import Recurrent
 from chainerrl.recurrent import state_reset
 from chainerrl.replay_buffer import batch_experiences
 from chainerrl.replay_buffer import ReplayUpdater
+
+
+def deepcopy_link(link):
+    """Deepcopy a link.
+
+    This function handles the case of chainerx, where links do not support
+    deepcopy as of chainer==6.0.0b1.
+
+    See https://github.com/chainer/chainer/issues/5916
+
+    Args:
+        link (chainer.Link): Link to deepcopy.
+
+    Returns:
+        chainer.Link: Deepcopy of the given link.
+    """
+    if (hasattr(chainer, 'chainerx')
+            and chainer.chainerx.is_available()
+            and isinstance(
+                link.device, chainer.backends._chainerx.ChainerxDevice)):
+        device = link.device
+        link.to_device(np)
+        new_link = copy.deepcopy(link)
+        link.to_device(device)
+        new_link.to_device(device)
+        return new_link
+    else:
+        return copy.deepcopy(link)
 
 
 def compute_value_loss(y, t, clip_delta=True, batch_accumulator='mean'):
@@ -90,7 +119,6 @@ class DQN(agent.AttributeSavingMixin, agent.BatchAgent):
         replay_buffer (ReplayBuffer): Replay buffer
         gamma (float): Discount factor
         explorer (Explorer): Explorer that specifies an exploration strategy.
-        gpu (int): GPU device id if not None nor negative.
         replay_start_size (int): if the replay buffer's size is less than
             replay_start_size, skip update
         minibatch_size (int): Minibatch size
@@ -117,7 +145,7 @@ class DQN(agent.AttributeSavingMixin, agent.BatchAgent):
     saved_attributes = ('model', 'target_model', 'optimizer')
 
     def __init__(self, q_function, optimizer, replay_buffer, gamma,
-                 explorer, gpu=None, replay_start_size=50000,
+                 explorer, replay_start_size=50000,
                  minibatch_size=32, update_interval=1,
                  target_update_interval=10000, clip_delta=True,
                  phi=lambda x: x,
@@ -129,19 +157,16 @@ class DQN(agent.AttributeSavingMixin, agent.BatchAgent):
                  episodic_update_len=None,
                  logger=getLogger(__name__),
                  batch_states=batch_states):
-        self.model = q_function
-        self.q_function = q_function  # For backward compatibility
 
-        if gpu is not None and gpu >= 0:
-            cuda.get_device(gpu).use()
-            self.model.to_gpu(device=gpu)
+        self.model = q_function
+        self.model.device.use()
+        self.q_function = q_function  # For backward compatibility
 
         self.xp = self.model.xp
         self.replay_buffer = replay_buffer
         self.optimizer = optimizer
         self.gamma = gamma
         self.explorer = explorer
-        self.gpu = gpu
         self.target_update_interval = target_update_interval
         self.clip_delta = clip_delta
         self.phi = phi
@@ -181,7 +206,7 @@ class DQN(agent.AttributeSavingMixin, agent.BatchAgent):
     def sync_target_network(self):
         """Synchronize target network with current network."""
         if self.target_model is None:
-            self.target_model = copy.deepcopy(self.model)
+            self.target_model = deepcopy_link(self.model)
             call_orig = self.target_model.__call__
 
             def call_test(self_, x):
