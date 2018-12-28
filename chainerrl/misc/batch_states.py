@@ -15,6 +15,9 @@ def batch_states(states, xp, phi):
     if chainer.cuda.available and xp is chainer.cuda.cupy:
         # GPU
         device = chainer.cuda.Device().id
+    elif hasattr(chainer, 'chainerx') and xp is chainer.chainerx:
+        # GPU
+        device = chainer.chainerx.get_default_device()
     else:
         # CPU
         device = -1
