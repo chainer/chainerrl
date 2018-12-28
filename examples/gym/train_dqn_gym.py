@@ -22,6 +22,7 @@ import argparse
 import os
 import sys
 
+import chainer
 from chainer import optimizers
 import gym
 from gym import spaces
@@ -39,9 +40,6 @@ from chainerrl import replay_buffer
 
 
 def main():
-    import logging
-    logging.basicConfig(level=logging.DEBUG)
-
     parser = argparse.ArgumentParser()
     parser.add_argument('--outdir', type=str, default='results',
                         help='Directory path to save output files.'
@@ -75,7 +73,14 @@ def main():
     parser.add_argument('--render-eval', action='store_true')
     parser.add_argument('--monitor', action='store_true')
     parser.add_argument('--reward-scale-factor', type=float, default=1e-3)
+    parser.add_argument('--chainerx', action='store_true', default=False,
+                        help='Use ChainerX.')
+    parser.add_argument('--logging-level', type=int, default=20,
+                        help='Logging level. 10:DEBUG, 20:INFO etc.')
     args = parser.parse_args()
+
+    import logging
+    logging.basicConfig(level=args.logging_level)
 
     # Set a random seed used in ChainerRL
     misc.set_random_seed(args.seed, gpus=(args.gpu,))
@@ -146,6 +151,22 @@ def main():
         [q_func(np.zeros_like(obs_space.low, dtype=np.float32)[None])],
         os.path.join(args.outdir, 'model'))
 
+    if args.chainerx:
+        assert hasattr(chainer, 'chainerx'),\
+            'To use ChainerX, install chainer>=6.0.0b1'
+        assert chainer.chainerx.is_available(),\
+            'ChainerX is not correctly set up'
+        if args.gpu >= 0:
+            q_func.to_device(('cuda', args.gpu))
+        else:
+            q_func.to_device('native')
+    else:
+        if args.gpu >= 0:
+            q_func.to_device((chainer.cuda.cupy, args.gpu))
+        else:
+            # already in numpy
+            pass
+
     opt = optimizers.Adam()
     opt.setup(q_func)
 
@@ -171,7 +192,7 @@ def main():
         else:
             rbuf = replay_buffer.ReplayBuffer(rbuf_capacity)
 
-    agent = DQN(q_func, opt, rbuf, gpu=args.gpu, gamma=args.gamma,
+    agent = DQN(q_func, opt, rbuf, gamma=args.gamma,
                 explorer=explorer, replay_start_size=args.replay_start_size,
                 target_update_interval=args.target_update_interval,
                 update_interval=args.update_interval,
