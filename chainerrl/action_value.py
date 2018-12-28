@@ -68,7 +68,8 @@ class DiscreteActionValue(ActionValue):
     @cached_property
     def greedy_actions(self):
         return chainer.Variable(
-            self.q_values.array.argmax(axis=1).astype(np.int32))
+            self.q_values.array.argmax(axis=1).astype(np.int32),
+            requires_grad=False)
 
     @cached_property
     def max(self):
