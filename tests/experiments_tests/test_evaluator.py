@@ -292,11 +292,6 @@ class TestBatchRunEvaluationEpisode(unittest.TestCase):
             if self.n_timesteps == 2:
                 self.assertAlmostEqual(len(scores), 1)
                 self.assertAlmostEqual(scores[0], 0.1)
-            elif self.n_timesteps == 5:
-                self.assertAlmostEqual(len(scores), 3)
-                self.assertAlmostEqual(scores[0], 0.3)
-                self.assertAlmostEqual(scores[1], 2.0)
-                self.assertAlmostEqual(scores[2], 3.0)
             else:
                 self.assertAlmostEqual(len(scores), 3)
                 self.assertAlmostEqual(scores[0], 0.3)

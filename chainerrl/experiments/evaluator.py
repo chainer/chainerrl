@@ -160,39 +160,57 @@ def batch_run_evaluation_episodes(
             if end[index]:
                 episode_returns[episode_indices[index]] = episode_r[index]
                 episode_lengths[episode_indices[index]] = episode_len[index]
+                # Give the new episode an a new episode index
                 episode_indices[index] = episode_idx
                 episode_idx += 1
 
         episode_r[end] = 0
         episode_len[end] = 0
+
+        # find first unfinished episode
+        first_unfinished_episode = 0
+        print(episode_returns)
+        print(timestep)
+        while first_unfinished_episode in episode_returns:
+            first_unfinished_episode += 1
+
+        # Check for termination conditions
         eval_episode_returns = []
         eval_episode_lens = []
-        completed_episode = 0
-        total_time = 0
-        while completed_episode in episode_returns:
-            eval_episode_returns.append(episode_returns[completed_episode])
-            eval_episode_lens.append(episode_lengths[completed_episode])
-            total_time += episode_lengths[completed_episode]
-            completed_episode += 1
-            if n_steps is not None:
+        print("FIRST unfinished episode IS!!" + str(first_unfinished_episode))
+        if n_steps is not None:
+            print()
+            total_time = 0
+            index = 0
+            while index < first_unfinished_episode:
+                total_time += episode_lengths[index]
+                # If you will run over allocated steps, quit
                 if total_time > n_steps:
-                    termination_conditions = True
-                    eval_episode_returns = eval_episode_returns[:-1]
-                    eval_episode_lens = eval_episode_lens[:-1]
                     break
-            else:
-                if completed_episode >= n_episodes:
+                else:
+                    eval_episode_returns.append(episode_returns[index])
+                    eval_episode_lens.append(episode_lengths[index])
+                index += 1
+            termination_conditions = total_time >= n_steps
+            if not termination_conditions:
+                unfinished_index = np.where(
+                    episode_indices == first_unfinished_episode)[0]
+                if total_time + episode_len[unfinished_index] >= n_steps:
                     termination_conditions = True
-                    eval_episode_returns = eval_episode_returns[:n_episodes]
-                    eval_episode_lens = eval_episode_lens[:n_episodes]
-                    break
-        # special case
-        if (n_steps is not None
-                and completed_episode == 0
-                and episode_len[0] >= n_steps):
-            eval_episode_returns = [episode_r[0]]
-            eval_episode_lens = [n_steps]
-            termination_conditions = True
+                    if len(eval_episode_returns) == 0:
+                        eval_episode_returns.append(
+                            episode_r[unfinished_index])
+                        eval_episode_lens.append(
+                            episode_len[unfinished_index])
+
+
+        else:
+            termination_conditions = first_unfinished_episode >= n_episodes
+            if termination_conditions:
+                # Get the first n completed episodes
+                for index in range(n_episodes):
+                    eval_episode_returns.append(episode_returns[index])
+                    eval_episode_lens.append(episode_lengths[index])
 
         if termination_conditions:
             break
