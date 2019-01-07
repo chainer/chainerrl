@@ -177,8 +177,7 @@ def batch_run_evaluation_episodes(
         eval_episode_lens = []
         if n_steps is not None:
             total_time = 0
-            index = 0
-            while index < first_unfinished_episode:
+            for index in range(first_unfinished_episode):
                 total_time += episode_lengths[index]
                 # If you will run over allocated steps, quit
                 if total_time > n_steps:
@@ -186,7 +185,6 @@ def batch_run_evaluation_episodes(
                 else:
                     eval_episode_returns.append(episode_returns[index])
                     eval_episode_lens.append(episode_lengths[index])
-                index += 1
             termination_conditions = total_time >= n_steps
             if not termination_conditions:
                 unfinished_index = np.where(
@@ -297,13 +295,10 @@ class Evaluator(object):
                  save_best_so_far_agent=True,
                  logger=None,
                  ):
-        try:
-            assert (n_steps is None) != (n_episodes is None)
-        except AssertionError as error:
-            print("One of n_steps or n_episodes must be None. " +
-                  "Either we evaluate for a specified number " +
-                  "of episodes or for a specified number of timesteps.")
-            raise error
+        assert (n_steps is None) != (n_episodes is None), \
+                ("One of n_steps or n_episodes must be None. " +
+                    "Either we evaluate for a specified number " +
+                    "of episodes or for a specified number of timesteps.")
         self.agent = agent
         self.env = env
         self.max_score = np.finfo(np.float32).min

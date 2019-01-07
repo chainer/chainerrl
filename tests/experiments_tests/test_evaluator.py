@@ -173,7 +173,7 @@ class TestAsyncEvaluator(unittest.TestCase):
         'n_timesteps': [2, 5, 6],
     })
 )
-class TestRunEvaluationEpisode(unittest.TestCase):
+class TestRunTimeBasedEvaluationEpisode(unittest.TestCase):
 
     def test_timesteps(self):
         agent = mock.Mock()
@@ -212,6 +212,9 @@ class TestRunEvaluationEpisode(unittest.TestCase):
                 self.assertAlmostEqual(scores[0], 0.6)
                 self.assertAlmostEqual(scores[1], 0.5)
 
+
+class TestRunEvaluationEpisode(unittest.TestCase):
+
     def test_needs_reset(self):
         agent = mock.Mock()
         env = mock.Mock()
@@ -239,7 +242,7 @@ class TestRunEvaluationEpisode(unittest.TestCase):
         'n_timesteps': [2, 5, 6],
     })
 )
-class TestBatchRunEvaluationEpisode(unittest.TestCase):
+class TestBatchRunTimeBasedEvaluationEpisode(unittest.TestCase):
 
     def test_timesteps(self):
         agent = mock.Mock()
@@ -297,6 +300,9 @@ class TestBatchRunEvaluationEpisode(unittest.TestCase):
                 self.assertAlmostEqual(scores[0], 0.3)
                 self.assertAlmostEqual(scores[1], 2.0)
                 self.assertAlmostEqual(scores[2], 3.0)
+
+
+class TestBatchRunEvaluationEpisode(unittest.TestCase):
 
     def test_needs_reset(self):
         agent = mock.Mock()
