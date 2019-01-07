@@ -177,9 +177,7 @@ def batch_run_evaluation_episodes(
         # Check for termination conditions
         eval_episode_returns = []
         eval_episode_lens = []
-        print("FIRST unfinished episode IS!!" + str(first_unfinished_episode))
         if n_steps is not None:
-            print()
             total_time = 0
             index = 0
             while index < first_unfinished_episode:
@@ -197,7 +195,7 @@ def batch_run_evaluation_episodes(
                     episode_indices == first_unfinished_episode)[0]
                 if total_time + episode_len[unfinished_index] >= n_steps:
                     termination_conditions = True
-                    if len(eval_episode_returns) == 0:
+                    if first_unfinished_episode == 0:
                         eval_episode_returns.append(
                             episode_r[unfinished_index])
                         eval_episode_lens.append(
