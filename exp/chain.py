@@ -227,12 +227,15 @@ def main():
                     #squared_distance = np.sum((position - goal)**2)
                     #squared_sigma = 0.25**2
                     #costs = 1 - np.exp(-0.5*squared_distance/squared_sigma)
-                    reward = costheta
+
                     done = False
+                    reward = 0
 
                     if abs(x) > 3:
                         done = True
                         reward = -100
+                    elif costheta > 0.8:
+                        reward = 1
 
                     return np.array(e.state), reward, done, {}
 
