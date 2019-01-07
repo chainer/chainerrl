@@ -34,7 +34,7 @@ class TestIQNOnDiscreteABC(base._TestDQNOnDiscreteABC):
                 L.Linear(obs_size, hidden_size),
                 F.relu,
             ),
-            phi=chainer.Sequential(
+            phi=chainerrl.links.Sequence(
                 chainerrl.agents.iqn.CosineBasisLinear(32, hidden_size),
                 F.relu,
             ),

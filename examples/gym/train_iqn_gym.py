@@ -97,11 +97,11 @@ def main():
 
     hidden_size = 64
     q_func = chainerrl.agents.iqn.ImplicitQuantileQFunction(
-        psi=chainer.Sequential(
+        psi=chainerrl.links.Sequence(
             L.Linear(obs_size, hidden_size),
             F.relu,
         ),
-        phi=chainer.Sequential(
+        phi=chainerrl.links.Sequence(
             chainerrl.agents.iqn.CosineBasisLinear(64, hidden_size),
             F.relu,
         ),

@@ -100,7 +100,7 @@ def main():
     n_actions = env.action_space.n
 
     q_func = chainerrl.agents.iqn.ImplicitQuantileQFunction(
-        psi=chainer.Sequential(
+        psi=chainerrl.links.Sequence(
             L.Convolution2D(None, 32, 8, stride=4),
             F.relu,
             L.Convolution2D(None, 64, 4, stride=2),
@@ -109,11 +109,11 @@ def main():
             F.relu,
             functools.partial(F.reshape, shape=(-1, 3136)),
         ),
-        phi=chainer.Sequential(
+        phi=chainerrl.links.Sequence(
             chainerrl.agents.iqn.CosineBasisLinear(64, 3136),
             F.relu,
         ),
-        f=chainer.Sequential(
+        f=chainerrl.links.Sequence(
             L.Linear(None, 512),
             F.relu,
             L.Linear(None, n_actions),
