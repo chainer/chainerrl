@@ -56,9 +56,9 @@ class MySequence(chainer.Chain):#links.Sequence):
                     self.sigma_nets.append(q_func)
         else:
             with self.init_scope():
-                self.l1 = L.Linear(obs, 100)
-                self.l2 = L.Linear(100, 100)
-                self.l3 = L.Linear(100, acts)
+                self.l1 = L.Linear(obs, 30)
+                self.l2 = L.Linear(30, 30)
+                self.l3 = L.Linear(30, acts)
 
             for n in range(mean):
                 if self.shared:
