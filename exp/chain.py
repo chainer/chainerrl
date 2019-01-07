@@ -220,15 +220,21 @@ def main():
                     e.state = (x,x_dot,theta,theta_dot)
 
                     # compute costs - saturation cost
-                    goal = np.array([0.0, e.length])
-                    pole_x = e.length*np.sin(theta)
-                    pole_y = e.length*np.cos(theta)
-                    position = np.array([e.state[0] + pole_x, pole_y])
-                    squared_distance = np.sum((position - goal)**2)
-                    squared_sigma = 0.25**2
-                    costs = 1 - np.exp(-0.5*squared_distance/squared_sigma)
+                    #goal = np.array([0.0, e.length])
+                    #pole_x = e.length*np.sin(theta)
+                    #pole_y = e.length*np.cos(theta)
+                    #position = np.array([e.state[0] + pole_x, pole_y])
+                    #squared_distance = np.sum((position - goal)**2)
+                    #squared_sigma = 0.25**2
+                    #costs = 1 - np.exp(-0.5*squared_distance/squared_sigma)
+                    reward = costheta
+                    done = False
 
-                    return np.array(e.state), -costs, False, {}
+                    if abs(x) > 3:
+                        done = True
+                        reward = -100
+
+                    return np.array(e.state), reward, done, {}
 
                 def reset():
                     #self.state = self.np_random.normal(loc=np.array([0.0, 0.0, 30*(2*np.pi)/360, 0.0]), scale=np.array([0.0, 0.0, 0.0, 0.0]))
