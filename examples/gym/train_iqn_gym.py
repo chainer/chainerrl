@@ -17,7 +17,6 @@ standard_library.install_aliases()  # NOQA
 import argparse
 import sys
 
-import chainer
 import chainer.functions as F
 import chainer.links as L
 from chainer import optimizers
