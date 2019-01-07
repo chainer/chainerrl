@@ -15,7 +15,7 @@ features:
 - pip:box2d-py==2.3.4
 - apt:swig
 hardware:
-- cpu==4
+- cpu==8
 - ram==30000
 - disk==5000
 - gpu==1
