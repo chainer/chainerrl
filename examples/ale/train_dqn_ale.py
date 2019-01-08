@@ -103,9 +103,9 @@ def main():
                         help='Network architecture to use.')
     parser.add_argument('--steps', type=int, default=5 * 10 ** 7,
                         help='Total number of timesteps to train the agent.')
-    parser.add_argument('--max-episode-len', type=int,
-                        default=30 * 60 * 60 // 4,  # 30 minutes with 60/4 fps
-                        help='Maximum number of timesteps for each episode.')
+    parser.add_argument('--max-frames', type=int,
+                        default=30 * 60 * 60,  # 30 minutes with 60 fps
+                        help='Maximum number of frames for each episode.')
     parser.add_argument('--replay-start-size', type=int, default=5 * 10 ** 4,
                         help='Minimum replay buffer size before ' +
                         'performing gradient updates.')
@@ -154,7 +154,7 @@ def main():
         # Use different random seeds for train and test envs
         env_seed = test_seed if test else train_seed
         env = atari_wrappers.wrap_deepmind(
-            atari_wrappers.make_atari(args.env),
+            atari_wrappers.make_atari(args.env, max_frames=args.max_frames),
             episode_life=not test,
             clip_rewards=not test)
         env.seed(int(env_seed))
@@ -227,17 +227,19 @@ def main():
         eval_stats = experiments.eval_performance(
             env=eval_env,
             agent=agent,
-            n_runs=args.eval_n_runs)
+            n_steps=None,
+            n_episodes=args.eval_n_runs)
         print('n_runs: {} mean: {} median: {} stdev {}'.format(
             args.eval_n_runs, eval_stats['mean'], eval_stats['median'],
             eval_stats['stdev']))
     else:
         experiments.train_agent_with_evaluation(
             agent=agent, env=env, steps=args.steps,
-            eval_n_episodes=args.eval_n_runs, eval_interval=args.eval_interval,
+            eval_n_steps=None,
+            eval_n_episodes=args.eval_n_runs,
+            eval_interval=args.eval_interval,
             outdir=args.outdir,
             save_best_so_far_agent=False,
-            train_max_episode_len=args.max_episode_len,
             eval_env=eval_env,
         )
 

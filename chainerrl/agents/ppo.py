@@ -77,7 +77,7 @@ class PPO(agent.AttributeSavingMixin, agent.BatchAgent):
             It's updated after the model is updated.
     """
 
-    saved_attributes = ['model', 'optimizer']
+    saved_attributes = ['model', 'optimizer', 'obs_normalizer']
 
     def __init__(self,
                  model,

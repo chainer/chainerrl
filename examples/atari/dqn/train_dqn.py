@@ -44,10 +44,18 @@ def main():
 
     parser.add_argument('--final-epsilon', type=float, default=0.1,
                         help='Final value of epsilon during training.')
-    # Exploration epsilon used during evaluation episodes.
-    eval_epsilon = 0.05
+
+    parser.add_argument('--eval-epsilon', type=float, default=0.05,
+                        help='Exploration epsilon used during eval episodes.')
+    parser.add_argument('--arch', type=str, default='doubledqn',
+                        choices=['nature', 'nips', 'dueling', 'doubledqn'],
+                        help='Network architecture to use.')
     parser.add_argument('--steps', type=int, default=5 * 10 ** 7,
                         help='Total number of timesteps to train the agent.')
+    parser.add_argument('--max-frames', type=int,
+                        default=30 * 60 * 60,  # 30 minutes with 60 fps
+                        help='Maximum number of frames for each episode.')
+
     parser.add_argument('--replay-start-size', type=int, default=5 * 10 ** 4,
                         help='Minimum replay buffer size before ' +
                         'performing gradient updates.')
@@ -63,7 +71,9 @@ def main():
 
     parser.add_argument('--update-interval', type=int, default=4,
                         help='Frequency (in timesteps) of network updates.')
-    parser.add_argument('--eval-n-runs', type=int, default=30)
+
+    parser.add_argument('--eval-n-steps', type=int, default=125000)
+    parser.add_argument('--eval-n-episodes', type=int, default=-1)
 
     parser.add_argument('--no-clip-delta',
                         dest='clip_delta', action='store_false')
@@ -80,7 +90,13 @@ def main():
                         help='Learning rate.')
     args = parser.parse_args()
 
-    eval_n_runs = args.eval_n_runs
+
+    eval_n_episodes = args.eval_n_episodes
+    eval_n_steps = args.eval_n_steps
+    if eval_n_episodes < 0:
+        eval_n_episodes = None
+    if eval_n_steps < 0:
+        eval_n_steps = None
 
     import logging
     logging.basicConfig(level=args.logging_level)
@@ -99,13 +115,13 @@ def main():
         # Use different random seeds for train and test envs
         env_seed = test_seed if test else train_seed
         env = atari_wrappers.wrap_deepmind(
-            atari_wrappers.make_atari(args.env),
+            atari_wrappers.make_atari(args.env, max_frames=args.max_frames),
             episode_life=not test,
             clip_rewards=not test)
         env.seed(int(env_seed))
         if test:
             # Randomize actions like epsilon-greedy in evaluation as well
-            env = chainerrl.wrappers.RandomizeAction(env, eval_epsilon)
+            env = chainerrl.wrappers.RandomizeAction(env, args.eval_epsilon)
         if args.monitor:
             env = gym.wrappers.Monitor(
                 env, args.outdir,
@@ -161,14 +177,16 @@ def main():
         eval_stats = experiments.eval_performance(
             env=eval_env,
             agent=agent,
-            n_runs=eval_n_runs)
+            n_steps=None,
+            n_episodes=eval_n_episodes)
         print('n_runs: {} mean: {} median: {} stdev {}'.format(
-            eval_n_runs, eval_stats['mean'], eval_stats['median'],
+            eval_n_episodes, eval_stats['mean'], eval_stats['median'],
             eval_stats['stdev']))
     else:
         experiments.train_agent_with_evaluation(
             agent=agent, env=env, steps=args.steps,
-            eval_n_episodes=args.eval_n_runs,
+            eval_n_steps=eval_n_steps,
+            eval_n_episodes=eval_n_episodes,
             eval_interval=eval_interval,
             outdir=args.outdir,
             save_best_so_far_agent=False,

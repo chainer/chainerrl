@@ -58,7 +58,7 @@ def train_agent_batch(agent, env, steps, outdir, log_interval=None,
         agent.t = step_offset
 
     try:
-        while t < steps:
+        while True:
             # a_t
             actions = agent.batch_act_and_train(obss)
             # o_{t+1}, r_{t+1}
@@ -71,6 +71,8 @@ def train_agent_batch(agent, env, steps, outdir, log_interval=None,
                 resets = np.zeros(num_envs, dtype=bool)
             else:
                 resets = (episode_len == max_episode_len)
+            resets = np.logical_or(
+                resets, [info.get('needs_reset', False) for info in infos])
             # Agent observes the consequences
             agent.batch_observe_and_train(obss, rs, dones, resets)
 
@@ -84,11 +86,9 @@ def train_agent_batch(agent, env, steps, outdir, log_interval=None,
             #   3. clear the record of rewards
             #   4. clear the record of the number of steps
             #   5. reset the env to start a new episode
+            # 3-5 are skipped when training is already finished.
             episode_idx += end
             recent_returns.extend(episode_r[end])
-            episode_r[end] = 0
-            episode_len[end] = 0
-            obss = env.reset(not_end)
 
             for _ in range(num_envs):
                 t += 1
@@ -114,6 +114,14 @@ def train_agent_batch(agent, env, steps, outdir, log_interval=None,
                             evaluator.max_score >= successful_score):
                         break
 
+            if t >= steps:
+                break
+
+            # Start new episodes if needed
+            episode_r[end] = 0
+            episode_len[end] = 0
+            obss = env.reset(not_end)
+
     except (Exception, KeyboardInterrupt):
         # Save the current model before being killed
         save_agent(agent, t, outdir, logger, suffix='_except')
@@ -129,7 +137,8 @@ def train_agent_batch(agent, env, steps, outdir, log_interval=None,
 def train_agent_batch_with_evaluation(agent,
                                       env,
                                       steps,
-                                      eval_n_runs,
+                                      eval_n_steps,
+                                      eval_n_episodes,
                                       eval_interval,
                                       outdir,
                                       max_episode_len=None,
@@ -149,6 +158,7 @@ def train_agent_batch_with_evaluation(agent,
         agent: Agent to train.
         env: Environment train the againt against.
         steps (int): Number of total time steps for training.
+        eval_n_steps (int): Number of timesteps at each evaluation phase.
         eval_n_runs (int): Number of runs for each time of evaluation.
         eval_interval (int): Interval of evaluation.
         outdir (str): Path to the directory to output things.
@@ -182,7 +192,8 @@ def train_agent_batch_with_evaluation(agent,
         eval_max_episode_len = max_episode_len
 
     evaluator = Evaluator(agent=agent,
-                          n_runs=eval_n_runs,
+                          n_steps=eval_n_steps,
+                          n_episodes=eval_n_episodes,
                           eval_interval=eval_interval, outdir=outdir,
                           max_episode_len=eval_max_episode_len,
                           env=eval_env,

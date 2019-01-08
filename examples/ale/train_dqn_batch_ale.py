@@ -94,9 +94,9 @@ def main():
     parser.add_argument('--arch', type=str, default='doubledqn',
                         choices=['nature', 'nips', 'dueling', 'doubledqn'])
     parser.add_argument('--steps', type=int, default=5 * 10 ** 7)
-    parser.add_argument('--max-episode-len', type=int,
-                        default=30 * 60 * 60 // 4,  # 30 minutes with 60/4 fps
-                        help='Maximum number of steps for each episode.')
+    parser.add_argument('--max-frames', type=int,
+                        default=30 * 60 * 60,  # 30 minutes with 60 fps
+                        help='Maximum number of frames for each episode.')
     parser.add_argument('--replay-start-size', type=int, default=5 * 10 ** 4)
     parser.add_argument('--target-update-interval',
                         type=int, default=3 * 10 ** 4)
@@ -142,7 +142,7 @@ def main():
         process_seed = int(process_seeds[idx])
         env_seed = 2 ** 32 - 1 - process_seed if test else process_seed
         env = atari_wrappers.wrap_deepmind(
-            atari_wrappers.make_atari(args.env),
+            atari_wrappers.make_atari(args.env, max_frames=args.max_frames),
             episode_life=not test,
             clip_rewards=not test)
         if test:
@@ -217,7 +217,8 @@ def main():
         eval_stats = experiments.eval_performance(
             env=make_batch_env(test=True),
             agent=agent,
-            n_runs=args.eval_n_runs)
+            n_steps=None,
+            n_episodes=args.eval_n_runs)
         print('n_runs: {} mean: {} median: {} stdev {}'.format(
             args.eval_n_runs, eval_stats['mean'], eval_stats['median'],
             eval_stats['stdev']))
@@ -227,11 +228,11 @@ def main():
             env=make_batch_env(test=False),
             eval_env=make_batch_env(test=True),
             steps=args.steps,
-            eval_n_runs=args.eval_n_runs,
+            eval_n_steps=None,
+            eval_n_episodes=args.eval_n_runs,
             eval_interval=args.eval_interval,
             outdir=args.outdir,
             save_best_so_far_agent=False,
-            max_episode_len=args.max_episode_len,
             log_interval=1000,
         )
 

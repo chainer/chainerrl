@@ -5,6 +5,7 @@ from __future__ import absolute_import
 from builtins import *  # NOQA
 from future import standard_library
 standard_library.install_aliases()  # NOQA
+import multiprocessing as mp
 import os
 import tempfile
 import unittest
@@ -13,6 +14,7 @@ from chainer import testing
 import mock
 
 import chainerrl
+from chainerrl.experiments.train_agent_async import train_loop
 
 
 @testing.parameterize(*testing.product({
@@ -23,7 +25,7 @@ class TestTrainAgentAsync(unittest.TestCase):
 
     def test(self):
 
-        steps = 5
+        steps = 50
 
         outdir = tempfile.mkdtemp()
 
@@ -59,13 +61,20 @@ class TestTrainAgentAsync(unittest.TestCase):
             else:
                 return envs[process_idx]
 
-        hook = mock.Mock()
-
         # Mock states cannot be shared among processes. To check states of mock
         # objects, threading is used instead of multiprocessing.
         # Because threading.Thread does not have .exitcode attribute, we
         # add the attribute manually to avoid an exception.
         import threading
+
+        # Mock.call_args_list does not seem thread-safe
+        hook_lock = threading.Lock()
+        hook = mock.Mock()
+
+        def hook_locked(*args, **kwargs):
+            with hook_lock:
+                return hook(*args, **kwargs)
+
         with mock.patch('multiprocessing.Process', threading.Thread),\
             mock.patch.object(
                 threading.Thread, 'exitcode', create=True, new=0):
@@ -76,7 +85,7 @@ class TestTrainAgentAsync(unittest.TestCase):
                 steps=steps,
                 outdir=outdir,
                 max_episode_len=self.max_episode_len,
-                global_step_hooks=[hook],
+                global_step_hooks=[hook_locked],
             )
 
         if self.num_envs == 1:
@@ -104,3 +113,44 @@ class TestTrainAgentAsync(unittest.TestCase):
         # Agent should be saved
         agent.save.assert_called_once_with(
             os.path.join(outdir, '{}_finish'.format(steps)))
+
+
+class TestTrainLoop(unittest.TestCase):
+
+    def test_needs_reset(self):
+
+        outdir = tempfile.mkdtemp()
+
+        agent = mock.Mock()
+        env = mock.Mock()
+        # First episode: 0 -> 1 -> 2 -> 3 (reset)
+        # Second episode: 4 -> 5 -> 6 -> 7 (done)
+        env.reset.side_effect = [('state', 0), ('state', 4)]
+        env.step.side_effect = [
+            (('state', 1), 0, False, {}),
+            (('state', 2), 0, False, {}),
+            (('state', 3), 0, False, {'needs_reset': True}),
+            (('state', 5), -0.5, False, {}),
+            (('state', 6), 0, False, {}),
+            (('state', 7), 1, True, {}),
+        ]
+
+        counter = mp.Value('i', 0)
+        episodes_counter = mp.Value('i', 0)
+        training_done = mp.Value('b', False)  # bool
+        train_loop(
+            process_idx=0,
+            env=env,
+            agent=agent,
+            steps=5,
+            outdir=outdir,
+            counter=counter,
+            episodes_counter=episodes_counter,
+            training_done=training_done,
+        )
+
+        self.assertEqual(agent.act_and_train.call_count, 5)
+        self.assertEqual(agent.stop_episode_and_train.call_count, 2)
+
+        self.assertEqual(env.reset.call_count, 2)
+        self.assertEqual(env.step.call_count, 5)
