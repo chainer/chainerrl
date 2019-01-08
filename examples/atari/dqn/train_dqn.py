@@ -41,43 +41,22 @@ def main():
     parser.add_argument('--load', type=str, default=None)
     # timesteps after which we stop annealing exploration rate
     final_exploration_frames = 10 ** 6
-
-    parser.add_argument('--final-epsilon', type=float, default=0.1,
-                        help='Final value of epsilon during training.')
-
-    parser.add_argument('--eval-epsilon', type=float, default=0.05,
-                        help='Exploration epsilon used during eval episodes.')
-    parser.add_argument('--arch', type=str, default='doubledqn',
-                        choices=['nature', 'nips', 'dueling', 'doubledqn'],
-                        help='Network architecture to use.')
-    parser.add_argument('--steps', type=int, default=5 * 10 ** 7,
-                        help='Total number of timesteps to train the agent.')
-    parser.add_argument('--max-frames', type=int,
-                        default=30 * 60 * 60,  # 30 minutes with 60 fps
-                        help='Maximum number of frames for each episode.')
-
-    parser.add_argument('--replay-start-size', type=int, default=5 * 10 ** 4,
-                        help='Minimum replay buffer size before ' +
-                        'performing gradient updates.')
-
-    parser.add_argument('--max-episode-len', type=int,
-                        default=30 * 60 * 60 // 4,  # 30 minutes with 60/4 fps
-                        help='Maximum number of timesteps for each episode.')
-    # Frequency (in timesteps) at which the target network is updated.
-    target_update_interval = 10 ** 4
+    # Final value of epsilon during training.
+    final_epsilon = 0.1
+    # Exploration epsilon used during eval episodes
+    eval_epsilon = 0.05
+    # Total number of timesteps to train the agent.
+    steps = 5 * 10 ** 7
+    # Minimum replay buffer size before performing gradient updates
+    replay_start_size = 5 * 10 ** 4
+    # Maximum number of timesteps for each episode.
 
     # Frequency (in timesteps) of evaluation phase.
     eval_interval = 250000
 
-    parser.add_argument('--update-interval', type=int, default=4,
-                        help='Frequency (in timesteps) of network updates.')
+    eval_n_steps = 125000
+    eval_n_episodes = None
 
-    parser.add_argument('--eval-n-steps', type=int, default=125000)
-    parser.add_argument('--eval-n-episodes', type=int, default=-1)
-
-    parser.add_argument('--no-clip-delta',
-                        dest='clip_delta', action='store_false')
-    parser.set_defaults(clip_delta=True)
 
     parser.add_argument('--logging-level', type=int, default=20,
                         help='Logging level. 10:DEBUG, 20:INFO etc.')
@@ -86,17 +65,9 @@ def main():
     parser.add_argument('--monitor', action='store_true', default=False,
                         help='Monitor env. Videos and additional information'
                              ' are saved as output files.')
-    parser.add_argument('--lr', type=float, default=2.5e-4,
-                        help='Learning rate.')
+    # Learning rate
+    lr = 2.5e-4
     args = parser.parse_args()
-
-
-    eval_n_episodes = args.eval_n_episodes
-    eval_n_steps = args.eval_n_steps
-    if eval_n_episodes < 0:
-        eval_n_episodes = None
-    if eval_n_steps < 0:
-        eval_n_steps = None
 
     import logging
     logging.basicConfig(level=args.logging_level)
@@ -115,13 +86,13 @@ def main():
         # Use different random seeds for train and test envs
         env_seed = test_seed if test else train_seed
         env = atari_wrappers.wrap_deepmind(
-            atari_wrappers.make_atari(args.env, max_frames=args.max_frames),
+            atari_wrappers.make_atari(args.env, max_frames=None),
             episode_life=not test,
             clip_rewards=not test)
         env.seed(int(env_seed))
         if test:
             # Randomize actions like epsilon-greedy in evaluation as well
-            env = chainerrl.wrappers.RandomizeAction(env, args.eval_epsilon)
+            env = chainerrl.wrappers.RandomizeAction(env, eval_epsilon)
         if args.monitor:
             env = gym.wrappers.Monitor(
                 env, args.outdir,
@@ -146,14 +117,14 @@ def main():
 
     # Use the same hyperparameters as the Nature paper
     opt = optimizers.RMSpropGraves(
-        lr=args.lr, alpha=0.95, momentum=0.0, eps=1e-2)
+        lr=lr, alpha=0.95, momentum=0.0, eps=1e-2)
 
     opt.setup(q_func)
 
     rbuf = replay_buffer.ReplayBuffer(10 ** 6)
 
     explorer = explorers.LinearDecayEpsilonGreedy(
-        1.0, args.final_epsilon,
+        1.0, final_epsilon,
         final_exploration_frames,
         lambda: np.random.randint(n_actions))
 
@@ -163,10 +134,10 @@ def main():
 
     Agent = agents.DQN
     agent = Agent(q_func, opt, rbuf, gpu=args.gpu, gamma=0.99,
-                  explorer=explorer, replay_start_size=args.replay_start_size,
-                  target_update_interval=target_update_interval,
-                  clip_delta=args.clip_delta,
-                  update_interval=args.update_interval,
+                  explorer=explorer, replay_start_size=replay_start_size,
+                  target_update_interval=10 ** 4,
+                  clip_delta=True,
+                  update_interval=4,
                   batch_accumulator='sum',
                   phi=phi)
 
@@ -178,15 +149,15 @@ def main():
             env=eval_env,
             agent=agent,
             n_steps=None,
-            n_episodes=eval_n_episodes)
+            n_episodes=30)
         print('n_runs: {} mean: {} median: {} stdev {}'.format(
             eval_n_episodes, eval_stats['mean'], eval_stats['median'],
             eval_stats['stdev']))
     else:
         experiments.train_agent_with_evaluation(
-            agent=agent, env=env, steps=args.steps,
-            eval_n_steps=eval_n_steps,
-            eval_n_episodes=eval_n_episodes,
+            agent=agent, env=env, steps=steps,
+            eval_n_steps=125000,
+            eval_n_episodes=None,
             eval_interval=eval_interval,
             outdir=args.outdir,
             save_best_so_far_agent=False,
