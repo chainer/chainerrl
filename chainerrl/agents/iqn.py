@@ -270,16 +270,20 @@ class IQN(dqn.DQN):
             # mean over (batch_size, N_prime), then sum over N
             return F.sum(F.mean(eltwise_loss, axis=(0, 2)))
 
-    def act_and_train(self, obs, reward):
-
+    def _compute_action_value(self, batch_obs):
         with chainer.using_config('train', False), chainer.no_backprop_mode():
             taus_tilde = self.xp.random.uniform(
-                0, 1, size=(1, self.quantile_thresholds_K)).astype('f')
+                0, 1, size=(len(batch_obs), self.quantile_thresholds_K)).astype('f')
             tau2av = self.model(
-                self.batch_states([obs], self.xp, self.phi))
-            action_value = tau2av(taus_tilde)
-            q = float(action_value.max.array)
-            greedy_action = cuda.to_cpu(action_value.greedy_actions.array)[0]
+                self.batch_states(batch_obs, self.xp, self.phi))
+            return tau2av(taus_tilde)
+            return (cuda.to_cpu(action_value.greedy_actions.array),
+                    cuda.to_cpu(action_value.max.array))
+
+    def act_and_train(self, obs, reward):
+        action_value = self._compute_action_value([obs])
+        greedy_action = cuda.to_cpu(action_value.greedy_actions.array)[0]
+        q = float(action_value.max.array)
 
         # Update stats
         self.average_q *= self.average_q_decay
@@ -316,14 +320,9 @@ class IQN(dqn.DQN):
         return self.last_action
 
     def act(self, obs):
-        with chainer.using_config('train', False), chainer.no_backprop_mode():
-            taus_tilde = self.xp.random.uniform(
-                0, 1, size=(1, self.quantile_thresholds_K)).astype('f')
-            tau2av = self.model(
-                self.batch_states([obs], self.xp, self.phi))
-            action_value = tau2av(taus_tilde)
-            q = float(action_value.max.array)
-            action = cuda.to_cpu(action_value.greedy_actions.array)[0]
+        action_value = self._compute_action_value([obs])
+        action = cuda.to_cpu(action_value.greedy_actions.array)[0]
+        q = float(action_value.max.array)
 
         # Update stats
         self.average_q *= self.average_q_decay
@@ -331,3 +330,27 @@ class IQN(dqn.DQN):
 
         self.logger.debug('t:%s q:%s action_value:%s', self.t, q, action_value)
         return action
+
+    def batch_act_and_train(self, batch_obs):
+        batch_av = self._compute_action_value(batch_obs)
+        batch_maxq = batch_av.max.data
+        batch_argmax = cuda.to_cpu(batch_av.greedy_actions.data)
+        batch_action = [
+            self.explorer.select_action(
+                self.t, lambda: batch_argmax[i],
+                action_value=batch_av[i:i + 1],
+            )
+            for i in range(len(batch_obs))]
+        self.batch_last_obs = list(batch_obs)
+        self.batch_last_action = list(batch_action)
+
+        # Update stats
+        self.average_q *= self.average_q_decay
+        self.average_q += (1 - self.average_q_decay) * float(batch_maxq.mean())
+
+        return batch_action
+
+    def batch_act(self, batch_obs):
+        batch_av = self._compute_action_value(batch_obs)
+        batch_argmax = cuda.to_cpu(batch_av.greedy_actions.data)
+        return batch_argmax
