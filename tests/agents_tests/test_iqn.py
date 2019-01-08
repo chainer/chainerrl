@@ -16,6 +16,7 @@ import chainer.links as L
 from chainer import testing
 
 import basetest_dqn_like as base
+from basetest_training import _TestBatchTrainingMixin
 import chainerrl
 from chainerrl.agents import iqn
 
@@ -24,7 +25,8 @@ from chainerrl.agents import iqn
     'quantile_thresholds_N': [1, 5],
     'quantile_thresholds_N_prime': [1, 7],
 }))
-class TestIQNOnDiscreteABC(base._TestDQNOnDiscreteABC):
+class TestIQNOnDiscreteABC(
+        _TestBatchTrainingMixin, base._TestDQNOnDiscreteABC):
 
     def make_q_func(self, env):
         obs_size = env.observation_space.low.size
