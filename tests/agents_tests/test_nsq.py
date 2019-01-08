@@ -109,10 +109,10 @@ class TestNSQ(unittest.TestCase):
                 eval_n_runs=5,
                 successful_score=1,
             )
-            # There should be no AbnormalExitCodeWarning
+            # There should be no AbnormalExitWarning
             self.assertEqual(
                 sum(1 if issubclass(
-                    w.category, async_.AbnormalExitCodeWarning) else 0
+                    w.category, async_.AbnormalExitWarning) else 0
                     for w in warns), 0)
 
         # The agent returned by train_agent_async is not guaranteed to be

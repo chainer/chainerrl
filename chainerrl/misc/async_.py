@@ -15,7 +15,7 @@ import numpy as np
 from chainerrl.misc import random_seed
 
 
-class AbnormalExitCodeWarning(Warning):
+class AbnormalExitWarning(Warning):
     """Warning category for abnormal subprocess exit."""
     pass
 
@@ -142,13 +142,13 @@ def run_async(n_process, run_func):
             warnings.warn(
                 "Process #{} (pid={}) exited with nonzero status {}".format(
                     process_idx, p.pid, p.exitcode),
-                category=AbnormalExitCodeWarning,
+                category=AbnormalExitWarning,
             )
         elif p.exitcode < 0:
             warnings.warn(
                 "Process #{} (pid={}) was terminated by signal {}".format(
                     process_idx, p.pid, -p.exitcode),
-                category=AbnormalExitCodeWarning,
+                category=AbnormalExitWarning,
             )
 
 

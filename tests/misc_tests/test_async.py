@@ -203,16 +203,16 @@ class TestAsync(unittest.TestCase):
 
         with warnings.catch_warnings(record=True) as ws:
             async_.run_async(4, run_with_exit_code_0)
-            # There should be no AbnormalExitCodeWarning
+            # There should be no AbnormalExitWarning
             self.assertEqual(
                 sum(1 if issubclass(
-                    w.category, async_.AbnormalExitCodeWarning) else 0
+                    w.category, async_.AbnormalExitWarning) else 0
                     for w in ws), 0)
 
         with warnings.catch_warnings(record=True) as ws:
             async_.run_async(4, run_with_exit_code_11)
-            # There should be 4 AbnormalExitCodeWarning
+            # There should be 4 AbnormalExitWarning
             self.assertEqual(
                 sum(1 if issubclass(
-                    w.category, async_.AbnormalExitCodeWarning) else 0
+                    w.category, async_.AbnormalExitWarning) else 0
                     for w in ws), 4)
