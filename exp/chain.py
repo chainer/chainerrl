@@ -231,10 +231,12 @@ def main():
                     done = False
                     reward = 0
 
-                    if abs(x) > 3:
-                        done = True
-                        reward = -100
-                    elif costheta > 0.8:
+                    #if abs(x) > 3:
+                    #    done = True
+                    #    reward = -100
+                    reward = -0.01
+
+                    if costheta > 0.8:
                         reward = 1
 
                     return np.array(e.state), reward, done, {}
