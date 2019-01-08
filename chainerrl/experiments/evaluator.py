@@ -296,9 +296,9 @@ class Evaluator(object):
                  logger=None,
                  ):
         assert (n_steps is None) != (n_episodes is None), \
-                ("One of n_steps or n_episodes must be None. " +
-                    "Either we evaluate for a specified number " +
-                    "of episodes or for a specified number of timesteps.")
+            ("One of n_steps or n_episodes must be None. " +
+             "Either we evaluate for a specified number " +
+             "of episodes or for a specified number of timesteps.")
         self.agent = agent
         self.env = env
         self.max_score = np.finfo(np.float32).min
