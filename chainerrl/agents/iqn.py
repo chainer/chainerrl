@@ -273,12 +273,11 @@ class IQN(dqn.DQN):
     def _compute_action_value(self, batch_obs):
         with chainer.using_config('train', False), chainer.no_backprop_mode():
             taus_tilde = self.xp.random.uniform(
-                0, 1, size=(len(batch_obs), self.quantile_thresholds_K)).astype('f')
+                0, 1,
+                size=(len(batch_obs), self.quantile_thresholds_K)).astype('f')
             tau2av = self.model(
                 self.batch_states(batch_obs, self.xp, self.phi))
             return tau2av(taus_tilde)
-            return (cuda.to_cpu(action_value.greedy_actions.array),
-                    cuda.to_cpu(action_value.max.array))
 
     def act_and_train(self, obs, reward):
         action_value = self._compute_action_value([obs])
