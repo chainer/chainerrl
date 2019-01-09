@@ -107,8 +107,18 @@ class TestTrainAgentAsync(unittest.TestCase):
             args, kwargs = call
             self.assertTrue(any(args[0] == env for env in envs))
             self.assertEqual(args[1], agent)
-            # step starts with 1
-            self.assertEqual(args[2], i + 1)
+            if self.num_envs == 1:
+                # If num_envs == 1, a hook should be called sequentially.
+                # step starts with 1
+                self.assertEqual(args[2], i + 1)
+        if self.num_envs > 1:
+            # If num_envs > 1, a hook may not be called sequentially.
+            # Thus, we only check if they are called for each step.
+            hook_steps = [call[0][2] for call in hook.call_args_list]
+            self.assertEqual(
+                list(range(1, len(hook.call_args_list) + 1)),
+                list(sorted(hook_steps)),
+            )
 
         # Agent should be saved
         agent.save.assert_called_once_with(
