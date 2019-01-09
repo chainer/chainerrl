@@ -117,7 +117,7 @@ class TestTrainAgentAsync(unittest.TestCase):
             hook_steps = [call[0][2] for call in hook.call_args_list]
             self.assertEqual(
                 list(range(1, len(hook.call_args_list) + 1)),
-                list(sorted(hook_steps)),
+                sorted(hook_steps),
             )
 
         # Agent should be saved
