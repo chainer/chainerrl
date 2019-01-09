@@ -39,25 +39,6 @@ def main():
                         help='GPU to use, set to -1 if no GPU.')
     parser.add_argument('--demo', action='store_true', default=False)
     parser.add_argument('--load', type=str, default=None)
-    # timesteps after which we stop annealing exploration rate
-    final_exploration_frames = 10 ** 6
-    # Final value of epsilon during training.
-    final_epsilon = 0.1
-    # Exploration epsilon used during eval episodes
-    eval_epsilon = 0.05
-    # Total number of timesteps to train the agent.
-    steps = 5 * 10 ** 7
-    # Minimum replay buffer size before performing gradient updates
-    replay_start_size = 5 * 10 ** 4
-    # Maximum number of timesteps for each episode.
-
-    # Frequency (in timesteps) of evaluation phase.
-    eval_interval = 250000
-
-    eval_n_steps = 125000
-    eval_n_episodes = None
-
-
     parser.add_argument('--logging-level', type=int, default=20,
                         help='Logging level. 10:DEBUG, 20:INFO etc.')
     parser.add_argument('--render', action='store_true', default=False,
@@ -65,8 +46,6 @@ def main():
     parser.add_argument('--monitor', action='store_true', default=False,
                         help='Monitor env. Videos and additional information'
                              ' are saved as output files.')
-    # Learning rate
-    lr = 2.5e-4
     args = parser.parse_args()
 
     import logging
@@ -92,7 +71,7 @@ def main():
         env.seed(int(env_seed))
         if test:
             # Randomize actions like epsilon-greedy in evaluation as well
-            env = chainerrl.wrappers.RandomizeAction(env, eval_epsilon)
+            env = chainerrl.wrappers.RandomizeAction(env, 0.05)
         if args.monitor:
             env = gym.wrappers.Monitor(
                 env, args.outdir,
@@ -117,16 +96,16 @@ def main():
 
     # Use the same hyperparameters as the Nature paper
     opt = optimizers.RMSpropGraves(
-        lr=lr, alpha=0.95, momentum=0.0, eps=1e-2)
+        lr=2.5e-4, alpha=0.95, momentum=0.0, eps=1e-2)
 
     opt.setup(q_func)
 
     rbuf = replay_buffer.ReplayBuffer(10 ** 6)
 
     explorer = explorers.LinearDecayEpsilonGreedy(
-        1.0, final_epsilon,
-        final_exploration_frames,
-        lambda: np.random.randint(n_actions))
+        start_epsilon=1.0, end_epsilon=0.1,
+        decay_steps=10 ** 6,
+        random_action_func=lambda: np.random.randint(n_actions))
 
     def phi(x):
         # Feature extractor
@@ -134,7 +113,7 @@ def main():
 
     Agent = agents.DQN
     agent = Agent(q_func, opt, rbuf, gpu=args.gpu, gamma=0.99,
-                  explorer=explorer, replay_start_size=replay_start_size,
+                  explorer=explorer, replay_start_size=5 * 10 ** 4,
                   target_update_interval=10 ** 4,
                   clip_delta=True,
                   update_interval=4,
@@ -151,14 +130,14 @@ def main():
             n_steps=None,
             n_episodes=30)
         print('n_runs: {} mean: {} median: {} stdev {}'.format(
-            eval_n_episodes, eval_stats['mean'], eval_stats['median'],
+            30, eval_stats['mean'], eval_stats['median'],
             eval_stats['stdev']))
     else:
         experiments.train_agent_with_evaluation(
-            agent=agent, env=env, steps=steps,
+            agent=agent, env=env, steps=5 * 10 ** 7,
             eval_n_steps=125000,
             eval_n_episodes=None,
-            eval_interval=eval_interval,
+            eval_interval=250000,
             outdir=args.outdir,
             save_best_so_far_agent=False,
             eval_env=eval_env,
