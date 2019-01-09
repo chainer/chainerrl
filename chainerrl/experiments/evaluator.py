@@ -247,6 +247,7 @@ def eval_performance(env, agent, n_steps, n_episodes, max_episode_len=None,
             max_episode_len=max_episode_len,
             logger=logger)
     stats = dict(
+        episodes=len(scores),
         mean=statistics.mean(scores),
         median=statistics.median(scores),
         stdev=statistics.stdev(scores) if len(scores) >= 2 else 0.0,

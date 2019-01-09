@@ -46,6 +46,12 @@ def main():
     parser.add_argument('--monitor', action='store_true', default=False,
                         help='Monitor env. Videos and additional information'
                              ' are saved as output files.')
+    parser.add_argument('--steps', type=int, default=5 * 10 ** 7,
+                        help='Total number of timesteps to train the agent.')
+    parser.add_argument('--replay-start-size', type=int, default=5 * 10 ** 4,
+                        help='Minimum replay buffer size before ' +
+                        'performing gradient updates.')
+    parser.add_argument('--eval-n-steps', type=int, default=125000)
     args = parser.parse_args()
 
     import logging
@@ -113,7 +119,7 @@ def main():
 
     Agent = agents.DQN
     agent = Agent(q_func, opt, rbuf, gpu=args.gpu, gamma=0.99,
-                  explorer=explorer, replay_start_size=5 * 10 ** 4,
+                  explorer=explorer, replay_start_size=args.replay_start_size,
                   target_update_interval=10 ** 4,
                   clip_delta=True,
                   update_interval=4,
@@ -127,15 +133,17 @@ def main():
         eval_stats = experiments.eval_performance(
             env=eval_env,
             agent=agent,
-            n_steps=None,
-            n_episodes=30)
-        print('n_runs: {} mean: {} median: {} stdev {}'.format(
-            30, eval_stats['mean'], eval_stats['median'],
+            n_steps=args.eval_n_steps,
+            n_episodes=None)
+        print('n_episodes: {} mean: {} median: {} stdev {}'.format(
+            eval_stats['episodes'],
+            eval_stats['mean'],
+            eval_stats['median'],
             eval_stats['stdev']))
     else:
         experiments.train_agent_with_evaluation(
-            agent=agent, env=env, steps=5 * 10 ** 7,
-            eval_n_steps=125000,
+            agent=agent, env=env, steps=args.steps,
+            eval_n_steps=args.eval_n_steps,
             eval_n_episodes=None,
             eval_interval=250000,
             outdir=args.outdir,
@@ -155,10 +163,16 @@ def main():
             dir_of_best_network = os.path.join(args.outdir, str(best))
             agent.load(dir_of_best_network)
 
+            # Change seed for final evaluation
+            final_seed = max(train_seed, test_seed) - min(train_seed, test_seed) - 1
+            eval_env.seed(int(final_seed))
             # run 30 evaluation episodes, each capped at 5 mins of play
-            stats = chainerrl.experiments.evaluator.eval_performance(
-                eval_env, agent, eval_n_runs,
-                max_episode_len=4500, logger=None)
+            stats = chainerrl.experiments.evaluator.eval_performance(eval_env,
+                        agent,
+                        None,
+                        30,
+                        max_episode_len=4500,
+                        logger=None)
             print("-----------------------------------------------------")
             print("Overall Results of the 30 evaluation episodes of the \n"
                   + "best scoring network during training.")
