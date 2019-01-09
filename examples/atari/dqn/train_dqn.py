@@ -147,7 +147,7 @@ def main():
             eval_n_episodes=None,
             eval_interval=250000,
             outdir=args.outdir,
-            save_best_so_far_agent=False,
+            save_best_so_far_agent=True,
             eval_env=eval_env,
         )
 
