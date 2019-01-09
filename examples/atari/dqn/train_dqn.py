@@ -164,15 +164,16 @@ def main():
             agent.load(dir_of_best_network)
 
             # Change seed for final evaluation
-            final_seed = max(train_seed, test_seed) - min(train_seed, test_seed) - 1
+            final_seed = max(train_seed, test_seed) - \
+                min(train_seed, test_seed) - 1
             eval_env.seed(int(final_seed))
             # run 30 evaluation episodes, each capped at 5 mins of play
             stats = chainerrl.experiments.evaluator.eval_performance(eval_env,
-                        agent,
-                        None,
-                        30,
-                        max_episode_len=4500,
-                        logger=None)
+                                                                     agent,
+                                                                     None,
+                                                                     30,
+                                                                     max_episode_len=4500,
+                                                                     logger=None)
             print("-----------------------------------------------------")
             print("Overall Results of the 30 evaluation episodes of the \n"
                   + "best scoring network during training.")
