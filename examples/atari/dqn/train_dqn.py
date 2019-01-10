@@ -162,12 +162,12 @@ def main():
         eval_env.seed(int(final_seed))
         # run 30 evaluation episodes, each capped at 5 mins of play
         stats = experiments.evaluator.eval_performance(
-                    env=eval_env,
-                    agent=agent,
-                    n_steps=None,
-                    n_episodes=args.n_best_episodes,
-                    max_episode_len=4500,
-                    logger=None)
+            env=eval_env,
+            agent=agent,
+            n_steps=None,
+            n_episodes=args.n_best_episodes,
+            max_episode_len=4500,
+            logger=None)
 
         print("-----------------------------------------------------")
         print("Overall Results of the 30 evaluation episodes of the \n"
