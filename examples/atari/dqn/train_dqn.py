@@ -52,6 +52,8 @@ def main():
                         help='Minimum replay buffer size before ' +
                         'performing gradient updates.')
     parser.add_argument('--eval-n-steps', type=int, default=125000)
+    parser.add_argument('--eval-interval', type=int, default=250000)
+    parser.add_argument('--n-best-episodes', type=int, default=30)
     args = parser.parse_args()
 
     import logging
@@ -145,46 +147,39 @@ def main():
             agent=agent, env=env, steps=args.steps,
             eval_n_steps=args.eval_n_steps,
             eval_n_episodes=None,
-            eval_interval=250000,
+            eval_interval=args.eval_interval,
             outdir=args.outdir,
             save_best_so_far_agent=True,
             eval_env=eval_env,
         )
 
-        best = None
-        for root, dirs, files in os.walk(args.outdir):
-            for directory in dirs:
-                print(directory)
-                if directory.isdigit():
-                    timestep = int(directory)
-                    if timestep > best:
-                        best = timestep
-        if best is not None:
-            dir_of_best_network = os.path.join(args.outdir, str(best))
-            agent.load(dir_of_best_network)
+        dir_of_best_network = os.path.join(args.outdir, "best")
+        agent.load(dir_of_best_network)
 
-            # Change seed for final evaluation
-            final_seed = max(train_seed, test_seed) - \
-                min(train_seed, test_seed) - 1
-            eval_env.seed(int(final_seed))
-            # run 30 evaluation episodes, each capped at 5 mins of play
-            stats = chainerrl.experiments.evaluator.eval_performance(eval_env,
-                                                                     agent,
-                                                                     None,
-                                                                     30,
-                                                                     max_episode_len=4500,
-                                                                     logger=None)
-            print("-----------------------------------------------------")
-            print("Overall Results of the 30 evaluation episodes of the \n"
-                  + "best scoring network during training.")
-            print("-----------------------------------------------------")
-            print("Mean score: **" + str(stats['mean'])
-                  + "** (score reported in paper)")
-            print("Median score: " + str(stats['median']))
-            print("Stdev score: " + str(stats['stdev']))
-            print("Max score: " + str(stats['max']))
-            print("Min score: " + str(stats['min']))
-            print("-----------------------------------------------------")
+        # Change seed for final evaluation
+        final_seed = max(train_seed, test_seed) - \
+            min(train_seed, test_seed) - 1
+        eval_env.seed(int(final_seed))
+        # run 30 evaluation episodes, each capped at 5 mins of play
+        stats = experiments.evaluator.eval_performance(
+                    env=eval_env,
+                    agent=agent,
+                    n_steps=None,
+                    n_episodes=args.n_best_episodes,
+                    max_episode_len=4500,
+                    logger=None)
+
+        print("-----------------------------------------------------")
+        print("Overall Results of the 30 evaluation episodes of the \n"
+              + "best scoring network during training.")
+        print("-----------------------------------------------------")
+        print("Mean score: **" + str(stats['mean'])
+              + "** (score reported in paper)")
+        print("Median score: " + str(stats['median']))
+        print("Stdev score: " + str(stats['stdev']))
+        print("Max score: " + str(stats['max']))
+        print("Min score: " + str(stats['min']))
+        print("-----------------------------------------------------")
 
 
 if __name__ == '__main__':

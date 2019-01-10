@@ -343,7 +343,7 @@ class Evaluator(object):
                              self.max_score, mean)
             self.max_score = mean
             if self.save_best_so_far_agent:
-                save_agent(self.agent, t, self.outdir, self.logger)
+                save_agent(self.agent, "best", self.outdir, self.logger)
         return mean
 
     def evaluate_if_necessary(self, t, episodes):
