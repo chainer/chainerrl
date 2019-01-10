@@ -168,18 +168,11 @@ def main():
             n_episodes=args.n_best_episodes,
             max_episode_len=4500,
             logger=None)
-
-        print("-----------------------------------------------------")
-        print("Overall Results of the 30 evaluation episodes of the \n"
-              + "best scoring network during training.")
-        print("-----------------------------------------------------")
-        print("Mean score: **" + str(stats['mean'])
-              + "** (score reported in paper)")
-        print("Median score: " + str(stats['median']))
-        print("Stdev score: " + str(stats['stdev']))
-        print("Max score: " + str(stats['max']))
-        print("Min score: " + str(stats['min']))
-        print("-----------------------------------------------------")
+        stats["episodes"] = args.n_best_episodes
+        with open(os.path.join(args.outdir, 'bestscores.txt'), 'a+') as f:
+            print("The results of the best scoring network:\n", file=f)
+            for stat in stats:
+                print(str(stat) + ":" + str(stats[stat]) + "\n", file=f)
 
 
 if __name__ == '__main__':
