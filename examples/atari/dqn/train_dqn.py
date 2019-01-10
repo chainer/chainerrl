@@ -172,7 +172,7 @@ def main():
         with open(os.path.join(args.outdir, 'bestscores.txt'), 'a+') as f:
             print("The results of the best scoring network:\n", file=f)
             for stat in stats:
-                print(str(stat) + ":" + str(stats[stat]) + "\n", file=f)
+                print(str(stat) + ":" + str(stats[stat]), file=f)
 
 
 if __name__ == '__main__':
