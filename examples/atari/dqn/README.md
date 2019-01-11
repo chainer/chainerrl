@@ -24,59 +24,68 @@ To view the full list of options, either view the code or run the example with t
 ## Results
 These results reflect ChainerRL  `v0.4.0`.
 
-| Game        | Score           |
-| ------------- |:-------------:|
-| Alien | N/A|
-| Amidar | N/A|
-| Assault | N/A|
-| Asterix | N/A|
-| Asteroids | N/A|
-| Atlantis | N/A|
-| Bank Heist | N/A|
-| Battlezone | N/A|
-| Beamrider | N/A|
-| Berzerk | N/A|
-| Bowling | N/A|
-| Boxing | N/A|
-| Carnival | N/A|
-| Centipede | N/A|
-| Chopper Cmd | N/A|
-| Crazy Climber | N/A|
-| Demon Attack | N/A|
-| Double Dunk | N/A|
-| Elevator Action | N/A|
-| Enduro | N/A|
-| Fishing Derby | N/A|
-| Freeway | N/A|
-| Frostbite | N/A|
-| Gopher | N/A|
-| Gravitar | N/A|
-| H.E.R.O. | N/A|
-| Ice Hockey | N/A|
-| James Bond 007 | N/A|
-| Journey Escape | N/A|
-| Kangaroo | N/A|
-| Krull | N/A|
-| Kung-Fu Master | N/A|
-| Montezumas Rev | N/A|
-| Ms. Pac-Man | N/A|
-| Name This Game | N/A|
-| Phoenix | N/A|
-| Pitfall II | N/A|
-| Pitfall! | N/A|
-| Pooyan | N/A|
-| Private Eye | N/A|
-| River Raid | N/A|
-| Road Runner | N/A|
-| Robot Tank | N/A|
-| Seaquest | N/A|
-| Skiing | N/A|
-| Solaris | N/A|
-| Space Invaders | N/A|
-| Stargunner | N/A|
-| Tennis | N/A|
-| Time Pilot | N/A|
-| Tutankham | N/A|
-| Up’n Down | N/A|
-| Video Pinball | N/A|
-| Zaxxon | N/A|
+| Game        | Score           | Reported Scores |           
+| ------------- |:-------------:|:-------------:|
+| AirRaid | N/A| N/A|
+| Alien | N/A| 3069|
+| Amidar | N/A| 739.5|
+| Assault | N/A| 3359|
+| Asterix | N/A| 6012|
+| Asteroids | N/A| 1629|
+| Atlantis | N/A| 85641|
+| Bank Heist | N/A| 429.7|
+| Battlezone | N/A| 26300|
+| Beamrider | N/A| 6846|
+| Berzerk | N/A| N/A|
+| Bowling | N/A| 42.4|
+| Boxing | N/A| 71.8|
+| Breakout | N/A| 401.2|
+| Carnival | N/A| N/A|
+| Centipede | N/A| 8309|
+| Chopper Command | N/A| 6687|
+| Crazy Climber | N/A| 114103|
+| Demon Attack | N/A| 9711|
+| Double Dunk | N/A| -18.1|
+| Elevator Action | N/A| N/A|
+| Enduro | N/A| 301.8|
+| Fishing Derby | N/A| -0.8|
+| Freeway | N/A| 30.3|
+| Frostbite | N/A| 328.3|
+| Gopher | N/A| 8520|
+| Gravitar | N/A| 306.7|
+| H.E.R.O. | N/A| 25763|
+| Ice Hockey | N/A| -1.6|
+| James Bond 007 | N/A| 576.7|
+| Journey Escape | N/A| N/A|
+| Kangaroo | N/A| 6740|
+| Krull | N/A| 3805|
+| Kung-Fu Master | N/A| 23270|
+| Montezuma's Revenge | N/A| 0|
+| Ms. Pac-Man | N/A| 2311|
+| Name This Game | N/A| 7257|
+| Phoenix | N/A| N/A|
+| Pitfall II | N/A| N/A|
+| Pitfall! | N/A| 1788|
+| Pong | N/A| 18.9|
+| Pooyan | N/A| N/A|
+| Private Eye | N/A| N/A|
+| Qbert | N/A| 10596|
+| River Raid | N/A| 8316|
+| Road Runner | N/A| 18257|
+| Robot Tank | N/A| 51.6|
+| Seaquest | N/A| 5826|
+| Skiing | N/A| N/A|
+| Solaris | N/A| N/A|
+| Space Invaders | N/A| 1976|
+| Stargunner | N/A| 57997|
+| Tennis | N/A| -2.5|
+| Time Pilot | N/A| 5947|
+| Tutankham | N/A| 186.7|
+| Up’n Down | N/A| 8456|
+| Venture | N/A| 3800|
+| Video Pinball | N/A| 42684|
+| WizardOfWor | N/A| 3393|
+| YarsRevenge | N/A| N/A|
+| Zaxxon | N/A| 4977|
+
+						
