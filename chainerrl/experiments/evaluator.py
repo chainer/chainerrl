@@ -313,6 +313,7 @@ class Evaluator(object):
         self.prev_eval_t = (self.step_offset -
                             self.step_offset % self.eval_interval)
         self.save_best_so_far_agent = save_best_so_far_agent
+        self.saved = False
         self.logger = logger or logging.getLogger(__name__)
 
         # Write a header line first
@@ -344,6 +345,7 @@ class Evaluator(object):
             self.max_score = mean
             if self.save_best_so_far_agent:
                 save_agent(self.agent, "best", self.outdir, self.logger)
+                self.saved = True
         return mean
 
     def evaluate_if_necessary(self, t, episodes):

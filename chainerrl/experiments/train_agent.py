@@ -89,7 +89,7 @@ def train_agent(agent, env, steps, outdir, max_episode_len=None,
     # Save the final model
     save_agent(agent, t, outdir, logger, suffix='_finish')
     if evaluator:
-        if evaluator.save_best_so_far_agent:
+        if evaluator.save_best_so_far_agent and not evaluator.saved:
             save_agent(agent, "best", outdir, logger, suffix='')
 
 
