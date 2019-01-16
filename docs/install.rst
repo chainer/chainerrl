@@ -10,14 +10,16 @@ ChainerRL is tested with Python 2.7+ and 3.5.1+. For other requirements, see ``r
 .. literalinclude:: ../requirements.txt
   :caption: requirements.txt
 
-ChainerRL can be installed via PyPI:
+ChainerRL can be installed via PyPI,
 
 ::
 
  pip install chainerrl
 
-It can also be installed from the source code:
+or through the source code:
 
 ::
 
+ git clone https://github.com/chainer/chainerrl.git
+ cd chainerrl
  python setup.py install

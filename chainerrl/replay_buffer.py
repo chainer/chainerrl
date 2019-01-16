@@ -131,6 +131,7 @@ class AbstractEpisodicReplayBuffer(AbstractReplayBuffer):
 class ReplayBuffer(AbstractReplayBuffer):
 
     def __init__(self, capacity=None, num_steps=1):
+        self.capacity = capacity
         assert num_steps > 0
         self.num_steps = num_steps
         self.memory = RandomAccessQueue(maxlen=capacity)
@@ -273,6 +274,7 @@ class PrioritizedReplayBuffer(ReplayBuffer, PriorityWeightError):
                  alpha=0.6, beta0=0.4, betasteps=2e5, eps=0.01,
                  normalize_by_max=True, error_min=0,
                  error_max=1, num_steps=1):
+        self.capacity = capacity
         assert num_steps > 0
         self.num_steps = num_steps
         self.memory = PrioritizedBuffer(capacity=capacity)

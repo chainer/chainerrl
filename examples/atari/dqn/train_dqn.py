@@ -47,7 +47,6 @@ def main():
                         help='Final value of epsilon during training.')
     parser.add_argument('--eval-epsilon', type=float, default=0.05,
                         help='Exploration epsilon used during eval episodes.')
-    parser.add_argument('--noisy-net-sigma', type=float, default=None)
     parser.add_argument('--arch', type=str, default='doubledqn',
                         choices=['nature', 'nips', 'dueling', 'doubledqn'],
                         help='Network architecture to use.')
@@ -67,7 +66,8 @@ def main():
                         help='Frequency (in timesteps) of evaluation phase.')
     parser.add_argument('--update-interval', type=int, default=4,
                         help='Frequency (in timesteps) of network updates.')
-    parser.add_argument('--eval-n-runs', type=int, default=10)
+    parser.add_argument('--eval-n-steps', type=int, default=125000)
+    parser.add_argument('--eval-n-episodes', type=int, default=-1)
     parser.add_argument('--no-clip-delta',
                         dest='clip_delta', action='store_false')
     parser.set_defaults(clip_delta=True)
@@ -82,6 +82,13 @@ def main():
     parser.add_argument('--lr', type=float, default=2.5e-4,
                         help='Learning rate.')
     args = parser.parse_args()
+
+    eval_n_episodes = args.eval_n_episodes
+    eval_n_steps = args.eval_n_steps
+    if eval_n_episodes < 0:
+        eval_n_episodes = None
+    if eval_n_steps < 0:
+        eval_n_steps = None
 
     import logging
     logging.basicConfig(level=args.logging_level)
@@ -124,11 +131,6 @@ def main():
         L.Linear(512, n_actions),
         DiscreteActionValue)
 
-    if args.noisy_net_sigma is not None:
-        links.to_factorized_noisy(q_func)
-        # Turn off explorer
-        explorer = explorers.Greedy()
-
     # Draw the computational graph and save it in the output directory.
     chainerrl.misc.draw_computational_graph(
         [q_func(np.zeros((4, 84, 84), dtype=np.float32)[None])],
@@ -167,14 +169,17 @@ def main():
         eval_stats = experiments.eval_performance(
             env=eval_env,
             agent=agent,
-            n_runs=args.eval_n_runs)
+            n_steps=None,
+            n_episodes=eval_n_episodes)
         print('n_runs: {} mean: {} median: {} stdev {}'.format(
-            args.eval_n_runs, eval_stats['mean'], eval_stats['median'],
+            eval_n_episodes, eval_stats['mean'], eval_stats['median'],
             eval_stats['stdev']))
     else:
         experiments.train_agent_with_evaluation(
             agent=agent, env=env, steps=args.steps,
-            eval_n_episodes=args.eval_n_runs, eval_interval=args.eval_interval,
+            eval_n_steps=eval_n_steps,
+            eval_n_episodes=eval_n_episodes,
+            eval_interval=args.eval_interval,
             outdir=args.outdir,
             save_best_so_far_agent=False,
             eval_env=eval_env,

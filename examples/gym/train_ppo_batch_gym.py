@@ -194,7 +194,8 @@ def main():
         eval_stats = experiments.eval_performance(
             env=env,
             agent=agent,
-            n_runs=args.eval_n_runs,
+            n_steps=None,
+            n_episodes=args.eval_n_runs,
             max_episode_len=timestep_limit)
         print('n_runs: {} mean: {} median: {} stdev {}'.format(
             args.eval_n_runs, eval_stats['mean'], eval_stats['median'],
@@ -220,7 +221,8 @@ def main():
             eval_env=make_batch_env(True),
             outdir=args.outdir,
             steps=args.steps,
-            eval_n_runs=args.eval_n_runs,
+            eval_n_steps=None,
+            eval_n_episodes=args.eval_n_runs,
             eval_interval=args.eval_interval,
             log_interval=args.log_interval,
             return_window_size=args.window_size,
