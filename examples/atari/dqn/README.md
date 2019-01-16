@@ -53,7 +53,7 @@ These results reflect ChainerRL  `v0.4.0`.
 | Frostbite | N/A| **328.3**|
 | Gopher | N/A| **8520**|
 | Gravitar | N/A| **306.7**|
-| H.E.R.O. | N/A| **25763**|
+| H.E.R.O. | N/A| **19950**|
 | Ice Hockey | N/A| **-1.6**|
 | James Bond 007 | N/A| **576.7**|
 | Journey Escape | N/A| N/A|
@@ -73,7 +73,7 @@ These results reflect ChainerRL  `v0.4.0`.
 | River Raid | N/A| **8316**|
 | Road Runner | N/A| **18257**|
 | Robot Tank | N/A| **51.6**|
-| Seaquest | N/A| **5826**|
+| Seaquest | N/A| **5286**|
 | Skiing | N/A| N/A|
 | Solaris | N/A| N/A|
 | Space Invaders | N/A| **1976**|
@@ -82,7 +82,7 @@ These results reflect ChainerRL  `v0.4.0`.
 | Time Pilot | N/A| **5947**|
 | Tutankham | N/A| **186.7**|
 | Up’n Down | N/A| **8456**|
-| Venture | N/A| **3800**|
+| Venture | N/A| **380.0**|
 | Video Pinball | N/A| **42684**|
 | WizardOfWor | N/A| **3393**|
 | YarsRevenge | N/A| N/A|
