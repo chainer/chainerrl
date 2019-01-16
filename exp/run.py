@@ -38,6 +38,8 @@ from myseq import MySequence
 
 import examples.ale.atari_wrappers as atari_wrappers
 
+from gym import spaces
+
 def parse_activation(activation_str):
     if activation_str == 'relu':
         return F.relu
@@ -438,7 +440,7 @@ def main():
         experiments.train_agent_with_evaluation(
             agent=agent, env=env, steps=args.steps,
             eval_n_runs=args.eval_n_runs, eval_interval=args.eval_interval,
-            outdir=args.outdir, eval_explorer=eval_explorer,
+            outdir=args.outdir,#, eval_explorer=eval_explorer,
             max_episode_len=args.max_episode_len,
             eval_env=eval_env,
             save_best_so_far_agent=False,

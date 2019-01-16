@@ -348,7 +348,7 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
 
         has_weight = 'weight' in experiences[0]
         exp_batch = batch_experiences(experiences, xp=self.xp, phi=self.phi,
-                                      batch_states=self.batch_states)
+                                      batch_states=self.batch_states, gamma=self.gamma)
         if has_weight:
             exp_batch['weights'] = self.xp.asarray(
                 [elem[0]['weight']for elem in experiences],
@@ -577,7 +577,7 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
 
         with chainer.no_backprop_mode():
             if self.head:
-                batch_q_target, batch_sigma_target = self._compute_target_values(exp_batch, gamma)
+                batch_q_target, batch_sigma_target = self._compute_target_values(exp_batch)
                 batch_q_target = F.reshape(batch_q_target, (batch_size, 1))
                 batch_sigma_target = F.reshape(batch_sigma_target, (batch_size, 1))
             else:
@@ -600,7 +600,7 @@ class DQN(agent.AttributeSavingMixin, agent.Agent):
         else:
             return batch_q, batch_q_target
 
-    def _compute_loss(self, exp_batch, errors_out=None):
+    def _compute_loss(self, exp_batch, gamma, errors_out=None):
         """Compute the Q-learning loss for a batch of experiences
 
 

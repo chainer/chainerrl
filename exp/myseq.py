@@ -62,7 +62,7 @@ class MySequence(chainer.Chain):#links.Sequence):
 
             for n in range(mean):
                 if self.shared:
-                    ll = L.Linear(100, acts)
+                    ll = L.Linear(30, acts)
                     #net.append(ll)
                     self.add_link(str(n)+'_ll', ll)
                     self.sigma_nets.append(ll)
