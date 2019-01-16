@@ -1,7 +1,7 @@
 -r requirements.txt
 autopep8
 atari_py
-hacking
+flake8
 mock
 opencv-python
 pytest
