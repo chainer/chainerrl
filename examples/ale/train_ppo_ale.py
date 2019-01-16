@@ -7,9 +7,9 @@ from future import standard_library
 standard_library.install_aliases()  # NOQA
 import argparse
 
-import gym
-gym.undo_logger_setup()  # NOQA
 import chainer
+import gym
+import gym.wrappers
 import numpy as np
 
 from chainerrl.agents.a3c import A3CModel
@@ -151,7 +151,7 @@ def main():
 
         # Linearly decay the clipping parameter to zero
         def clip_eps_setter(env, agent, value):
-            agent.clip_eps = value
+            agent.clip_eps = max(value, 1e-8)
 
         clip_eps_decay_hook = experiments.LinearInterpolationHook(
             args.steps, 0.1, 0, clip_eps_setter)

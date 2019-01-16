@@ -7,9 +7,7 @@ import chainer
 from chainer.links import Linear
 
 from chainerrl.links.noisy_linear import FactorizedNoisyLinear
-from chainerrl.links.noisy_linear2 import FactorizedNoisyLinear2
-from logging import getLogger
-from chainerrl import links
+from chainerrl.links.sequence import Sequence
 
 try:
     # For Python 3.5 and later
@@ -83,7 +81,6 @@ def _map_links(func, link):
                 children[i] = new_child
                 children[i].name = str(i)
 
-                if isinstance(link, links.Sequence):
-                    seq_i = link.layers.index(child)
-                    link.layers[seq_i] = new_child
-                    link.argnames[seq_i] = set(signature(new_child).parameters)
+                if isinstance(link, Sequence):
+                    # assumes i-th layer corresponds with i-th child
+                    link.layers[i] = new_child

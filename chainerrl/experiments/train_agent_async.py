@@ -11,7 +11,7 @@ import multiprocessing as mp
 import os
 
 from chainerrl.experiments.evaluator import AsyncEvaluator
-from chainerrl.misc import async
+from chainerrl.misc import async_
 from chainerrl.misc import random_seed
 
 
@@ -112,13 +112,13 @@ def train_loop(process_idx, env, agent, steps, outdir, counter,
 
 
 def extract_shared_objects_from_agent(agent):
-    return dict((attr, async.as_shared_objects(getattr(agent, attr)))
+    return dict((attr, async_.as_shared_objects(getattr(agent, attr)))
                 for attr in agent.shared_attributes)
 
 
 def set_shared_objects(agent, shared_objects):
     for attr, shared in shared_objects.items():
-        new_value = async.synchronize_to_shared_objects(
+        new_value = async_.synchronize_to_shared_objects(
             getattr(agent, attr), shared)
         setattr(agent, attr, new_value)
 
@@ -131,7 +131,6 @@ def train_agent_async(outdir, processes, make_env,
                       max_episode_len=None,
                       step_offset=0,
                       successful_score=None,
-                      eval_explorer=None,
                       agent=None,
                       make_agent=None,
                       global_step_hooks=[],
@@ -155,7 +154,6 @@ def train_agent_async(outdir, processes, make_env,
         step_offset (int): Time step from which training starts.
         successful_score (float): Finish training if the mean score is greater
             or equal to this value if not None
-        eval_explorer: Explorer used for evaluation.
         agent (Agent): Agent to train.
         make_agent (callable): (process_idx) -> Agent
         global_step_hooks (list): List of callable objects that accepts
@@ -194,7 +192,6 @@ def train_agent_async(outdir, processes, make_env,
             eval_interval=eval_interval, outdir=outdir,
             max_episode_len=max_episode_len,
             step_offset=step_offset,
-            explorer=eval_explorer,
             save_best_so_far_agent=save_best_so_far_agent,
             logger=logger,
         )
@@ -238,6 +235,6 @@ def train_agent_async(outdir, processes, make_env,
         else:
             f()
 
-    async.run_async(processes, run_func)
+    async_.run_async(processes, run_func)
 
     return agent

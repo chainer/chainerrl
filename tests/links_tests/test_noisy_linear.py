@@ -47,8 +47,8 @@ class TestFactorizedNoisyLinear(unittest.TestCase):
 
     def _test_randomness(self, xp):
         x = xp.random.standard_normal((10, 6)).astype(numpy.float32)
-        y1 = self.l(x).data
-        y2 = self.l(x).data
+        y1 = self.l(x).array
+        y2 = self.l(x).array
         d = float(xp.mean(xp.square(y1 - y2)))
 
         # The parameter name suggests that
@@ -60,7 +60,7 @@ class TestFactorizedNoisyLinear(unittest.TestCase):
         if self.nobias:
             target *= 2 / numpy.pi
         else:
-            target *= 2 / numpy.pi + numpy.sqrt(2 / numpy.pi)
+            target *= 2 / numpy.pi + numpy.sqrt(2 / numpy.pi) / y1.shape[1]
 
         self.assertGreater(d, target / 3.)
         self.assertLess(d, target * 3.)
@@ -79,7 +79,7 @@ class TestFactorizedNoisyLinear(unittest.TestCase):
         # Noises should be the same in a batch
         x0 = xp.random.standard_normal((1, 6)).astype(numpy.float32)
         x = xp.broadcast_to(x0, (2, 6))
-        y = self.l(x).data
+        y = self.l(x).array
         xp.testing.assert_allclose(y[0], y[1], rtol=1e-4)
 
     def test_non_randomness_cpu(self):

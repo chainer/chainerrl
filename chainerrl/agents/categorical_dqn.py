@@ -6,6 +6,7 @@ from future import standard_library
 standard_library.install_aliases()  # NOQA
 
 import chainer
+from chainer import cuda
 import chainer.functions as F
 import numpy as np
 
@@ -41,6 +42,8 @@ def _apply_categorical_projection(y, y_probs, z):
     # bj: (batch_size, n_atoms)
     bj = (y - v_min) / delta_z
     assert bj.shape == (batch_size, n_atoms)
+    # Avoid the error caused by inexact delta_z
+    bj = xp.clip(bj, 0, n_atoms - 1)
 
     # l, u: (batch_size, n_atoms)
     l, u = xp.floor(bj), xp.ceil(bj)
@@ -70,6 +73,51 @@ def _apply_categorical_projection(y, y_probs, z):
     return z_probs
 
 
+def compute_value_loss(y, t, batch_accumulator='mean'):
+    """Compute a loss for value prediction problem.
+
+    Args:
+        y (Variable or ndarray): Predicted values.
+        t (Variable or ndarray): Target values.
+        batch_accumulator (str): 'mean' or 'sum'. 'mean' will use the mean of
+            the loss values in a batch. 'sum' will use the sum.
+    Returns:
+        (Variable) scalar loss
+    """
+    assert batch_accumulator in ('mean', 'sum')
+
+    eltwise_loss = -t * F.log(F.clip(y, 1e-10, 1.))
+
+    if batch_accumulator == 'sum':
+        loss = F.sum(eltwise_loss)
+    else:
+        loss = F.mean(F.sum(eltwise_loss, axis=1))
+    return loss
+
+
+def compute_weighted_value_loss(y, t, weights, batch_accumulator='mean'):
+    """Compute a loss for value prediction problem.
+
+    Args:
+        y (Variable or ndarray): Predicted values.
+        t (Variable or ndarray): Target values.
+        weights (ndarray): Weights for y, t.
+        batch_accumulator (str): 'mean' will devide loss by batchsize
+    Returns:
+        (Variable) scalar loss
+    """
+    assert batch_accumulator in ('mean', 'sum')
+
+    eltwise_loss = -t * F.log(F.clip(y, 1e-10, 1.))
+
+    loss = F.sum(eltwise_loss * weights[:, None, None])
+    if batch_accumulator == 'sum':
+        loss = F.sum(eltwise_loss)
+    else:
+        loss = F.mean(F.sum(eltwise_loss, axis=1))
+    return loss
+
+
 class CategoricalDQN(dqn.DQN):
     """Categorical DQN.
 
@@ -79,7 +127,7 @@ class CategoricalDQN(dqn.DQN):
     DistributionalDiscreteActionValue and clip_delta is ignored.
     """
 
-    def _compute_target_values(self, exp_batch, gamma):
+    def _compute_target_values(self, exp_batch):
         """Compute a batch of target return distributions."""
 
         batch_next_state = exp_batch['next_state']
@@ -93,15 +141,17 @@ class CategoricalDQN(dqn.DQN):
         n_atoms = z_values.size
 
         # next_q_max: (batch_size, n_atoms)
-        next_q_max = target_next_qout.max_as_distribution.data
+        next_q_max = target_next_qout.max_as_distribution.array
         assert next_q_max.shape == (batch_size, n_atoms), next_q_max.shape
 
         # Tz: (batch_size, n_atoms)
         Tz = (batch_rewards[..., None]
-              + (1.0 - batch_terminal[..., None]) * gamma * z_values[None])
+              + (1.0 - batch_terminal[..., None])
+              * self.xp.expand_dims(exp_batch['discount'], 1)
+              * z_values[None])
         return _apply_categorical_projection(Tz, next_q_max, z_values)
 
-    def _compute_y_and_t(self, exp_batch, gamma):
+    def _compute_y_and_t(self, exp_batch):
         """Compute a batch of predicted/target return distributions."""
 
         batch_size = exp_batch['reward'].shape[0]
@@ -118,19 +168,29 @@ class CategoricalDQN(dqn.DQN):
         assert batch_q.shape == (batch_size, n_atoms)
 
         with chainer.no_backprop_mode():
-            batch_q_target = self._compute_target_values(exp_batch, gamma)
+            batch_q_target = self._compute_target_values(exp_batch)
             assert batch_q_target.shape == (batch_size, n_atoms)
 
         return batch_q, batch_q_target
 
-    def _compute_loss(self, exp_batch, gamma, errors_out=None):
+    def _compute_loss(self, exp_batch, errors_out=None):
         """Compute a loss of categorical DQN."""
-        y, t = self._compute_y_and_t(exp_batch, gamma)
+        y, t = self._compute_y_and_t(exp_batch)
         # Minimize the cross entropy
         # y is clipped to avoid log(0)
         eltwise_loss = -t * F.log(F.clip(y, 1e-10, 1.))
-        if self.batch_accumulator == 'sum':
-            loss = F.sum(eltwise_loss)
+
+        if errors_out is not None:
+            del errors_out[:]
+            delta = F.sum(eltwise_loss, axis=1)
+            delta = cuda.to_cpu(delta.array)
+            for e in delta:
+                errors_out.append(e)
+
+        if 'weights' in exp_batch:
+            return compute_weighted_value_loss(
+                y, t, exp_batch['weights'],
+                batch_accumulator=self.batch_accumulator)
         else:
-            loss = F.mean(F.sum(eltwise_loss, axis=1))
-        return loss
+            return compute_value_loss(y, t,
+                                      batch_accumulator=self.batch_accumulator)

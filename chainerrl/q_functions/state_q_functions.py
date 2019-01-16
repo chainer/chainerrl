@@ -19,13 +19,12 @@ from chainerrl.action_value import QuadraticActionValue
 from chainerrl.functions.lower_triangular_matrix import lower_triangular_matrix
 from chainerrl.links.mlp import MLP
 from chainerrl.links.mlp_bn import MLPBN
-from chainerrl.misc.chainer_compat import matmul_v3
 from chainerrl.q_function import StateQFunction
 from chainerrl.recurrent import RecurrentChainMixin
 
 
 def scale_by_tanh(x, low, high):
-    xp = cuda.get_array_module(x.data)
+    xp = cuda.get_array_module(x.array)
     scale = (high - low) / 2
     scale = xp.expand_dims(xp.asarray(scale, dtype=np.float32), axis=0)
     mean = (high + low) / 2
@@ -210,7 +209,7 @@ class FCQuadraticStateQFunction(
         if hasattr(self, 'mat_non_diag'):
             mat_non_diag = self.mat_non_diag(h)
             tril = lower_triangular_matrix(mat_diag, mat_non_diag)
-            mat = matmul_v3(tril, tril, transb=True)
+            mat = F.matmul(tril, tril, transb=True)
         else:
             mat = F.expand_dims(mat_diag ** 2, axis=2)
         return QuadraticActionValue(
@@ -269,7 +268,7 @@ class FCBNQuadraticStateQFunction(chainer.Chain, StateQFunction):
         if hasattr(self, 'mat_non_diag'):
             mat_non_diag = self.mat_non_diag(h)
             tril = lower_triangular_matrix(mat_diag, mat_non_diag)
-            mat = matmul_v3(tril, tril, transb=True)
+            mat = F.matmul(tril, tril, transb=True)
         else:
             mat = F.expand_dims(mat_diag ** 2, axis=2)
         return QuadraticActionValue(

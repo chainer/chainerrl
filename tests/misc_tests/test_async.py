@@ -19,7 +19,7 @@ from chainer import optimizers
 import copy
 import numpy as np
 
-from chainerrl.misc import async
+from chainerrl.misc import async_
 
 
 class TestAsync(unittest.TestCase):
@@ -34,23 +34,23 @@ class TestAsync(unittest.TestCase):
 
         model_a = L.Linear(2, 2)
 
-        arrays = async.share_params_as_shared_arrays(model_a)
+        arrays = async_.share_params_as_shared_arrays(model_a)
 
         model_b = L.Linear(2, 2)
         model_c = L.Linear(2, 2)
 
-        async.set_shared_params(model_b, arrays)
-        async.set_shared_params(model_c, arrays)
+        async_.set_shared_params(model_b, arrays)
+        async_.set_shared_params(model_c, arrays)
 
         a_params = dict(model_a.namedparams())
         b_params = dict(model_b.namedparams())
         c_params = dict(model_c.namedparams())
 
         def assert_same_pointers_to_data(a, b):
-            self.assertEqual(a['/W'].data.ctypes.data,
-                             b['/W'].data.ctypes.data)
-            self.assertEqual(a['/b'].data.ctypes.data,
-                             b['/b'].data.ctypes.data)
+            self.assertEqual(a['/W'].array.ctypes.data,
+                             b['/W'].array.ctypes.data)
+            self.assertEqual(a['/b'].array.ctypes.data,
+                             b['/b'].array.ctypes.data)
 
         def assert_different_pointers_to_grad(a, b):
             self.assertNotEqual(a['/W'].grad.ctypes.data,
@@ -70,7 +70,7 @@ class TestAsync(unittest.TestCase):
         model = L.Linear(2, 2)
         opt_a = optimizers.RMSprop()
         opt_a.setup(model)
-        arrays = async.share_states_as_shared_arrays(opt_a)
+        arrays = async_.share_states_as_shared_arrays(opt_a)
         opt_b = optimizers.RMSprop()
         opt_b.setup(copy.deepcopy(model))
         # In Chainer v2, a model cannot be set up by two optimizers or more.
@@ -83,8 +83,8 @@ class TestAsync(unittest.TestCase):
         since they are trivial now.
         """
 
-        async.set_shared_states(opt_b, arrays)
-        async.set_shared_states(opt_c, arrays)
+        async_.set_shared_states(opt_b, arrays)
+        async_.set_shared_states(opt_c, arrays)
 
         def assert_same_pointers(a, b):
             a = a.target
@@ -114,9 +114,9 @@ class TestAsync(unittest.TestCase):
         model_a = chainer.ChainList(head.copy(), L.Linear(2, 3))
         model_b = chainer.ChainList(head.copy(), L.Linear(2, 4))
 
-        a_arrays = async.extract_params_as_shared_arrays(
+        a_arrays = async_.extract_params_as_shared_arrays(
             chainer.ChainList(model_a))
-        b_arrays = async.extract_params_as_shared_arrays(
+        b_arrays = async_.extract_params_as_shared_arrays(
             chainer.ChainList(model_b))
 
         print(('model_a shared_arrays', a_arrays))
@@ -126,30 +126,30 @@ class TestAsync(unittest.TestCase):
         model_a = chainer.ChainList(head.copy(), L.Linear(2, 3))
         model_b = chainer.ChainList(head.copy(), L.Linear(2, 4))
 
-        async.set_shared_params(model_a, a_arrays)
-        async.set_shared_params(model_b, b_arrays)
+        async_.set_shared_params(model_a, a_arrays)
+        async_.set_shared_params(model_b, b_arrays)
 
         print('model_a replaced')
         a_params = dict(model_a.namedparams())
         for param_name, param in list(a_params.items()):
-            print((param_name, param.data.ctypes.data))
+            print((param_name, param.array.ctypes.data))
 
         print('model_b replaced')
         b_params = dict(model_b.namedparams())
         for param_name, param in list(b_params.items()):
-            print((param_name, param.data.ctypes.data))
+            print((param_name, param.array.ctypes.data))
 
         # Pointers to head parameters must be the same
-        self.assertEqual(a_params['/0/W'].data.ctypes.data,
-                         b_params['/0/W'].data.ctypes.data)
-        self.assertEqual(a_params['/0/b'].data.ctypes.data,
-                         b_params['/0/b'].data.ctypes.data)
+        self.assertEqual(a_params['/0/W'].array.ctypes.data,
+                         b_params['/0/W'].array.ctypes.data)
+        self.assertEqual(a_params['/0/b'].array.ctypes.data,
+                         b_params['/0/b'].array.ctypes.data)
 
         # Pointers to tail parameters must be different
-        self.assertNotEqual(a_params['/1/W'].data.ctypes.data,
-                            b_params['/1/W'].data.ctypes.data)
-        self.assertNotEqual(a_params['/1/b'].data.ctypes.data,
-                            b_params['/1/b'].data.ctypes.data)
+        self.assertNotEqual(a_params['/1/W'].array.ctypes.data,
+                            b_params['/1/W'].array.ctypes.data)
+        self.assertNotEqual(a_params['/1/b'].array.ctypes.data,
+                            b_params['/1/b'].array.ctypes.data)
 
     def test_shared_link_copy(self):
         head = L.Linear(2, 2)
@@ -157,20 +157,20 @@ class TestAsync(unittest.TestCase):
         model_b = chainer.ChainList(head.copy(), L.Linear(2, 4))
         a_params = dict(model_a.namedparams())
         b_params = dict(model_b.namedparams())
-        self.assertEqual(a_params['/0/W'].data.ctypes.data,
-                         b_params['/0/W'].data.ctypes.data)
-        self.assertEqual(a_params['/0/b'].data.ctypes.data,
-                         b_params['/0/b'].data.ctypes.data)
+        self.assertEqual(a_params['/0/W'].array.ctypes.data,
+                         b_params['/0/W'].array.ctypes.data)
+        self.assertEqual(a_params['/0/b'].array.ctypes.data,
+                         b_params['/0/b'].array.ctypes.data)
         import copy
         model_a_copy = copy.deepcopy(model_a)
         model_b_copy = copy.deepcopy(model_b)
         a_copy_params = dict(model_a_copy.namedparams())
         b_copy_params = dict(model_b_copy.namedparams())
         # When A and B are separately deepcopied, head is no longer shared
-        self.assertNotEqual(a_copy_params['/0/W'].data.ctypes.data,
-                            b_copy_params['/0/W'].data.ctypes.data)
-        self.assertNotEqual(a_copy_params['/0/b'].data.ctypes.data,
-                            b_copy_params['/0/b'].data.ctypes.data)
+        self.assertNotEqual(a_copy_params['/0/W'].array.ctypes.data,
+                            b_copy_params['/0/W'].array.ctypes.data)
+        self.assertNotEqual(a_copy_params['/0/b'].array.ctypes.data,
+                            b_copy_params['/0/b'].array.ctypes.data)
 
         model_total_copy = copy.deepcopy(chainer.ChainList(model_a, model_b))
         model_a_copy = model_total_copy[0]
@@ -178,10 +178,10 @@ class TestAsync(unittest.TestCase):
         a_copy_params = dict(model_a_copy.namedparams())
         b_copy_params = dict(model_b_copy.namedparams())
         # When ChainList(A, B) is deepcopied, head is still shared!
-        self.assertEqual(a_copy_params['/0/W'].data.ctypes.data,
-                         b_copy_params['/0/W'].data.ctypes.data)
-        self.assertEqual(a_copy_params['/0/b'].data.ctypes.data,
-                         b_copy_params['/0/b'].data.ctypes.data)
+        self.assertEqual(a_copy_params['/0/W'].array.ctypes.data,
+                         b_copy_params['/0/W'].array.ctypes.data)
+        self.assertEqual(a_copy_params['/0/b'].array.ctypes.data,
+                         b_copy_params['/0/b'].array.ctypes.data)
 
     def test_run_async(self):
         counter = mp.Value('l', 0)
@@ -190,7 +190,7 @@ class TestAsync(unittest.TestCase):
             for _ in range(1000):
                 with counter.get_lock():
                     counter.value += 1
-        async.run_async(4, run_func)
+        async_.run_async(4, run_func)
         self.assertEqual(counter.value, 4000)
 
     def test_run_async_exit_code(self):
@@ -202,11 +202,11 @@ class TestAsync(unittest.TestCase):
             os.kill(os.getpid(), signal.SIGSEGV)
 
         with warnings.catch_warnings(record=True) as w:
-            async.run_async(4, run_with_exit_code_0)
+            async_.run_async(4, run_with_exit_code_0)
             # There should be no warnings
             assert len(w) == 0
 
         with warnings.catch_warnings(record=True) as w:
-            async.run_async(4, run_with_exit_code_11)
+            async_.run_async(4, run_with_exit_code_11)
             # There should be 4 warnings
             assert len(w) == 4

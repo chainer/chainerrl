@@ -198,10 +198,20 @@ def main():
 
 
             if args.swingup:
+                e.action_space = spaces.Discrete(3)
+
                 def step(action):
                     state = e.state
                     x, x_dot, theta, theta_dot = state
-                    force = e.force_mag if action==1 else -e.force_mag
+                    if action==0:
+                        force = e.force_mag
+                        reward = -0.1
+                    elif action==1:
+                        force = -e.force_mag
+                        reward = -0.1
+                    else:
+                        force = 0
+                        reward = 0
                     costheta = math.cos(theta)
                     sintheta = math.sin(theta)
                     temp = (force + e.polemass_length * theta_dot * theta_dot * sintheta) / e.total_mass
@@ -219,24 +229,10 @@ def main():
                         theta = theta + e.tau * theta_dot
                     e.state = (x,x_dot,theta,theta_dot)
 
-                    # compute costs - saturation cost
-                    #goal = np.array([0.0, e.length])
-                    #pole_x = e.length*np.sin(theta)
-                    #pole_y = e.length*np.cos(theta)
-                    #position = np.array([e.state[0] + pole_x, pole_y])
-                    #squared_distance = np.sum((position - goal)**2)
-                    #squared_sigma = 0.25**2
-                    #costs = 1 - np.exp(-0.5*squared_distance/squared_sigma)
-
+                    # until max steps
                     done = False
-                    reward = 0
 
-                    #if abs(x) > 3:
-                    #    done = True
-                    #    reward = -100
-                    reward = -0.01
-
-                    if costheta > 0.8:
+                    if costheta > 0.95 and abs(x) < 0.1 and abs(theta_dot) < 1 and abs(x_dot) < 1:
                         reward = 1
 
                     return np.array(e.state), reward, done, {}

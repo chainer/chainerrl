@@ -31,7 +31,7 @@ _basic_columns = ('steps', 'episodes', 'elapsed', 'mean',
 
 
 def run_evaluation_episodes(env, agent, n_runs, max_episode_len=None,
-                            explorer=None, logger=None):
+                            logger=None):
     """Run multiple evaluation episodes and return returns.
 
     Args:
@@ -40,8 +40,6 @@ def run_evaluation_episodes(env, agent, n_runs, max_episode_len=None,
         n_runs (int): Number of evaluation runs.
         max_episode_len (int or None): If specified, episodes longer than this
             value will be truncated.
-        explorer (Explorer): If specified, the given Explorer will be used for
-            selecting actions.
         logger (Logger or None): If specified, the given Logger object will be
             used for logging results. If not specified, the default logger of
             this module will be used.
@@ -91,7 +89,7 @@ def run_evaluation_episodes(env, agent, n_runs, max_episode_len=None,
     return scores, goals#, sigmas
 
 def eval_performance(env, agent, n_runs, max_episode_len=None,
-                     explorer=None, logger=None):
+                     logger=None):
     """Run multiple evaluation episodes and return statistics.
 
     Args:
@@ -100,8 +98,6 @@ def eval_performance(env, agent, n_runs, max_episode_len=None,
         n_runs (int): Number of evaluation runs.
         max_episode_len (int or None): If specified, episodes longer than this
             value will be truncated.
-        explorer (Explorer): If specified, the given Explorer will be used for
-            selecting actions.
         logger (Logger or None): If specified, the given Logger object will be
             used for logging results. If not specified, the default logger of
             this module will be used.
@@ -111,7 +107,6 @@ def eval_performance(env, agent, n_runs, max_episode_len=None,
     scores, goals = run_evaluation_episodes(
         env, agent, n_runs,
         max_episode_len=max_episode_len,
-        explorer=explorer,
         logger=logger)
     stats = dict(
         mean=statistics.mean(scores),
@@ -144,9 +139,6 @@ class Evaluator(object):
         eval_interval (int): Interval of evaluations in steps.
         outdir (str): Path to a directory to save things.
         max_episode_len (int): Maximum length of episodes used in evaluations.
-        explorer (Explorer or None): If set to a Explorer, it is used in
-            evaluations. If set to None, actions returned by the agent are
-            directly passed to the env.
         step_offset (int): Offset of steps used to schedule evaluations.
         save_best_so_far_agent (bool): If set to True, after each evaluation,
             if the score (= mean of returns in evaluation episodes) exceeds
@@ -160,7 +152,6 @@ class Evaluator(object):
                  eval_interval,
                  outdir,
                  max_episode_len=None,
-                 explorer=None,
                  step_offset=0,
                  save_best_so_far_agent=True,
                  logger=None,
@@ -173,7 +164,6 @@ class Evaluator(object):
         self.eval_interval = eval_interval
         self.outdir = outdir
         self.max_episode_len = max_episode_len
-        self.explorer = explorer
         self.step_offset = step_offset
         self.prev_eval_t = (self.step_offset -
                             self.step_offset % self.eval_interval)
@@ -189,7 +179,7 @@ class Evaluator(object):
     def evaluate_and_update_max_score(self, t, episodes):
         eval_stats, goal_rate = eval_performance(
             self.env, self.agent, self.n_runs,
-            max_episode_len=self.max_episode_len, explorer=self.explorer,
+            max_episode_len=self.max_episode_len,
             logger=self.logger)
         elapsed = time.time() - self.start_time
         custom_values = tuple(tup[1] for tup in self.agent.get_statistics())
@@ -228,9 +218,6 @@ class AsyncEvaluator(object):
         eval_interval (int): Interval of evaluations in steps.
         outdir (str): Path to a directory to save things.
         max_episode_len (int): Maximum length of episodes used in evaluations.
-        explorer (Explorer or None): If set to a Explorer, it is used in
-            evaluations. If set to None, actions returned by the agent are
-            directly passed to the env.
         step_offset (int): Offset of steps used to schedule evaluations.
         save_best_so_far_agent (bool): If set to True, after each evaluation,
             if the score (= mean return of evaluation episodes) exceeds
@@ -242,7 +229,6 @@ class AsyncEvaluator(object):
                  eval_interval,
                  outdir,
                  max_episode_len=None,
-                 explorer=None,
                  step_offset=0,
                  save_best_so_far_agent=True,
                  logger=None,
@@ -253,7 +239,6 @@ class AsyncEvaluator(object):
         self.eval_interval = eval_interval
         self.outdir = outdir
         self.max_episode_len = max_episode_len
-        self.explorer = explorer
         self.step_offset = step_offset
         self.save_best_so_far_agent = save_best_so_far_agent
         self.logger = logger or logging.getLogger(__name__)
@@ -277,7 +262,7 @@ class AsyncEvaluator(object):
     def evaluate_and_update_max_score(self, t, episodes, env, agent):
         eval_stats, goal_rate = eval_performance(
             env, agent, self.n_runs,
-            max_episode_len=self.max_episode_len, explorer=self.explorer,
+            max_episode_len=self.max_episode_len,
             logger=self.logger)
         elapsed = time.time() - self.start_time
         custom_values = tuple(tup[1] for tup in agent.get_statistics())

@@ -14,7 +14,7 @@ from chainer import functions as F
 import numpy as np
 
 from chainerrl import agent
-from chainerrl.misc import async
+from chainerrl.misc import async_
 from chainerrl.misc.batch_states import batch_states
 from chainerrl.misc import copy_param
 from chainerrl.recurrent import Recurrent
@@ -119,7 +119,7 @@ class A3C(agent.AttributeSavingMixin, agent.AsyncAgent):
 
         # Thread specific model
         self.model = copy.deepcopy(self.shared_model)
-        async.assert_params_not_shared(self.shared_model, self.model)
+        async_.assert_params_not_shared(self.shared_model, self.model)
 
         self.optimizer = optimizer
 
@@ -169,7 +169,7 @@ class A3C(agent.AttributeSavingMixin, agent.AsyncAgent):
         else:
             with state_kept(self.model):
                 _, vout = self.model.pi_and_v(statevar)
-            R = float(vout.data)
+            R = float(vout.array)
 
         pi_loss = 0
         v_loss = 0
@@ -182,13 +182,13 @@ class A3C(agent.AttributeSavingMixin, agent.AsyncAgent):
             advantage = R - v
             if self.use_average_reward:
                 self.average_reward += self.average_reward_tau * \
-                    float(advantage.data)
+                    float(advantage.array)
             # Accumulate gradients of policy
             log_prob = self.past_action_log_prob[i]
             entropy = self.past_action_entropy[i]
 
             # Log probability is increased proportionally to advantage
-            pi_loss -= log_prob * float(advantage.data)
+            pi_loss -= log_prob * float(advantage.array)
             # Entropy is maximized
             pi_loss -= self.beta * entropy
             # Accumulate gradients of value function
@@ -213,9 +213,9 @@ class A3C(agent.AttributeSavingMixin, agent.AsyncAgent):
             v_loss /= self.t - self.t_start
 
         if self.process_idx == 0:
-            logger.debug('pi_loss:%s v_loss:%s', pi_loss.data, v_loss.data)
+            logger.debug('pi_loss:%s v_loss:%s', pi_loss.array, v_loss.array)
 
-        total_loss = pi_loss + F.reshape(v_loss, pi_loss.data.shape)
+        total_loss = F.squeeze(pi_loss) + F.squeeze(v_loss)
 
         # Compute gradients using thread-specific model
         self.model.zerograds()
@@ -256,7 +256,7 @@ class A3C(agent.AttributeSavingMixin, agent.AsyncAgent):
 
         self.past_states[self.t] = statevar
         pout, vout = self.model.pi_and_v(statevar)
-        action = pout.sample().data  # Do not backprop through sampled actions
+        action = pout.sample().array  # Do not backprop through sampled actions
         self.past_action_log_prob[self.t] = pout.log_prob(action)
         self.past_action_entropy[self.t] = pout.entropy
         self.past_values[self.t] = vout
@@ -268,10 +268,10 @@ class A3C(agent.AttributeSavingMixin, agent.AsyncAgent):
         # Update stats
         self.average_value += (
             (1 - self.average_value_decay) *
-            (float(vout.data[0]) - self.average_value))
+            (float(vout.array[0]) - self.average_value))
         self.average_entropy += (
             (1 - self.average_entropy_decay) *
-            (float(pout.entropy.data[0]) - self.average_entropy))
+            (float(pout.entropy.array[0]) - self.average_entropy))
         return action
 
     def act(self, obs):
@@ -280,9 +280,9 @@ class A3C(agent.AttributeSavingMixin, agent.AsyncAgent):
             statevar = self.batch_states([obs], np, self.phi)
             pout, _ = self.model.pi_and_v(statevar)
             if self.act_deterministically:
-                return pout.most_probable.data[0]
+                return pout.most_probable.array[0]
             else:
-                return pout.sample().data[0]
+                return pout.sample().array[0]
 
     def stop_episode_and_train(self, state, reward, done=False):
         self.past_rewards[self.t - 1] = reward

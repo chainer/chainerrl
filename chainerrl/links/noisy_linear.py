@@ -43,8 +43,9 @@ class FactorizedNoisyLinear(chainer.Chain):
         self.off = False
         self.noise_coef = noise_coef
 
-        W_data = mu_link.W.data
+        W_data = mu_link.W.array
         in_size = None if W_data is None else W_data.shape[1]
+        device_id = mu_link._device_id
 
         self.device_id = mu_link._device_id
 

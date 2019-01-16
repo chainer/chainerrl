@@ -32,25 +32,25 @@ class TestMellowmax(unittest.TestCase):
     def check_forward(self, x_data):
         xp = cuda.get_array_module(x_data)
         y = mellowmax(x_data, axis=self.axis, omega=self.omega)
-        self.assertEqual(y.data.dtype, self.dtype)
+        self.assertEqual(y.array.dtype, self.dtype)
 
         x_min = xp.min(x_data, axis=self.axis)
         x_max = xp.max(x_data, axis=self.axis)
         x_mean = xp.mean(x_data, axis=self.axis)
         print('x_min', x_min)
-        print('y.data', y.data)
+        print('y.array', y.array)
 
         # min <= mellowmax <= max
         eps = 1e-5
-        self.assertTrue(xp.all(x_min <= y.data + eps))
-        self.assertTrue(xp.all(x_max >= y.data - eps))
+        self.assertTrue(xp.all(x_min <= y.array + eps))
+        self.assertTrue(xp.all(x_max >= y.array - eps))
 
         # omega > 0 -> mellowmax is more like max
         if self.omega > 0:
-            self.assertTrue(xp.all(x_mean <= y.data + eps))
+            self.assertTrue(xp.all(x_mean <= y.array + eps))
         # omega < 0 -> mellowmax is more like min
         if self.omega < 0:
-            self.assertTrue(xp.all(x_mean >= y.data - eps))
+            self.assertTrue(xp.all(x_mean >= y.array - eps))
 
     @condition.retry(3)
     def test_forward_cpu(self):
@@ -78,20 +78,20 @@ class TestMaximumEntropyMellowmax(unittest.TestCase):
     def check_forward(self, x_data):
         xp = cuda.get_array_module(x_data)
         y = maximum_entropy_mellowmax(x_data)
-        self.assertEqual(y.data.dtype, self.dtype)
+        self.assertEqual(y.array.dtype, self.dtype)
 
-        print('y', y.data)
+        print('y', y.array)
 
         # Outputs must be positive
-        xp.testing.assert_array_less(xp.zeros_like(y.data), y.data)
+        xp.testing.assert_array_less(xp.zeros_like(y.array), y.array)
 
         # Sums must be ones
-        sums = xp.sum(y.data, axis=1)
+        sums = xp.sum(y.array, axis=1)
         testing.assert_allclose(sums, xp.ones_like(sums))
 
         # Expectations must be equal to memllowmax's outputs
         testing.assert_allclose(
-            xp.sum(y.data * x_data, axis=1), mellowmax(x_data, axis=1).data)
+            xp.sum(y.array * x_data, axis=1), mellowmax(x_data, axis=1).array)
 
     @condition.retry(3)
     def test_forward_cpu(self):

@@ -17,7 +17,7 @@ class VarianceScalingConstant(initializer.Initializer):
             Constant(self.scale / numpy.sqrt(array.shape[0]))(array)
         else:
             fan_in, fan_out = initializer.get_fans(array.shape)
-            
+
             if self.fan == 'out':
                 Constant(self.scale / numpy.sqrt(fan_out))(array)
             else:
