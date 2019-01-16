@@ -22,7 +22,7 @@ python train_dqn.py [options]
 To view the full list of options, either view the code or run the example with the `--help` option.
 
 ## Results
-These results reflect ChainerRL  `v0.4.0`.
+These results reflect ChainerRL  `v0.5.0`.
 
 | Game        | Score           | Reported Scores |           
 | ------------- |:-------------:|:-------------:|
@@ -60,15 +60,15 @@ These results reflect ChainerRL  `v0.4.0`.
 | Kangaroo | N/A| **6740**|
 | Krull | N/A| **3805**|
 | Kung-Fu Master | N/A| **23270**|
-| Montezuma's Revenge | N/A| 0|
+| Montezuma's Revenge | N/A| **0**|
 | Ms. Pac-Man | N/A| **2311**|
 | Name This Game | N/A| **7257**|
 | Phoenix | N/A| N/A|
 | Pitfall II | N/A| N/A|
-| Pitfall! | N/A| **1788**|
+| Pitfall! | N/A| N/A|
 | Pong | N/A| **18.9**|
 | Pooyan | N/A| N/A|
-| Private Eye | N/A| N/A|
+| Private Eye | N/A| **1788**|
 | Qbert | N/A| **10596**|
 | River Raid | N/A| **8316**|
 | Road Runner | N/A| **18257**|
