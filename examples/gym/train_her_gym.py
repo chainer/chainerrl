@@ -23,7 +23,6 @@ from chainerrl import misc
 from chainerrl import policy
 from chainerrl import q_functions
 from chainerrl import replay_buffer
-from pdb import set_trace
 
 
 def main():
@@ -139,7 +138,7 @@ def main():
     opt_a.add_hook(chainer.optimizer.GradientClipping(1.0), 'hook_a')
     opt_c.add_hook(chainer.optimizer.GradientClipping(1.0), 'hook_c')
 
-    rbuf = replay_buffer.ReplayBuffer(5 * 10 ** 5)
+    rbuf = replay_buffer.HindsightReplayBuffer(5 * 10 ** 5)
 
     def random_action():
         a = action_space.sample()
