@@ -100,8 +100,6 @@ def main():
     timestep_limit = env.spec.tags.get(
         'wrapper_config.TimeLimit.max_episode_steps')
     space_dict = env.observation_space.spaces
-
-    set_trace()
     observation_space = space_dict['observation']
     goal_space = space_dict['desired_goal']
     obs_size = np.asarray(observation_space.shape).prod()
@@ -150,7 +148,7 @@ def main():
         return a
 
     def phi(dict_state):
-        return chainer.functions.concat(
+        return np.concatenate(
             (dict_state['observation'].astype(np.float32, copy=False),
             dict_state['desired_goal'].astype(np.float32, copy=False)), 0)
 
