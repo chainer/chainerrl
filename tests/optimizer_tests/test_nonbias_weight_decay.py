@@ -24,20 +24,32 @@ import chainerrl
 ))
 class TestNonbiasWeightDecay(unittest.TestCase):
 
-    def test(self):
+    def _test(self, gpu):
 
         model = chainer.Chain(
             a=L.Linear(1, 2, initialW=3, initial_bias=3),
             b=chainer.Chain(c=L.Linear(2, 3, initialW=4, initial_bias=4)),
         )
+        if gpu >= 0:
+            model.to_gpu(gpu)
+            xp = model.xp
+        else:
+            xp = np
         optimizer = chainer.optimizers.SGD(self.lr)
         optimizer.setup(model)
         optimizer.add_hook(
             chainerrl.optimizers.NonbiasWeightDecay(
                 rate=self.weight_decay_rate))
-        optimizer.update(lambda: chainer.Variable(np.asarray(0.0)))
+        optimizer.update(lambda: chainer.Variable(xp.asarray(0.0)))
         decay_factor = 1 - self.lr * self.weight_decay_rate
-        np.testing.assert_allclose(model.a.W.array, 3 * decay_factor)
-        np.testing.assert_allclose(model.a.b.array, 3)
-        np.testing.assert_allclose(model.b.c.W.array, 4 * decay_factor)
-        np.testing.assert_allclose(model.b.c.b.array, 4)
+        xp.testing.assert_allclose(model.a.W.array, 3 * decay_factor)
+        xp.testing.assert_allclose(model.a.b.array, 3)
+        xp.testing.assert_allclose(model.b.c.W.array, 4 * decay_factor)
+        xp.testing.assert_allclose(model.b.c.b.array, 4)
+
+    def test_cpu(self):
+        self._test(gpu=-1)
+
+    @testing.attr.gpu
+    def test_gpu(self):
+        self._test(gpu=0)
