@@ -135,10 +135,19 @@ def _unwrap_variable(x):
 def compute_eltwise_huber_quantile_loss(y, t, taus, huber_loss_threshold=1.0):
     """Compute elementwise Huber losses for quantile regression.
 
+    This is based on Algorithm 1 of https://arxiv.org/abs/1806.06923.
+
+    This function assumes that, both of the two kinds of quantile thresholds,
+    taus (used to compute y) and taus_prime (used to compute t) are iid samples
+    from U([0,1]).
+
     Args:
-        y (chainer.Variable): (batch_size, N)
-        t (chainer.Variable or ndarray): (batch_size, N_prime)
-        taus (ndarray): (batch_size, N)
+        y (chainer.Variable): Quantile prediction from taus as a
+            (batch_size, N)-shaped array.
+        t (chainer.Variable or ndarray): Target values for quantile regression
+            as a (batch_size, N_prime)-array.
+        taus (ndarray): Quantile thresholds used to compute y as a
+            (batch_size, N)-shaped array.
         huber_loss_threshold (float): Threshold of Huber loss. In the IQN
             paper, this is denoted by kappa.
 
