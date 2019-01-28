@@ -154,8 +154,7 @@ def compute_eltwise_huber_quantile_loss(y, t, taus, huber_loss_threshold=1.0):
     taus = F.expand_dims(taus, axis=2)
     # Broadcast to (batch_size, N, N_prime)
     y, t, taus = F.broadcast(y, t, taus)
-    with chainer.no_backprop_mode():
-        I_delta = ((_unwrap_variable(t) - _unwrap_variable(y)) > 0).astype('f')
+    I_delta = ((t.array - y.array) > 0).astype('f')
     eltwise_huber_loss = F.huber_loss(
         y, t, delta=huber_loss_threshold, reduce='no')
     eltwise_loss = abs(taus - I_delta) * eltwise_huber_loss
