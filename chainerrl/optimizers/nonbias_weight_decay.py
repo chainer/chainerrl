@@ -30,7 +30,7 @@ class NonbiasWeightDecay(object):
     def __call__(self, rule, param):
         if param.name == 'b':
             return
-        p, g = param.data, param.grad
+        p, g = param.array, param.grad
         if p is None or g is None:
             return
         with cuda.get_device_from_array(p) as dev:
