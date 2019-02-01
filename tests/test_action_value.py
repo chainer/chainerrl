@@ -157,6 +157,48 @@ class TestDistributionalDiscreteActionValue(unittest.TestCase):
                       self.qout.q_values_formatter)
 
 
+class TestQuantileDiscreteActionValue(unittest.TestCase):
+
+    def setUp(self):
+        self.batch_size = 30
+        self.action_size = 3
+        self.n_taus = 5
+        self.quantiles = np.random.normal(
+            size=(self.batch_size, self.n_taus, self.action_size),
+        ).astype(np.float32)
+        self.av = action_value.QuantileDiscreteActionValue(
+            chainer.Variable(self.quantiles))
+        self.q_values = self.quantiles.mean(axis=1)
+
+    def test_q_values(self):
+        self.assertIsInstance(self.av.q_values, chainer.Variable)
+        np.testing.assert_almost_equal(
+            self.av.q_values.array, self.q_values)
+
+    def test_evaluate_actions_as_quantiles(self):
+        sample_actions = np.random.randint(self.action_size,
+                                           size=self.batch_size)
+        z = self.av.evaluate_actions_as_quantiles(sample_actions)
+        self.assertIsInstance(z, chainer.Variable)
+        for b in range(self.batch_size):
+            np.testing.assert_almost_equal(
+                z.array[b],
+                self.quantiles[b, :, sample_actions[b]])
+
+    def test_params(self):
+        self.assertEqual(len(self.av.params), 1)
+        self.assertIs(self.av.params[0], self.av.quantiles)
+
+    def test_getitem(self):
+        sliced = self.av[:10]
+        np.testing.assert_almost_equal(
+            sliced.q_values.array, self.q_values[:10])
+        np.testing.assert_equal(sliced.quantiles.array, self.quantiles[:10])
+        self.assertEqual(sliced.n_actions, self.action_size)
+        self.assertIs(sliced.q_values_formatter,
+                      self.av.q_values_formatter)
+
+
 class TestQuadraticActionValue(unittest.TestCase):
     def test_max_unbounded(self):
         n_batch = 7
