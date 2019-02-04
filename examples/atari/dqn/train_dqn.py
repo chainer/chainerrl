@@ -24,6 +24,7 @@ from chainerrl import misc
 from chainerrl import replay_buffer
 
 from chainerrl.wrappers import atari_wrappers
+import json
 
 
 def main():
@@ -165,9 +166,10 @@ def main():
             max_episode_len=4500,
             logger=None)
         with open(os.path.join(args.outdir, 'bestscores.txt'), 'a+') as f:
-            print("The results of the best scoring network:\n", file=f)
-            for stat in stats:
-                print(str(stat) + ":" + str(stats[stat]), file=f)
+            json.dump(stats, f)
+        print("The results of the best scoring network:\n", file=f)
+        for stat in stats:
+            print(str(stat) + ":" + str(stats[stat]), file=f)
 
 
 if __name__ == '__main__':
