@@ -26,6 +26,7 @@ from chainerrl import replay_buffer
 from chainerrl.wrappers import atari_wrappers
 import json
 
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--env', type=str, default='BreakoutNoFrameskip-v4',
@@ -164,8 +165,9 @@ def main():
             n_episodes=args.n_best_episodes,
             max_episode_len=4500,
             logger=None)
-        with open(os.path.join(args.outdir, 'bestscores.txt'),'a+') as f:
-            print(json.dumps(stats),file=f)
+        with open(os.path.join(args.outdir, 'bestscores.txt'),'w') as f:
+            json_stats = json.dumps(stats)
+            print(unicode(json_stats),file=f)
         print("The results of the best scoring network:")
         for stat in stats:
             print(str(stat) + ":" + str(stats[stat]))
