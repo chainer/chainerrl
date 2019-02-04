@@ -38,9 +38,8 @@ class ContinuingTimeLimit(gym.Wrapper):
         observation, reward, done, info = self.env.step(action)
         self._elapsed_steps += 1
 
-        if self._max_episode_steps:
-            if self._max_episode_steps <= self._elapsed_steps:
-                info['needs_reset'] = True
+        if self._max_episode_steps <= self._elapsed_steps:
+            info['needs_reset'] = True
 
         return observation, reward, done, info
 

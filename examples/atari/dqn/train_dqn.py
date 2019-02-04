@@ -156,10 +156,6 @@ def main():
         dir_of_best_network = os.path.join(args.outdir, "best")
         agent.load(dir_of_best_network)
 
-        # Change seed for final evaluation
-        final_seed = max(train_seed, test_seed) - \
-            min(train_seed, test_seed) - 1
-        eval_env.seed(int(final_seed))
         # run 30 evaluation episodes, each capped at 5 mins of play
         stats = experiments.evaluator.eval_performance(
             env=eval_env,
@@ -168,7 +164,6 @@ def main():
             n_episodes=args.n_best_episodes,
             max_episode_len=4500,
             logger=None)
-        stats["episodes"] = args.n_best_episodes
         with open(os.path.join(args.outdir, 'bestscores.txt'), 'a+') as f:
             print("The results of the best scoring network:\n", file=f)
             for stat in stats:
