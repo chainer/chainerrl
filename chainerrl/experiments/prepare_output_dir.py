@@ -78,7 +78,9 @@ def prepare_output_dir(args, user_specified_dir=None, argv=None,
 
     # Save the command
     with open(os.path.join(outdir, 'command.txt'), 'w') as f:
-        f.write(' '.join(sys.argv))
+        if argv is None:
+            argv = sys.argv
+        f.write(' '.join(argv))
 
     if is_under_git_control():
         # Save `git rev-parse HEAD` (SHA of the current commit)
