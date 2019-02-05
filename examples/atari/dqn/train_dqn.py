@@ -166,7 +166,7 @@ def main():
             max_episode_len=4500,
             logger=None)
         with open(os.path.join(args.outdir, 'bestscores.json'), 'w') as f:
-            json.dumps(stats, f)
+            json.dump(stats, f)
         print("The results of the best scoring network:")
         for stat in stats:
             print(str(stat) + ":" + str(stats[stat]))
