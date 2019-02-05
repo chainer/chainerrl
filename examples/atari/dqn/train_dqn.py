@@ -166,6 +166,7 @@ def main():
             max_episode_len=4500,
             logger=None)
         with open(os.path.join(args.outdir, 'bestscores.json'), 'w') as f:
+            # temporary hack to handle python 2/3 support issues.
             json_stats = json.dumps(stats)
             print(str(json_stats), file=f)
         print("The results of the best scoring network:")
