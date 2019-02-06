@@ -33,7 +33,7 @@ def main():
     parser.add_argument('--outdir', type=str, default='results',
                         help='Directory path to save output files.'
                              ' If it does not exist, it will be created.')
-    parser.add_argument('--env', type=str, default='FetchSlide-v1')
+    parser.add_argument('--env', type=str, default='FetchPickAndPlace-v1')
     parser.add_argument('--seed', type=int, default=0,
                         help='Random seed [0, 2 ** 32)')
     parser.add_argument('--gpu', type=int, default=0)
@@ -138,7 +138,7 @@ def main():
     opt_a.add_hook(chainer.optimizer.GradientClipping(1.0), 'hook_a')
     opt_c.add_hook(chainer.optimizer.GradientClipping(1.0), 'hook_c')
 
-    rbuf = replay_buffer.HindsightReplayBuffer(5 * 10 ** 5)
+    rbuf = replay_buffer.HindsightReplayBuffer(10 ** 6)
 
     def random_action():
         a = action_space.sample()

@@ -195,6 +195,21 @@ class HindsightReplayBuffer(ReplayBuffer):
     def __init__(self, capacity=None):
         super(HindsightReplayBuffer, self).__init__(capacity)
 
+    def append(self, state, action, reward, next_state=None, next_action=None,
+               is_state_terminal=False):
+        experience = dict(state=state, action=action, reward=reward,
+                          next_state=next_state, next_action=next_action,
+                          is_state_terminal=is_state_terminal)
+        self.last_n_transitions.append(experience)
+        if is_state_terminal:
+            while self.last_n_transitions:
+                self.memory.append(list(self.last_n_transitions))
+                del self.last_n_transitions[0]
+            assert len(self.last_n_transitions) == 0
+        else:
+            if len(self.last_n_transitions) == self.num_steps:
+                self.memory.append(list(self.last_n_transitions))
+
 
 class PriorityWeightError(object):
     """For proportional prioritization
