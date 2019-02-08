@@ -207,18 +207,21 @@ class DQN(agent.AttributeSavingMixin, agent.BatchAgent):
     def update(self, experiences, errors_out=None):
         """Update the model from experiences
 
-        This function is thread-safe.
         Args:
-          experiences (list): list of lists of dicts.
-          The dict contains
-            state: cupy.ndarray or numpy.ndarray
-            action: int [0, n_action_types)
-            reward: float32
-            is_state_terminal: bool
-            next_state: cupy.ndarray or numpy.ndarray
-            weight (optional): float32
+            experiences (list): List of lists of dicts.
+                For DQN, each dict must contains:
+                  - state (object): State
+                  - action (object): Action
+                  - reward (float): Reward
+                  - is_state_terminal (bool): True iff the state is terminal
+                  - next_state (object): Next state
+                  - weight (float, optional): Weight coefficient. It can be
+                    used for importance sampling.
+            errors_out (list or None): If set to a list, then TD-errors
+                computed from the are appended to the list.
+
         Returns:
-          None
+            None
         """
         has_weight = 'weight' in experiences[0][0]
         exp_batch = batch_experiences(
