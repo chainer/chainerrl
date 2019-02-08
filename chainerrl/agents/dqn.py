@@ -213,7 +213,7 @@ class DQN(agent.AttributeSavingMixin, agent.BatchAgent):
                   - state (object): State
                   - action (object): Action
                   - reward (float): Reward
-                  - is_state_terminal (bool): True iff the state is terminal
+                  - is_state_terminal (bool): True iff next state is terminal
                   - next_state (object): Next state
                   - weight (float, optional): Weight coefficient. It can be
                     used for importance sampling.
