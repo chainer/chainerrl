@@ -24,7 +24,6 @@ from chainerrl import policy
 from chainerrl import q_functions
 from chainerrl import replay_buffer
 
-
 def main():
     import logging
     logging.basicConfig(level=logging.DEBUG)
@@ -43,7 +42,7 @@ def main():
     parser.add_argument('--critic-lr', type=float, default=1e-3)
     parser.add_argument('--load', type=str, default='')
     parser.add_argument('--steps', type=int, default=10 ** 7)
-    parser.add_argument('--n-hidden-channels', type=int, default=300)
+    parser.add_argument('--n-hidden-channels', type=int, default=64)
     parser.add_argument('--n-hidden-layers', type=int, default=3)
     parser.add_argument('--replay-start-size', type=int, default=5000)
     parser.add_argument('--n-update-times', type=int, default=1)

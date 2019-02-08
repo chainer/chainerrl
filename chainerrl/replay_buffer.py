@@ -190,10 +190,16 @@ class HindsightReplayBuffer(ReplayBuffer):
 
     https://arxiv.org/abs/1707.01495
 
+    We currently do not support N-step transitions for the 
+
+    Hindsight Buffer.
+
     """
 
     def __init__(self, capacity=None):
         super(HindsightReplayBuffer, self).__init__(capacity)
+        assert self.num_steps == 1, "We do not support n != 1"
+        self.current_episode = []
 
     def append(self, state, action, reward, next_state=None, next_action=None,
                is_state_terminal=False):
@@ -206,10 +212,23 @@ class HindsightReplayBuffer(ReplayBuffer):
                 self.memory.append(list(self.last_n_transitions))
                 del self.last_n_transitions[0]
             assert len(self.last_n_transitions) == 0
+            self.stop_current_episode()
         else:
             if len(self.last_n_transitions) == self.num_steps:
-                self.memory.append(list(self.last_n_transitions))
+                self.current_episode.append(list(self.last_n_transitions))
 
+    def stop_current_episode(self):
+        # if n-step transition hist is not full, add transition;
+        # if n-step hist is indeed full, transition has already been added;
+        if 0 < len(self.last_n_transitions) < self.num_steps:
+            self.memory.append(list(self.last_n_transitions))
+        # avoid duplicate entry
+        if 0 < len(self.last_n_transitions) <= self.num_steps:
+            del self.last_n_transitions[0]
+        while self.last_n_transitions:
+            self.memory.append(list(self.last_n_transitions))
+            del self.last_n_transitions[0]
+        assert len(self.last_n_transitions) == 0
 
 class PriorityWeightError(object):
     """For proportional prioritization
