@@ -218,7 +218,7 @@ class DQN(agent.AttributeSavingMixin, agent.BatchAgent):
                   - weight (float, optional): Weight coefficient. It can be
                     used for importance sampling.
             errors_out (list or None): If set to a list, then TD-errors
-                computed from the are appended to the list.
+                computed from the given experiences are appended to the list.
 
         Returns:
             None
