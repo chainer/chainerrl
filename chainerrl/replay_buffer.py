@@ -18,7 +18,7 @@ import six.moves.cPickle as pickle
 from chainerrl.misc.batch_states import batch_states
 from chainerrl.misc.collections import RandomAccessQueue
 from chainerrl.misc.prioritized import PrioritizedBuffer
-
+from pdb import set_trace
 
 class AbstractReplayBuffer(with_metaclass(ABCMeta, object)):
     """Defines a common interface of replay buffer.
@@ -208,27 +208,16 @@ class HindsightReplayBuffer(ReplayBuffer):
                           is_state_terminal=is_state_terminal)
         self.last_n_transitions.append(experience)
         if is_state_terminal:
-            while self.last_n_transitions:
-                self.memory.append(list(self.last_n_transitions))
-                del self.last_n_transitions[0]
-            assert len(self.last_n_transitions) == 0
             self.stop_current_episode()
         else:
-            if len(self.last_n_transitions) == self.num_steps:
-                self.current_episode.append(list(self.last_n_transitions))
+            self.current_episode.append(list(self.last_n_transitions))
 
     def stop_current_episode(self):
-        # if n-step transition hist is not full, add transition;
-        # if n-step hist is indeed full, transition has already been added;
-        if 0 < len(self.last_n_transitions) < self.num_steps:
-            self.memory.append(list(self.last_n_transitions))
-        # avoid duplicate entry
-        if 0 < len(self.last_n_transitions) <= self.num_steps:
-            del self.last_n_transitions[0]
-        while self.last_n_transitions:
-            self.memory.append(list(self.last_n_transitions))
-            del self.last_n_transitions[0]
-        assert len(self.last_n_transitions) == 0
+        # Iterate through transitions for this episode
+        for i in range(len(self.current_episode)):
+            self.memory.append(self.current_episode[i])
+        self.current_episode = []
+        assert not self.current_episode
 
 class PriorityWeightError(object):
     """For proportional prioritization
