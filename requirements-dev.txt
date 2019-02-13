@@ -4,6 +4,7 @@ atari_py
 flake8
 mock
 opencv-python
+pybullet
 pytest
 sphinx
 sphinx_rtd_theme
