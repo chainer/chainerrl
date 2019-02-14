@@ -185,45 +185,6 @@ class ReplayBuffer(AbstractReplayBuffer):
                 self.memory, maxlen=self.memory.maxlen)
 
 
-class HindsightReplayBuffer(EpisodicReplayBuffer):
-    """Hindsight Replay Buffer
-
-    https://arxiv.org/abs/1707.01495
-
-    We currently do not support N-step transitions for the 
-
-    Hindsight Buffer.
-
-    """
-
-    def __init__(self, capacity=None, future_k=0,):
-        super(HindsightReplayBuffer, self).__init__(capacity)
-        assert self.num_steps == 1, "We do not support n != 1"
-        self.current_episode = []
-        # probability of sampling a future goal instead of a
-        # true goal
-        if future_k > 0:
-            self.future_prob = 1.0 - 1.0/(float(k) + 1)
-        self.size = 0
-
-    def append(self, state, action, reward, next_state=None, next_action=None,
-               is_state_terminal=False):
-        experience = dict(state=state, action=action, reward=reward,
-                          next_state=next_state, next_action=next_action,
-                          is_state_terminal=is_state_terminal)
-        self.last_n_transitions.append(experience)
-        if is_state_terminal:
-            self.stop_current_episode()
-        else:
-            self.current_episode.append(list(self.last_n_transitions))
-
-    def stop_current_episode(self):
-        # Iterate through transitions for this episode
-        for i in range(len(self.current_episode)):
-            self.memory.append(self.current_episode[i])
-        self.current_episode = []
-        assert not self.current_episode
-
 class PriorityWeightError(object):
     """For proportional prioritization
 
@@ -464,6 +425,25 @@ class PrioritizedEpisodicReplayBuffer (
                 discarded_episode = self.episodic_memory.popleft()
                 self.capacity_left += len(discarded_episode)
         assert not self.current_episode
+
+
+class HindsightReplayBuffer(EpisodicReplayBuffer):
+    """Hindsight Replay Buffer
+
+    https://arxiv.org/abs/1707.01495
+
+    We currently do not support N-step transitions for the 
+
+    Hindsight Buffer.
+
+    """
+
+    def __init__(self, capacity=None, future_k=0,):
+        super(HindsightReplayBuffer, self).__init__(capacity)
+        # probability of sampling a future goal instead of a
+        # true goal
+        if future_k > 0:
+            self.future_prob = 1.0 - 1.0/(float(k) + 1)
 
 
 def batch_experiences(experiences, xp, phi, gamma, batch_states=batch_states):
