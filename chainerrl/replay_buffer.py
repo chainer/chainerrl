@@ -185,7 +185,7 @@ class ReplayBuffer(AbstractReplayBuffer):
                 self.memory, maxlen=self.memory.maxlen)
 
 
-class HindsightReplayBuffer(ReplayBuffer):
+class HindsightReplayBuffer(EpisodicReplayBuffer):
     """Hindsight Replay Buffer
 
     https://arxiv.org/abs/1707.01495
@@ -196,10 +196,15 @@ class HindsightReplayBuffer(ReplayBuffer):
 
     """
 
-    def __init__(self, capacity=None):
+    def __init__(self, capacity=None, future_k=0,):
         super(HindsightReplayBuffer, self).__init__(capacity)
         assert self.num_steps == 1, "We do not support n != 1"
         self.current_episode = []
+        # probability of sampling a future goal instead of a
+        # true goal
+        if future_k > 0:
+            self.future_prob = 1.0 - 1.0/(float(k) + 1)
+        self.size = 0
 
     def append(self, state, action, reward, next_state=None, next_action=None,
                is_state_terminal=False):
