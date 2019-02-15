@@ -54,7 +54,7 @@ def main():
     parser.add_argument('--update-interval', type=int, default=16 * 50 / 40)
     parser.add_argument('--eval-n-runs', type=int, default=100)
     parser.add_argument('--eval-interval', type=int, default=10 ** 5)
-    parser.add_argument('--gamma', type=float, default=0.995)
+    parser.add_argument('--gamma', type=float, default=0.98)
     parser.add_argument('--minibatch-size', type=int, default=128)
     parser.add_argument('--render', action='store_true')
     parser.add_argument('--demo', action='store_true')
