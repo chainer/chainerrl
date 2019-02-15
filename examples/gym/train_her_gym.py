@@ -51,7 +51,7 @@ def main():
     parser.add_argument('--target-update-method',
                         type=str, default='soft', choices=['hard', 'soft'])
     parser.add_argument('--soft-update-tau', type=float, default=1e-2)
-    parser.add_argument('--update-interval', type=int, default=4)
+    parser.add_argument('--update-interval', type=int, default=16 * 50 / 40)
     parser.add_argument('--eval-n-runs', type=int, default=100)
     parser.add_argument('--eval-interval', type=int, default=10 ** 5)
     parser.add_argument('--gamma', type=float, default=0.995)
