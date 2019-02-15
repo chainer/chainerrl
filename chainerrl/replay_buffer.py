@@ -18,6 +18,7 @@ import six.moves.cPickle as pickle
 from chainerrl.misc.batch_states import batch_states
 from chainerrl.misc.collections import RandomAccessQueue
 from chainerrl.misc.prioritized import PrioritizedBuffer
+import copy
 from pdb import set_trace
 
 class AbstractReplayBuffer(with_metaclass(ABCMeta, object)):
@@ -438,13 +439,54 @@ class HindsightReplayBuffer(EpisodicReplayBuffer):
 
     """
 
-    def __init__(self, capacity=None, future_k=0,):
+    def __init__(self, reward_function,
+            capacity=None,
+            future_k=0):
         super(HindsightReplayBuffer, self).__init__(capacity)
+        self.reward_function = reward_function
         # probability of sampling a future goal instead of a
         # true goal
-        if future_k > 0:
-            self.future_prob = 1.0 - 1.0/(float(k) + 1)
+        self.future_prob = 1.0 - 1.0/(float(future_k) + 1)
 
+    def sample(self, n):
+        assert len(self.memory) >= n
+        # select n episodes
+        episodes = self.sample_episodes(n)
+        # select timesteps from each episode
+        episode_lens = np.array([len(episode) for episode in episodes])
+        timesteps = np.array(
+            [np.random.randint(episode_lens[i]) for i in range(n)])
+        her_indexes = set(
+            np.where(np.random.uniform(size=n) < self.future_prob)[0])
+        future_offset = np.random.uniform(size=n) * (episode_lens - timesteps)
+        future_offset = future_offset.astype(int)
+        future_times = timesteps + future_offset
+        batch = []
+        for index in range(n):
+            transition = episodes[index][timesteps[index]]
+            if index in her_indexes:
+                transition = copy.deepcopy(transition)
+                try:
+                    future_state = episodes[index][future_times[index]]['state']
+                except:
+                    set_trace()
+                new_goal = future_state['achieved_goal']
+                transition['state']['desired_goal'] = new_goal
+                transition['next_state']['desired_goal'] = new_goal
+                transition['reward'] = self.reward_function(
+                                                    transition['state'],
+                                                    transition['action'],
+                                                    new_goal)
+            batch.append([transition])
+        return batch
+
+    def sample_episodes(self, n_episodes, max_len=None):
+        assert len(self.episodic_memory) >= n_episodes
+        episodes = self.episodic_memory.sample(n_episodes)
+        if max_len is not None:
+            return [random_subseq(ep, max_len) for ep in episodes]
+        else:
+            return episodes
 
 def batch_experiences(experiences, xp, phi, gamma, batch_states=batch_states):
     """Takes a batch of k experiences each of which contains j

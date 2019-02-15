@@ -41,7 +41,7 @@ def main():
     parser.add_argument('--actor-lr', type=float, default=1e-4)
     parser.add_argument('--critic-lr', type=float, default=1e-3)
     parser.add_argument('--load', type=str, default='')
-    parser.add_argument('--steps', type=int, default=10 ** 7)
+    parser.add_argument('--steps', type=int, default=200 * 50 * 16 * 50)
     parser.add_argument('--n-hidden-channels', type=int, default=64)
     parser.add_argument('--n-hidden-layers', type=int, default=3)
     parser.add_argument('--replay-start-size', type=int, default=5000)
@@ -55,7 +55,7 @@ def main():
     parser.add_argument('--eval-n-runs', type=int, default=100)
     parser.add_argument('--eval-interval', type=int, default=10 ** 5)
     parser.add_argument('--gamma', type=float, default=0.995)
-    parser.add_argument('--minibatch-size', type=int, default=200)
+    parser.add_argument('--minibatch-size', type=int, default=128)
     parser.add_argument('--render', action='store_true')
     parser.add_argument('--demo', action='store_true')
     parser.add_argument('--use-bn', action='store_true', default=False)
@@ -93,8 +93,12 @@ def main():
             env = chainerrl.wrappers.Render(env)
         return env
 
-
     env = make_env(test=False)
+
+    def reward_function(state, action, goal):
+        return env.compute_reward(achieved_goal=state['achieved_goal'],
+                                  desired_goal=goal,
+                                  info=None)
     timestep_limit = env.spec.tags.get(
         'wrapper_config.TimeLimit.max_episode_steps')
     space_dict = env.observation_space.spaces
@@ -137,7 +141,9 @@ def main():
     opt_a.add_hook(chainer.optimizer.GradientClipping(1.0), 'hook_a')
     opt_c.add_hook(chainer.optimizer.GradientClipping(1.0), 'hook_c')
 
-    rbuf = replay_buffer.HindsightReplayBuffer(10 ** 6)
+    rbuf = replay_buffer.HindsightReplayBuffer(reward_function,
+        10 ** 6,
+        future_k=4)
 
     def random_action():
         a = action_space.sample()
