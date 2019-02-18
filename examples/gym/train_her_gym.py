@@ -18,11 +18,35 @@ import chainerrl
 from chainerrl.agents.ddpg import DDPG
 from chainerrl.agents.ddpg import DDPGModel
 from chainerrl import experiments
+from chainerrl import explorer
 from chainerrl import explorers
 from chainerrl import misc
 from chainerrl import policy
 from chainerrl import q_functions
 from chainerrl import replay_buffer
+
+class HERExplorer(explorer.Explorer):
+    """Gaussian noise added to actions + Epsilon Greedy.
+
+    Each action must be numpy.ndarray.
+
+    Args:
+        scale (float or array_like of floats): Scale parameter.
+    """
+
+    def __init__(self, noise_std, epsilon, scale):
+        self.noise_std = noise_std
+        self.epsilon = epsilon
+        self.scale = scale
+
+    def select_action(self, t, greedy_action_func, action_value=None):
+        a = greedy_action_func()
+        noise = np.random.normal(
+            scale=self.scale, size=a.shape).astype(np.float32)
+        return a + noise
+
+    def __repr__(self):
+        return 'AdditiveGaussian(scale={})'.format(self.scale)
 
 def main():
     import logging
@@ -61,6 +85,8 @@ def main():
     parser.add_argument('--use-bn', action='store_true', default=False)
     parser.add_argument('--monitor', action='store_true')
     parser.add_argument('--reward-scale-factor', type=float, default=1e-2)
+    parser.add_argument('--epsilon', type=float, default=0.2)
+    parser.add_argument('--noise-std', type=float, default=0.05)
     args = parser.parse_args()
 
     args.outdir = experiments.prepare_output_dir(
@@ -145,19 +171,13 @@ def main():
         10 ** 6,
         future_k=4)
 
-    def random_action():
-        a = action_space.sample()
-        if isinstance(a, np.ndarray):
-            a = a.astype(np.float32)
-        return a
-
     def phi(dict_state):
         return np.concatenate(
             (dict_state['observation'].astype(np.float32, copy=False),
             dict_state['desired_goal'].astype(np.float32, copy=False)), 0)
 
     ou_sigma = (action_space.high - action_space.low) * 0.2
-    explorer = explorers.AdditiveOU(sigma=ou_sigma)
+    explorer = HERExplorer(args.noise_std, args.epsilon, 5.0)
     agent = DDPG(model, opt_a, opt_c, rbuf,
                  gamma=args.gamma,
                  explorer=explorer,
