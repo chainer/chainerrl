@@ -25,28 +25,45 @@ from chainerrl import policy
 from chainerrl import q_functions
 from chainerrl import replay_buffer
 
+
 class HERExplorer(explorer.Explorer):
     """Gaussian noise added to actions + Epsilon Greedy.
 
     Each action must be numpy.ndarray.
 
     Args:
-        scale (float or array_like of floats): Scale parameter.
+        noise_std (float): percentage of max_action that is std for noise.
+        epsilon (float): Probability agent performs a rnd action.
+        scale (float): Maximum action value.
     """
 
-    def __init__(self, noise_std, epsilon, scale):
+    def __init__(self, noise_std, epsilon, max_action, action_space):
         self.noise_std = noise_std
         self.epsilon = epsilon
-        self.scale = scale
+        self.max_action = max_action
+        self.std = noise_std * max_action
+        self.action_space = action_space
 
     def select_action(self, t, greedy_action_func, action_value=None):
-        a = greedy_action_func()
-        noise = np.random.normal(
-            scale=self.scale, size=a.shape).astype(np.float32)
-        return a + noise
+        if np.random.binomial(1, self.epsilon):
+            a = self.random_action()
+        else:
+            a = greedy_action_func()
+            noise = np.random.normal(
+                scale=self.std, size=a.shape).astype(np.float32)
+            a += noise
+        a = np.clip(a, -self.max_action, self.max_action)          
+        return a
+
+    def random_action(self):
+        a = self.action_space.sample()
+        if isinstance(a, np.ndarray):
+            a = a.astype(np.float32)
+        return a
 
     def __repr__(self):
-        return 'AdditiveGaussian(scale={})'.format(self.scale)
+        return 'AdditiveGaussian(noise_std={}, epsilon={})'.format(
+            self.noise_std, self.epsilon)
 
 def main():
     import logging
@@ -176,8 +193,10 @@ def main():
             (dict_state['observation'].astype(np.float32, copy=False),
             dict_state['desired_goal'].astype(np.float32, copy=False)), 0)
 
-    ou_sigma = (action_space.high - action_space.low) * 0.2
-    explorer = HERExplorer(args.noise_std, args.epsilon, 5.0)
+    explorer = HERExplorer(args.noise_std,
+        args.epsilon,
+        np.max(action_space.high),
+        action_space)
     agent = DDPG(model, opt_a, opt_c, rbuf,
                  gamma=args.gamma,
                  explorer=explorer,
