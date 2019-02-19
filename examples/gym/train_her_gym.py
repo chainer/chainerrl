@@ -104,6 +104,7 @@ def main():
     parser.add_argument('--reward-scale-factor', type=float, default=1e-2)
     parser.add_argument('--epsilon', type=float, default=0.2)
     parser.add_argument('--noise-std', type=float, default=0.05)
+    parser.add_argument('--clip-threshold', type=float, default=5.0)
     args = parser.parse_args()
 
     args.outdir = experiments.prepare_output_dir(
@@ -195,7 +196,7 @@ def main():
 
     # Normalize observations based on their empirical mean and variance
     obs_normalizer = chainerrl.links.EmpiricalNormalization(
-        obs_size + goal_size, clip_threshold=5)
+        obs_size + goal_size, clip_threshold=args.clip_threshold)
 
     explorer = HERExplorer(args.noise_std,
         args.epsilon,
