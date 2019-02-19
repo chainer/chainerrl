@@ -86,13 +86,13 @@ def main():
     parser.add_argument('--n-hidden-channels', type=int, default=64)
     parser.add_argument('--n-hidden-layers', type=int, default=3)
     parser.add_argument('--replay-start-size', type=int, default=10000)
-    parser.add_argument('--n-update-times', type=int, default=1)
+    parser.add_argument('--n-update-times', type=int, default=40)
     parser.add_argument('--target-update-interval',
                         type=int, default=1)
     parser.add_argument('--target-update-method',
                         type=str, default='soft', choices=['hard', 'soft'])
     parser.add_argument('--soft-update-tau', type=float, default=1e-2)
-    parser.add_argument('--update-interval', type=int, default=16 * 50 / 40)
+    parser.add_argument('--update-interval', type=int, default=16 * 50)
     parser.add_argument('--eval-n-runs', type=int, default=100)
     parser.add_argument('--eval-interval', type=int, default=10 ** 5)
     parser.add_argument('--gamma', type=float, default=0.98)
@@ -151,7 +151,7 @@ def main():
     goal_size = np.asarray(goal_space.shape).prod()
     action_space = env.action_space
 
-    action_size = np.asarray(action_space.shape).prod()
+    action_size = np.asarray(action_space.shape).prod()    
     if args.use_bn:
         q_func = q_functions.FCBNLateActionSAQFunction(
             obs_size + goal_size, action_size,
@@ -193,11 +193,16 @@ def main():
             (dict_state['observation'].astype(np.float32, copy=False),
             dict_state['desired_goal'].astype(np.float32, copy=False)), 0)
 
+    # Normalize observations based on their empirical mean and variance
+    obs_normalizer = chainerrl.links.EmpiricalNormalization(
+        obs_size + goal_size, clip_threshold=5)
+
     explorer = HERExplorer(args.noise_std,
         args.epsilon,
         np.max(action_space.high),
         action_space)
     agent = DDPG(model, opt_a, opt_c, rbuf,
+                 obs_normalizer=obs_normalizer,
                  gamma=args.gamma,
                  explorer=explorer,
                  replay_start_size=args.replay_start_size,

@@ -83,7 +83,7 @@ class DDPG(AttributeSavingMixin, Agent):
                         'critic_optimizer')
 
     def __init__(self, model, actor_optimizer, critic_optimizer, replay_buffer,
-                 gamma, explorer,
+                 gamma, explorer, obs_normalizer=None,
                  gpu=None, replay_start_size=50000,
                  minibatch_size=32, update_interval=1,
                  target_update_interval=10000,
@@ -98,10 +98,13 @@ class DDPG(AttributeSavingMixin, Agent):
                  batch_states=batch_states):
 
         self.model = model
+        self.obs_normalizer = obs_normalizer
 
         if gpu is not None and gpu >= 0:
             cuda.get_device(gpu).use()
             self.model.to_gpu(device=gpu)
+            if self.obs_normalizer is not None:
+                self.obs_normalizer.to_gpu(device=gpu)
 
         self.xp = self.model.xp
         self.replay_buffer = replay_buffer
@@ -181,6 +184,11 @@ class DDPG(AttributeSavingMixin, Agent):
         batch_next_actions = batch['next_action']
         batchsize = len(batch_rewards)
 
+        if self.obs_normalizer:
+            batch_state = self.obs_normalizer(batch_state, update=False)
+            batch_next_state = self.obs_normalizer(batch_next_state,
+                update=False)
+
         with chainer.no_backprop_mode():
             # Target policy observes s_{t+1}
             next_actions = self.target_policy(
@@ -228,6 +236,8 @@ class DDPG(AttributeSavingMixin, Agent):
         batch_action = batch['action']
         batch_size = len(batch_action)
 
+        if self.obs_normalizer:
+            batch_state = self.obs_normalizer(batch_state, update=False)
         # Estimated policy observes s_t
         onpolicy_actions = self.policy(batch_state).sample()
 
@@ -256,6 +266,8 @@ class DDPG(AttributeSavingMixin, Agent):
         """Update the model from experiences"""
 
         batch = batch_experiences(experiences, self.xp, self.phi, self.gamma)
+        if self.obs_normalizer:
+            batch = self.obs_normalizer(batch, update=False)
         self.critic_optimizer.update(lambda: self.compute_critic_loss(batch))
         self.actor_optimizer.update(lambda: self.compute_actor_loss(batch))
 
@@ -274,6 +286,8 @@ class DDPG(AttributeSavingMixin, Agent):
                 transitions.append(ep[i])
             batch = batch_experiences(
                 transitions, xp=self.xp, phi=self.phi, gamma=self.gamma)
+            if self.obs_normalizer:
+                batch = self.obs_normalizer(batch, update=False)
             batches.append(batch)
 
         with self.model.state_reset(), self.target_model.state_reset():
@@ -320,6 +334,11 @@ class DDPG(AttributeSavingMixin, Agent):
                 next_state=obs,
                 next_action=action,
                 is_state_terminal=False)
+            # Add to Normalizer
+            if self.obs_normalizer:
+                self.obs_normalizer(self.batch_states([obs],
+                    self.xp,
+                    self.phi))
 
         self.last_state = obs
         self.last_action = action
@@ -329,9 +348,10 @@ class DDPG(AttributeSavingMixin, Agent):
         return self.last_action
 
     def act(self, obs):
-
         with chainer.using_config('train', False):
             s = self.batch_states([obs], self.xp, self.phi)
+            if self.obs_normalizer:
+                s = self.obs_normalizer(s, update=False)
             action = self.policy(s).sample()
             # Q is not needed here, but log it just for information
             q = self.q_function(s, action)
@@ -357,7 +377,11 @@ class DDPG(AttributeSavingMixin, Agent):
             next_state=state,
             next_action=self.last_action,
             is_state_terminal=done)
-
+        # Add to Normalizer
+        if self.obs_normalizer:
+            self.obs_normalizer(self.batch_states([state],
+                self.xp,
+                self.phi))
         self.stop_episode()
 
     def stop_episode(self):
