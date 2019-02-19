@@ -40,7 +40,7 @@ For more information, you can refer to [ChainerRL's documentation](http://chaine
 |:----------|:---------------:|:----------------:|:---------------:|:------------------:|
 | DQN (including DoubleDQN etc.) | ✓ | ✓ (NAF) | ✓ | x |
 | Categorical DQN | ✓ | x | ✓ | x |
-| IQN | ✓ | x | ✓ | x |
+| IQN | ✓ | x | x | x |
 | DDPG | x | ✓ | ✓ | x |
 | A3C  | ✓ | ✓ | ✓ | ✓ |
 | ACER | ✓ | ✓ | ✓ | ✓ |
