@@ -495,12 +495,12 @@ def batch_experiences(experiences, xp, phi, gamma, batch_states=batch_states):
 
     Args:
         experiences: list of experiences. Each experience is a list
-        containing between 1 and n dicts containing
-            state: cupy.ndarray or numpy.ndarray
-            action: int [0, n_action_types)
-            reward: float32
-            is_state_terminal: bool
-            next_state: cupy.ndarray or numpy.ndarray
+            containing between 1 and n dicts containing
+              - state (object): State
+              - action (object): Action
+              - reward (float): Reward
+              - is_state_terminal (bool): True iff next state is terminal
+              - next_state (object): Next state
         xp : Numpy compatible matrix library: e.g. Numpy or CuPy.
         phi : Preprocessing function
         gamma: discount factor

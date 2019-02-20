@@ -40,6 +40,7 @@ For more information, you can refer to [ChainerRL's documentation](http://chaine
 |:----------|:---------------:|:----------------:|:---------------:|:------------------:|
 | DQN (including DoubleDQN etc.) | ✓ | ✓ (NAF) | ✓ | x |
 | Categorical DQN | ✓ | x | ✓ | x |
+| IQN | ✓ | x | x | x |
 | DDPG | x | ✓ | ✓ | x |
 | A3C  | ✓ | ✓ | ✓ | ✓ |
 | ACER | ✓ | ✓ | ✓ | ✓ |
@@ -53,6 +54,7 @@ Following algorithms have been implemented in ChainerRL:
 - ACER (Actor-Critic with Experience Replay)
 - Asynchronous N-step Q-learning
 - Categorical DQN
+- IQN
 - DQN (including Double DQN, Persistent Advantage Learning (PAL), Double PAL, Dynamic Policy Programming (DPP))
 - DDPG (Deep Deterministic Policy Gradients) (including SVG(0))
 - PGT (Policy Gradient Theorem)
@@ -71,6 +73,7 @@ The following papers have been implemented in ChainerRL:
 - [Dueling Network Architectures for Deep Reinforcement Learning](https://arxiv.org/pdf/1511.06581.pdf)
 - [Asynchronous Methods for Deep Reinforcement Learning](https://arxiv.org/pdf/1602.01783.pdf)
 - [A Distributional Perspective on Reinforcement Learning](https://arxiv.org/pdf/1707.06887.pdf)
+- [Implicit Quantile Networks for Distributional Reinforcement Learning](https://arxiv.org/pdf/1806.06923.pdf)
 - [Increasing the Action Gap: New Operators for Reinforcement Learning](https://arxiv.org/pdf/1512.04860.pdf)
 - [Noisy Networks for Exploration](https://arxiv.org/pdf/1706.10295.pdf)
 - [Continuous control with deep reinforcement learning](https://arxiv.org/abs/1509.02971)

@@ -18,6 +18,8 @@ install:
   - pip install pytest-cov
   - pip install -r requirements.txt --only-binary=numpy,scipy
   - pip install jupyter
+  # gym 0.11.0 causes an error with Python 2
+  - pip install "gym!=0.11.0"
   # atari_py==0.1.4 causes an error
   - pip install atari_py==0.1.1
   - pip install autopep8
