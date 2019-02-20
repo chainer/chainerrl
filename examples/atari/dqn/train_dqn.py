@@ -24,6 +24,7 @@ from chainerrl import misc
 from chainerrl import replay_buffer
 
 from chainerrl.wrappers import atari_wrappers
+import json
 
 
 def main():
@@ -39,39 +40,6 @@ def main():
                         help='GPU to use, set to -1 if no GPU.')
     parser.add_argument('--demo', action='store_true', default=False)
     parser.add_argument('--load', type=str, default=None)
-    parser.add_argument('--final-exploration-frames',
-                        type=int, default=10 ** 6,
-                        help='Timesteps after which we stop ' +
-                        'annealing exploration rate')
-    parser.add_argument('--final-epsilon', type=float, default=0.1,
-                        help='Final value of epsilon during training.')
-    parser.add_argument('--eval-epsilon', type=float, default=0.05,
-                        help='Exploration epsilon used during eval episodes.')
-    parser.add_argument('--arch', type=str, default='doubledqn',
-                        choices=['nature', 'nips', 'dueling', 'doubledqn'],
-                        help='Network architecture to use.')
-    parser.add_argument('--steps', type=int, default=5 * 10 ** 7,
-                        help='Total number of timesteps to train the agent.')
-    parser.add_argument('--max-frames', type=int,
-                        default=30 * 60 * 60,  # 30 minutes with 60 fps
-                        help='Maximum number of frames for each episode.')
-    parser.add_argument('--replay-start-size', type=int, default=5 * 10 ** 4,
-                        help='Minimum replay buffer size before ' +
-                        'performing gradient updates.')
-    parser.add_argument('--target-update-interval',
-                        type=int, default=1 * 10 ** 4,
-                        help='Frequency (in timesteps) at which ' +
-                        'the target network is updated.')
-    parser.add_argument('--eval-interval', type=int, default=10 ** 5,
-                        help='Frequency (in timesteps) of evaluation phase.')
-    parser.add_argument('--update-interval', type=int, default=4,
-                        help='Frequency (in timesteps) of network updates.')
-    parser.add_argument('--eval-n-steps', type=int, default=125000)
-    parser.add_argument('--eval-n-episodes', type=int, default=-1)
-    parser.add_argument('--no-clip-delta',
-                        dest='clip_delta', action='store_false')
-    parser.set_defaults(clip_delta=True)
-
     parser.add_argument('--logging-level', type=int, default=20,
                         help='Logging level. 10:DEBUG, 20:INFO etc.')
     parser.add_argument('--render', action='store_true', default=False,
@@ -79,16 +47,15 @@ def main():
     parser.add_argument('--monitor', action='store_true', default=False,
                         help='Monitor env. Videos and additional information'
                              ' are saved as output files.')
-    parser.add_argument('--lr', type=float, default=2.5e-4,
-                        help='Learning rate.')
+    parser.add_argument('--steps', type=int, default=5 * 10 ** 7,
+                        help='Total number of timesteps to train the agent.')
+    parser.add_argument('--replay-start-size', type=int, default=5 * 10 ** 4,
+                        help='Minimum replay buffer size before ' +
+                        'performing gradient updates.')
+    parser.add_argument('--eval-n-steps', type=int, default=125000)
+    parser.add_argument('--eval-interval', type=int, default=250000)
+    parser.add_argument('--n-best-episodes', type=int, default=30)
     args = parser.parse_args()
-
-    eval_n_episodes = args.eval_n_episodes
-    eval_n_steps = args.eval_n_steps
-    if eval_n_episodes < 0:
-        eval_n_episodes = None
-    if eval_n_steps < 0:
-        eval_n_steps = None
 
     import logging
     logging.basicConfig(level=args.logging_level)
@@ -107,13 +74,13 @@ def main():
         # Use different random seeds for train and test envs
         env_seed = test_seed if test else train_seed
         env = atari_wrappers.wrap_deepmind(
-            atari_wrappers.make_atari(args.env, max_frames=args.max_frames),
+            atari_wrappers.make_atari(args.env, max_frames=None),
             episode_life=not test,
             clip_rewards=not test)
         env.seed(int(env_seed))
         if test:
             # Randomize actions like epsilon-greedy in evaluation as well
-            env = chainerrl.wrappers.RandomizeAction(env, args.eval_epsilon)
+            env = chainerrl.wrappers.RandomizeAction(env, 0.05)
         if args.monitor:
             env = gym.wrappers.Monitor(
                 env, args.outdir,
@@ -136,18 +103,18 @@ def main():
         [q_func(np.zeros((4, 84, 84), dtype=np.float32)[None])],
         os.path.join(args.outdir, 'model'))
 
-    # Use the same hyper parameters as the Nature paper's
+    # Use the same hyperparameters as the Nature paper
     opt = optimizers.RMSpropGraves(
-        lr=args.lr, alpha=0.95, momentum=0.0, eps=1e-2)
+        lr=2.5e-4, alpha=0.95, momentum=0.0, eps=1e-2)
 
     opt.setup(q_func)
 
     rbuf = replay_buffer.ReplayBuffer(10 ** 6)
 
     explorer = explorers.LinearDecayEpsilonGreedy(
-        1.0, args.final_epsilon,
-        args.final_exploration_frames,
-        lambda: np.random.randint(n_actions))
+        start_epsilon=1.0, end_epsilon=0.1,
+        decay_steps=10 ** 6,
+        random_action_func=lambda: np.random.randint(n_actions))
 
     def phi(x):
         # Feature extractor
@@ -156,9 +123,9 @@ def main():
     Agent = agents.DQN
     agent = Agent(q_func, opt, rbuf, gpu=args.gpu, gamma=0.99,
                   explorer=explorer, replay_start_size=args.replay_start_size,
-                  target_update_interval=args.target_update_interval,
-                  clip_delta=args.clip_delta,
-                  update_interval=args.update_interval,
+                  target_update_interval=10 ** 4,
+                  clip_delta=True,
+                  update_interval=4,
                   batch_accumulator='sum',
                   phi=phi)
 
@@ -169,21 +136,43 @@ def main():
         eval_stats = experiments.eval_performance(
             env=eval_env,
             agent=agent,
-            n_steps=None,
-            n_episodes=eval_n_episodes)
-        print('n_runs: {} mean: {} median: {} stdev {}'.format(
-            eval_n_episodes, eval_stats['mean'], eval_stats['median'],
+            n_steps=args.eval_n_steps,
+            n_episodes=None)
+        print('n_episodes: {} mean: {} median: {} stdev {}'.format(
+            eval_stats['episodes'],
+            eval_stats['mean'],
+            eval_stats['median'],
             eval_stats['stdev']))
     else:
         experiments.train_agent_with_evaluation(
             agent=agent, env=env, steps=args.steps,
-            eval_n_steps=eval_n_steps,
-            eval_n_episodes=eval_n_episodes,
+            eval_n_steps=args.eval_n_steps,
+            eval_n_episodes=None,
             eval_interval=args.eval_interval,
             outdir=args.outdir,
-            save_best_so_far_agent=False,
+            save_best_so_far_agent=True,
             eval_env=eval_env,
         )
+
+        dir_of_best_network = os.path.join(args.outdir, "best")
+        agent.load(dir_of_best_network)
+
+        # run 30 evaluation episodes, each capped at 5 mins of play
+        stats = experiments.evaluator.eval_performance(
+            env=eval_env,
+            agent=agent,
+            n_steps=None,
+            n_episodes=args.n_best_episodes,
+            max_episode_len=4500,
+            logger=None)
+        with open(os.path.join(args.outdir, 'bestscores.json'), 'w') as f:
+            # temporary hack to handle python 2/3 support issues.
+            # json dumps does not support non-string literal dict keys
+            json_stats = json.dumps(stats)
+            print(str(json_stats), file=f)
+        print("The results of the best scoring network:")
+        for stat in stats:
+            print(str(stat) + ":" + str(stats[stat]))
 
 
 if __name__ == '__main__':
