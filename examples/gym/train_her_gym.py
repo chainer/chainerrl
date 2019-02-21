@@ -24,7 +24,21 @@ from chainerrl import misc
 from chainerrl import policy
 from chainerrl import q_functions
 from chainerrl import replay_buffer
+import os 
 
+
+class HEREnvWrapper(gym.Wrapper):
+
+    def __init__(self, env, outdir):
+        super(HEREnvWrapper, self).__init__(env)
+        self.outdir = outdir
+
+    def step(self, action):
+        observation, reward, done, info = self.env.step(action)
+        if done:
+            with open(os.path.join(self.outdir, 'successes.txt'), 'a+') as f:
+                print(str(info.get('is_success', 0.0)), file=f)
+        return observation, reward, done, info
 
 class HERExplorer(explorer.Explorer):
     """Gaussian noise added to actions + Epsilon Greedy.
@@ -93,7 +107,7 @@ def main():
                         type=str, default='soft', choices=['hard', 'soft'])
     parser.add_argument('--soft-update-tau', type=float, default=1e-2)
     parser.add_argument('--update-interval', type=int, default=16 * 50)
-    parser.add_argument('--eval-n-runs', type=int, default=100)
+    parser.add_argument('--eval-n-runs', type=int, default=30)
     parser.add_argument('--eval-interval', type=int, default=50 * 16 * 50)
     parser.add_argument('--gamma', type=float, default=0.98)
     parser.add_argument('--minibatch-size', type=int, default=128)
@@ -134,6 +148,8 @@ def main():
             env = chainerrl.wrappers.ScaleReward(env, args.reward_scale_factor)
         if args.render and not test:
             env = chainerrl.wrappers.Render(env)
+        if test:
+            env = HEREnvWrapper(env, args.outdir)
         return env
 
     env = make_env(test=False)
