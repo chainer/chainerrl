@@ -99,7 +99,6 @@ def main():
     parser.add_argument('--minibatch-size', type=int, default=128)
     parser.add_argument('--render', action='store_true')
     parser.add_argument('--demo', action='store_true')
-    parser.add_argument('--use-bn', action='store_true', default=False)
     parser.add_argument('--monitor', action='store_true')
     parser.add_argument('--reward-scale-factor', type=float, default=1e-2)
     parser.add_argument('--epsilon', type=float, default=0.2)
@@ -153,30 +152,16 @@ def main():
     action_space = env.action_space
 
     action_size = np.asarray(action_space.shape).prod()    
-    if args.use_bn:
-        q_func = q_functions.FCBNLateActionSAQFunction(
-            obs_size + goal_size, action_size,
-            n_hidden_channels=args.n_hidden_channels,
-            n_hidden_layers=args.n_hidden_layers,
-            normalize_input=True)
-        pi = policy.FCBNDeterministicPolicy(
-            obs_size + goal_size, action_size=action_size,
-            n_hidden_channels=args.n_hidden_channels,
-            n_hidden_layers=args.n_hidden_layers,
-            min_action=action_space.low, max_action=action_space.high,
-            bound_action=True,
-            normalize_input=True)
-    else:
-        q_func = q_functions.FCSAQFunction(
-            obs_size + goal_size, action_size,
-            n_hidden_channels=args.n_hidden_channels,
-            n_hidden_layers=args.n_hidden_layers)
-        pi = policy.FCDeterministicPolicy(
-            obs_size + goal_size, action_size=action_size,
-            n_hidden_channels=args.n_hidden_channels,
-            n_hidden_layers=args.n_hidden_layers,
-            min_action=action_space.low, max_action=action_space.high,
-            bound_action=True)
+    q_func = q_functions.FCSAQFunction(
+        obs_size + goal_size, action_size,
+        n_hidden_channels=args.n_hidden_channels,
+        n_hidden_layers=args.n_hidden_layers)
+    pi = policy.FCDeterministicPolicy(
+        obs_size + goal_size, action_size=action_size,
+        n_hidden_channels=args.n_hidden_channels,
+        n_hidden_layers=args.n_hidden_layers,
+        min_action=action_space.low, max_action=action_space.high,
+        bound_action=True)
     model = DDPGModel(q_func=q_func, policy=pi)
     opt_a = optimizers.Adam(alpha=args.actor_lr)
     opt_c = optimizers.Adam(alpha=args.critic_lr)
