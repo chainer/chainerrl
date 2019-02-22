@@ -184,11 +184,6 @@ class DDPG(AttributeSavingMixin, Agent):
         batch_next_actions = batch['next_action']
         batchsize = len(batch_rewards)
 
-        if self.obs_normalizer:
-            batch_state = self.obs_normalizer(batch_state, update=False)
-            batch_next_state = self.obs_normalizer(batch_next_state,
-                update=False)
-
         with chainer.no_backprop_mode():
             # Target policy observes s_{t+1}
             next_actions = self.target_policy(
@@ -236,8 +231,6 @@ class DDPG(AttributeSavingMixin, Agent):
         batch_action = batch['action']
         batch_size = len(batch_action)
 
-        if self.obs_normalizer:
-            batch_state = self.obs_normalizer(batch_state, update=False)
         # Estimated policy observes s_t
         onpolicy_actions = self.policy(batch_state).sample()
 
@@ -267,7 +260,9 @@ class DDPG(AttributeSavingMixin, Agent):
 
         batch = batch_experiences(experiences, self.xp, self.phi, self.gamma)
         if self.obs_normalizer:
-            batch = self.obs_normalizer(batch, update=False)
+            batch['state'] = self.obs_normalizer(batch['state'], update=False)
+            batch['next_state'] = self.obs_normalizer(batch['next_state'],
+                update=False)
         self.critic_optimizer.update(lambda: self.compute_critic_loss(batch))
         self.actor_optimizer.update(lambda: self.compute_actor_loss(batch))
 
@@ -287,7 +282,10 @@ class DDPG(AttributeSavingMixin, Agent):
             batch = batch_experiences(
                 transitions, xp=self.xp, phi=self.phi, gamma=self.gamma)
             if self.obs_normalizer:
-                batch = self.obs_normalizer(batch, update=False)
+                batch['state'] = self.obs_normalizer(batch['state'],
+                    update=False)
+                batch['next_state'] = self.obs_normalizer(batch['state'],
+                    update=False)
             batches.append(batch)
 
         with self.model.state_reset(), self.target_model.state_reset():
