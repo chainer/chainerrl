@@ -1,0 +1,86 @@
+configs {
+  key: "chainerrl.py3.stable-chainer"
+  value {
+    requirement {
+      cpu: 4
+      memory: 4
+      disk: 1
+      image: "docker"
+    }
+    command:
+        "docker run --rm --volume=$(pwd):/chainerrl "
+        "--workdir=/chainerrl imosci/chainerrl:py3.stable-chainer "
+        "bash -c \"python3 ./.imosci/parallel-pytest.py "
+        "--pytest=\\\"python3 -m pytest -m 'not slow and not gpu'\\\" "
+        "--threads=4 --directory=tests --hint=./.imosci/chainerrl-hint.txt\""
+  }
+}
+configs {
+  key: "chainerrl.py3.old-chainer"
+  value {
+    requirement {
+      cpu: 4
+      memory: 4
+      disk: 1
+      image: "docker"
+    }
+    command:
+        "docker run --rm --volume=$(pwd):/chainerrl "
+        "--workdir=/chainerrl imosci/chainerrl:py3.old-chainer "
+        "bash -c \"python3 ./.imosci/parallel-pytest.py "
+        "--pytest=\\\"python3 -m pytest -m 'not slow and not gpu'\\\" "
+        "--threads=4 --directory=tests --hint=./.imosci/chainerrl-hint.txt\""
+  }
+}
+configs {
+  key: "chainerrl.py3.gpu"
+  value {
+    requirement {
+      cpu: 6
+      memory: 12
+      gpu: 1
+      disk: 10
+      image: "imosci"
+    }
+    command:
+        "nvidia-docker run --rm --volume=$(pwd):/chainerrl "
+        "--workdir=/chainerrl imosci/chainerrl:py3.gpu "
+        "bash -c \"python3 ./.imosci/parallel-pytest.py "
+        "--pytest=\\\"python3 -m pytest -m 'not slow'\\\" "
+        "--threads=6 --directory=tests --hint=./.imosci/chainerrl-hint.txt\""
+  }
+}
+configs {
+  key: "chainerrl.py2.stable-chainer"
+  value {
+    requirement {
+      cpu: 4
+      memory: 4
+      disk: 1
+      image: "docker"
+    }
+    command:
+        "docker run --rm --volume=$(pwd):/chainerrl "
+        "--workdir=/chainerrl imosci/chainerrl:py2.stable-chainer "
+        "bash -c \"python ./.imosci/parallel-pytest.py "
+        "--pytest=\\\"python -m pytest -m 'not slow and not gpu'\\\" "
+        "--threads=4 --directory=tests --hint=./.imosci/chainerrl-hint.txt\""
+  }
+}
+configs {
+  key: "chainerrl.py2.old-chainer"
+  value {
+    requirement {
+      cpu: 4
+      memory: 4
+      disk: 1
+      image: "docker"
+    }
+    command:
+        "docker run --rm --volume=$(pwd):/chainerrl "
+        "--workdir=/chainerrl imosci/chainerrl:py2.old-chainer "
+        "bash -c \"python ./.imosci/parallel-pytest.py "
+        "--pytest=\\\"python -m pytest -m 'not slow and not gpu'\\\" "
+        "--threads=4 --directory=tests --hint=./.imosci/chainerrl-hint.txt\""
+  }
+}
