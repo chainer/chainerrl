@@ -12,7 +12,6 @@ from logging import getLogger
 import chainer
 from chainer import cuda
 import chainer.functions as F
-import numpy as np
 
 from chainerrl.agent import Agent
 from chainerrl.agent import AttributeSavingMixin
