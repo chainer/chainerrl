@@ -53,7 +53,7 @@ class TestA3C(unittest.TestCase):
     def test_abc_gaussian(self):
         self._test_abc(self.t_max, self.use_lstm,
                        discrete=False, episodic=self.episodic,
-                       steps=1000000)
+                       steps=100000)
 
     def test_abc_gaussian_fast(self):
         self._test_abc(self.t_max, self.use_lstm,
@@ -61,7 +61,7 @@ class TestA3C(unittest.TestCase):
                        steps=10, require_success=False)
 
     def _test_abc(self, t_max, use_lstm, discrete=True, episodic=True,
-                  steps=1000000, require_success=True):
+                  steps=100000, require_success=True):
 
         nproc = 8
 
