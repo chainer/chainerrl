@@ -154,7 +154,7 @@ class TestA3C(unittest.TestCase):
                 )
         opt = chainer.optimizers.Adam()
         opt.setup(model)
-        opt.add_hook(chainer.optimizer_hooks.GradientClipping(1))
+        opt.add_hook(chainer.optimizer.GradientClipping(1))
         gamma = 0.8
         beta = 1e-2
         agent = a3c.A3C(model, opt, t_max=t_max, gamma=gamma, beta=beta,
