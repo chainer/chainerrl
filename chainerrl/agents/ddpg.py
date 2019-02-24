@@ -271,7 +271,7 @@ class DDPG(AttributeSavingMixin, Agent):
             for ep in sorted_episodes:
                 if len(ep) <= i:
                     break
-                transitions.append(ep[i])
+                transitions.append([ep[i]])
             batch = batch_experiences(
                 transitions, xp=self.xp, phi=self.phi, gamma=self.gamma)
             batches.append(batch)
