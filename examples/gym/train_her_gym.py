@@ -102,7 +102,7 @@ def main():
     parser.add_argument('--replay-start-size', type=int, default=10000)
     parser.add_argument('--n-update-times', type=int, default=40)
     parser.add_argument('--target-update-interval',
-                        type=int, default=1)
+                        type=int, default=16 * 50)
     parser.add_argument('--target-update-method',
                         type=str, default='soft', choices=['hard', 'soft'])
     parser.add_argument('--soft-update-tau', type=float, default=1e-2)
