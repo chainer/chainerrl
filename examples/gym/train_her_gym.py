@@ -105,7 +105,7 @@ def main():
                         type=int, default=16 * 50)
     parser.add_argument('--target-update-method',
                         type=str, default='soft', choices=['hard', 'soft'])
-    parser.add_argument('--soft-update-tau', type=float, default=1e-2)
+    parser.add_argument('--soft-update-tau', type=float, default=1 - 0.95)
     parser.add_argument('--update-interval', type=int, default=16 * 50)
     parser.add_argument('--eval-n-runs', type=int, default=30)
     parser.add_argument('--eval-interval', type=int, default=50 * 16 * 50)
