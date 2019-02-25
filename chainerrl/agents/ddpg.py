@@ -206,7 +206,7 @@ class DDPG(AttributeSavingMixin, Agent):
             target_q = batch_rewards + self.gamma * \
                 (1.0 - batch_terminal) * F.reshape(next_q, (batchsize,))
             if self.clip_critic_tgt:
-                target_q = self.xp.clip(target_q,
+                target_q = F.clip(target_q,
                     self.clip_critic_tgt[0],
                     self.clip_critic_tgt[1])
 
@@ -265,7 +265,6 @@ class DDPG(AttributeSavingMixin, Agent):
 
     def update(self, experiences, errors_out=None):
         """Update the model from experiences"""
-
         batch = batch_experiences(experiences, self.xp, self.phi, self.gamma)
         if self.obs_normalizer:
             batch['state'] = self.obs_normalizer(batch['state'], update=False)
