@@ -75,6 +75,8 @@ class DDPG(AttributeSavingMixin, Agent):
         logger (Logger): Logger used
         batch_states (callable): method which makes a batch of observations.
             default is `chainerrl.misc.batch_states.batch_states`
+        clip_critic_tgt (tuple or None) : tuple containing (min, max) to clip
+            the target of the critic. If None, target will not be clipped.
     """
 
     saved_attributes = ('model',
@@ -95,7 +97,8 @@ class DDPG(AttributeSavingMixin, Agent):
                  episodic_update=False,
                  episodic_update_len=None,
                  logger=getLogger(__name__),
-                 batch_states=batch_states):
+                 batch_states=batch_states,
+                 clip_critic_tgt=None):
 
         self.model = model
         self.obs_normalizer = obs_normalizer
@@ -135,6 +138,7 @@ class DDPG(AttributeSavingMixin, Agent):
             update_interval=update_interval,
         )
         self.batch_states = batch_states
+        self.clip_critic_tgt = clip_critic_tgt
 
         self.t = 0
         self.last_state = None
@@ -201,6 +205,10 @@ class DDPG(AttributeSavingMixin, Agent):
 
             target_q = batch_rewards + self.gamma * \
                 (1.0 - batch_terminal) * F.reshape(next_q, (batchsize,))
+            if self.clip_critic_tgt:
+                target_q = self.xp.clip(target_q,
+                    self.clip_critic_tgt[0],
+                    self.clip_critic_tgt[1])
 
         # Estimated Q-function observes s_t and a_t
         predict_q = F.reshape(

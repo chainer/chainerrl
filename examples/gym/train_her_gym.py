@@ -215,7 +215,8 @@ def main():
                  soft_update_tau=args.soft_update_tau,
                  n_times_update=args.n_update_times,
                  gpu=args.gpu,
-                 minibatch_size=args.minibatch_size)
+                 minibatch_size=args.minibatch_size,
+                 clip_critic_tgt=(-1.0/(1.0-args.gamma), 0.0))
 
     if len(args.load) > 0:
         agent.load(args.load)
