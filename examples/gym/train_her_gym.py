@@ -137,10 +137,6 @@ def main():
             env = gym.wrappers.Monitor(env, args.outdir)
         if isinstance(env.action_space, spaces.Box):
             misc.env_modifiers.make_action_filtered(env, clip_action_filter)
-        if not test:
-            # Scale rewards (and thus returns) to a reasonable range so that
-            # training is easier
-            env = chainerrl.wrappers.ScaleReward(env, args.reward_scale_factor)
         if args.render and not test:
             env = chainerrl.wrappers.Render(env)
         if test:
