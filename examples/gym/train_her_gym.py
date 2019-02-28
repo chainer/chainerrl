@@ -93,7 +93,7 @@ def main():
     parser.add_argument('--gpu', type=int, default=0)
     parser.add_argument('--final-exploration-steps',
                         type=int, default=10 ** 6)
-    parser.add_argument('--actor-lr', type=float, default=1e-4)
+    parser.add_argument('--actor-lr', type=float, default=1e-3)
     parser.add_argument('--critic-lr', type=float, default=1e-3)
     parser.add_argument('--load', type=str, default='')
     parser.add_argument('--steps', type=int, default=200 * 50 * 16 * 50)
