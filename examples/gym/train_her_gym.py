@@ -46,16 +46,16 @@ class HERExplorer(explorer.Explorer):
     Each action must be numpy.ndarray.
 
     Args:
-        noise_std (float): percentage of max_action that is std for noise.
+        noise_std (float): percentage of action range that is std for noise.
         epsilon (float): Probability agent performs a rnd action.
         scale (float): Maximum action value.
     """
 
-    def __init__(self, noise_std, epsilon, max_action, action_space):
+    def __init__(self, noise_std, epsilon, action_space):
         self.noise_std = noise_std
         self.epsilon = epsilon
-        self.max_action = max_action
-        self.std = noise_std * max_action
+        action_range = np.max(action_space.high) - np.min(action_space.low)
+        self.std = noise_std * action_range
         self.action_space = action_space
 
     def select_action(self, t, greedy_action_func, action_value=None):
@@ -66,7 +66,6 @@ class HERExplorer(explorer.Explorer):
             noise = np.random.normal(
                 scale=self.std, size=a.shape).astype(np.float32)
             a += noise
-        a = np.clip(a, -self.max_action, self.max_action)          
         return a
 
     def random_action(self):
@@ -114,7 +113,6 @@ def main():
     parser.add_argument('--render', action='store_true')
     parser.add_argument('--demo', action='store_true')
     parser.add_argument('--monitor', action='store_true')
-    parser.add_argument('--reward-scale-factor', type=float, default=1e-2)
     parser.add_argument('--epsilon', type=float, default=0.2)
     parser.add_argument('--noise-std', type=float, default=0.05)
     parser.add_argument('--clip-threshold', type=float, default=5.0)
@@ -129,9 +127,6 @@ def main():
 
     def clip_action_filter(a):
         return np.clip(a, action_space.low, action_space.high)
-
-    def reward_filter(r):
-        return r * args.reward_scale_factor
 
     def make_env(test):
         env = gym.make(args.env)
@@ -201,7 +196,6 @@ def main():
 
     explorer = HERExplorer(args.noise_std,
         args.epsilon,
-        np.max(action_space.high),
         action_space)
     agent = DDPG(model, opt_a, opt_c, rbuf,
                  obs_normalizer=obs_normalizer,
