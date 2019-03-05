@@ -17,6 +17,11 @@ python examples/atari/dqn/train_dqn.py --env PongNoFrameskip-v4 --steps 100 --re
 model=$(find $outdir/atari/dqn -name "*_finish")
 python examples/atari/dqn/train_dqn.py --env PongNoFrameskip-v4 --demo --load $model --outdir $outdir/temp --eval-n-steps 200 --gpu $gpu
 
+# atari/iqn
+python examples/atari/iqn/train_iqn.py --env PongNoFrameskip-v4 --steps 100 --replay-start-size 50 --outdir $outdir/atari/iqn --eval-n-steps 200 --eval-interval 50 --n-best-episodes 1  --gpu $gpu
+model=$(find $outdir/atari/iqn -name "*_finish")
+python examples/atari/iqn/train_iqn.py --env PongNoFrameskip-v4 --demo --load $model --outdir $outdir/temp --eval-n-steps 200 --gpu $gpu
+
 # ale/dqn batch
 python examples/ale/train_dqn_batch_ale.py --env PongNoFrameskip-v4 --steps 100 --replay-start-size 50 --outdir $outdir/ale/dqn_batch --gpu $gpu
 model=$(find $outdir/ale/dqn_batch -name "*_finish")
@@ -57,11 +62,6 @@ python examples/ale/train_ppo_ale.py --env PongNoFrameskip-v4 --demo --load $mod
 python examples/ale/train_categorical_dqn_ale.py --env PongNoFrameskip-v4 --steps 100 --replay-start-size 50 --outdir $outdir/ale/categorical_dqn --gpu $gpu
 model=$(find $outdir/ale/categorical_dqn -name "*_finish")
 python examples/ale/train_categorical_dqn_ale.py --env PongNoFrameskip-v4 --demo --load $model --eval-n-runs 1 --outdir $outdir/temp --gpu $gpu
-
-# ale/iqn
-python examples/ale/train_iqn_ale.py --env PongNoFrameskip-v4 --steps 100 --replay-start-size 50 --outdir $outdir/ale/iqn --gpu $gpu
-model=$(find $outdir/ale/iqn -name "*_finish")
-python examples/ale/train_iqn_ale.py --env PongNoFrameskip-v4 --demo --load $model --eval-n-runs 1 --outdir $outdir/temp --gpu $gpu
 
 # gym/dqn
 python examples/gym/train_dqn_gym.py --steps 100 --replay-start-size 50 --outdir $outdir/gym/dqn --gpu $gpu

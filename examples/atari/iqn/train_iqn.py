@@ -21,6 +21,7 @@ from chainerrl import explorers
 from chainerrl import misc
 from chainerrl import replay_buffer
 from chainerrl.wrappers import atari_wrappers
+import json
 
 
 def main():
@@ -45,9 +46,9 @@ def main():
     parser.add_argument('--replay-start-size', type=int, default=5 * 10 ** 4)
     parser.add_argument('--target-update-interval',
                         type=int, default=10 ** 4)
-    parser.add_argument('--eval-interval', type=int, default=10 ** 5)
+    parser.add_argument('--eval-interval', type=int, default=250000)
+    parser.add_argument('--eval-n-steps', type=int, default=125000)
     parser.add_argument('--update-interval', type=int, default=4)
-    parser.add_argument('--eval-n-runs', type=int, default=10)
     parser.add_argument('--batch-size', type=int, default=32)
     parser.add_argument('--logging-level', type=int, default=20,
                         help='Logging level. 10:DEBUG, 20:INFO etc.')
@@ -61,6 +62,7 @@ def main():
     parser.add_argument('--quantile-thresholds-N', type=int, default=64)
     parser.add_argument('--quantile-thresholds-N-prime', type=int, default=64)
     parser.add_argument('--quantile-thresholds-K', type=int, default=32)
+    parser.add_argument('--n-best-episodes', type=int, default=30)
     args = parser.parse_args()
 
     import logging
@@ -161,25 +163,44 @@ def main():
         eval_stats = experiments.eval_performance(
             env=eval_env,
             agent=agent,
-            n_steps=None,
-            n_episodes=args.eval_n_runs,
+            n_steps=args.eval_n_steps,
+            n_episodes=None,
         )
-        print('n_runs: {} mean: {} median: {} stdev {}'.format(
-            args.eval_n_runs, eval_stats['mean'], eval_stats['median'],
+        print('n_steps: {} mean: {} median: {} stdev {}'.format(
+            args.eval_n_steps, eval_stats['mean'], eval_stats['median'],
             eval_stats['stdev']))
     else:
         experiments.train_agent_with_evaluation(
             agent=agent,
             env=env,
             steps=args.steps,
-            eval_n_steps=None,
-            eval_n_episodes=args.eval_n_runs,
+            eval_n_steps=args.eval_n_steps,
+            eval_n_episodes=None,
             eval_interval=args.eval_interval,
             outdir=args.outdir,
-            save_best_so_far_agent=False,
+            save_best_so_far_agent=True,
             eval_env=eval_env,
         )
 
+        dir_of_best_network = os.path.join(args.outdir, "best")
+        agent.load(dir_of_best_network)
+
+        # run 30 evaluation episodes, each capped at 5 mins of play
+        stats = experiments.evaluator.eval_performance(
+            env=eval_env,
+            agent=agent,
+            n_steps=None,
+            n_episodes=args.n_best_episodes,
+            max_episode_len=27000,
+            logger=None)
+        with open(os.path.join(args.outdir, 'bestscores.json'), 'w') as f:
+            # temporary hack to handle python 2/3 support issues.
+            # json dumps does not support non-string literal dict keys
+            json_stats = json.dumps(stats)
+            print(str(json_stats), file=f)
+        print("The results of the best scoring network:")
+        for stat in stats:
+            print(str(stat) + ":" + str(stats[stat]))
 
 if __name__ == '__main__':
     main()
