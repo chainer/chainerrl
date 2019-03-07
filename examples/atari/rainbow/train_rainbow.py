@@ -48,13 +48,8 @@ def main():
                         default=30 * 60 * 60,  # 30 minutes with 60 fps
                         help='Maximum number of frames for each episode.')
     parser.add_argument('--replay-start-size', type=int, default=8 * 10 ** 4)
-    parser.add_argument('--target-update-interval',
-                        type=int, default=3.2 * 10 ** 4)
     parser.add_argument('--eval-n-steps', type=int, default=125000)
     parser.add_argument('--eval-interval', type=int, default=250000)
-    parser.add_argument('--update-interval', type=int, default=4)
-    parser.add_argument('--num-step-return', type=int, default=3)
-    parser.add_argument('--batch-size', type=int, default=32)
     parser.add_argument('--logging-level', type=int, default=20,
                         help='Logging level. 10:DEBUG, 20:INFO etc.')
     parser.add_argument('--render', action='store_true', default=False,
@@ -62,8 +57,6 @@ def main():
     parser.add_argument('--monitor', action='store_true', default=False,
                         help='Monitor env. Videos and additional information'
                              ' are saved as output files.')
-    parser.add_argument('--prioritized', action='store_true', default=True,
-                        help='Use prioritized experience replay.')
     parser.add_argument('--n-best-episodes', type=int, default=200)    
     args = parser.parse_args()
 
@@ -123,15 +116,14 @@ def main():
     opt = chainer.optimizers.Adam(6.25e-5, eps=1.5 * 10 ** -4)
     opt.setup(q_func)
 
-    # Select a replay buffer to use
-    if args.prioritized:
-        # Anneal beta from beta0 to 1 throughout training
-        betasteps = args.steps / args.update_interval
-        rbuf = replay_buffer.PrioritizedReplayBuffer(
-            10 ** 6, alpha=0.5, beta0=0.4, betasteps=betasteps,
-            num_steps=args.num_step_return)
-    else:
-        rbuf = replay_buffer.ReplayBuffer(10 ** 6, args.num_step_return)
+    # Prioritized Replay
+    # Anneal beta from beta0 to 1 throughout training
+    update_interval = 4
+    betasteps = args.steps / update_interval
+    rbuf = replay_buffer.PrioritizedReplayBuffer(
+        10 ** 6, alpha=0.5, beta0=0.4, betasteps=betasteps,
+        num_steps=3)
+
 
     def phi(x):
         # Feature extractor
@@ -140,10 +132,10 @@ def main():
     Agent = agents.CategoricalDoubleDQN
     agent = Agent(
         q_func, opt, rbuf, gpu=args.gpu, gamma=0.99,
-        explorer=explorer, minibatch_size=args.batch_size,
+        explorer=explorer, minibatch_size=32,
         replay_start_size=args.replay_start_size,
-        target_update_interval=args.target_update_interval,
-        update_interval=args.update_interval,
+        target_update_interval=32000,
+        update_interval=update_interval,
         batch_accumulator='mean',
         phi=phi,
     )
