@@ -62,7 +62,7 @@ def main():
     parser.add_argument('--monitor', action='store_true', default=False,
                         help='Monitor env. Videos and additional information'
                              ' are saved as output files.')
-    parser.add_argument('--prioritized', action='store_true', default=False,
+    parser.add_argument('--prioritized', action='store_true', default=True,
                         help='Use prioritized experience replay.')
     parser.add_argument('--n-best-episodes', type=int, default=200)    
     args = parser.parse_args()
