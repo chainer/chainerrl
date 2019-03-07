@@ -32,7 +32,6 @@ class CategoricalDoubleDQN(categorical_dqn.CategoricalDQN):
 
         batch_rewards = exp_batch['reward']
         batch_terminal = exp_batch['is_state_terminal']
-        discount = exp_batch['discount']
 
         batch_size = exp_batch['reward'].shape[0]
         z_values = target_next_qout.z_values
