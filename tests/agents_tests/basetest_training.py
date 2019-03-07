@@ -140,7 +140,8 @@ class _TestBatchTrainingMixin(object):
             steps=steps,
             outdir=self.tmpdir,
             eval_interval=200,
-            eval_n_runs=5,
+            eval_n_steps=None,
+            eval_n_episodes=5,
             successful_score=1,
             eval_env=test_env,
         )
@@ -151,7 +152,8 @@ class _TestBatchTrainingMixin(object):
         eval_returns = batch_run_evaluation_episodes(
             test_env,
             agent,
-            n_runs=n_test_runs,
+            n_steps=None,
+            n_episodes=n_test_runs,
         )
         test_env.close()
         n_succeeded = np.sum(np.asarray(eval_returns) >= successful_return)

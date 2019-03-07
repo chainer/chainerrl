@@ -19,6 +19,7 @@ import chainerrl
 from chainerrl.agents import nsq
 from chainerrl.envs.abc import ABC
 from chainerrl.experiments.train_agent_async import train_agent_async
+from chainerrl.misc import async_
 from chainerrl.optimizers import rmsprop_async
 from chainerrl.q_functions import FCLSTMStateQFunction
 from chainerrl.q_functions import FCStateQFunctionWithDiscreteAction
@@ -108,7 +109,11 @@ class TestNSQ(unittest.TestCase):
                 eval_n_runs=5,
                 successful_score=1,
             )
-            assert len(warns) == 0, warns[0]
+            # There should be no AbnormalExitWarning
+            self.assertEqual(
+                sum(1 if issubclass(
+                    w.category, async_.AbnormalExitWarning) else 0
+                    for w in warns), 0)
 
         # The agent returned by train_agent_async is not guaranteed to be
         # successful because parameters could be modified by other processes

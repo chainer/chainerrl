@@ -12,13 +12,14 @@ import tempfile
 import unittest
 import warnings
 
+import chainer
+from chainer import functions as F
 from chainer import links as L
 from chainer import testing
 
 from chainerrl.agents import a3c
 from chainerrl.envs.abc import ABC
 from chainerrl.experiments.train_agent_async import train_agent_async
-from chainerrl.optimizers import rmsprop_async
 from chainerrl import policies
 from chainerrl import v_function
 
@@ -53,7 +54,7 @@ class TestA3C(unittest.TestCase):
     def test_abc_gaussian(self):
         self._test_abc(self.t_max, self.use_lstm,
                        discrete=False, episodic=self.episodic,
-                       steps=1000000)
+                       steps=100000)
 
     def test_abc_gaussian_fast(self):
         self._test_abc(self.t_max, self.use_lstm,
@@ -61,7 +62,7 @@ class TestA3C(unittest.TestCase):
                        steps=10, require_success=False)
 
     def _test_abc(self, t_max, use_lstm, discrete=True, episodic=True,
-                  steps=1000000, require_success=True):
+                  steps=100000, require_success=True):
 
         nproc = 8
 
@@ -87,11 +88,16 @@ class TestA3C(unittest.TestCase):
                         n_hidden_channels, action_space.n,
                         n_hidden_channels=n_hidden_channels,
                         n_hidden_layers=2,
-                        min_prob=1e-1),
+                        nonlinearity=F.tanh,
+                        last_wscale=1e-1,
+                    ),
                     v=v_function.FCVFunction(
                         n_hidden_channels,
                         n_hidden_channels=n_hidden_channels,
-                        n_hidden_layers=2),
+                        n_hidden_layers=2,
+                        nonlinearity=F.tanh,
+                        last_wscale=1e-1,
+                    ),
                 )
             else:
                 model = a3c.A3CSharedModel(
@@ -100,14 +106,16 @@ class TestA3C(unittest.TestCase):
                         n_hidden_channels, action_space.low.size,
                         n_hidden_channels=n_hidden_channels,
                         n_hidden_layers=2,
-                        bound_mean=True,
-                        min_action=action_space.low,
-                        max_action=action_space.high,
-                        min_var=0.1),
+                        nonlinearity=F.tanh,
+                        mean_wscale=1e-1,
+                    ),
                     v=v_function.FCVFunction(
                         n_hidden_channels,
                         n_hidden_channels=n_hidden_channels,
-                        n_hidden_layers=2),
+                        n_hidden_layers=2,
+                        nonlinearity=F.tanh,
+                        last_wscale=1e-1,
+                    ),
                 )
         else:
             if discrete:
@@ -116,11 +124,16 @@ class TestA3C(unittest.TestCase):
                         obs_space.low.size, action_space.n,
                         n_hidden_channels=n_hidden_channels,
                         n_hidden_layers=2,
-                        min_prob=1e-1),
+                        nonlinearity=F.tanh,
+                        last_wscale=1e-1,
+                    ),
                     v=v_function.FCVFunction(
                         obs_space.low.size,
                         n_hidden_channels=n_hidden_channels,
-                        n_hidden_layers=2),
+                        n_hidden_layers=2,
+                        nonlinearity=F.tanh,
+                        last_wscale=1e-1,
+                    ),
                 )
             else:
                 model = a3c.A3CSeparateModel(
@@ -128,19 +141,21 @@ class TestA3C(unittest.TestCase):
                         obs_space.low.size, action_space.low.size,
                         n_hidden_channels=n_hidden_channels,
                         n_hidden_layers=2,
-                        bound_mean=True,
-                        min_action=action_space.low,
-                        max_action=action_space.high,
-                        min_var=0.1),
+                        nonlinearity=F.tanh,
+                        mean_wscale=1e-1,
+                    ),
                     v=v_function.FCVFunction(
                         obs_space.low.size,
                         n_hidden_channels=n_hidden_channels,
-                        n_hidden_layers=2),
+                        n_hidden_layers=2,
+                        nonlinearity=F.tanh,
+                        last_wscale=1e-1,
+                    ),
                 )
-        eps = 1e-1 if discrete else 1e-2
-        opt = rmsprop_async.RMSpropAsync(lr=5e-4, eps=eps, alpha=0.99)
+        opt = chainer.optimizers.Adam()
         opt.setup(model)
-        gamma = 0.9
+        opt.add_hook(chainer.optimizer.GradientClipping(1))
+        gamma = 0.8
         beta = 1e-2
         agent = a3c.A3C(model, opt, t_max=t_max, gamma=gamma, beta=beta,
                         phi=phi,

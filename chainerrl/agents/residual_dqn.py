@@ -21,7 +21,7 @@ class ResidualDQN(DQN):
     def sync_target_network(self):
         pass
 
-    def _compute_target_values(self, exp_batch, gamma):
+    def _compute_target_values(self, exp_batch):
 
         batch_next_state = exp_batch['next_state']
 
@@ -30,10 +30,12 @@ class ResidualDQN(DQN):
 
         batch_rewards = exp_batch['reward']
         batch_terminal = exp_batch['is_state_terminal']
+        batch_discount = exp_batch['discount']
 
-        return batch_rewards + self.gamma * (1.0 - batch_terminal) * next_q_max
+        return (batch_rewards
+                + batch_discount * (1.0 - batch_terminal) * next_q_max)
 
-    def _compute_y_and_t(self, exp_batch, gamma):
+    def _compute_y_and_t(self, exp_batch):
 
         batch_state = exp_batch['state']
         batch_size = len(batch_state)
@@ -47,7 +49,7 @@ class ResidualDQN(DQN):
 
         # Target values must also backprop gradients
         batch_q_target = F.reshape(
-            self._compute_target_values(exp_batch, gamma), (batch_size, 1))
+            self._compute_target_values(exp_batch), (batch_size, 1))
 
         return batch_q, scale_grad.scale_grad(batch_q_target, self.grad_scale)
 

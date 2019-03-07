@@ -13,9 +13,9 @@ model=$(find $outdir/ale/dqn -name "*_finish")
 python examples/ale/train_dqn_ale.py --env PongNoFrameskip-v4 --demo --load $model --eval-n-runs 1 --outdir $outdir/temp --gpu $gpu
 
 # atari/dqn
-python examples/atari/dqn/train_dqn.py --env PongNoFrameskip-v4 --steps 100 --replay-start-size 50 --outdir $outdir/atari/dqn --gpu $gpu
+python examples/atari/dqn/train_dqn.py --env PongNoFrameskip-v4 --steps 100 --replay-start-size 50 --outdir $outdir/atari/dqn --eval-n-steps 200 --eval-interval 50 --n-best-episodes 1 --gpu $gpu
 model=$(find $outdir/atari/dqn -name "*_finish")
-python examples/atari/dqn/train_dqn.py --env PongNoFrameskip-v4 --demo --load $model --eval-n-runs 1 --outdir $outdir/temp --gpu $gpu
+python examples/atari/dqn/train_dqn.py --env PongNoFrameskip-v4 --demo --load $model --outdir $outdir/temp --eval-n-steps 200 --gpu $gpu
 
 # ale/dqn batch
 python examples/ale/train_dqn_batch_ale.py --env PongNoFrameskip-v4 --steps 100 --replay-start-size 50 --outdir $outdir/ale/dqn_batch --gpu $gpu
@@ -57,6 +57,11 @@ python examples/ale/train_ppo_ale.py --env PongNoFrameskip-v4 --demo --load $mod
 python examples/ale/train_categorical_dqn_ale.py --env PongNoFrameskip-v4 --steps 100 --replay-start-size 50 --outdir $outdir/ale/categorical_dqn --gpu $gpu
 model=$(find $outdir/ale/categorical_dqn -name "*_finish")
 python examples/ale/train_categorical_dqn_ale.py --env PongNoFrameskip-v4 --demo --load $model --eval-n-runs 1 --outdir $outdir/temp --gpu $gpu
+
+# ale/iqn
+python examples/ale/train_iqn_ale.py --env PongNoFrameskip-v4 --steps 100 --replay-start-size 50 --outdir $outdir/ale/iqn --gpu $gpu
+model=$(find $outdir/ale/iqn -name "*_finish")
+python examples/ale/train_iqn_ale.py --env PongNoFrameskip-v4 --demo --load $model --eval-n-runs 1 --outdir $outdir/temp --gpu $gpu
 
 # gym/dqn
 python examples/gym/train_dqn_gym.py --steps 100 --replay-start-size 50 --outdir $outdir/gym/dqn --gpu $gpu
@@ -112,6 +117,11 @@ python examples/gym/train_trpo_gym.py --demo --load $model --eval-n-runs 1 --env
 python examples/gym/train_categorical_dqn_gym.py --steps 100 --replay-start-size 50 --outdir $outdir/gym/categorical_dqn --gpu $gpu
 model=$(find $outdir/gym/categorical_dqn -name "*_finish")
 python examples/gym/train_categorical_dqn_gym.py --demo --load $model --eval-n-runs 1 --outdir $outdir/temp --gpu $gpu
+
+# gym/iqn
+python examples/gym/train_iqn_gym.py --steps 100 --replay-start-size 50 --outdir $outdir/gym/iqn --gpu $gpu
+model=$(find $outdir/gym/iqn -name "*_finish")
+python examples/gym/train_iqn_gym.py --demo --load $model --eval-n-runs 1 --outdir $outdir/temp --gpu $gpu
 
 # grasping/dqn
 python examples/grasping/train_dqn_batch_grasping.py --gpu $gpu --steps 100 --outdir $outdir/grasping/dqn

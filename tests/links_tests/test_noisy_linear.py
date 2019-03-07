@@ -21,34 +21,34 @@ from chainerrl.links import noisy_linear
 class TestFactorizedNoisyLinear(unittest.TestCase):
     def setUp(self):
         mu = chainer.links.Linear(*self.size_args, nobias=self.nobias)
-        self.l = noisy_linear.FactorizedNoisyLinear(mu)
+        self.linear = noisy_linear.FactorizedNoisyLinear(mu)
 
     def _test_calls(self, xp):
         x_data = xp.arange(12).astype(numpy.float32).reshape((2, 6))
         x = chainer.Variable(x_data)
-        self.l(x)
-        self.l(x_data + 1)
-        self.l(x_data.reshape((2, 3, 2)))
+        self.linear(x)
+        self.linear(x_data + 1)
+        self.linear(x_data.reshape((2, 3, 2)))
 
     def test_calls_cpu(self):
         self._test_calls(numpy)
 
     @attr.gpu
     def test_calls_gpu(self):
-        self.l.to_gpu(0)
+        self.linear.to_gpu(0)
         self._test_calls(cuda.cupy)
 
     @attr.gpu
     def test_calls_gpu_after_to_gpu(self):
-        mu = self.l.mu
+        mu = self.linear.mu
         mu.to_gpu(0)
-        self.l = noisy_linear.FactorizedNoisyLinear(mu)
+        self.linear = noisy_linear.FactorizedNoisyLinear(mu)
         self._test_calls(cuda.cupy)
 
     def _test_randomness(self, xp):
         x = xp.random.standard_normal((10, 6)).astype(numpy.float32)
-        y1 = self.l(x).array
-        y2 = self.l(x).array
+        y1 = self.linear(x).array
+        y2 = self.linear(x).array
         d = float(xp.mean(xp.square(y1 - y2)))
 
         # The parameter name suggests that
@@ -72,14 +72,14 @@ class TestFactorizedNoisyLinear(unittest.TestCase):
     @attr.gpu
     @condition.retry(3)
     def test_randomness_gpu(self):
-        self.l.to_gpu(0)
+        self.linear.to_gpu(0)
         self._test_randomness(cuda.cupy)
 
     def _test_non_randomness(self, xp):
         # Noises should be the same in a batch
         x0 = xp.random.standard_normal((1, 6)).astype(numpy.float32)
         x = xp.broadcast_to(x0, (2, 6))
-        y = self.l(x).array
+        y = self.linear(x).array
         xp.testing.assert_allclose(y[0], y[1], rtol=1e-4)
 
     def test_non_randomness_cpu(self):
@@ -87,5 +87,5 @@ class TestFactorizedNoisyLinear(unittest.TestCase):
 
     @attr.gpu
     def test_non_randomness_gpu(self):
-        self.l.to_gpu(0)
+        self.linear.to_gpu(0)
         self._test_non_randomness(cuda.cupy)
