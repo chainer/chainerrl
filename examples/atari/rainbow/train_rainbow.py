@@ -83,7 +83,7 @@ def main():
         env.seed(int(env_seed))
         if test:
             # Randomize actions like epsilon-greedy in evaluation as well
-            env = chainerrl.wrappers.RandomizeAction(env, args.eval_epsilon)
+            env = chainerrl.wrappers.RandomizeAction(env, 0.001)
         if args.monitor:
             env = gym.wrappers.Monitor(
                 env, args.outdir,
@@ -91,6 +91,7 @@ def main():
         if args.render:
             env = chainerrl.wrappers.Render(env)
         return env
+
 
     env = make_env(test=False)
     eval_env = make_env(test=True)
