@@ -32,6 +32,21 @@ class TestCopyParam(unittest.TestCase):
         self.assertEqual(a_out_new, b_out)
         self.assertEqual(b_out_new, b_out)
 
+    def test_copy_param_scalar(self):
+        a = chainer.Chain()
+        with a.init_scope():
+            a.p = chainer.Parameter(np.array(1))
+        b = chainer.Chain()
+        with b.init_scope():
+            b.p = chainer.Parameter(np.array(2))
+
+        self.assertNotEqual(a.p.array, b.p.array)
+
+        # Copy b's parameters to a
+        copy_param.copy_param(a, b)
+
+        self.assertEqual(a.p.array, b.p.array)
+
     def test_copy_param_type_check(self):
         a = L.Linear(None, 5)
         b = L.Linear(1, 5)
@@ -58,6 +73,25 @@ class TestCopyParam(unittest.TestCase):
 
         np.testing.assert_almost_equal(a.W.array, np.full(a.W.shape, 0.595))
         np.testing.assert_almost_equal(b.W.array, np.full(b.W.shape, 1.0))
+
+    def test_soft_copy_param_scalar(self):
+        a = chainer.Chain()
+        with a.init_scope():
+            a.p = chainer.Parameter(np.array(0.5))
+        b = chainer.Chain()
+        with b.init_scope():
+            b.p = chainer.Parameter(np.array(1))
+
+        # a = (1 - tau) * a + tau * b
+        copy_param.soft_copy_param(target_link=a, source_link=b, tau=0.1)
+
+        np.testing.assert_almost_equal(a.p.array, 0.55)
+        np.testing.assert_almost_equal(b.p.array, 1.0)
+
+        copy_param.soft_copy_param(target_link=a, source_link=b, tau=0.1)
+
+        np.testing.assert_almost_equal(a.p.array, 0.595)
+        np.testing.assert_almost_equal(b.p.array, 1.0)
 
     def test_soft_copy_param_type_check(self):
         a = L.Linear(None, 5)
