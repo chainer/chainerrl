@@ -62,7 +62,7 @@ def main():
     parser.add_argument('--quantile-thresholds-N', type=int, default=64)
     parser.add_argument('--quantile-thresholds-N-prime', type=int, default=64)
     parser.add_argument('--quantile-thresholds-K', type=int, default=32)
-    parser.add_argument('--n-best-episodes', type=int, default=30)
+    parser.add_argument('--n-best-episodes', type=int, default=200)
     args = parser.parse_args()
 
     import logging
