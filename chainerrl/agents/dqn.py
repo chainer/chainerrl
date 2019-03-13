@@ -61,7 +61,7 @@ def compute_weighted_value_loss(y, t, weights,
         t (Variable or ndarray): Target values.
         weights (ndarray): Weights for y, t.
         clip_delta (bool): Use the Huber loss function if set True.
-        batch_accumulator (str): 'mean' will devide loss by batchsize
+        batch_accumulator (str): 'mean' will divide loss by batchsize
     Returns:
         (Variable) scalar loss
     """
