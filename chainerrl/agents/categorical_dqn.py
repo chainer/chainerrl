@@ -102,7 +102,7 @@ def compute_weighted_value_loss(y, t, weights, batch_accumulator='mean'):
         y (Variable or ndarray): Predicted values.
         t (Variable or ndarray): Target values.
         weights (ndarray): Weights for y, t.
-        batch_accumulator (str): 'mean' will devide loss by batchsize
+        batch_accumulator (str): 'mean' will divide loss by batchsize
     Returns:
         (Variable) scalar loss
     """
