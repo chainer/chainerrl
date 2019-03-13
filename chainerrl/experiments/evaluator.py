@@ -3,6 +3,7 @@ from __future__ import unicode_literals
 from __future__ import division
 from __future__ import absolute_import
 from builtins import *  # NOQA
+import errno
 from future import standard_library
 standard_library.install_aliases()  # NOQA
 
@@ -260,10 +261,12 @@ def record_stats(outdir, values):
     with open(os.path.join(outdir, 'scores.txt'), 'a+') as f:
         print('\t'.join(str(x) for x in values), file=f)
 
+
 def record_best_eval(outdir, t, max_score):
     with open(os.path.join(outdir, 'best.txt'), 'a+') as f:
-        print('Max intermediate evaluation at time ' + str(t)\
-             + " is " + str(max_score), file=f)
+        print('Max intermediate evaluation at time ' + str(t)
+              + " is " + str(max_score), file=f)
+
 
 def save_agent(agent, t, outdir, logger, suffix=''):
     dirname = os.path.join(outdir, '{}{}'.format(t, suffix))
@@ -348,8 +351,14 @@ class Evaluator(object):
             self.max_score = mean
             if self.save_best_so_far_agent:
                 save_agent(self.agent, "best", self.outdir, self.logger)
+                if not os.path.exists(os.path.join(self.outdir, 'best')):
+                    try:
+                        os.makedirs(os.path.join(self.outdir, 'best'))
+                    except OSError as err:
+                        if err.errno != errno.EEXIST:
+                            raise
                 record_best_eval(os.path.join(self.outdir, 'best'),
-                    t, self.max_score)
+                                 t, self.max_score)
         return mean
 
     def evaluate_if_necessary(self, t, episodes):
