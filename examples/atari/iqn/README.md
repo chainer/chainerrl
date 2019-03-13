@@ -1,5 +1,5 @@
 # IQN
-This example trains a IQN agent, from the following paper: [Implicit Quantile Networks for Distributional Reinforcement Learning](https://arxiv.org/pdf/1806.06923.pdf). 
+This example trains a IQN agent, from the following paper: [Implicit Quantile Networks for Distributional Reinforcement Learning](https://arxiv.org/abs/1806.06923). 
 
 ## Requirements
 
@@ -22,24 +22,24 @@ python train_iqn.py [options]
 To view the full list of options, either view the code or run the example with the `--help` option.
 
 ## Results
-These results reflect ChainerRL  `v0.6.0`
+These results reflect ChainerRL  `v0.6.0`. The ChainerRL score currently consists of a single run. The reported results from the IQN paper are also from a single run. We use the same evaluation protocol used in the IQN paper.
 
-| Game        | Score           | Reported Scores |           
+| Game        | ChainerRL Score           | Reported Scores |           
 | ------------- |:-------------:|:-------------:|
 | AirRaid | N/A| N/A|
 | Alien | N/A| **7022**|
 | Amidar | N/A| **2946**|
 | Assault | N/A| **29091**|
-| Asterix | N/A| **342016**|
+| Asterix | **464666.66** | 342016|
 | Asteroids | N/A| **2898**|
 | Atlantis | N/A| **978200**|
 | Bank Heist | N/A| **1416**|
 | Battlezone | N/A| **42244**|
-| Beamrider | N/A| **42776**|
+| Beamrider | 35525.0 | **42776**|
 | Berzerk | N/A| **1053**|
 | Bowling | N/A| **86.5**|
 | Boxing | N/A| **99.8**|
-| Breakout | N/A| **734**|
+| Breakout | **738.0**| 734|
 | Carnival | N/A| N/A|
 | Centipede | N/A| **11561**|
 | Chopper Command | N/A| **16836**|
@@ -66,17 +66,17 @@ These results reflect ChainerRL  `v0.6.0`
 | Phoenix | N/A| **56599**|
 | Pitfall II | N/A| N/A|
 | Pitfall! | N/A| **0.0**|
-| Pong | N/A| **21.9**|
+| Pong | **21.0**| **21.0**|
 | Pooyan | N/A| N/A|
 | Private Eye | N/A| **200**|
-| Qbert | N/A| **25750**|
+| Qbert | **25971.3**| 25750|
 | River Raid | N/A| **17765**|
 | Road Runner | N/A| **57900**|
 | Robot Tank | N/A| **62.5**|
-| Seaquest | N/A| **30140**|
+| Seaquest | **31670.0**| 30140|
 | Skiing | N/A| **-9289**|
 | Solaris | N/A| **8007**|
-| Space Invaders | N/A| **28888**|
+| Space Invaders | **43649.0**| 28888|
 | Stargunner | N/A| **74677**|
 | Tennis | N/A| **23.6**|
 | Time Pilot | N/A| **12236**|
