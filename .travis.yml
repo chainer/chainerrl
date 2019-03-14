@@ -2,7 +2,7 @@ language: python
 cache: pip
 python:
   - "2.7"
-  - "3.5.1"
+  - "3.6"
 env:
   - CHAINER_VERSION=3
   - CHAINER_VERSION=stable
