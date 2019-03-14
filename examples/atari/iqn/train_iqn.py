@@ -7,6 +7,7 @@ from future import standard_library
 standard_library.install_aliases()  # NOQA
 import argparse
 import functools
+import json
 import os
 
 import chainer
@@ -21,7 +22,6 @@ from chainerrl import explorers
 from chainerrl import misc
 from chainerrl import replay_buffer
 from chainerrl.wrappers import atari_wrappers
-import json
 
 
 def main():
