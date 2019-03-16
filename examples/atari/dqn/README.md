@@ -22,7 +22,16 @@ python train_dqn.py [options]
 To view the full list of options, either view the code or run the example with the `--help` option.
 
 ## Results
-These results reflect ChainerRL  `v0.5.0`.
+These results reflect ChainerRL  `v0.5.0`/`v0.6.0`.
+
+The summary of the results is as follows:
+ - These results are averaged over 5 runs per domain
+ - We ran this example on 59 Atari domains. 
+ - The original DQN paper paper ran results on 49 Atari domains. Within these 49 domains the results are as follows:
+ 	- The reported results from the DQN paper are higher than ChainerRL on 26 domains.
+ 	- This example from ChainerRL outperforms the DQN paper on 22 domains.
+ 	- Our implementation ties the reported DQN results on a single domain.
+ - Note that the reported DQN results are from a single run on each domain, and might not be an accurate reflection of the DQN's true performance.
 
 
 | Game        | ChainerRL Score           | Reported Scores |
@@ -86,3 +95,7 @@ These results reflect ChainerRL  `v0.5.0`.
 | WizardOfWor | 1957.3| **3393**|
 | YarsRevenge | **4397.3**| N/A|
 | Zaxxon | **5698.7**| 4977|
+
+
+## Evaluation Protocol
+
