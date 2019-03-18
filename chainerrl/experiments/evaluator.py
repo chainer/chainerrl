@@ -358,6 +358,7 @@ class AsyncEvaluator(object):
     """Object that is responsible for evaluating asynchronous multiple agents.
 
     Args:
+        n_steps (int): umber of timesteps used in each evaluation.
         n_episodes (int): Number of episodes used in each evaluation.
         eval_interval (int): Interval of evaluations in steps.
         outdir (str): Path to a directory to save things.
@@ -369,7 +370,8 @@ class AsyncEvaluator(object):
     """
 
     def __init__(self,
-                 n_runs,
+                 n_steps,
+                 n_episodes,
                  eval_interval,
                  outdir,
                  max_episode_len=None,
@@ -377,9 +379,13 @@ class AsyncEvaluator(object):
                  save_best_so_far_agent=True,
                  logger=None,
                  ):
-
+        assert (n_steps is None) != (n_episodes is None), \
+            ("One of n_steps or n_episodes must be None. " +
+             "Either we evaluate for a specified number " +
+             "of episodes or for a specified number of timesteps.")
         self.start_time = time.time()
-        self.n_episodes = n_runs
+        self.n_steps = n_steps
+        self.n_episodes = n_episodes
         self.eval_interval = eval_interval
         self.outdir = outdir
         self.max_episode_len = max_episode_len
@@ -405,7 +411,7 @@ class AsyncEvaluator(object):
 
     def evaluate_and_update_max_score(self, t, episodes, env, agent):
         eval_stats = eval_performance(
-            env, agent, None, self.n_episodes,
+            env, agent, self.n_steps, self.n_episodes,
             max_episode_len=self.max_episode_len,
             logger=self.logger)
         elapsed = time.time() - self.start_time

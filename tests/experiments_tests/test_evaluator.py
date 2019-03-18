@@ -119,7 +119,8 @@ class TestAsyncEvaluator(unittest.TestCase):
         env.step.return_value = ('obs', 0, True, {})
 
         agent_evaluator = evaluator.AsyncEvaluator(
-            n_runs=self.n_episodes,
+            n_steps=None,
+            n_episodes=self.n_episodes,
             eval_interval=3,
             outdir=outdir,
             max_episode_len=None,
