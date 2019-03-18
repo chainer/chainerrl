@@ -22,13 +22,13 @@ python train_dqn.py [options]
 To view the full list of options, either view the code or run the example with the `--help` option.
 
 ## Results
-These results reflect ChainerRL  `v0.5.0`/`v0.6.0`.
+These results reflect ChainerRL  `v0.6.0`.
 
 The summary of the results is as follows:
  - These results are averaged over 5 runs per domain
  - We ran this example on 59 Atari domains. 
  - The original DQN paper paper ran results on 49 Atari domains. Within these 49 domains the results are as follows:
- 	-  On 26 domains, the scores reported in the DQN paper are higher than the scores achieved by ChainerRL.
+ 	- On 26 domains, the scores reported in the DQN paper are higher than the scores achieved by ChainerRL.
  	- On 22 domains, our DQN implementation outscores the reported results from the DQN paper.
  	- On 1 domain, our implementation ties the reported score from the DQN paper.
  - Note that the scores reported in the DQN paper are from a single run on each domain, and might not be an accurate reflection of the DQN's true performance.
@@ -37,7 +37,7 @@ The summary of the results is as follows:
 
 | Game        | ChainerRL Score           | Original Reported Scores |
 | ------------- |:-------------:|:-------------:|
-| AirRaid | **6450.5**| N/A|
+| AirRaid | 6450.5| N/A|
 | Alien | 1713.1| **3069**|
 | Amidar | **986.7**| 739.5|
 | Assault | 3317.2| **3359**|
@@ -47,11 +47,11 @@ The summary of the results is as follows:
 | BankHeist | **645.0**| 429.7|
 | BattleZone | 5313.3| **26300**|
 | BeamRider | **7042.9**| 6846|
-| Berzerk | **707.2**| N/A|
+| Berzerk | 707.2| N/A|
 | Bowling | **52.3**| 42.4|
 | Boxing | **89.6**| 71.8|
 | Breakout | 364.9| **401.2**|
-| Carnival | **5222.0**| N/A|
+| Carnival | 5222.0| N/A|
 | Centipede | 5112.6| **8309**|
 | ChopperCommand | 6170.0| **6687**|
 | CrazyClimber | 108472.7| **114103**|
@@ -66,25 +66,25 @@ The summary of the results is as follows:
 | Hero | **20538.7**| 19950|
 | IceHockey | -2.4| **-1.6**|
 | Jamesbond | **851.7**| 576.7|
-| JourneyEscape | **-1894.0**| N/A|
+| JourneyEscape | -1894.0| N/A|
 | Kangaroo | **8831.3**| 6740|
 | Krull | **6215.0**| 3805|
 | KungFuMaster | **27616.7**| 23270|
 | MontezumaRevenge | **0.0**| **0.0**|
 | MsPacman | **2526.6**| 2311|
 | NameThisGame | 7046.5| **7257**|
-| Phoenix | **7054.4**| N/A|
-| Pitfall | **-28.3**| N/A|
+| Phoenix | 7054.4| N/A|
+| Pitfall | -28.3| N/A|
 | Pong | **20.1**| 18.9|
-| Pooyan | **3118.7**| N/A|
+| Pooyan | 3118.7| N/A|
 | PrivateEye | 1538.3| **1788**|
 | Qbert | 10516.0| **10596**|
 | Riverraid | 7784.1| **8316**|
 | RoadRunner | **37092.0**| 18257|
 | Robotank | 47.4| **51.6**|
 | Seaquest | **6075.7**| 5286|
-| Skiing | **-13030.2**| N/A|
-| Solaris | **1565.1**| N/A|
+| Skiing | -13030.2| N/A|
+| Solaris | 1565.1| N/A|
 | SpaceInvaders | 1583.2| **1976**|
 | StarGunner | 56685.3| **57997**|
 | Tennis | -5.4| **-2.5**|
@@ -94,7 +94,7 @@ The summary of the results is as follows:
 | Venture | **656.7**| 380.0|
 | VideoPinball | 9194.5| **42684**|
 | WizardOfWor | 1957.3| **3393**|
-| YarsRevenge | **4397.3**| N/A|
+| YarsRevenge | 4397.3| N/A|
 | Zaxxon | **5698.7**| 4977|
 
 
@@ -113,4 +113,4 @@ Our evaluation protocol is designed to mirror the evaluation protocol of the ori
 
 ## Training times
 
-We ran this DQN example 5 times for each of 59 Atari domains, for a total of 295 runs. Over these 295 runs, on average our implementation took **4.23 days** on a single GPU. Looking at the average training time for individual domains (over 5 runs for that domain), we find that YarsRevenge finishes the most quickly, taking only **3.23 days** on average. The slowest domain was UpNDown, which took **4.67 days** to complete on average. This is very competitive, as several DQN implementations take on the order of 10 days for a single run.
+We ran this DQN example 5 times for each of 59 Atari domains, for a total of 295 runs. Over these 295 runs, on average our implementation took **4.23 days** on a single GPU. Looking at the average training time for individual domains (over 5 runs for that domain), we find that YarsRevenge finishes the most quickly, taking only **3.23 days** on average. The slowest domain was UpNDown, which took **4.67 days** to complete on average.
