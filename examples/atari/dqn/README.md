@@ -28,10 +28,10 @@ The summary of the results is as follows:
  - These results are averaged over 5 runs per domain
  - We ran this example on 59 Atari domains. 
  - The original DQN paper paper ran results on 49 Atari domains. Within these 49 domains the results are as follows:
- 	- The reported results from the DQN paper are higher than ChainerRL on 26 domains.
- 	- This example from ChainerRL outperforms the DQN paper on 22 domains.
- 	- Our implementation ties the reported DQN results on a single domain.
- - Note that the reported DQN results are from a single run on each domain, and might not be an accurate reflection of the DQN's true performance.
+ 	-  On 26 domains, the scores reported in the DQN paper are higher than the scores achieved by ChainerRL.
+ 	- On 22 domains, our DQN implementation outscores the reported results from the DQN paper.
+ 	- On 1 domain, our implementation ties the reported score from the DQN paper.
+ - Note that the scores reported in the DQN paper are from a single run on each domain, and might not be an accurate reflection of the DQN's true performance.
  - The "Original Reported Scores" are obtained from _Extended Data Table 2_ in [Human-level control through Deep Reinforcement Learning](https://storage.googleapis.com/deepmind-media/dqn/DQNNaturePaper.pdf)
 
 
@@ -99,18 +99,18 @@ The summary of the results is as follows:
 
 
 ## Evaluation Protocol
-Our evaluation protocol is designed to mirror the evaluation protocol of the original paper as closely as possible, in order to offer a fair comparison of the quality of our example. Specifically, the details of our evaluation (also can be found in the code) are the following:
+Our evaluation protocol is designed to mirror the evaluation protocol of the original paper as closely as possible, in order to offer a fair comparison of the quality of our example implementation. Specifically, the details of our evaluation (also can be found in the code) are the following:
 
-- **Evaluation Frequency**: After every 1 million frames (250K environment timesteps). This results in a total of 200 "intermediate" evaluations.
+- **Evaluation Frequency**: The agent is evaluated after every 1 million frames (250K timesteps). This results in a total of 200 "intermediate" evaluations.
 - **Evaluation Phase**: The agent is evaluated for 500K frames (125K timesteps) in each intermediate evaluation. 
-	- **Output**: The output of an intermediate evaluation phase is a score representing the mean of all completed evaluation episodes within the evaluation phase (the final unfinished episode during the evaluation phase, if any, is discarded)
+	- **Output**: The output of an intermediate evaluation phase is a score representing the mean score of all completed evaluation episodes within the 125K timesteps. If there is any unfinished episode by the time the 125K timestep evaluation phase is finished, that episode is discarded.
 - **Intermediate Evaluation Episode**: 
 	- We did not cap the length of the intermediate evaluation episodes.
 	- Each evaluation episode begins with a random number of no-ops (up to 30), where this number is chosen uniformly at random.
 	- During evaluation episodes the agent uses an epsilon-greedy policy, with epsilon=0.05.
-- **Reporting**: For each example run, we take the network weights of the best intermediate agent (i.e. the network weights that achieved the highest intermediate evaluation), and re-evaluate that agent for 30 episodes. In each of these "final" evaluation episodes, the episodes is terminated after 5 minutes of play(5 minutes = 300 seconds * 60 fps / 4 frames per action = 4500 timesteps). We then output the average of these 30 episodes as the achieved score for the DQN agent. The reported value in the table consists of the average of 5 of these achieved scores.
+- **Reporting**: For each run of our DQN example, we take the network weights of the best intermediate agent (i.e. the network weights that achieved the highest intermediate evaluation), and re-evaluate that agent for 30 episodes. In each of these 30 "final evaluation" episodes, the episode is terminated after 5 minutes of play (5 minutes = 300 seconds * 60 frames-per-second / 4 frames per action = 4500 timesteps). We then output the average of these 30 episodes as the achieved score for the DQN agent. The reported value in the table consists of the average of 5 "final evaluations", or 5 runs of this DQN example, each using a different random seed.
 
 
 ## Training times
 
-We ran this example 5 times for each of 59 Atari domains, for a total of 295 runs. Over these 295 runs, on average our implementation took **4.23 days** on a single GPU. Looking at the average training time for individual domains (over 5 runs for that domain), we find that YarsRevenge finishes the most quickly, taking only **3.23 days** on average. The slowest domain was UpNDown, which took **4.67 days** to complete on average. This is very competitive, as several DQN implementations take on the order of 10 days for a run.
+We ran this DQN example 5 times for each of 59 Atari domains, for a total of 295 runs. Over these 295 runs, on average our implementation took **4.23 days** on a single GPU. Looking at the average training time for individual domains (over 5 runs for that domain), we find that YarsRevenge finishes the most quickly, taking only **3.23 days** on average. The slowest domain was UpNDown, which took **4.67 days** to complete on average. This is very competitive, as several DQN implementations take on the order of 10 days for a single run.
