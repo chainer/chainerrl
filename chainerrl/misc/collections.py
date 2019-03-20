@@ -8,6 +8,8 @@ standard_library.install_aliases()  # NOQA
 
 import itertools
 
+import numpy as np
+
 from chainerrl.misc.random import sample_n_k
 
 
@@ -108,3 +110,6 @@ class RandomAccessQueue(object):
 
     def sample(self, k):
         return [self[i] for i in sample_n_k(len(self), k)]
+
+    def sample_with_replacement(self, k):
+        return [self[i] for i in np.random.randint(0, len(self), k)]

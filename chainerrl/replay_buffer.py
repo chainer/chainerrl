@@ -11,6 +11,7 @@ from abc import ABCMeta
 from abc import abstractmethod
 from abc import abstractproperty
 import collections
+import copy
 
 import numpy as np
 import six.moves.cPickle as pickle
@@ -18,8 +19,8 @@ import six.moves.cPickle as pickle
 from chainerrl.misc.batch_states import batch_states
 from chainerrl.misc.collections import RandomAccessQueue
 from chainerrl.misc.prioritized import PrioritizedBuffer
-import copy
 from pdb import set_trace
+
 
 class AbstractReplayBuffer(with_metaclass(ABCMeta, object)):
     """Defines a common interface of replay buffer.
@@ -450,26 +451,27 @@ class HindsightReplayBuffer(EpisodicReplayBuffer):
 
     def sample(self, n):
         assert len(self.memory) >= n
-        # select n episodes
+        # Select n episodes
         episodes = self.sample_episodes(n)
-        # select timesteps from each episode
+        # Select timesteps from each episode
         episode_lens = np.array([len(episode) for episode in episodes])
         timesteps = np.array(
             [np.random.randint(episode_lens[i]) for i in range(n)])
+        # Select episodes for which we use a future goal instead of true
         her_indexes = set(
             np.where(np.random.uniform(size=n) < self.future_prob)[0])
+        # Randomly select offsets of future goals
         future_offset = np.random.uniform(size=n) * (episode_lens - timesteps)
         future_offset = future_offset.astype(int)
         future_times = timesteps + future_offset
         batch = []
+        # Go through episodes
         for index in range(n):
             transition = episodes[index][timesteps[index]]
+            # If we are supposed to sample future goals, replace goals
             if index in her_indexes:
                 transition = copy.deepcopy(transition)
-                try:
-                    future_state = episodes[index][future_times[index]]['state']
-                except:
-                    set_trace()
+                future_state = episodes[index][future_times[index]]['state']
                 new_goal = future_state['achieved_goal']
                 transition['state']['desired_goal'] = new_goal
                 transition['next_state']['desired_goal'] = new_goal
@@ -481,8 +483,7 @@ class HindsightReplayBuffer(EpisodicReplayBuffer):
         return batch
 
     def sample_episodes(self, n_episodes, max_len=None):
-        assert len(self.episodic_memory) >= n_episodes
-        episodes = self.episodic_memory.sample(n_episodes)
+        episodes = self.episodic_memory.sample_with_replacement(n_episodes)
         if max_len is not None:
             return [random_subseq(ep, max_len) for ep in episodes]
         else:
