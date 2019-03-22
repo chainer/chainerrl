@@ -104,7 +104,6 @@ def main():
             env = chainerrl.wrappers.Render(env)
         return env
 
-
     def make_batch_env(test):
         return chainerrl.envs.MultiprocessVectorEnv(
             [(lambda: make_env(idx, test))

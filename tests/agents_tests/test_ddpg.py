@@ -23,7 +23,8 @@ class TestDDPGOnContinuousPOABC(base._TestDDPGOnContinuousPOABC):
                     episodic_update=True, update_interval=1)
 
 
-class TestDDPGOnContinuousABC(_TestBatchTrainingMixin, base._TestDDPGOnContinuousABC):
+class TestDDPGOnContinuousABC(_TestBatchTrainingMixin,
+                              base._TestDDPGOnContinuousABC):
 
     def make_ddpg_agent(self, env, model, actor_opt, critic_opt, explorer,
                         rbuf, gpu):

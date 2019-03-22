@@ -13,8 +13,8 @@ import chainer
 from chainer import cuda
 import chainer.functions as F
 
-from chainerrl.agent import BatchAgent
 from chainerrl.agent import AttributeSavingMixin
+from chainerrl.agent import BatchAgent
 from chainerrl.misc.batch_states import batch_states
 from chainerrl.misc.copy_param import synchronize_parameters
 from chainerrl.recurrent import Recurrent
@@ -22,6 +22,7 @@ from chainerrl.recurrent import RecurrentChainMixin
 from chainerrl.recurrent import state_kept
 from chainerrl.replay_buffer import batch_experiences
 from chainerrl.replay_buffer import ReplayUpdater
+
 
 def disable_train(chain):
     call_orig = chain.__call__
@@ -354,9 +355,11 @@ class DDPG(AttributeSavingMixin, BatchAgent):
         """
 
         with chainer.using_config('train', False), chainer.no_backprop_mode():
-            batch_xs = self.batch_states([[obs] for obs in batch_obs], self.xp, self.phi)
+            batch_xs = self.batch_states(
+                [[obs] for obs in batch_obs],
+                self.xp, self.phi)
             batch_action = [
-                            self.policy(batch_xs[i]).sample() \
+                            self.policy(batch_xs[i]).sample()
                             for i in range(len(batch_obs))]
             # Q is not needed here, but log it just for information
             # q = self.q_function(batch_xs, batch_action)
@@ -368,7 +371,6 @@ class DDPG(AttributeSavingMixin, BatchAgent):
         #                   self.t, batch_action.array[0], q.array)
         return [cuda.to_cpu(action.array[0]) for action in batch_action]
 
-
     def batch_act_and_train(self, batch_obs):
         """Select a batch of actions for training.
 
@@ -379,7 +381,6 @@ class DDPG(AttributeSavingMixin, BatchAgent):
             Sequence of ~object: Actions.
         """
 
-        # DDPG act and train
         batch_greedy_action = [self.act(obs) for obs in batch_obs]
         batch_action = [
             self.explorer.select_action(
@@ -394,12 +395,7 @@ class DDPG(AttributeSavingMixin, BatchAgent):
         self.batch_last_obs = list(batch_obs)
         self.batch_last_action = list(batch_action)
 
-        # # Update stats
-        # self.average_q *= self.average_q_decay
-        # self.average_q += (1 - self.average_q_decay) * float(batch_maxq.mean())
-
         return batch_action
-
 
     def batch_observe_and_train(
             self, batch_obs, batch_reward, batch_done, batch_reset):
@@ -438,11 +434,9 @@ class DDPG(AttributeSavingMixin, BatchAgent):
                     self.batch_last_obs[i] = None
             self.replay_updater.update_if_necessary(self.t)
 
-
     def batch_observe(self, batch_obs, batch_reward,
                       batch_done, batch_reset):
         pass
-
 
     def stop_episode_and_train(self, state, reward, done=False):
 
