@@ -359,8 +359,8 @@ class DDPG(AttributeSavingMixin, BatchAgent):
                 [[obs] for obs in batch_obs],
                 self.xp, self.phi)
             batch_action = [
-                            self.policy(batch_xs[i]).sample()
-                            for i in range(len(batch_obs))]
+                self.policy(batch_xs[i]).sample()
+                for i in range(len(batch_obs))]
             # Q is not needed here, but log it just for information
             # q = self.q_function(batch_xs, batch_action)
 
