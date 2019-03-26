@@ -197,7 +197,7 @@ def train_agent_async(outdir, processes, make_env,
     else:
         evaluator = AsyncEvaluator(
             n_steps=eval_n_steps,
-            n_episodes=eval_n_runs,
+            n_episodes=eval_n_episodes,
             eval_interval=eval_interval, outdir=outdir,
             max_episode_len=max_episode_len,
             step_offset=step_offset,
