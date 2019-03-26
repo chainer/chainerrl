@@ -353,7 +353,9 @@ class DQN(agent.AttributeSavingMixin, agent.BatchAgent):
 
         if errors_out is not None:
             del errors_out[:]
-            delta = F.sum(abs(y - t), axis=1)
+            delta = F.absolute(y - t)
+            if delta.ndim == 2:
+                delta = F.sum(delta, axis=1)
             delta = cuda.to_cpu(delta.array)
             for e in delta:
                 errors_out.append(e)

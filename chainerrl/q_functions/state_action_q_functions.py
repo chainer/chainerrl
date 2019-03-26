@@ -146,8 +146,7 @@ class FCBNSAQFunction(MLPBN, StateActionQFunction):
         return super().__call__(h)
 
 
-class FCBNLateActionSAQFunction(chainer.Chain, StateActionQFunction,
-                                RecurrentChainMixin):
+class FCBNLateActionSAQFunction(chainer.Chain, StateActionQFunction):
     """Fully-connected + BN (s,a)-input Q-function with late action input.
 
     Actions are not included until the second hidden layer and not normalized.
@@ -202,8 +201,7 @@ class FCBNLateActionSAQFunction(chainer.Chain, StateActionQFunction,
         return self.mlp(h)
 
 
-class FCLateActionSAQFunction(chainer.Chain, StateActionQFunction,
-                              RecurrentChainMixin):
+class FCLateActionSAQFunction(chainer.Chain, StateActionQFunction):
     """Fully-connected (s,a)-input Q-function with late action input.
 
     Actions are not included until the second hidden layer and not normalized.
