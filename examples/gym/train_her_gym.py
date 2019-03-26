@@ -116,6 +116,7 @@ def main():
     parser.add_argument('--epsilon', type=float, default=0.2)
     parser.add_argument('--noise-std', type=float, default=0.05)
     parser.add_argument('--clip-threshold', type=float, default=5.0)
+    parser.add_argument('--num-envs', type=int, default=1)
     args = parser.parse_args()
 
     args.outdir = experiments.prepare_output_dir(
@@ -128,10 +129,17 @@ def main():
     def clip_action_filter(a):
         return np.clip(a, action_space.low, action_space.high)
 
-    def make_env(test):
+    # Set different random seeds for different subprocesses.
+    # If seed=0 and processes=4, subprocess seeds are [0, 1, 2, 3].
+    # If seed=1 and processes=4, subprocess seeds are [4, 5, 6, 7].
+    process_seeds = np.arange(args.num_envs) + args.seed * args.num_envs
+    assert process_seeds.max() < 2 ** 32
+
+    def make_env(idx, test):
         env = gym.make(args.env)
         # Use different random seeds for train and test envs
-        env_seed = 2 ** 32 - 1 - args.seed if test else args.seed
+        process_seed = int(process_seeds[idx])
+        env_seed = 2 ** 32 - 1 - process_seed if test else process_seed
         env.seed(env_seed)
         if args.monitor:
             env = gym.wrappers.Monitor(env, args.outdir)
@@ -143,20 +151,26 @@ def main():
             env = HEREnvWrapper(env, args.outdir)
         return env
 
-    env = make_env(test=False)
+    def make_batch_env(test):
+        return chainerrl.envs.MultiprocessVectorEnv(
+            [(lambda: make_env(idx, test))
+             for idx, env in enumerate(range(args.num_envs))])
+
+    sample_env = make_env(0, test=False)
 
     def reward_function(state, action, goal):
-        return env.compute_reward(achieved_goal=state['achieved_goal'],
+        return sample_env.compute_reward(achieved_goal=state['achieved_goal'],
                                   desired_goal=goal,
                                   info=None)
-    timestep_limit = env.spec.tags.get(
+
+    timestep_limit = sample_env.spec.tags.get(
         'wrapper_config.TimeLimit.max_episode_steps')
-    space_dict = env.observation_space.spaces
+    space_dict = sample_env.observation_space.spaces
     observation_space = space_dict['observation']
     goal_space = space_dict['desired_goal']
     obs_size = np.asarray(observation_space.shape).prod()
     goal_size = np.asarray(goal_space.shape).prod()
-    action_space = env.action_space
+    action_space = sample_env.action_space
 
     action_size = np.asarray(action_space.shape).prod()    
     q_func = q_functions.FCSAQFunction(
@@ -211,10 +225,9 @@ def main():
     if len(args.load) > 0:
         agent.load(args.load)
 
-    eval_env = make_env(test=True)
     if args.demo:
         eval_stats = experiments.eval_performance(
-            env=eval_env,
+            env=make_batch_env(test=True),
             agent=agent,
             n_steps=None,
             n_episodes=args.eval_n_runs,
@@ -223,13 +236,12 @@ def main():
             args.eval_n_runs, eval_stats['mean'], eval_stats['median'],
             eval_stats['stdev']))
     else:
-        experiments.train_agent_with_evaluation(
-            agent=agent, env=env, steps=args.steps,
-            eval_env=eval_env, eval_n_steps=None,
+        experiments.train_agent_batch_with_evaluation(
+            agent=agent, env=make_batch_env(test=False), steps=args.steps,
+            eval_env=make_batch_env(test=True), eval_n_steps=None,
             eval_n_episodes=args.eval_n_runs, eval_interval=args.eval_interval,
             outdir=args.outdir,
-            train_max_episode_len=timestep_limit)
-
+            max_episode_len=timestep_limit)
 
 if __name__ == '__main__':
     main()
