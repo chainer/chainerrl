@@ -198,7 +198,8 @@ class TestPCL(unittest.TestCase):
                     agent=agent, steps=steps,
                     max_episode_len=2,
                     eval_interval=200,
-                    eval_n_runs=5,
+                    eval_n_steps=None,
+                    eval_n_episodes=5,
                     successful_score=1)
                 assert len(warns) == 0, warns[0]
             # The agent returned by train_agent_async is not guaranteed to be
