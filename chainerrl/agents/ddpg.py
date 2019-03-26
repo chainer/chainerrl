@@ -23,6 +23,7 @@ from chainerrl.recurrent import state_kept
 from chainerrl.replay_buffer import batch_experiences
 from chainerrl.replay_buffer import ReplayUpdater
 
+
 def disable_train(chain):
     call_orig = chain.__call__
 
@@ -362,7 +363,8 @@ class DDPG(AttributeSavingMixin, BatchAgent):
 
         # Update stats
         self.average_q *= self.average_q_decay
-        self.average_q += (1 - self.average_q_decay) * float(q.array)
+        self.average_q += (1 - self.average_q_decay) * float(
+            q.array.mean(axis=0))
         self.logger.debug('t:%s a:%s q:%s',
                           self.t, batch_action.array[0], q.array)
         return [cuda.to_cpu(action.array) for action in batch_action]
