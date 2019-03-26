@@ -23,7 +23,6 @@ from chainerrl.recurrent import state_kept
 from chainerrl.replay_buffer import batch_experiences
 from chainerrl.replay_buffer import ReplayUpdater
 
-
 def disable_train(chain):
     call_orig = chain.__call__
 
@@ -355,21 +354,18 @@ class DDPG(AttributeSavingMixin, BatchAgent):
         """
 
         with chainer.using_config('train', False), chainer.no_backprop_mode():
-            batch_xs = self.batch_states(
-                [[obs] for obs in batch_obs],
+            batch_xs = self.batch_states(batch_obs,
                 self.xp, self.phi)
-            batch_action = [
-                self.policy(batch_xs[i]).sample()
-                for i in range(len(batch_obs))]
+            batch_action = self.policy(batch_xs).sample()
             # Q is not needed here, but log it just for information
-            # q = self.q_function(batch_xs, batch_action)
+            q = self.q_function(batch_xs, batch_action)
 
         # Update stats
-        # self.average_q *= self.average_q_decay
-        # self.average_q += (1 - self.average_q_decay) * float(q.array)
-        # self.logger.debug('t:%s a:%s q:%s',
-        #                   self.t, batch_action.array[0], q.array)
-        return [cuda.to_cpu(action.array[0]) for action in batch_action]
+        self.average_q *= self.average_q_decay
+        self.average_q += (1 - self.average_q_decay) * float(q.array)
+        self.logger.debug('t:%s a:%s q:%s',
+                          self.t, batch_action.array[0], q.array)
+        return [cuda.to_cpu(action.array) for action in batch_action]
 
     def batch_act_and_train(self, batch_obs):
         """Select a batch of actions for training.
@@ -381,7 +377,7 @@ class DDPG(AttributeSavingMixin, BatchAgent):
             Sequence of ~object: Actions.
         """
 
-        batch_greedy_action = [self.act(obs) for obs in batch_obs]
+        batch_greedy_action = self.batch_act(batch_obs)
         batch_action = [
             self.explorer.select_action(
                 self.t, lambda: batch_greedy_action[i])
@@ -413,7 +409,6 @@ class DDPG(AttributeSavingMixin, BatchAgent):
         Returns:
             None
         """
-        # DQN batch observe and train
         for i in range(len(batch_obs)):
             self.t += 1
             # Update the target network
