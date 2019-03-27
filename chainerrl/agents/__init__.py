@@ -8,6 +8,7 @@ from chainerrl.agents.double_dqn import DoubleDQN  # NOQA
 from chainerrl.agents.double_pal import DoublePAL  # NOQA
 from chainerrl.agents.dpp import DPP  # NOQA
 from chainerrl.agents.dqn import DQN  # NOQA
+from chainerrl.agents.iqn import IQN  # NOQA
 from chainerrl.agents.nsq import NSQ  # NOQA
 from chainerrl.agents.pal import PAL  # NOQA
 from chainerrl.agents.pcl import PCL  # NOQA

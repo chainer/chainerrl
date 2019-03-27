@@ -1,6 +1,6 @@
 """An example of training Categorical DQN against OpenAI Gym Envs.
 
-This script is an example of training a CategoricalDQN agent against OpenAI
+This script is an example of training an IQN agent against OpenAI
 Gym envs. Only discrete spaces are supported.
 
 To solve CartPole-v0, run:
@@ -17,6 +17,8 @@ standard_library.install_aliases()  # NOQA
 import argparse
 import sys
 
+import chainer.functions as F
+import chainer.links as L
 from chainer import optimizers
 import gym
 import gym.wrappers
@@ -25,7 +27,6 @@ import chainerrl
 from chainerrl import experiments
 from chainerrl import explorers
 from chainerrl import misc
-from chainerrl import q_functions
 from chainerrl import replay_buffer
 
 
@@ -47,19 +48,16 @@ def main():
     parser.add_argument('--demo', action='store_true', default=False)
     parser.add_argument('--load', type=str, default=None)
     parser.add_argument('--steps', type=int, default=10 ** 8)
-    parser.add_argument('--prioritized-replay', action='store_true')
-    parser.add_argument('--episodic-replay', action='store_true')
     parser.add_argument('--replay-start-size', type=int, default=50)
     parser.add_argument('--target-update-interval', type=int, default=100)
     parser.add_argument('--target-update-method', type=str, default='hard')
-    parser.add_argument('--soft-update-tau', type=float, default=1e-2)
     parser.add_argument('--update-interval', type=int, default=1)
     parser.add_argument('--eval-n-runs', type=int, default=100)
     parser.add_argument('--eval-interval', type=int, default=1000)
     parser.add_argument('--n-hidden-channels', type=int, default=12)
     parser.add_argument('--n-hidden-layers', type=int, default=3)
     parser.add_argument('--gamma', type=float, default=0.95)
-    parser.add_argument('--minibatch-size', type=int, default=None)
+    parser.add_argument('--minibatch-size', type=int, default=32)
     parser.add_argument('--render-train', action='store_true')
     parser.add_argument('--render-eval', action='store_true')
     parser.add_argument('--monitor', action='store_true')
@@ -83,9 +81,8 @@ def main():
         if args.monitor:
             env = gym.wrappers.Monitor(env, args.outdir)
         if not test:
-            # Scale rewards (and thus returns) to a reasonable range so that
-            # training is easier
-            env = chainerrl.wrappers.ScaleReward(env, args.reward_scale_factor)
+            misc.env_modifiers.make_reward_filtered(
+                env, lambda x: x * args.reward_scale_factor)
         if ((args.render_eval and test) or
                 (args.render_train and not test)):
             env = chainerrl.wrappers.Render(env)
@@ -97,15 +94,18 @@ def main():
     obs_size = env.observation_space.low.size
     action_space = env.action_space
 
-    n_atoms = 51
-    v_max = 500
-    v_min = 0
-
-    n_actions = action_space.n
-    q_func = q_functions.DistributionalFCStateQFunctionWithDiscreteAction(
-        obs_size, n_actions, n_atoms, v_min, v_max,
-        n_hidden_channels=args.n_hidden_channels,
-        n_hidden_layers=args.n_hidden_layers)
+    hidden_size = 64
+    q_func = chainerrl.agents.iqn.ImplicitQuantileQFunction(
+        psi=chainerrl.links.Sequence(
+            L.Linear(obs_size, hidden_size),
+            F.relu,
+        ),
+        phi=chainerrl.links.Sequence(
+            chainerrl.agents.iqn.CosineBasisLinear(64, hidden_size),
+            F.relu,
+        ),
+        f=L.Linear(hidden_size, env.action_space.n),
+    )
     # Use epsilon-greedy for exploration
     explorer = explorers.LinearDecayEpsilonGreedy(
         args.start_epsilon, args.end_epsilon, args.final_exploration_steps,
@@ -115,36 +115,15 @@ def main():
     opt.setup(q_func)
 
     rbuf_capacity = 50000  # 5 * 10 ** 5
-    if args.episodic_replay:
-        if args.minibatch_size is None:
-            args.minibatch_size = 4
-        if args.prioritized_replay:
-            betasteps = (args.steps - args.replay_start_size) \
-                // args.update_interval
-            rbuf = replay_buffer.PrioritizedEpisodicReplayBuffer(
-                rbuf_capacity, betasteps=betasteps)
-        else:
-            rbuf = replay_buffer.EpisodicReplayBuffer(rbuf_capacity)
-    else:
-        if args.minibatch_size is None:
-            args.minibatch_size = 32
-        if args.prioritized_replay:
-            betasteps = (args.steps - args.replay_start_size) \
-                // args.update_interval
-            rbuf = replay_buffer.PrioritizedReplayBuffer(
-                rbuf_capacity, betasteps=betasteps)
-        else:
-            rbuf = replay_buffer.ReplayBuffer(rbuf_capacity)
+    rbuf = replay_buffer.ReplayBuffer(rbuf_capacity)
 
-    agent = chainerrl.agents.CategoricalDQN(
+    agent = chainerrl.agents.IQN(
         q_func, opt, rbuf, gpu=args.gpu, gamma=args.gamma,
         explorer=explorer, replay_start_size=args.replay_start_size,
         target_update_interval=args.target_update_interval,
         update_interval=args.update_interval,
         minibatch_size=args.minibatch_size,
-        target_update_method=args.target_update_method,
-        soft_update_tau=args.soft_update_tau,
-        episodic_update=args.episodic_replay, episodic_update_len=16)
+    )
 
     if args.load:
         agent.load(args.load)
@@ -157,7 +136,8 @@ def main():
             agent=agent,
             n_steps=None,
             n_episodes=args.eval_n_runs,
-            max_episode_len=timestep_limit)
+            max_episode_len=timestep_limit,
+        )
         print('n_runs: {} mean: {} median: {} stdev {}'.format(
             args.eval_n_runs, eval_stats['mean'], eval_stats['median'],
             eval_stats['stdev']))
@@ -171,7 +151,8 @@ def main():
             eval_interval=args.eval_interval,
             outdir=args.outdir,
             eval_env=eval_env,
-            train_max_episode_len=timestep_limit)
+            train_max_episode_len=timestep_limit,
+        )
 
 
 if __name__ == '__main__':

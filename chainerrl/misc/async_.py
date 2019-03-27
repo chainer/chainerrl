@@ -15,6 +15,11 @@ import numpy as np
 from chainerrl.misc import random_seed
 
 
+class AbnormalExitWarning(Warning):
+    """Warning category for abnormal subprocess exit."""
+    pass
+
+
 def ensure_initialized_update_rule(param):
     u = param.update_rule
     if u.state is None:
@@ -136,11 +141,15 @@ def run_async(n_process, run_func):
         if p.exitcode > 0:
             warnings.warn(
                 "Process #{} (pid={}) exited with nonzero status {}".format(
-                    process_idx, p.pid, p.exitcode))
+                    process_idx, p.pid, p.exitcode),
+                category=AbnormalExitWarning,
+            )
         elif p.exitcode < 0:
             warnings.warn(
                 "Process #{} (pid={}) was terminated by signal {}".format(
-                    process_idx, p.pid, -p.exitcode))
+                    process_idx, p.pid, -p.exitcode),
+                category=AbnormalExitWarning,
+            )
 
 
 def as_shared_objects(obj):

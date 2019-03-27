@@ -79,6 +79,7 @@ class TestPPO(unittest.TestCase):
             steps=steps,
             outdir=self.tmpdir,
             eval_interval=200,
+            eval_n_steps=None,
             eval_n_episodes=50,
             successful_score=successful_return,
             eval_env=test_env,
@@ -92,7 +93,8 @@ class TestPPO(unittest.TestCase):
         eval_returns = run_evaluation_episodes(
             test_env,
             agent,
-            n_runs=n_test_runs,
+            n_steps=None,
+            n_episodes=n_test_runs,
             max_episode_len=max_episode_len,
         )
         n_succeeded = np.sum(np.asarray(eval_returns) >= successful_return)
@@ -206,7 +208,8 @@ class TestBatchPPO(unittest.TestCase):
             steps=steps,
             outdir=self.tmpdir,
             eval_interval=200,
-            eval_n_runs=50,
+            eval_n_steps=None,
+            eval_n_episodes=50,
             successful_score=successful_return,
             eval_env=test_env,
             log_interval=100,
@@ -219,7 +222,8 @@ class TestBatchPPO(unittest.TestCase):
         eval_returns = batch_run_evaluation_episodes(
             test_env,
             agent,
-            n_runs=n_test_runs,
+            n_steps=None,
+            n_episodes=n_test_runs,
             max_episode_len=max_episode_len,
         )
         test_env.close()

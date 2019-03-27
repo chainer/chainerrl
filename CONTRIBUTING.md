@@ -22,9 +22,9 @@ To test examples, run `test_examples.sh [gpu device id]`. `-1` would run example
 
 ## Coding style
 
-We use PEP8. To check your code, use `autopep8` and `flake8` command installed by `hacking` package.
+We use PEP8. To check your code, use `autopep8` and `flake8` packages.
 ```
-$ pip install autopep8 hacking
+$ pip install autopep8 flake8
 $ autopep8 --diff path/to/your/code.py
 $ flake8 path/to/your/code.py
 ```

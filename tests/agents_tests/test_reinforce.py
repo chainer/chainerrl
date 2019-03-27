@@ -139,6 +139,7 @@ class TestREINFORCE(unittest.TestCase):
             steps=steps,
             train_max_episode_len=2,
             eval_interval=500,
+            eval_n_steps=None,
             eval_n_episodes=5,
             successful_score=1)
 
