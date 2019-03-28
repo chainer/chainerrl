@@ -432,7 +432,7 @@ class AsyncEvaluator(object):
                                  self._max_score.value, mean)
                 self._max_score.value = mean
                 if self.save_best_so_far_agent:
-                    save_agent(self.agent, "best", self.outdir, self.logger)
+                    save_agent(agent, "best", self.outdir, self.logger)
         return mean
 
     def write_header(self, agent):
