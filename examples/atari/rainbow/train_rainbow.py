@@ -26,6 +26,11 @@ from chainerrl import replay_buffer
 
 from chainerrl.wrappers import atari_wrappers
 import json
+import io
+import pstats
+import sys
+
+import cProfile
 
 
 def main():
@@ -157,6 +162,8 @@ def main():
             eval_stats['stdev']))
 
     else:
+        pr = cProfile.Profile()
+        pr.enable()
         experiments.train_agent_with_evaluation(
             agent=agent, env=env, steps=args.steps,
             eval_n_steps=args.eval_n_steps,
@@ -166,6 +173,18 @@ def main():
             save_best_so_far_agent=True,
             eval_env=eval_env,
         )
+
+        pr.disable()
+        # s = io.StringIO()
+        # ps.print_stats()
+        # thing = pr.print_stats()
+        with open(os.path.join(args.outdir, 'rainbow.prof'), 'w') as f:
+            ps = pstats.Stats(pr, stream=f).sort_stats('tottime')
+            ps.print_stats()
+            # sys.stdout = f
+            # # f.write(s.getvalue())
+            # pr.print_stats(f)
+            # sys.stdout = sys.__stdout__
 
         dir_of_best_network = os.path.join(args.outdir, "best")
         agent.load(dir_of_best_network)
@@ -186,7 +205,6 @@ def main():
         print("The results of the best scoring network:")
         for stat in stats:
             print(str(stat) + ":" + str(stats[stat]))
-
 
 if __name__ == '__main__':
     main()
