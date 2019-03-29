@@ -355,8 +355,7 @@ class DDPG(AttributeSavingMixin, BatchAgent):
         """
 
         with chainer.using_config('train', False), chainer.no_backprop_mode():
-            batch_xs = self.batch_states(batch_obs,
-                self.xp, self.phi)
+            batch_xs = self.batch_states(batch_obs, self.xp, self.phi)
             batch_action = self.policy(batch_xs).sample()
             # Q is not needed here, but log it just for information
             q = self.q_function(batch_xs, batch_action)
