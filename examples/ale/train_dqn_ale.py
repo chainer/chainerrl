@@ -181,9 +181,9 @@ def main():
         explorer = explorers.Greedy()
     else:
         explorer = explorers.LinearDecayEpsilonGreedy(
-        1.0, args.final_epsilon,
-        args.final_exploration_frames,
-        lambda: np.random.randint(n_actions))
+            1.0, args.final_epsilon,
+            args.final_exploration_frames,
+            lambda: np.random.randint(n_actions))
 
     # Draw the computational graph and save it in the output directory.
     chainerrl.misc.draw_computational_graph(
