@@ -4,14 +4,14 @@ python:
   - "2.7"
   - "3.6"
 env:
-  - CHAINER_VERSION=3
+  - CHAINER_VERSION=4
   - CHAINER_VERSION=stable
 # command to install dependencies
 install:
   - pip install --upgrade pip setuptools wheel
   - |
-    if [[ $CHAINER_VERSION == 3 ]]; then
-      pip install "chainer==3.1.0"
+    if [[ $CHAINER_VERSION == 4 ]]; then
+      pip install "chainer==4.0.0"
     else
       pip install chainer
     fi
