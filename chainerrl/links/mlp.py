@@ -12,7 +12,6 @@ from chainer.initializers import LeCunNormal
 from chainer import links as L
 
 
-
 class MLP(chainer.Chain):
     """Multi-Layer Perceptron"""
 
