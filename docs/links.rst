@@ -17,6 +17,8 @@ Link implementations
 
 .. autoclass:: chainerrl.links.NatureDQNHead
 
+.. autoclass:: chainerrl.links.ParallelLink
+
 .. autoclass:: chainerrl.links.Sequence
 
 Link utility functions
