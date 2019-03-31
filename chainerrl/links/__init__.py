@@ -5,4 +5,5 @@ from chainerrl.links.mlp import MLP  # NOQA
 from chainerrl.links.mlp_bn import MLPBN  # NOQA
 from chainerrl.links.noisy_chain import to_factorized_noisy  # NOQA
 from chainerrl.links.noisy_linear import FactorizedNoisyLinear  # NOQA
+from chainerrl.links.parallel_link import ParallelLink  # NOQA
 from chainerrl.links.sequence import Sequence  # NOQA
