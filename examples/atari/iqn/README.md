@@ -44,7 +44,7 @@ These results reflect ChainerRL  `v0.6.0`. The ChainerRL score currently consist
 | Centipede | N/A| **11561**|
 | Chopper Command | N/A| **16836**|
 | Crazy Climber | N/A| **179082**|
-| Demon Attack | N/A| **53537**|
+| Demon Attack | N/A| **128580**|
 | Double Dunk | N/A| **5.6**|
 | Elevator Action | N/A| N/A|
 | Enduro | N/A| **2359**|
