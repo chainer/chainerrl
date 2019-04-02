@@ -23,7 +23,7 @@ class ParallelLink(chainer.ChainList):
             `__call__` methods.
     """
 
-    def forward(self, *args, **kwargs):
+    def __call__(self, *args, **kwargs):
         """Forward the arguments to the child links.
 
         Args:

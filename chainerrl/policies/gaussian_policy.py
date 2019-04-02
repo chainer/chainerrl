@@ -285,7 +285,7 @@ class GaussianHeadWithStateIndependentCovariance(chainer.Chain):
             self.var_param = chainer.Parameter(
                 initializer=var_param_init, shape=(var_size,))
 
-    def forward(self, mean):
+    def __call__(self, mean):
         """Return a Gaussian with given mean.
 
         Args:
