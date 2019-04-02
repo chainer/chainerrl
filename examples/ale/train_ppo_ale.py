@@ -56,6 +56,7 @@ def main():
     parser.add_argument('--decay-clip-eps', action='store_true', default=False)
     parser.add_argument('--log-interval', type=int, default=10000)
     parser.add_argument('--recurrent', action='store_true', default=False)
+    parser.add_argument('--adam-eps', type=float, default=1e-8)
     args = parser.parse_args()
 
     import logging
@@ -139,7 +140,7 @@ def main():
                 L.Linear(None, 1, initialW=winit_last),
             )
         )
-    opt = chainer.optimizers.Adam(alpha=args.lr)
+    opt = chainer.optimizers.Adam(alpha=args.lr, eps=args.adam_eps)
     opt.setup(model)
     opt.add_hook(chainer.optimizer.GradientClipping(.5))
 
