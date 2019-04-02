@@ -10,12 +10,12 @@ from logging import getLogger
 
 import chainer
 from chainer import functions as F
+from chainer.initializers import LeCunNormal
 from chainer import links as L
 import numpy as np
 
 from chainerrl import distribution
 from chainerrl.functions.bound_by_tanh import bound_by_tanh
-from chainerrl.initializers import LeCunNormal
 from chainerrl import links
 from chainerrl.policy import Policy
 

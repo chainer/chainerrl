@@ -8,9 +8,8 @@ standard_library.install_aliases()  # NOQA
 
 import chainer
 from chainer import functions as F
+from chainer.initializers import LeCunNormal
 from chainer import links as L
-
-from chainerrl.initializers import LeCunNormal
 
 
 class LinearBN(chainer.Chain):
