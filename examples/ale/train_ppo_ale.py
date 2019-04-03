@@ -112,6 +112,10 @@ def main():
 
     winit_last = chainer.initializers.LeCunNormal(1e-2)
     if args.recurrent:
+        # Initialize the forget gate bias to 1
+        lstm = L.NStepLSTM(1, 512, 512, 0)
+        for bs in lstm.bs:
+            bs[1].array.fill(1)
         model = chainerrl.links.StatelessRecurrentSequential(
             L.Convolution2D(None, 32, 8, stride=4),
             F.relu,
@@ -121,7 +125,7 @@ def main():
             F.relu,
             L.Linear(None, 512),
             F.relu,
-            L.NStepLSTM(1, 512, 512, 0),
+            lstm,
             chainerrl.links.ParallelLink(
                 chainer.Sequential(
                     L.Linear(None, n_actions, initialW=winit_last),
