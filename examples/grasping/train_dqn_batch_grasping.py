@@ -42,6 +42,12 @@ class TransposeObservation(gym.ObservationWrapper):
     def __init__(self, env, axes):
         super().__init__(env)
         self._axes = axes
+        assert isinstance(env.observation_space, gym.spaces.Box)
+        self.observation_space = gym.spaces.Box(
+            low=env.observation_space.low.transpose(*self._axes),
+            high=env.observation_space.high.transpose(*self._axes),
+            dtype=env.observation_space.dtype,
+        )
 
     def _observation(self, observation):
         return observation.transpose(*self._axes)
@@ -207,6 +213,9 @@ def main():
             maxSteps=max_episode_steps,
             isTest=test,
         )
+        assert env.observation_space is None
+        env.observation_space = gym.spaces.Box(
+            low=0, high=255, shape=(84, 84, 3), dtype=np.uint8)
         # (84, 84, 3) -> (3, 84, 84)
         env = TransposeObservation(env, (2, 0, 1))
         env = ObserveElapsedSteps(env, max_episode_steps)
