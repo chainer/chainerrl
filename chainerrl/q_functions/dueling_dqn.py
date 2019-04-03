@@ -16,6 +16,7 @@ from chainerrl.links.mlp import MLP
 from chainerrl.q_function import StateQFunction
 from chainerrl.recurrent import RecurrentChainMixin
 
+from pdb import set_trace
 
 class DuelingDQN(chainer.Chain, StateQFunction):
     """Dueling Q-Network
@@ -106,13 +107,18 @@ class DistributionalDuelingDQN(
         ya -= mean
 
         # State value
-        ys = self.v_stream(h)
-        ys = F.reshape(ys, (batch_size, 1, self.n_atoms))
+        # ys = self.v_stream(h)
+
+        # ys = F.reshape(ys, (batch_size, 1, self.n_atoms))
+        ys = F.reshape(self.v_stream(h), (batch_size, 1, self.n_atoms))
+
+        # self.v_stream(h)
 
         ya, ys = F.broadcast(ya, ys)
-        q = ya + ys
+        # q = ya + ys
 
-        q = F.reshape(q, (-1, self.n_actions, self.n_atoms))
-        q = F.softmax(q, axis=2)
+        # q = F.reshape(q, (-1, self.n_actions, self.n_atoms))
+        # q = F.softmax(q, axis=2)
+        q = F.softmax(ya + ys, axis=2)
 
         return action_value.DistributionalDiscreteActionValue(q, self.z_values)
