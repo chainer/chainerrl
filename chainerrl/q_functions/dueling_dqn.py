@@ -107,7 +107,6 @@ class DistributionalDuelingDQN(
         ya = F.reshape(self.a_stream(h), (batch_size, self.n_actions, self.n_atoms))
         mean = F.sum(ya, axis=1, keepdims=True) / self.n_actions
 
-        set_trace()
         ya, mean = F.broadcast(ya, mean)
         ya -= mean
 
