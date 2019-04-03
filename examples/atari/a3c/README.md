@@ -1,5 +1,5 @@
-# IQN
-This example trains an IQN agent, from the following paper: [Implicit Quantile Networks for Distributional Reinforcement Learning](https://arxiv.org/abs/1806.06923). 
+# A3C
+This example trains an Asynchronous Advantage Actor Critic (A3C) agent, from the following paper: [Asynchronous Methods for Deep Reinforcement Learning](https://arxiv.org/abs/1602.01783). 
 
 ## Requirements
 
@@ -9,7 +9,7 @@ This example trains an IQN agent, from the following paper: [Implicit Quantile N
 ## Running the Example
 
 ```
-python train_iqn.py [options]
+python train_a3c.py [options]
 ```
 
 ### Useful Options
@@ -27,65 +27,65 @@ These results reflect ChainerRL  `v0.6.0`. The ChainerRL score currently consist
 | Game        | ChainerRL Score           | Reported Scores |           
 | ------------- |:-------------:|:-------------:|
 | AirRaid | N/A| N/A|
-| Alien | N/A| **7022**|
-| Amidar | N/A| **2946**|
-| Assault | N/A| **29091**|
-| Asterix | **464666.66** | 342016|
-| Asteroids | N/A| **2898**|
-| Atlantis | N/A| **978200**|
-| Bank Heist | N/A| **1416**|
-| Battlezone | N/A| **42244**|
-| Beamrider | 35525.0 | **42776**|
-| Berzerk | N/A| **1053**|
-| Bowling | N/A| **86.5**|
-| Boxing | N/A| **99.8**|
-| Breakout | **738.0**| 734|
+| Alien | N/A| N/A|
+| Amidar | N/A| N/A|
+| Assault | N/A| N/A|
+| Asterix | N/A | N/A|
+| Asteroids | N/A| N/A|
+| Atlantis | N/A| N/A|
+| Bank Heist | N/A| N/A|
+| Battlezone | N/A| N/A|
+| Beamrider | N/A | N/A|
+| Berzerk | N/A| N/A|
+| Bowling | N/A| N/A|
+| Boxing | N/A| N/A|
+| Breakout | N/A| N/A|
 | Carnival | N/A| N/A|
-| Centipede | N/A| **11561**|
-| Chopper Command | N/A| **16836**|
-| Crazy Climber | N/A| **179082**|
-| Demon Attack | N/A| **128580**|
-| Double Dunk | N/A| **5.6**|
+| Centipede | N/A| N/A|
+| Chopper Command | N/A| N/A|
+| Crazy Climber | N/A| N/A|
+| Demon Attack | N/A| N/A|
+| Double Dunk | N/A| N/A|
 | Elevator Action | N/A| N/A|
-| Enduro | N/A| **2359**|
-| Fishing Derby | N/A| **33.8**|
-| Freeway | N/A| **34.0**|
-| Frostbite | N/A| **4342**|
-| Gopher | N/A| **118365**|
-| Gravitar | N/A| **911**|
-| H.E.R.O. | N/A| **28386**|
-| Ice Hockey | N/A| **0.2**|
-| James Bond 007 | N/A| **35108**|
+| Enduro | N/A| N/A|
+| Fishing Derby | N/A| N/A|
+| Freeway | N/A| N/A|
+| Frostbite | N/A| N/A|
+| Gopher | N/A| N/A|
+| Gravitar | N/A| N/A|
+| H.E.R.O. | N/A| N/A|
+| Ice Hockey | N/A| N/A|
+| James Bond 007 | N/A| N/A|
 | Journey Escape | N/A| N/A|
-| Kangaroo | N/A| **15487**|
-| Krull | N/A| **10707**|
-| Kung-Fu Master | N/A| **73512**|
-| Montezuma's Revenge | N/A| **0**|
-| Ms. Pac-Man | N/A| **6349**|
-| Name This Game | N/A| **22682**|
-| Phoenix | N/A| **56599**|
+| Kangaroo | N/A| N/A|
+| Krull | N/A| N/A|
+| Kung-Fu Master | N/A| N/A|
+| Montezuma's Revenge | N/A| N/A|
+| Ms. Pac-Man | N/A| N/A|
+| Name This Game | N/A| N/A|
+| Phoenix | N/A| N/A|
 | Pitfall II | N/A| N/A|
-| Pitfall! | N/A| **0.0**|
-| Pong | **21.0**| **21.0**|
+| Pitfall! | N/A| N/A|
+| Pong | N/A| N/A|
 | Pooyan | N/A| N/A|
-| Private Eye | N/A| **200**|
-| Qbert | **25971.3**| 25750|
-| River Raid | N/A| **17765**|
-| Road Runner | N/A| **57900**|
-| Robot Tank | N/A| **62.5**|
-| Seaquest | **31670.0**| 30140|
-| Skiing | N/A| **-9289**|
-| Solaris | N/A| **8007**|
-| Space Invaders | **43649.0**| 28888|
-| Stargunner | N/A| **74677**|
-| Tennis | N/A| **23.6**|
-| Time Pilot | N/A| **12236**|
-| Tutankham | N/A| **293**|
-| Up’n Down | N/A| **88148**|
-| Venture | N/A| **1318**|
-| Video Pinball | N/A| **698045**|
-| WizardOfWor | N/A| **31190**|
-| YarsRevenge | N/A| **28379**|
-| Zaxxon | N/A| **21772**|
+| Private Eye | N/A| N/A|
+| Qbert | N/A| N/A|
+| River Raid | N/A| N/A|
+| Road Runner | N/A| N/A|
+| Robot Tank | N/A| N/A|
+| Seaquest | N/A| N/A|
+| Skiing | N/A| N/A|
+| Solaris | N/A| N/A*|
+| Space Invaders | N/A| N/A|
+| Stargunner | N/A| N/A|
+| Tennis | N/A| N/A|
+| Time Pilot | N/A| N/A|
+| Tutankham | N/A| N/A|
+| Up’n Down | N/A| N/A|
+| Venture | N/A| N/A|
+| Video Pinball | N/A| N/A|
+| WizardOfWor | N/A| N/A|
+| YarsRevenge | N/A| N/A|
+| Zaxxon | N/A| N/A|
 
 						
