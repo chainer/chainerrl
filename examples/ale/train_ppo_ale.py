@@ -58,6 +58,7 @@ def main():
     parser.add_argument('--recurrent', action='store_true', default=False)
     parser.add_argument('--adam-eps', type=float, default=1e-8)
     parser.add_argument('--flicker', action='store_true', default=False)
+    parser.add_argument('--no-frame-stack', action='store_true', default=False)
     args = parser.parse_args()
 
     import logging
@@ -84,6 +85,7 @@ def main():
             episode_life=not test,
             clip_rewards=not test,
             flicker=args.flicker,
+            frame_stack=not args.no_frame_stack,
         )
         if test:
             # Randomize actions like epsilon-greedy in evaluation as well
