@@ -60,6 +60,7 @@ def main():
     parser.add_argument('--flicker', action='store_true', default=False)
     parser.add_argument('--no-frame-stack', action='store_true', default=False)
     parser.add_argument('--max-grad-norm', type=float, default=.5)
+    parser.add_argument('--entropy-coef', type=float, default=1e-2)
     args = parser.parse_args()
 
     import logging
@@ -170,7 +171,7 @@ def main():
         clip_eps=0.1,
         clip_eps_vf=None,
         standardize_advantages=args.standardize_advantages,
-        entropy_coef=1e-2,
+        entropy_coef=args.entropy_coef,
         recurrent=args.recurrent,
     )
     if args.load:
