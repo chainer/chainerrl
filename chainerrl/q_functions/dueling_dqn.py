@@ -99,10 +99,15 @@ class DistributionalDuelingDQN(
 
         # Advantage
         batch_size = x.shape[0]
-        ya = self.a_stream(h)
-        ya = F.reshape(ya, (batch_size, self.n_actions, self.n_atoms))
-        mean = F.reshape(
-            F.sum(ya, axis=1) / self.n_actions, (batch_size, 1, self.n_atoms))
+        # ya = self.a_stream(h)
+        # ya = F.reshape(ya, (batch_size, self.n_actions, self.n_atoms))
+        # mean = F.reshape(
+        #     F.sum(ya, axis=1) / self.n_actions, (batch_size, 1, self.n_atoms))
+
+        ya = F.reshape(self.a_stream(h), (batch_size, self.n_actions, self.n_atoms))
+        mean = F.sum(ya, axis=1, keepdims=True) / self.n_actions
+
+        set_trace()
         ya, mean = F.broadcast(ya, mean)
         ya -= mean
 
