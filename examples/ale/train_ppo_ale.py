@@ -57,6 +57,7 @@ def main():
     parser.add_argument('--log-interval', type=int, default=10000)
     parser.add_argument('--recurrent', action='store_true', default=False)
     parser.add_argument('--adam-eps', type=float, default=1e-8)
+    parser.add_argument('--flicker', action='store_true', default=False)
     args = parser.parse_args()
 
     import logging
@@ -81,7 +82,9 @@ def main():
         env = atari_wrappers.wrap_deepmind(
             atari_wrappers.make_atari(args.env, max_frames=args.max_frames),
             episode_life=not test,
-            clip_rewards=not test)
+            clip_rewards=not test,
+            flicker=args.flicker,
+        )
         if test:
             # Randomize actions like epsilon-greedy in evaluation as well
             env = chainerrl.wrappers.RandomizeAction(env, args.eval_epsilon)
