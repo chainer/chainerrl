@@ -59,6 +59,7 @@ def main():
     parser.add_argument('--adam-eps', type=float, default=1e-8)
     parser.add_argument('--flicker', action='store_true', default=False)
     parser.add_argument('--no-frame-stack', action='store_true', default=False)
+    parser.add_argument('--max-grad-norm', type=float, default=.5)
     args = parser.parse_args()
 
     import logging
@@ -105,6 +106,8 @@ def main():
              for idx, env in enumerate(range(args.num_envs))])
 
     sample_env = make_env(0, test=False)
+    print('Observation space', sample_env.observation_space)
+    print('Action space', sample_env.action_space)
     n_actions = sample_env.action_space.n
 
     winit_last = chainer.initializers.LeCunNormal(1e-2)
@@ -147,7 +150,8 @@ def main():
         )
     opt = chainer.optimizers.Adam(alpha=args.lr, eps=args.adam_eps)
     opt.setup(model)
-    opt.add_hook(chainer.optimizer.GradientClipping(.5))
+    if args.max_grad_norm > 0:
+        opt.add_hook(chainer.optimizer.GradientClipping(args.max_grad_norm))
 
     def phi(x):
         # Feature extractor
