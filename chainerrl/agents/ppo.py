@@ -84,6 +84,7 @@ def _add_log_prob_and_value_to_episodes_recurrent(
             [ep[0]['recurrent_state'] for ep in episodes])
         next_rs = model.concatenate_recurrent_states(
             [ep[0]['next_recurrent_state'] for ep in episodes])
+        assert len(rs) == len(next_rs)
 
         (flat_distribs, flat_vs), _ = model.n_step_forward(
             seqs_states, recurrent_state=rs, output_mode='concat')

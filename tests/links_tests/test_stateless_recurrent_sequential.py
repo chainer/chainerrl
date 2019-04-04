@@ -370,3 +370,39 @@ class TestStatelessRecurrentSequential(unittest.TestCase):
 
     def test_mask_recurrent_state_at_cpu(self):
         self._test_mask_recurrent_state_at(gpu=-1)
+
+    def _test_three_recurrent_children(self, gpu):
+        # Test if https://github.com/chainer/chainer/issues/6053 is addressed
+        in_size = 2
+        out_size = 6
+
+        rseq = StatelessRecurrentSequential(
+            L.NStepLSTM(1, in_size, 3, 0),
+            L.NStepGRU(2, 3, 4, 0),
+            L.NStepRNNTanh(5, 4, out_size, 0),
+        )
+
+        if gpu >= 0:
+            chainer.cuda.get_device_from_id(gpu).use()
+            rseq.to_gpu()
+        xp = rseq.xp
+
+        seqs_x = [
+            xp.random.uniform(-1, 1, size=(4, in_size)).astype(np.float32),
+            xp.random.uniform(-1, 1, size=(1, in_size)).astype(np.float32),
+            xp.random.uniform(-1, 1, size=(3, in_size)).astype(np.float32),
+        ]
+
+        # Make and load a recurrent state to check if the order is correct.
+        _, rs = rseq.n_step_forward(seqs_x, None, output_mode='concat')
+        _, _ = rseq.n_step_forward(seqs_x, rs, output_mode='concat')
+
+        _, rs = rseq.n_step_forward(seqs_x, None, output_mode='split')
+        _, _ = rseq.n_step_forward(seqs_x, rs, output_mode='split')
+
+    @testing.attr.gpu
+    def test_three_recurrent_children_gpu(self):
+        self._test_mask_recurrent_state_at(gpu=0)
+
+    def test_three_recurrent_children_cpu(self):
+        self._test_mask_recurrent_state_at(gpu=-1)
