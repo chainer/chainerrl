@@ -134,7 +134,7 @@ def main():
                     L.Linear(None, n_actions, initialW=winit_last),
                     chainerrl.distribution.SoftmaxDistribution,
                 ),
-                L.Linear(None, 1, initialW=winit_last),
+                L.Linear(None, 1),
             )
         )
     else:
@@ -152,7 +152,7 @@ def main():
                     L.Linear(None, n_actions, initialW=winit_last),
                     chainerrl.distribution.SoftmaxDistribution,
                 ),
-                L.Linear(None, 1, initialW=winit_last),
+                L.Linear(None, 1),
             )
         )
 
