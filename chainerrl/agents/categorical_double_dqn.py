@@ -21,6 +21,8 @@ class CategoricalDoubleDQN(categorical_dqn.CategoricalDQN):
         """Compute a batch of target return distributions."""
 
         batch_next_state = exp_batch['next_state']
+        batch_rewards = exp_batch['reward']
+        batch_terminal = exp_batch['is_state_terminal']
 
         with chainer.using_config('train', False), state_kept(self.q_function):
             next_qout = self.q_function(batch_next_state)
@@ -30,10 +32,7 @@ class CategoricalDoubleDQN(categorical_dqn.CategoricalDQN):
         next_q_max = target_next_qout.evaluate_actions(
             next_qout.greedy_actions)
 
-        batch_rewards = exp_batch['reward']
-        batch_terminal = exp_batch['is_state_terminal']
-
-        batch_size = exp_batch['reward'].shape[0]
+        batch_size = batch_rewards.shape[0]
         z_values = target_next_qout.z_values
         n_atoms = z_values.size
 
