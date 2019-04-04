@@ -61,6 +61,7 @@ def main():
     parser.add_argument('--no-frame-stack', action='store_true', default=False)
     parser.add_argument('--max-grad-norm', type=float, default=.5)
     parser.add_argument('--entropy-coef', type=float, default=1e-2)
+    parser.add_argument('--max-recurrent-sequence-len', type=int, default=None)
     args = parser.parse_args()
 
     import logging
@@ -173,6 +174,7 @@ def main():
         standardize_advantages=args.standardize_advantages,
         entropy_coef=args.entropy_coef,
         recurrent=args.recurrent,
+        max_recurrent_sequence_len=args.max_recurrent_sequence_len,
     )
     if args.load:
         agent.load(args.load)
