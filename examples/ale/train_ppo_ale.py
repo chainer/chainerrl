@@ -6,6 +6,7 @@ from builtins import *  # NOQA
 from future import standard_library
 standard_library.install_aliases()  # NOQA
 import argparse
+import os
 
 import chainer
 from chainer import functions as F
@@ -154,6 +155,16 @@ def main():
                 L.Linear(None, 1, initialW=winit_last),
             )
         )
+
+    # Draw the computational graph and save it in the output directory.
+    fake_obss = np.zeros((4, 84, 84), dtype=np.float32)[None]
+    if args.recurrent:
+        fake_out, _ = model(fake_obss, None)
+    else:
+        fake_out = model(fake_obss)
+    chainerrl.misc.draw_computational_graph(
+        [fake_out], os.path.join(args.outdir, 'model'))
+
     opt = chainer.optimizers.Adam(alpha=args.lr, eps=args.adam_eps)
     opt.setup(model)
     if args.max_grad_norm > 0:
