@@ -26,6 +26,11 @@ from chainerrl import replay_buffer
 
 from chainerrl.wrappers import atari_wrappers
 import json
+import io
+import pstats
+import sys
+
+import cProfile
 
 
 def main():
@@ -186,7 +191,6 @@ def main():
         print("The results of the best scoring network:")
         for stat in stats:
             print(str(stat) + ":" + str(stats[stat]))
-
 
 if __name__ == '__main__':
     main()
