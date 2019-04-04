@@ -111,7 +111,7 @@ class DistributionalFCStateQFunctionWithDiscreteAction(
                  nonlinearity=F.relu, last_wscale=1.0):
         assert n_atoms >= 2
         assert v_min < v_max
-        z_values = np.linspace(v_min, v_max, num=n_atoms, dtype=np.float32)
+        z_values = self.xp.linspace(v_min, v_max, num=n_atoms, dtype=np.float32)
         model = chainerrl.links.Sequence(
             MLP(in_size=ndim_obs, out_size=n_actions * n_atoms,
                 hidden_sizes=[n_hidden_channels] * n_hidden_layers,

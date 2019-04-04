@@ -79,7 +79,7 @@ class DistributionalDuelingDQN(
         self.n_atoms = n_atoms
 
         super().__init__()
-        z_values = np.linspace(v_min, v_max, num=n_atoms, dtype=np.float32)
+        z_values = self.xp.linspace(v_min, v_max, num=n_atoms, dtype=np.float32)
         self.add_persistent('z_values', z_values)
 
         with self.init_scope():
