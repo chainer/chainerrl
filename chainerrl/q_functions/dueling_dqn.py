@@ -99,10 +99,6 @@ class DistributionalDuelingDQN(
 
         # Advantage
         batch_size = x.shape[0]
-        # ya = self.a_stream(h)
-        # ya = F.reshape(ya, (batch_size, self.n_actions, self.n_atoms))
-        # mean = F.reshape(
-        #     F.sum(ya, axis=1) / self.n_actions, (batch_size, 1, self.n_atoms))
 
         ya = F.reshape(self.a_stream(h), (batch_size, self.n_actions, self.n_atoms))
         mean = F.sum(ya, axis=1, keepdims=True) / self.n_actions
@@ -111,18 +107,8 @@ class DistributionalDuelingDQN(
         ya -= mean
 
         # State value
-        # ys = self.v_stream(h)
-
-        # ys = F.reshape(ys, (batch_size, 1, self.n_atoms))
         ys = F.reshape(self.v_stream(h), (batch_size, 1, self.n_atoms))
-
-        # self.v_stream(h)
-
         ya, ys = F.broadcast(ya, ys)
-        # q = ya + ys
-
-        # q = F.reshape(q, (-1, self.n_actions, self.n_atoms))
-        # q = F.softmax(q, axis=2)
         q = F.softmax(ya + ys, axis=2)
 
         return action_value.DistributionalDiscreteActionValue(q, self.z_values)
