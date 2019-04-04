@@ -340,8 +340,8 @@ class IQN(dqn.DQN):
 
     def batch_act_and_train(self, batch_obs):
         batch_av = self._compute_action_value(batch_obs)
-        batch_maxq = batch_av.max.data
-        batch_argmax = cuda.to_cpu(batch_av.greedy_actions.data)
+        batch_maxq = batch_av.max.array
+        batch_argmax = cuda.to_cpu(batch_av.greedy_actions.array)
         batch_action = [
             self.explorer.select_action(
                 self.t, lambda: batch_argmax[i],
@@ -359,5 +359,5 @@ class IQN(dqn.DQN):
 
     def batch_act(self, batch_obs):
         batch_av = self._compute_action_value(batch_obs)
-        batch_argmax = cuda.to_cpu(batch_av.greedy_actions.data)
+        batch_argmax = cuda.to_cpu(batch_av.greedy_actions.array)
         return batch_argmax
