@@ -717,8 +717,7 @@ class PPO(agent.AttributeSavingMixin, agent.BatchAgent):
                 action = chainer.cuda.to_cpu(
                     action_distrib.most_probable.array)
             else:
-                action = chainer.cuda.to_cpu(
-                    action_distrib.sample().array)
+                action = chainer.cuda.to_cpu(action_distrib.sample().array)
 
         return action
 
@@ -800,8 +799,8 @@ class PPO(agent.AttributeSavingMixin, agent.BatchAgent):
                 assert self.batch_last_episode[i]
                 self.memory.append(self.batch_last_episode[i])
                 self.batch_last_episode[i] = []
-                self.batch_last_state[i] = None
-                self.batch_last_action[i] = None
+            self.batch_last_state[i] = None
+            self.batch_last_action[i] = None
 
         self.train_prev_recurrent_states = None
 
