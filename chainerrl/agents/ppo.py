@@ -177,9 +177,9 @@ class PPO(agent.AttributeSavingMixin, agent.BatchAgent):
             next_states = self.obs_normalizer(next_states, update=False)
         with chainer.using_config('train', False), chainer.no_backprop_mode():
             _, vs_pred = self.model(states)
-            vs_pred = chainer.cuda.to_cpu(vs_pred.data.ravel())
+            vs_pred = chainer.cuda.to_cpu(vs_pred.array.ravel())
             _, next_vs_pred = self.model(next_states)
-            next_vs_pred = chainer.cuda.to_cpu(next_vs_pred.data.ravel())
+            next_vs_pred = chainer.cuda.to_cpu(next_vs_pred.array.ravel())
         for transition, v_pred, next_v_pred in zip(dataset,
                                                    vs_pred,
                                                    next_vs_pred):
@@ -328,9 +328,9 @@ class PPO(agent.AttributeSavingMixin, agent.BatchAgent):
         # action_distrib will be recomputed when computing gradients
         with chainer.using_config('train', False), chainer.no_backprop_mode():
             action_distrib, value = self.model(b_state)
-            action = chainer.cuda.to_cpu(action_distrib.sample().data)[0]
-            self.entropy_record.append(float(action_distrib.entropy.data))
-            self.value_record.append(float(value.data))
+            action = chainer.cuda.to_cpu(action_distrib.sample().array)[0]
+            self.entropy_record.append(float(action_distrib.entropy.array))
+            self.value_record.append(float(value.array))
 
         self.last_state = obs
         self.last_action = action
@@ -346,7 +346,7 @@ class PPO(agent.AttributeSavingMixin, agent.BatchAgent):
 
         with chainer.using_config('train', False), chainer.no_backprop_mode():
             action_distrib, _ = self.model(b_state)
-            action = chainer.cuda.to_cpu(action_distrib.sample().data)[0]
+            action = chainer.cuda.to_cpu(action_distrib.sample().array)[0]
 
         return action
 
@@ -381,7 +381,7 @@ class PPO(agent.AttributeSavingMixin, agent.BatchAgent):
 
         with chainer.using_config('train', False), chainer.no_backprop_mode():
             action_distrib, _ = self.model(b_state)
-            action = chainer.cuda.to_cpu(action_distrib.sample().data)
+            action = chainer.cuda.to_cpu(action_distrib.sample().array)
 
         return action
 
@@ -402,10 +402,10 @@ class PPO(agent.AttributeSavingMixin, agent.BatchAgent):
         # action_distrib will be recomputed when computing gradients
         with chainer.using_config('train', False), chainer.no_backprop_mode():
             action_distrib, batch_value = self.model(b_state)
-            batch_action = chainer.cuda.to_cpu(action_distrib.sample().data)
+            batch_action = chainer.cuda.to_cpu(action_distrib.sample().array)
             self.entropy_record.extend(
-                chainer.cuda.to_cpu(action_distrib.entropy.data))
-            self.value_record.extend(chainer.cuda.to_cpu((batch_value.data)))
+                chainer.cuda.to_cpu(action_distrib.entropy.array))
+            self.value_record.extend(chainer.cuda.to_cpu((batch_value.array)))
 
         self.batch_last_state = list(batch_obs)
         self.batch_last_action = list(batch_action)
