@@ -182,7 +182,7 @@ class A2C(agent.AttributeSavingMixin, agent.BatchAgent):
     def update(self):
         with chainer.no_backprop_mode():
             _, next_value = self.model.pi_and_v(self.states[-1])
-            next_value = next_value.data[:, 0]
+            next_value = next_value.array[:, 0]
 
         self._compute_returns(next_value)
         pout, values = \
@@ -200,7 +200,7 @@ class A2C(agent.AttributeSavingMixin, agent.BatchAgent):
         advantages = self.returns[:-1] - values
         value_loss = F.mean(advantages * advantages)
         action_loss = \
-            - F.mean(advantages.data * action_log_probs)
+            - F.mean(advantages.array * action_log_probs)
 
         self.model.cleargrads()
 
@@ -216,13 +216,13 @@ class A2C(agent.AttributeSavingMixin, agent.BatchAgent):
         # Update stats
         self.average_actor_loss += (
             (1 - self.average_actor_loss_decay) *
-            (float(action_loss.data) - self.average_actor_loss))
+            (float(action_loss.array) - self.average_actor_loss))
         self.average_value += (
             (1 - self.average_value_decay) *
-            (float(value_loss.data) - self.average_value))
+            (float(value_loss.array) - self.average_value))
         self.average_entropy += (
             (1 - self.average_entropy_decay) *
-            (float(dist_entropy.data) - self.average_entropy))
+            (float(dist_entropy.array) - self.average_entropy))
 
     def batch_act_and_train(self, batch_obs):
 
@@ -231,7 +231,7 @@ class A2C(agent.AttributeSavingMixin, agent.BatchAgent):
         if self.t == 0:
             with chainer.no_backprop_mode():
                 pout, _ = self.model.pi_and_v(statevar)
-                action = pout.sample().data
+                action = pout.sample().array
             self._flush_storage(statevar.shape, action)
 
         self.states[self.t - self.t_start] = statevar
@@ -241,11 +241,11 @@ class A2C(agent.AttributeSavingMixin, agent.BatchAgent):
 
         with chainer.no_backprop_mode():
             pout, value = self.model.pi_and_v(statevar)
-            action = pout.sample().data
+            action = pout.sample().array
 
         self.actions[self.t - self.t_start] \
             = action.reshape([-1] + list(self.action_shape))
-        self.value_preds[self.t - self.t_start] = value.data[:, 0]
+        self.value_preds[self.t - self.t_start] = value.array[:, 0]
 
         self.t += 1
 
@@ -255,7 +255,7 @@ class A2C(agent.AttributeSavingMixin, agent.BatchAgent):
         statevar = self.batch_states(batch_obs, self.xp, self.phi)
         with chainer.no_backprop_mode():
             pout, _ = self.model.pi_and_v(statevar)
-            action = pout.sample().data
+            action = pout.sample().array
         return chainer.cuda.to_cpu(action)
 
     def batch_observe_and_train(self, batch_obs, batch_reward, batch_done,
@@ -290,9 +290,9 @@ class A2C(agent.AttributeSavingMixin, agent.BatchAgent):
             statevar = self.batch_states([obs], self.xp, self.phi)
             pout, _ = self.model.pi_and_v(statevar)
             if self.act_deterministically:
-                return chainer.cuda.to_cpu(pout.most_probable.data)[0]
+                return chainer.cuda.to_cpu(pout.most_probable.array)[0]
             else:
-                return chainer.cuda.to_cpu(pout.sample().data)[0]
+                return chainer.cuda.to_cpu(pout.sample().array)[0]
 
     def stop_episode_and_train(self, state, reward, done=False):
         raise RuntimeError('A2C does not support non-batch training')

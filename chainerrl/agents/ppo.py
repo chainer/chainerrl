@@ -638,9 +638,9 @@ class PPO(agent.AttributeSavingMixin, agent.BatchAgent):
                     self.model(b_state, self.train_prev_recurrent_states)
             else:
                 action_distrib, value = self.model(b_state)
-            action = chainer.cuda.to_cpu(action_distrib.sample().data)[0]
-            self.entropy_record.append(float(action_distrib.entropy.data))
-            self.value_record.append(float(value.data))
+            action = chainer.cuda.to_cpu(action_distrib.sample().array)[0]
+            self.entropy_record.append(float(action_distrib.entropy.array))
+            self.value_record.append(float(value.array))
 
         self.last_state = obs
         self.last_action = action
@@ -744,10 +744,10 @@ class PPO(agent.AttributeSavingMixin, agent.BatchAgent):
                     self.model(b_state, self.train_prev_recurrent_states)
             else:
                 action_distrib, batch_value = self.model(b_state)
-            batch_action = chainer.cuda.to_cpu(action_distrib.sample().data)
+            batch_action = chainer.cuda.to_cpu(action_distrib.sample().array)
             self.entropy_record.extend(
-                chainer.cuda.to_cpu(action_distrib.entropy.data))
-            self.value_record.extend(chainer.cuda.to_cpu((batch_value.data)))
+                chainer.cuda.to_cpu(action_distrib.entropy.array))
+            self.value_record.extend(chainer.cuda.to_cpu((batch_value.array)))
 
         self.batch_last_state = list(batch_obs)
         self.batch_last_action = list(batch_action)
