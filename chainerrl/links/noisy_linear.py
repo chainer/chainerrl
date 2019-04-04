@@ -40,6 +40,8 @@ class FactorizedNoisyLinear(chainer.Chain):
 
     def _eps(self, shape, dtype):
         xp = self.xp
+        print("The Matrix lib is " + str(self.xp))
+        print("The datatype is " + str(dtype))
         r = xp.random.standard_normal(shape).astype(dtype)
 
         # apply the function f
