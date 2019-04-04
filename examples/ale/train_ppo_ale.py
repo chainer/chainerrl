@@ -153,7 +153,8 @@ def main():
         )
 
     # Draw the computational graph and save it in the output directory.
-    fake_obss = np.zeros((4, 84, 84), dtype=np.float32)[None]
+    fake_obss = np.zeros(
+        sample_env.observation_space.shape, dtype=np.float32)[None]
     if args.recurrent:
         fake_out, _ = model(fake_obss, None)
     else:
