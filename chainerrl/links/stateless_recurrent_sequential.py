@@ -36,10 +36,9 @@ class StatelessRecurrentSequential(
         assert sequences
         assert output_mode in ['split', 'concat']
         if recurrent_state is None:
-            n_recurrent_links = sum(
-                is_recurrent_link(layer) for layer in self._layers)
-            recurrent_state_queue = [None] * n_recurrent_links
+            recurrent_state_queue = [None] * len(self.recurrent_children)
         else:
+            assert len(recurrent_state) == len(self.recurrent_children)
             recurrent_state_queue = list(reversed(recurrent_state))
         new_recurrent_state = []
         h = sequences
@@ -69,4 +68,5 @@ class StatelessRecurrentSequential(
             seq_mode = False
         assert seq_mode is (output_mode == 'split')
         assert not recurrent_state_queue
+        assert len(new_recurrent_state) == len(self.recurrent_children)
         return h, tuple(new_recurrent_state)
