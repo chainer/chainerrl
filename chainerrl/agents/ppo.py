@@ -603,22 +603,23 @@ class PPO(agent.AttributeSavingMixin, agent.BatchAgent):
     def act_and_train(self, obs, reward):
 
         if self.last_state is not None:
-            self.last_episode.append({
+            transition = {
                 'state': self.last_state,
                 'action': self.last_action,
                 'reward': reward,
                 'next_state': obs,
                 'nonterminal': 1.0,
-            })
+            }
             if self.recurrent:
-                self.last_episode[-1]['recurrent_state'] =\
+                transition['recurrent_state'] =\
                     self.model.get_recurrent_state_at(
                         self.train_prev_recurrent_states,
                         0, unwrap_variable=True)
-                self.last_episode[-1]['next_recurrent_state'] =\
+                self.train_prev_recurrent_states = None
+                transition['next_recurrent_state'] =\
                     self.model.get_recurrent_state_at(
-                        self.train_recurrent_states,
-                        0, unwrap_variable=True)
+                        self.train_recurrent_states, 0, unwrap_variable=True)
+            self.last_episode.append(transition)
 
         self._update_if_dataset_is_ready()
 
@@ -631,6 +632,7 @@ class PPO(agent.AttributeSavingMixin, agent.BatchAgent):
         # action_distrib will be recomputed when computing gradients
         with chainer.using_config('train', False), chainer.no_backprop_mode():
             if self.recurrent:
+                assert self.train_prev_recurrent_states is None
                 self.train_prev_recurrent_states = self.train_recurrent_states
                 (action_distrib, value), self.train_recurrent_states =\
                     self.model(b_state, self.train_prev_recurrent_states)
@@ -670,24 +672,22 @@ class PPO(agent.AttributeSavingMixin, agent.BatchAgent):
     def stop_episode_and_train(self, state, reward, done=False):
 
         assert self.last_state is not None
-        self.last_episode.append({
+        transition = {
             'state': self.last_state,
             'action': self.last_action,
             'reward': reward,
             'next_state': state,
             'nonterminal': 0.0 if done else 1.0,
-        })
+        }
         if self.recurrent:
-            self.last_episode[-1]['recurrent_state'] =\
-                self.model.get_recurrent_state_at(
-                    self.train_prev_recurrent_states,
-                    0, unwrap_variable=True)
-            self.last_episode[-1]['next_recurrent_state'] =\
-                self.model.get_recurrent_state_at(
-                    self.train_recurrent_states,
-                    0, unwrap_variable=True)
-            self.train_recurrent_states = None
+            transition['recurrent_state'] = self.model.get_recurrent_state_at(
+                self.train_prev_recurrent_states, 0, unwrap_variable=True)
             self.train_prev_recurrent_states = None
+            transition['next_recurrent_state'] =\
+                self.model.get_recurrent_state_at(
+                    self.train_recurrent_states, 0, unwrap_variable=True)
+            self.train_recurrent_states = None
+        self.last_episode.append(transition)
 
         self.last_state = None
         self.last_action = None
@@ -739,9 +739,10 @@ class PPO(agent.AttributeSavingMixin, agent.BatchAgent):
         # action_distrib will be recomputed when computing gradients
         with chainer.using_config('train', False), chainer.no_backprop_mode():
             if self.recurrent:
+                assert self.train_prev_recurrent_states is None
                 self.train_prev_recurrent_states = self.train_recurrent_states
                 (action_distrib, batch_value), self.train_recurrent_states =\
-                    self.model(b_state, self.train_recurrent_states)
+                    self.model(b_state, self.train_prev_recurrent_states)
             else:
                 action_distrib, batch_value = self.model(b_state)
             batch_action = chainer.cuda.to_cpu(action_distrib.sample().data)
@@ -801,6 +802,8 @@ class PPO(agent.AttributeSavingMixin, agent.BatchAgent):
                 self.batch_last_episode[i] = []
                 self.batch_last_state[i] = None
                 self.batch_last_action[i] = None
+
+        self.train_prev_recurrent_states = None
 
         if self.recurrent:
             # Reset recurrent states when episodes end
