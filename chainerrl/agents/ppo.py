@@ -178,6 +178,65 @@ def _yield_subset_of_sequences_with_fixed_number_of_items(
         yield subset
 
 
+def _compute_explained_variance(transitions):
+    """Compute 1 - Var[return - v]/Var[return].
+
+    This function computes the fraction of variance that value predictions can
+    explain about returns.
+    """
+    t = np.array([tr['v_teacher'] for tr in transitions])
+    y = np.array([tr['v_pred'] for tr in transitions])
+    vart = np.var(t)
+    if vart == 0:
+        return np.nan
+    else:
+        return float(1 - np.var(t - y) / vart)
+
+
+def _make_dataset_recurrent(
+        episodes, model, phi, batch_states, obs_normalizer,
+        gamma, lambd, max_recurrent_sequence_len):
+    """Make a list of sequences with necessary information."""
+
+    _add_log_prob_and_value_to_episodes_recurrent(
+        episodes=episodes,
+        model=model,
+        phi=phi,
+        batch_states=batch_states,
+        obs_normalizer=obs_normalizer,
+    )
+
+    _add_advantage_and_value_target_to_episodes(
+        episodes, gamma=gamma, lambd=lambd)
+
+    if max_recurrent_sequence_len is not None:
+        dataset = _limit_sequence_length(
+            episodes, max_recurrent_sequence_len)
+    else:
+        dataset = list(episodes)
+
+    return dataset
+
+
+def _make_dataset(
+        episodes, model, phi, batch_states, obs_normalizer,
+        gamma, lambd):
+    """Make a list of transitions with necessary information."""
+
+    _add_log_prob_and_value_to_episodes(
+        episodes=episodes,
+        model=model,
+        phi=phi,
+        batch_states=batch_states,
+        obs_normalizer=obs_normalizer,
+    )
+
+    _add_advantage_and_value_target_to_episodes(
+        episodes, gamma=gamma, lambd=lambd)
+
+    return list(itertools.chain.from_iterable(episodes))
+
+
 class PPO(agent.AttributeSavingMixin, agent.BatchAgent):
     """Proximal Policy Optimization
 
@@ -231,6 +290,7 @@ class PPO(agent.AttributeSavingMixin, agent.BatchAgent):
         average_policy_loss: Average of losses regarding the policy.
             It's updated after the model is updated.
         n_updates: Number of model updates so far.
+        explained_variance: Explained variance computed from the last batch.
     """
 
     saved_attributes = ['model', 'optimizer', 'obs_normalizer']
@@ -313,6 +373,7 @@ class PPO(agent.AttributeSavingMixin, agent.BatchAgent):
         self.policy_loss_record = collections.deque(
             maxlen=policy_loss_stats_window)
         self.n_updates = 0
+        self.explained_variance = np.nan
 
     def _initialize_batch_variables(self, num_envs):
         self.batch_last_episode = [[] for _ in range(num_envs)]
@@ -328,49 +389,32 @@ class PPO(agent.AttributeSavingMixin, agent.BatchAgent):
         if dataset_size >= self.update_interval:
             self._flush_last_episode()
             if self.recurrent:
-                dataset = self._make_dataset_recurrent()
+                dataset = _make_dataset_recurrent(
+                    episodes=self.memory,
+                    model=self.model,
+                    phi=self.phi,
+                    batch_states=self.batch_states,
+                    obs_normalizer=self.obs_normalizer,
+                    gamma=self.gamma,
+                    lambd=self.lambd,
+                    max_recurrent_sequence_len=self.max_recurrent_sequence_len,
+                )
                 self._update_recurrent(dataset)
             else:
-                dataset = self._make_dataset()
+                dataset = _make_dataset(
+                    episodes=self.memory,
+                    model=self.model,
+                    phi=self.phi,
+                    batch_states=self.batch_states,
+                    obs_normalizer=self.obs_normalizer,
+                    gamma=self.gamma,
+                    lambd=self.lambd,
+                )
                 assert len(dataset) == dataset_size
                 self._update(dataset)
+            self.explained_variance = _compute_explained_variance(
+                list(itertools.chain.from_iterable(self.memory)))
             self.memory = []
-
-    def _make_dataset_recurrent(self):
-
-        _add_log_prob_and_value_to_episodes_recurrent(
-            episodes=self.memory,
-            model=self.model,
-            phi=self.phi,
-            batch_states=self.batch_states,
-            obs_normalizer=self.obs_normalizer,
-        )
-
-        _add_advantage_and_value_target_to_episodes(
-            self.memory, gamma=self.gamma, lambd=self.lambd)
-
-        if self.max_recurrent_sequence_len is not None:
-            dataset = _limit_sequence_length(
-                self.memory, self.max_recurrent_sequence_len)
-        else:
-            dataset = list(self.memory)
-
-        return dataset
-
-    def _make_dataset(self):
-
-        _add_log_prob_and_value_to_episodes(
-            episodes=self.memory,
-            model=self.model,
-            phi=self.phi,
-            batch_states=self.batch_states,
-            obs_normalizer=self.obs_normalizer,
-        )
-
-        _add_advantage_and_value_target_to_episodes(
-            self.memory, gamma=self.gamma, lambd=self.lambd)
-
-        return list(itertools.chain.from_iterable(self.memory))
 
     def _flush_last_episode(self):
         if self.last_episode:
@@ -777,4 +821,5 @@ class PPO(agent.AttributeSavingMixin, agent.BatchAgent):
             ('average_value_loss', _mean_or_nan(self.value_loss_record)),
             ('average_policy_loss', _mean_or_nan(self.policy_loss_record)),
             ('n_updates', self.n_updates),
+            ('explained_variance', self.explained_variance),
         ]
