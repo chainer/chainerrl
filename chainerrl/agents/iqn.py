@@ -202,7 +202,7 @@ class IQN(dqn.DQN):
             chainer.Variable: (batch_size, N_prime).
         """
         batch_next_state = exp_batch['next_state']
-        batch_size = batch_next_state.shape[0]
+        batch_size = len(exp_batch['reward'])
         taus_tilde = self.xp.random.uniform(
             0, 1, size=(batch_size, self.quantile_thresholds_K)).astype('f')
 
