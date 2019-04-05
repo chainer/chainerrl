@@ -1,3 +1,13 @@
+"""An example of training PPO against OpenAI Gym Atari Envs.
+
+This script is an example of training a PPO agent on Atari envs.
+
+To train PPO for 10M timesteps on Breakout, run:
+    python train_ppo_gym.py
+
+To train PPO using a recurrent model on a flickering Atari env, run:
+    python train_ppo_gym.py --recurrent -flicker --no-frame-stack
+"""
 from __future__ import print_function
 from __future__ import division
 from __future__ import unicode_literals
@@ -24,26 +34,34 @@ from chainerrl.wrappers import atari_wrappers
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--env', type=str, default='BreakoutNoFrameskip-v4')
-    parser.add_argument('--gpu', type=int, default=0)
-    parser.add_argument('--num-envs', type=int, default=8)
+    parser.add_argument('--env', type=str, default='BreakoutNoFrameskip-v4',
+                        help='Gym Env ID.')
+    parser.add_argument('--gpu', type=int, default=0,
+                        help='GPU device ID. Set to -1 to use CPUs only.')
+    parser.add_argument('--num-envs', type=int, default=8,
+                        help='Number of env instances run in parallel.')
     parser.add_argument('--seed', type=int, default=0,
-                        help='Random seed [0, 2 ** 31)')
+                        help='Random seed [0, 2 ** 32)')
     parser.add_argument('--outdir', type=str, default='results',
                         help='Directory path to save output files.'
                              ' If it does not exist, it will be created.')
-    parser.add_argument('--steps', type=int, default=10 ** 7)
+    parser.add_argument('--steps', type=int, default=10 ** 7,
+                        help='Total time steps for training.')
     parser.add_argument('--max-frames', type=int,
                         default=30 * 60 * 60,  # 30 minutes with 60 fps
                         help='Maximum number of frames for each episode.')
-    parser.add_argument('--lr', type=float, default=2.5e-4)
-    parser.add_argument('--eval-interval', type=int, default=10 ** 5)
-    parser.add_argument('--eval-n-runs', type=int, default=10)
-    parser.add_argument('--eval-epsilon', type=float, default=0.001)
-    parser.add_argument('--standardize-advantages', action='store_true')
-    parser.add_argument('--weight-decay', type=float, default=0.0)
-    parser.add_argument('--demo', action='store_true', default=False)
-    parser.add_argument('--load', type=str, default='')
+    parser.add_argument('--lr', type=float, default=2.5e-4,
+                        help='Learning rate.')
+    parser.add_argument('--eval-interval', type=int, default=100000,
+                        help='Interval (in timesteps) between evaluation'
+                             ' phases.')
+    parser.add_argument('--eval-n-runs', type=int, default=10,
+                        help='Number of episodes ran in an evaluation phase.')
+    parser.add_argument('--demo', action='store_true', default=False,
+                        help='Run demo episodes, not training.')
+    parser.add_argument('--load', type=str, default='',
+                        help='Directory path to load a saved agent data from'
+                             ' if it is a non-empty string.')
     parser.add_argument('--logging-level', type=int, default=20,
                         help='Logging level. 10:DEBUG, 20:INFO etc.')
     parser.add_argument('--render', action='store_true', default=False,
@@ -51,18 +69,23 @@ def main():
     parser.add_argument('--monitor', action='store_true', default=False,
                         help='Monitor env. Videos and additional information'
                              ' are saved as output files.')
-    parser.add_argument('--update-interval', type=int, default=128 * 8)
-    parser.add_argument('--batchsize', type=int, default=32 * 8)
-    parser.add_argument('--epochs', type=int, default=3)
-    parser.add_argument('--decay-clip-eps', action='store_true', default=False)
-    parser.add_argument('--log-interval', type=int, default=10000)
-    parser.add_argument('--recurrent', action='store_true', default=False)
-    parser.add_argument('--adam-eps', type=float, default=1e-8)
-    parser.add_argument('--flicker', action='store_true', default=False)
-    parser.add_argument('--no-frame-stack', action='store_true', default=False)
-    parser.add_argument('--max-grad-norm', type=float, default=.5)
-    parser.add_argument('--entropy-coef', type=float, default=1e-2)
-    parser.add_argument('--max-recurrent-sequence-len', type=int, default=None)
+    parser.add_argument('--update-interval', type=int, default=128 * 8,
+                        help='Interval (in timesteps) between PPO iterations.')
+    parser.add_argument('--batchsize', type=int, default=32 * 8,
+                        help='Size of minibatch (in timesteps).')
+    parser.add_argument('--epochs', type=int, default=4,
+                        help='Number of epochs used for each PPO iteration.')
+    parser.add_argument('--log-interval', type=int, default=10000,
+                        help='Interval (in timesteps) of printing logs.')
+    parser.add_argument('--recurrent', action='store_true', default=False,
+                        help='Use a recurrent model. See the code for the'
+                             ' model definition.')
+    parser.add_argument('--flicker', action='store_true', default=False,
+                        help='Use so-called flickering Atari, where each'
+                             ' screen is blacked out with probability 0.5.')
+    parser.add_argument('--no-frame-stack', action='store_true', default=False,
+                        help='Disable frame stacking so that the agent can'
+                             ' only see the current screen.')
     args = parser.parse_args()
 
     import logging
@@ -91,9 +114,6 @@ def main():
             flicker=args.flicker,
             frame_stack=not args.no_frame_stack,
         )
-        if test:
-            # Randomize actions like epsilon-greedy in evaluation as well
-            env = chainerrl.wrappers.RandomizeAction(env, args.eval_epsilon)
         env.seed(env_seed)
         if args.monitor:
             env = gym.wrappers.Monitor(
@@ -162,27 +182,27 @@ def main():
     chainerrl.misc.draw_computational_graph(
         [fake_out], os.path.join(args.outdir, 'model'))
 
-    opt = chainer.optimizers.Adam(alpha=args.lr, eps=args.adam_eps)
+    opt = chainer.optimizers.Adam(alpha=args.lr, eps=1e-5)
     opt.setup(model)
-    if args.max_grad_norm > 0:
-        opt.add_hook(chainer.optimizer.GradientClipping(args.max_grad_norm))
+    opt.add_hook(chainer.optimizer.GradientClipping(0.5))
 
     def phi(x):
         # Feature extractor
         return np.asarray(x, dtype=np.float32) / 255
 
     agent = PPO(
-        model, opt,
+        model,
+        opt,
         gpu=args.gpu,
         phi=phi,
         update_interval=args.update_interval,
-        minibatch_size=args.batchsize, epochs=args.epochs,
+        minibatch_size=args.batchsize,
+        epochs=args.epochs,
         clip_eps=0.1,
         clip_eps_vf=None,
-        standardize_advantages=args.standardize_advantages,
-        entropy_coef=args.entropy_coef,
+        standardize_advantages=True,
+        entropy_coef=1e-2,
         recurrent=args.recurrent,
-        max_recurrent_sequence_len=args.max_recurrent_sequence_len,
     )
     if args.load:
         agent.load(args.load)
@@ -206,15 +226,6 @@ def main():
         step_hooks.append(
             experiments.LinearInterpolationHook(
                 args.steps, args.lr, 0, lr_setter))
-
-        if args.decay_clip_eps:
-            # Linearly decay the clipping parameter to zero
-            def clip_eps_setter(env, agent, value):
-                agent.clip_eps = max(value, 1e-8)
-
-            step_hooks.append(
-                experiments.LinearInterpolationHook(
-                    args.steps, 0.1, 0, clip_eps_setter))
 
         experiments.train_agent_batch_with_evaluation(
             agent=agent,
