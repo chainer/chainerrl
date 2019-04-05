@@ -360,9 +360,9 @@ class PPO(agent.AttributeSavingMixin, agent.BatchAgent):
         # action_distrib will be recomputed when computing gradients
         with chainer.using_config('train', False), chainer.no_backprop_mode():
             action_distrib, value = self.model(b_state)
-            action = chainer.cuda.to_cpu(action_distrib.sample().data)[0]
-            self.entropy_record.append(float(action_distrib.entropy.data))
-            self.value_record.append(float(value.data))
+            action = chainer.cuda.to_cpu(action_distrib.sample().array)[0]
+            self.entropy_record.append(float(action_distrib.entropy.array))
+            self.value_record.append(float(value.array))
 
         self.last_state = obs
         self.last_action = action
@@ -378,7 +378,7 @@ class PPO(agent.AttributeSavingMixin, agent.BatchAgent):
 
         with chainer.using_config('train', False), chainer.no_backprop_mode():
             action_distrib, _ = self.model(b_state)
-            action = chainer.cuda.to_cpu(action_distrib.sample().data)[0]
+            action = chainer.cuda.to_cpu(action_distrib.sample().array)[0]
 
         return action
 
@@ -413,7 +413,7 @@ class PPO(agent.AttributeSavingMixin, agent.BatchAgent):
 
         with chainer.using_config('train', False), chainer.no_backprop_mode():
             action_distrib, _ = self.model(b_state)
-            action = chainer.cuda.to_cpu(action_distrib.sample().data)
+            action = chainer.cuda.to_cpu(action_distrib.sample().array)
 
         return action
 
@@ -434,10 +434,10 @@ class PPO(agent.AttributeSavingMixin, agent.BatchAgent):
         # action_distrib will be recomputed when computing gradients
         with chainer.using_config('train', False), chainer.no_backprop_mode():
             action_distrib, batch_value = self.model(b_state)
-            batch_action = chainer.cuda.to_cpu(action_distrib.sample().data)
+            batch_action = chainer.cuda.to_cpu(action_distrib.sample().array)
             self.entropy_record.extend(
-                chainer.cuda.to_cpu(action_distrib.entropy.data))
-            self.value_record.extend(chainer.cuda.to_cpu((batch_value.data)))
+                chainer.cuda.to_cpu(action_distrib.entropy.array))
+            self.value_record.extend(chainer.cuda.to_cpu((batch_value.array)))
 
         self.batch_last_state = list(batch_obs)
         self.batch_last_action = list(batch_action)
