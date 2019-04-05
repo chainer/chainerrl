@@ -189,13 +189,6 @@ This example only supports gym.spaces.Box or gym.spaces.Discrete action spaces."
         lr_decay_hook = experiments.LinearInterpolationHook(
             args.steps, args.lr, 0, lr_setter)
 
-        # Linearly decay the clipping parameter to zero
-        def clip_eps_setter(env, agent, value):
-            agent.clip_eps = value
-
-        clip_eps_decay_hook = experiments.LinearInterpolationHook(
-            args.steps, 0.2, 0, clip_eps_setter)
-
         experiments.train_agent_batch_with_evaluation(
             agent=agent,
             env=make_batch_env(False),
@@ -211,7 +204,6 @@ This example only supports gym.spaces.Box or gym.spaces.Discrete action spaces."
             save_best_so_far_agent=False,
             step_hooks=[
                 lr_decay_hook,
-                clip_eps_decay_hook,
             ],
         )
 
