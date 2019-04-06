@@ -110,16 +110,15 @@ def main():
     obs_normalizer = chainerrl.links.EmpiricalNormalization(
         obs_space.low.size, clip_threshold=5)
 
-    winit_intermediate = chainer.initializers.LeCunNormal(2 ** 0.5)
     winit_last = chainer.initializers.LeCunNormal(1e-2)
 
     # Switch policy types accordingly to action space types
     if isinstance(action_space, gym.spaces.Discrete):
         n_actions = action_space.n
         policy = chainer.Sequential(
-            L.Linear(None, 64, initialW=winit_intermediate),
+            L.Linear(None, 64),
             F.tanh,
-            L.Linear(None, 64, initialW=winit_intermediate),
+            L.Linear(None, 64),
             F.tanh,
             L.Linear(None, n_actions, initialW=winit_last),
             chainerrl.distribution.SoftmaxDistribution,
@@ -127,9 +126,9 @@ def main():
     elif isinstance(action_space, gym.spaces.Box):
         action_size = action_space.low.size
         policy = chainer.Sequential(
-            L.Linear(None, 64, initialW=winit_intermediate),
+            L.Linear(None, 64),
             F.tanh,
-            L.Linear(None, 64, initialW=winit_intermediate),
+            L.Linear(None, 64),
             F.tanh,
             L.Linear(None, action_size, initialW=winit_last),
             chainerrl.policies.GaussianHeadWithStateIndependentCovariance(
@@ -145,11 +144,11 @@ This example only supports gym.spaces.Box or gym.spaces.Discrete action spaces."
         return
 
     vf = chainer.Sequential(
-        L.Linear(None, 64, initialW=winit_intermediate),
+        L.Linear(None, 64),
         F.tanh,
-        L.Linear(None, 64, initialW=winit_intermediate),
+        L.Linear(None, 64),
         F.tanh,
-        L.Linear(None, 1, initialW=winit_last),
+        L.Linear(None, 1),
     )
 
     # Combine a policy and a value function into a single model
@@ -190,13 +189,6 @@ This example only supports gym.spaces.Box or gym.spaces.Discrete action spaces."
         lr_decay_hook = experiments.LinearInterpolationHook(
             args.steps, args.lr, 0, lr_setter)
 
-        # Linearly decay the clipping parameter to zero
-        def clip_eps_setter(env, agent, value):
-            agent.clip_eps = value
-
-        clip_eps_decay_hook = experiments.LinearInterpolationHook(
-            args.steps, 0.2, 0, clip_eps_setter)
-
         experiments.train_agent_batch_with_evaluation(
             agent=agent,
             env=make_batch_env(False),
@@ -212,7 +204,6 @@ This example only supports gym.spaces.Box or gym.spaces.Discrete action spaces."
             save_best_so_far_agent=False,
             step_hooks=[
                 lr_decay_hook,
-                clip_eps_decay_hook,
             ],
         )
 
