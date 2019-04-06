@@ -6,6 +6,7 @@ from builtins import *  # NOQA
 from future import standard_library
 standard_library.install_aliases()  # NOQA
 
+from cached_property import cached_property
 import chainer
 import numpy as np
 
@@ -36,10 +37,9 @@ class StatelessRecurrentSequential(
         assert sequences
         assert output_mode in ['split', 'concat']
         if recurrent_state is None:
-            n_recurrent_links = sum(
-                is_recurrent_link(layer) for layer in self._layers)
-            recurrent_state_queue = [None] * n_recurrent_links
+            recurrent_state_queue = [None] * len(self.recurrent_children)
         else:
+            assert len(recurrent_state) == len(self.recurrent_children)
             recurrent_state_queue = list(reversed(recurrent_state))
         new_recurrent_state = []
         h = sequences
@@ -69,4 +69,17 @@ class StatelessRecurrentSequential(
             seq_mode = False
         assert seq_mode is (output_mode == 'split')
         assert not recurrent_state_queue
+        assert len(new_recurrent_state) == len(self.recurrent_children)
         return h, tuple(new_recurrent_state)
+
+    @cached_property
+    def recurrent_children(self):
+        """Return recurrent child links.
+
+        This overrides `StatelessRecurrentChainList.recurrent_children`
+        because `Sequential`'s evaluation order can be different from the
+        order of links in `Sequential.children()`.
+
+        See https://github.com/chainer/chainer/issues/6053
+        """
+        return [child for child in self._layers if is_recurrent_link(child)]

@@ -72,7 +72,7 @@ class StatelessRecurrent(object):
         """
         raise NotImplementedError
 
-    def forward(self, x, recurrent_state):
+    def __call__(self, x, recurrent_state):
         """One-step batch forward computation.
 
         Args:
@@ -234,6 +234,7 @@ def call_recurrent_link(link, sequences, recurrent_state, output_mode):
 def mask_recurrent_states_of_links_at(links, recurrent_states, indices):
     if recurrent_states is None:
         return None
+    assert len(links) == len(recurrent_states)
     return [mask_recurrent_state_at(link, rs, indices)
             for link, rs in zip(links, recurrent_states)]
 
@@ -242,6 +243,7 @@ def get_recurrent_states_of_links_at(
         links, recurrent_states, indices, unwrap_variable):
     if recurrent_states is None:
         return [None] * len(links)
+    assert len(links) == len(recurrent_states)
     return [get_recurrent_state_at(link, rs, indices, unwrap_variable)
             for link, rs in zip(links, recurrent_states)]
 
@@ -257,6 +259,7 @@ def concatenate_recurrent_states_of_links(links, split_recurrent_states):
             assert len(srs) == len(links)
     # Transpose first two axes of (batch_size, n_recurrent_links, ...)
     transposed = list(zip(*split_recurrent_states))
+    assert len(links) == len(transposed)
     return [concatenate_recurrent_states(link, srs)
             for link, srs in zip(links, transposed)]
 

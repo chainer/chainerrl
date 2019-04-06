@@ -13,6 +13,7 @@ os.environ['OMP_NUM_THREADS'] = '1'  # NOQA
 
 import chainer
 from chainer import functions as F
+from chainer.initializers import LeCunNormal
 from chainer import links as L
 import gym
 from gym import spaces
@@ -24,7 +25,6 @@ from chainerrl.action_value import DiscreteActionValue
 from chainerrl.agents import acer
 from chainerrl.distribution import SoftmaxDistribution
 from chainerrl import experiments
-from chainerrl.initializers import LeCunNormal
 from chainerrl import links
 from chainerrl import misc
 from chainerrl.optimizers import rmsprop_async

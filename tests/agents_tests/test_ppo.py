@@ -152,6 +152,9 @@ class TestLimitSequenceLength(unittest.TestCase):
 @testing.parameterize(*(
     testing.product({
         'use_obs_normalizer': [True, False],
+        'gamma': [1, 0.8, 0],
+        'lambd': [1, 0.8, 0],
+        'max_recurrent_sequence_len': [None, 7],
     })
 ))
 class TestPPODataset(unittest.TestCase):
@@ -187,56 +190,87 @@ class TestPPODataset(unittest.TestCase):
         )
         xp = non_recurrent_model.xp
 
-        non_recurrent_episodes = copy.deepcopy(episodes)
-        chainerrl.agents.ppo._add_log_prob_and_value_to_episodes(
-            episodes=non_recurrent_episodes,
+        dataset = chainerrl.agents.ppo._make_dataset(
+            episodes=copy.deepcopy(episodes),
             model=non_recurrent_model,
             phi=phi,
             batch_states=batch_states,
             obs_normalizer=obs_normalizer,
+            gamma=self.gamma,
+            lambd=self.lambd,
         )
 
-        recurrent_episodes = copy.deepcopy(episodes)
-        chainerrl.agents.ppo._add_log_prob_and_value_to_episodes_recurrent(
-            episodes=recurrent_episodes,
+        dataset_recurrent = chainerrl.agents.ppo._make_dataset_recurrent(
+            episodes=copy.deepcopy(episodes),
             model=recurrent_model,
             phi=phi,
             batch_states=batch_states,
             obs_normalizer=obs_normalizer,
+            gamma=self.gamma,
+            lambd=self.lambd,
+            max_recurrent_sequence_len=self.max_recurrent_sequence_len,
         )
 
         self.assertTrue('log_prob' not in episodes[0][0])
-        self.assertTrue('log_prob' in non_recurrent_episodes[0][0])
-        self.assertTrue('log_prob' in recurrent_episodes[0][0])
-        self.assertTrue(non_recurrent_episodes[0][0]['log_prob']
-                        is not recurrent_episodes[0][0]['log_prob'])
+        self.assertTrue('log_prob' in dataset[0])
+        self.assertTrue('log_prob' in dataset_recurrent[0][0])
+        # They are not just shallow copies
+        self.assertTrue(dataset[0]['log_prob']
+                        is not dataset_recurrent[0][0]['log_prob'])
 
-        non_recurrent_log_probs = [
-            tr['log_prob'] for tr in itertools.chain.from_iterable(
-                non_recurrent_episodes)]
+        states = [tr['state'] for tr in dataset]
+        recurrent_states = [
+            tr['state'] for tr in itertools.chain.from_iterable(
+                dataset_recurrent)]
+        xp.testing.assert_allclose(states, recurrent_states)
+
+        actions = [tr['action'] for tr in dataset]
+        recurrent_actions = [
+            tr['action'] for tr in itertools.chain.from_iterable(
+                dataset_recurrent)]
+        xp.testing.assert_allclose(actions, recurrent_actions)
+
+        rewards = [tr['reward'] for tr in dataset]
+        recurrent_rewards = [
+            tr['reward'] for tr in itertools.chain.from_iterable(
+                dataset_recurrent)]
+        xp.testing.assert_allclose(rewards, recurrent_rewards)
+
+        nonterminals = [tr['nonterminal'] for tr in dataset]
+        recurrent_nonterminals = [
+            tr['nonterminal'] for tr in itertools.chain.from_iterable(
+                dataset_recurrent)]
+        xp.testing.assert_allclose(nonterminals, recurrent_nonterminals)
+
+        log_probs = [tr['log_prob'] for tr in dataset]
         recurrent_log_probs = [
             tr['log_prob'] for tr in itertools.chain.from_iterable(
-                recurrent_episodes)]
-        xp.testing.assert_allclose(
-            non_recurrent_log_probs, recurrent_log_probs)
+                dataset_recurrent)]
+        xp.testing.assert_allclose(log_probs, recurrent_log_probs)
 
-        non_recurrent_vs_pred = [
-            tr['v_pred'] for tr in itertools.chain.from_iterable(
-                non_recurrent_episodes)]
+        vs_pred = [tr['v_pred'] for tr in dataset]
         recurrent_vs_pred = [
             tr['v_pred'] for tr in itertools.chain.from_iterable(
-                recurrent_episodes)]
-        xp.testing.assert_allclose(
-            non_recurrent_vs_pred, recurrent_vs_pred)
+                dataset_recurrent)]
+        xp.testing.assert_allclose(vs_pred, recurrent_vs_pred)
 
-        non_recurrent_next_vs_pred = [
-            tr['next_v_pred'] for tr in itertools.chain.from_iterable(
-                non_recurrent_episodes)]
+        next_vs_pred = [tr['next_v_pred'] for tr in dataset]
         recurrent_next_vs_pred = [
             tr['next_v_pred'] for tr in itertools.chain.from_iterable(
-                recurrent_episodes)]
-        xp.testing.assert_allclose(
-            non_recurrent_next_vs_pred, recurrent_next_vs_pred)
+                dataset_recurrent)]
+        xp.testing.assert_allclose(next_vs_pred, recurrent_next_vs_pred)
+
+        advs = [tr['adv'] for tr in dataset]
+        recurrent_advs = [
+            tr['adv'] for tr in itertools.chain.from_iterable(
+                dataset_recurrent)]
+        xp.testing.assert_allclose(advs, recurrent_advs)
+
+        vs_teacher = [tr['v_teacher'] for tr in dataset]
+        recurrent_vs_teacher = [
+            tr['v_teacher'] for tr in itertools.chain.from_iterable(
+                dataset_recurrent)]
+        xp.testing.assert_allclose(vs_teacher, recurrent_vs_teacher)
 
 
 @testing.parameterize(*(

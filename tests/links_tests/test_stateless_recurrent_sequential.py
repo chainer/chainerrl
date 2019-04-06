@@ -292,8 +292,8 @@ class TestStatelessRecurrentSequential(unittest.TestCase):
 
         # Check if n_step_forward and forward twice results are same
         def no_mask_forward_twice():
-            _, rs = rseq.forward(transposed_x[0], None)
-            return rseq.forward(transposed_x[1], rs)
+            _, rs = rseq(transposed_x[0], None)
+            return rseq(transposed_x[1], rs)
         nomask_out, nomask_rs = no_mask_forward_twice()
         xp.testing.assert_allclose(
             nstep_out.array[:, 1],
@@ -303,9 +303,9 @@ class TestStatelessRecurrentSequential(unittest.TestCase):
 
         # 1st-only mask forward twice: only 2nd should be the same
         def mask0_forward_twice():
-            _, rs = rseq.forward(transposed_x[0], None)
+            _, rs = rseq(transposed_x[0], None)
             rs = rseq.mask_recurrent_state_at(rs, 0)
-            return rseq.forward(transposed_x[1], rs)
+            return rseq(transposed_x[1], rs)
         mask0_out, mask0_rs = mask0_forward_twice()
         with self.assertRaises(AssertionError):
             xp.testing.assert_allclose(
@@ -319,9 +319,9 @@ class TestStatelessRecurrentSequential(unittest.TestCase):
 
         # 2nd-only mask forward twice: only 1st should be the same
         def mask1_forward_twice():
-            _, rs = rseq.forward(transposed_x[0], None)
+            _, rs = rseq(transposed_x[0], None)
             rs = rseq.mask_recurrent_state_at(rs, 1)
-            return rseq.forward(transposed_x[1], rs)
+            return rseq(transposed_x[1], rs)
         mask1_out, mask1_rs = mask1_forward_twice()
         xp.testing.assert_allclose(
             nstep_out.array[0, 1],
@@ -335,9 +335,9 @@ class TestStatelessRecurrentSequential(unittest.TestCase):
 
         # both 1st and 2nd mask forward twice: both should be different
         def mask01_forward_twice():
-            _, rs = rseq.forward(transposed_x[0], None)
+            _, rs = rseq(transposed_x[0], None)
             rs = rseq.mask_recurrent_state_at(rs, [0, 1])
-            return rseq.forward(transposed_x[1], rs)
+            return rseq(transposed_x[1], rs)
         mask01_out, mask01_rs = mask01_forward_twice()
         with self.assertRaises(AssertionError):
             xp.testing.assert_allclose(
@@ -352,11 +352,11 @@ class TestStatelessRecurrentSequential(unittest.TestCase):
 
         # get and concat recurrent states and resume forward
         def get_and_concat_rs_forward():
-            _, rs = rseq.forward(transposed_x[0], None)
+            _, rs = rseq(transposed_x[0], None)
             rs0 = rseq.get_recurrent_state_at(rs, 0, unwrap_variable=True)
             rs1 = rseq.get_recurrent_state_at(rs, 1, unwrap_variable=True)
             concat_rs = rseq.concatenate_recurrent_states([rs0, rs1])
-            return rseq.forward(transposed_x[1], concat_rs)
+            return rseq(transposed_x[1], concat_rs)
         getcon_out, getcon_rs = get_and_concat_rs_forward()
         xp.testing.assert_allclose(getcon_rs[0].array, nomask_rs[0].array)
         xp.testing.assert_allclose(
@@ -369,4 +369,40 @@ class TestStatelessRecurrentSequential(unittest.TestCase):
         self._test_mask_recurrent_state_at(gpu=0)
 
     def test_mask_recurrent_state_at_cpu(self):
+        self._test_mask_recurrent_state_at(gpu=-1)
+
+    def _test_three_recurrent_children(self, gpu):
+        # Test if https://github.com/chainer/chainer/issues/6053 is addressed
+        in_size = 2
+        out_size = 6
+
+        rseq = StatelessRecurrentSequential(
+            L.NStepLSTM(1, in_size, 3, 0),
+            L.NStepGRU(2, 3, 4, 0),
+            L.NStepRNNTanh(5, 4, out_size, 0),
+        )
+
+        if gpu >= 0:
+            chainer.cuda.get_device_from_id(gpu).use()
+            rseq.to_gpu()
+        xp = rseq.xp
+
+        seqs_x = [
+            xp.random.uniform(-1, 1, size=(4, in_size)).astype(np.float32),
+            xp.random.uniform(-1, 1, size=(1, in_size)).astype(np.float32),
+            xp.random.uniform(-1, 1, size=(3, in_size)).astype(np.float32),
+        ]
+
+        # Make and load a recurrent state to check if the order is correct.
+        _, rs = rseq.n_step_forward(seqs_x, None, output_mode='concat')
+        _, _ = rseq.n_step_forward(seqs_x, rs, output_mode='concat')
+
+        _, rs = rseq.n_step_forward(seqs_x, None, output_mode='split')
+        _, _ = rseq.n_step_forward(seqs_x, rs, output_mode='split')
+
+    @testing.attr.gpu
+    def test_three_recurrent_children_gpu(self):
+        self._test_mask_recurrent_state_at(gpu=0)
+
+    def test_three_recurrent_children_cpu(self):
         self._test_mask_recurrent_state_at(gpu=-1)
