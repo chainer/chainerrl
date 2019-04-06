@@ -72,7 +72,7 @@ class StatelessRecurrent(object):
         """
         raise NotImplementedError
 
-    def forward(self, x, recurrent_state):
+    def __call__(self, x, recurrent_state):
         """One-step batch forward computation.
 
         Args:

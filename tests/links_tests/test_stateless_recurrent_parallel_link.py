@@ -122,8 +122,8 @@ class TestStatelessRecurrentParallelLink(unittest.TestCase):
 
         # Check if n_step_forward and forward twice results are same
         def no_mask_forward_twice():
-            _, rs = par.forward(transposed_x[0], None)
-            return par.forward(transposed_x[1], rs)
+            _, rs = par(transposed_x[0], None)
+            return par(transposed_x[1], rs)
 
         nomask_out, nomask_rs = no_mask_forward_twice()
         # GRU
@@ -147,9 +147,9 @@ class TestStatelessRecurrentParallelLink(unittest.TestCase):
 
         # 1st-only mask forward twice: only 2nd should be the same
         def mask0_forward_twice():
-            _, rs = par.forward(transposed_x[0], None)
+            _, rs = par(transposed_x[0], None)
             rs = par.mask_recurrent_state_at(rs, 0)
-            return par.forward(transposed_x[1], rs)
+            return par(transposed_x[1], rs)
         mask0_out, mask0_rs = mask0_forward_twice()
         # GRU
         with self.assertRaises(AssertionError):
@@ -174,9 +174,9 @@ class TestStatelessRecurrentParallelLink(unittest.TestCase):
 
         # 2nd-only mask forward twice: only 1st should be the same
         def mask1_forward_twice():
-            _, rs = par.forward(transposed_x[0], None)
+            _, rs = par(transposed_x[0], None)
             rs = par.mask_recurrent_state_at(rs, 1)
-            return par.forward(transposed_x[1], rs)
+            return par(transposed_x[1], rs)
         mask1_out, mask1_rs = mask1_forward_twice()
         # GRU
         xp.testing.assert_allclose(
@@ -201,9 +201,9 @@ class TestStatelessRecurrentParallelLink(unittest.TestCase):
 
         # both 1st and 2nd mask forward twice: both should be different
         def mask01_forward_twice():
-            _, rs = par.forward(transposed_x[0], None)
+            _, rs = par(transposed_x[0], None)
             rs = par.mask_recurrent_state_at(rs, [0, 1])
-            return par.forward(transposed_x[1], rs)
+            return par(transposed_x[1], rs)
         mask01_out, mask01_rs = mask01_forward_twice()
         # GRU
         with self.assertRaises(AssertionError):
@@ -230,11 +230,11 @@ class TestStatelessRecurrentParallelLink(unittest.TestCase):
 
         # get and concat recurrent states and resume forward
         def get_and_concat_rs_forward():
-            _, rs = par.forward(transposed_x[0], None)
+            _, rs = par(transposed_x[0], None)
             rs0 = par.get_recurrent_state_at(rs, 0, unwrap_variable=True)
             rs1 = par.get_recurrent_state_at(rs, 1, unwrap_variable=True)
             concat_rs = par.concatenate_recurrent_states([rs0, rs1])
-            return par.forward(transposed_x[1], concat_rs)
+            return par(transposed_x[1], concat_rs)
         getcon_out, getcon_rs = get_and_concat_rs_forward()
         # GRU
         xp.testing.assert_allclose(
