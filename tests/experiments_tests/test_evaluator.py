@@ -204,13 +204,16 @@ class TestRunTimeBasedEvaluationEpisode(unittest.TestCase):
             if self.n_timesteps == 2:
                 self.assertAlmostEqual(len(scores), 1)
                 self.assertAlmostEqual(scores[0], 0.3)
+                self.assertEqual(agent.stop_episode.call_count, 1)
             elif self.n_timesteps == 5:
                 self.assertAlmostEqual(len(scores), 1)
                 self.assertAlmostEqual(scores[0], 0.6)
+                self.assertEqual(agent.stop_episode.call_count, 2)
             else:
                 self.assertAlmostEqual(len(scores), 2)
                 self.assertAlmostEqual(scores[0], 0.6)
                 self.assertAlmostEqual(scores[1], 0.5)
+                self.assertEqual(agent.stop_episode.call_count, 2)
 
 
 class TestRunEvaluationEpisode(unittest.TestCase):
@@ -234,6 +237,7 @@ class TestRunEvaluationEpisode(unittest.TestCase):
         self.assertAlmostEqual(len(scores), 2)
         self.assertAlmostEqual(scores[0], 0)
         self.assertAlmostEqual(scores[1], 0.5)
+        self.assertAlmostEqual(agent.stop_episode.call_count, 2)
 
 
 @testing.parameterize(
@@ -295,11 +299,14 @@ class TestBatchRunTimeBasedEvaluationEpisode(unittest.TestCase):
             if self.n_timesteps == 2:
                 self.assertAlmostEqual(len(scores), 1)
                 self.assertAlmostEqual(scores[0], 0.1)
+                self.assertEqual(agent.batch_observe.call_count, 2)
             else:
                 self.assertAlmostEqual(len(scores), 3)
                 self.assertAlmostEqual(scores[0], 0.3)
                 self.assertAlmostEqual(scores[1], 2.0)
                 self.assertAlmostEqual(scores[2], 3.0)
+            # batch_reset should be all True
+            self.assertTrue(all(agent.batch_observe.call_args[0][3]))
 
 
 class TestBatchRunEvaluationEpisode(unittest.TestCase):
@@ -350,3 +357,5 @@ class TestBatchRunEvaluationEpisode(unittest.TestCase):
         self.assertAlmostEqual(scores[1], 2)
         self.assertAlmostEqual(scores[2], 3)
         self.assertAlmostEqual(scores[3], 0.4)
+        # batch_reset should be all True
+        self.assertTrue(all(agent.batch_observe.call_args[0][3]))
