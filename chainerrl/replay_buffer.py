@@ -500,14 +500,16 @@ def batch_recurrent_experiences(
         'action': xp.array(
             [transition['action'] for transition in flat_transitions]),
         'reward': xp.array(
-            [transition['reward'] for transition in flat_transitions]),
+            [transition['reward'] for transition in flat_transitions],
+            dtype=np.float32),
         'next_state': [batch_states(
             [transition['next_state'] for transition in ep], xp, phi)
             for ep in experiences],
         'is_state_terminal': xp.array(
             [transition['is_state_terminal']
-             for transition in flat_transitions]),
-        'discount': xp.full(len(flat_transitions), gamma),
+             for transition in flat_transitions],
+            dtype=np.float32),
+        'discount': xp.full(len(flat_transitions), gamma, dtype=np.float32),
         'recurrent_state': model.concatenate_recurrent_states(
             [ep[0]['recurrent_state'] for ep in experiences]),
         'next_recurrent_state': model.concatenate_recurrent_states(
