@@ -6,11 +6,16 @@ from builtins import *  # NOQA
 from future import standard_library
 standard_library.install_aliases()  # NOQA
 
+import chainer
+from chainer import functions as F
+from chainer import links as L
 from chainer import optimizers
 import numpy as np
 
+from chainerrl.action_value import DiscreteActionValue
 from chainerrl.envs.abc import ABC
 from chainerrl.explorers.epsilon_greedy import LinearDecayEpsilonGreedy
+from chainerrl.links import StatelessRecurrentSequential
 from chainerrl import q_functions
 from chainerrl import replay_buffer
 
@@ -89,11 +94,15 @@ class _TestDQNOnDiscreteABC(_TestDQNOnABC):
 class _TestDQNOnDiscretePOABC(_TestDQNOnABC):
 
     def make_q_func(self, env):
-        return q_functions.FCLSTMStateQFunction(
-            n_dim_obs=env.observation_space.low.size,
-            n_dim_action=env.action_space.n,
-            n_hidden_channels=10,
-            n_hidden_layers=1)
+        n_hidden_channels = 10
+        return StatelessRecurrentSequential(
+            L.Linear(env.observation_space.low.size, n_hidden_channels),
+            F.elu,
+            L.NStepRNNTanh(1, n_hidden_channels, n_hidden_channels, 0),
+            L.Linear(n_hidden_channels, env.action_space.n,
+                     initialW=chainer.initializers.LeCunNormal(1e-1)),
+            DiscreteActionValue,
+        )
 
     def make_replay_buffer(self, env):
         return replay_buffer.EpisodicReplayBuffer(10 ** 5)
