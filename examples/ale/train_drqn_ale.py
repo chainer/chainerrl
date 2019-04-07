@@ -20,7 +20,6 @@ import os
 import chainer
 from chainer import functions as F
 from chainer import links as L
-from chainer import optimizers
 import gym
 import gym.wrappers
 import numpy as np
@@ -181,9 +180,7 @@ def main():
         args.final_exploration_frames,
         lambda: np.random.randint(n_actions))
 
-    # Use the Nature paper's hyperparameters
-    opt = optimizers.RMSpropGraves(
-        lr=args.lr, alpha=0.95, momentum=0.0, eps=1e-2)
+    opt = chainer.optimizers.Adam(1e-4, eps=1e-4)
     opt.setup(q_func)
 
     def phi(x):
@@ -200,7 +197,7 @@ def main():
         replay_start_size=args.replay_start_size,
         target_update_interval=args.target_update_interval,
         update_interval=args.update_interval,
-        batch_accumulator='sum',
+        batch_accumulator='mean',
         phi=phi,
         minibatch_size=32,
         episodic_update_len=10,
