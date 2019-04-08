@@ -6,6 +6,8 @@ import chainer.links as L
 from chainerrl.initializers import VarianceScalingConstant
 import numpy
 
+
+
 class FactorizedNoisyLinear(chainer.Chain):
     """Linear layer in Factorized Noisy Network
 
@@ -37,25 +39,24 @@ class FactorizedNoisyLinear(chainer.Chain):
         if device_id is not None:
             self.to_gpu(device_id)
 
+
     def noise_function(self, r):
         if self._kernel is None:
             self._kernel = cuda.elementwise(
-                'T r', '',
+                '', 'T r',
                 '''r = copysignf(sqrtf(fabsf(r)), r);''',
                 'noise_func')
-        self._kernel(r)    
+        self._kernel(r)     
 
     def _eps(self, shape, dtype):
         xp = self.xp
         if xp is numpy:
             r = xp.random.standard_normal(shape).astype(dtype)
+            return xp.copysign(xp.sqrt(xp.abs(r)), r)
         else:
-            r = xp.random.standard_normal(shape, dtype)
-
-        # apply the function f
-        self.noise_function(r)
-        return r
-        # return xp.copysign(xp.sqrt(xp.abs(r)), r)
+            # apply the function f
+            self.noise_function(r)
+            return r
 
     def __call__(self, x):
         if self.mu.W.array is None:
