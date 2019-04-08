@@ -52,8 +52,8 @@ class FactorizedNoisyLinear(chainer.Chain):
         xp = self.xp
         if xp is numpy:
             r = xp.random.standard_normal(shape).astype(dtype)
-            return xp.copysign(xp.sqrt(xp.abs(r)), r)
         else:
+            r = xp.random.standard_normal(shape, dtype)
             # apply the function f
             self.noise_function(r)
             return r
