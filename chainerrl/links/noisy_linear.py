@@ -37,6 +37,14 @@ class FactorizedNoisyLinear(chainer.Chain):
         if device_id is not None:
             self.to_gpu(device_id)
 
+    def noise_function(self, r):
+        if self._kernel is None:
+            self._kernel = cuda.elementwise(
+                'T r', '',
+                '''r = copysignf(sqrtf(fabsf(r)), r);''',
+                'noise_func')
+        self._kernel(r)    
+
     def _eps(self, shape, dtype):
         xp = self.xp
         if xp is numpy:
@@ -45,7 +53,9 @@ class FactorizedNoisyLinear(chainer.Chain):
             r = xp.random.standard_normal(shape, dtype)
 
         # apply the function f
-        return xp.copysign(xp.sqrt(xp.abs(r)), r)
+        self.noise_function(r)
+        return r
+        # return xp.copysign(xp.sqrt(xp.abs(r)), r)
 
     def __call__(self, x):
         if self.mu.W.array is None:
