@@ -186,8 +186,8 @@ def make_distrib_recurrent_q_func(env):
     n_atoms = 51
     v_max = 10
     v_min = -10
-    return chainerrl.links.Sequence(
-        L.LSTM(env.observation_space.low.size, 20),
+    return chainerrl.links.StatelessRecurrentSequential(
+        L.NStepRNNTanh(1, env.observation_space.low.size, 20, 0),
         chainerrl.q_functions.DistributionalFCStateQFunctionWithDiscreteAction(  # NOQA
             20, env.action_space.n,
             n_atoms=n_atoms,
@@ -213,7 +213,8 @@ class TestCategoricalDQNOnDiscreteABC(
 
 # Continuous action spaces are not supported
 
-class TestCategoricalDQNOnDiscretePOABC(base._TestDQNOnDiscretePOABC):
+class TestCategoricalDQNOnDiscretePOABC(
+        _TestBatchTrainingMixin, base._TestDQNOnDiscretePOABC):
 
     def make_q_func(self, env):
         return make_distrib_recurrent_q_func(env)
@@ -222,4 +223,4 @@ class TestCategoricalDQNOnDiscretePOABC(base._TestDQNOnDiscretePOABC):
         return CategoricalDQN(
             q_func, opt, rbuf, gpu=gpu, gamma=0.9, explorer=explorer,
             replay_start_size=100, target_update_interval=100,
-            episodic_update=True)
+            recurrent=True)
