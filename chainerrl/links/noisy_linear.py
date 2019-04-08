@@ -5,6 +5,8 @@ from chainer.initializers import LeCunUniform
 import chainer.links as L
 
 from chainerrl.initializers import VarianceScalingConstant
+from chainerrl.functions import muladd
+
 import numpy
 
 
@@ -74,9 +76,8 @@ class FactorizedNoisyLinear(chainer.Chain):
         eps = self._eps(in_size + out_size, dtype)
         eps_x = eps[:in_size]
         eps_y = eps[in_size:]
-        # eps_x = self._eps(in_size, dtype)
-        # eps_y = self._eps(out_size, dtype)
-        W = self.mu.W + self.sigma.W * self.xp.outer(eps_y, eps_x)
+        W = muladd(self.sigma.W, self.xp.outer(eps_y, eps_x), self.mu.W)
+        # W = self.mu.W + self.sigma.W * self.xp.outer(eps_y, eps_x)
         if self.nobias:
             return F.linear(x, W)
         else:
