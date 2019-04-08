@@ -6,7 +6,6 @@ from builtins import *  # NOQA
 from future import standard_library
 standard_library.install_aliases()  # NOQA
 
-import chainer
 from chainer import functions as F
 from chainer import links as L
 from chainer import optimizers
@@ -70,7 +69,7 @@ class _TestDQNOnABC(_TestDQNLike):
                 return a.astype(np.float32)
             else:
                 return a
-        return LinearDecayEpsilonGreedy(1.0, 0.1, 1000, random_action_func)
+        return LinearDecayEpsilonGreedy(1.0, 0.5, 1000, random_action_func)
 
     def make_optimizer(self, env, q_func):
         opt = optimizers.Adam(1e-2)
@@ -99,8 +98,7 @@ class _TestDQNOnDiscretePOABC(_TestDQNOnABC):
             L.Linear(env.observation_space.low.size, n_hidden_channels),
             F.elu,
             L.NStepRNNTanh(1, n_hidden_channels, n_hidden_channels, 0),
-            L.Linear(n_hidden_channels, env.action_space.n,
-                     initialW=chainer.initializers.LeCunNormal(1e-1)),
+            L.Linear(n_hidden_channels, env.action_space.n),
             DiscreteActionValue,
         )
 
@@ -110,6 +108,12 @@ class _TestDQNOnDiscretePOABC(_TestDQNOnABC):
     def make_env_and_successful_return(self, test):
         return ABC(discrete=True, partially_observable=True,
                    deterministic=test), 1
+
+    def make_optimizer(self, env, q_func):
+        # Stabilize training by large eps
+        opt = optimizers.Adam(1e-2, eps=1)
+        opt.setup(q_func)
+        return opt
 
 
 class _TestNStepDQNOnABC(_TestDQNOnABC):
