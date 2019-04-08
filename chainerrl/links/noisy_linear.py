@@ -39,7 +39,10 @@ class FactorizedNoisyLinear(chainer.Chain):
 
     def _eps(self, shape, dtype):
         xp = self.xp
-        r = xp.random.standard_normal(shape).astype(dtype)
+        if xp is numpy:
+            r = xp.random.standard_normal(shape).astype(dtype)
+        else:
+            r = xp.random.standard_normal(shape, dtype)
 
         # apply the function f
         return xp.copysign(xp.sqrt(xp.abs(r)), r)
