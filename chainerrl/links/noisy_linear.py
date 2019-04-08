@@ -4,7 +4,7 @@ from chainer.initializers import LeCunUniform
 import chainer.links as L
 
 from chainerrl.initializers import VarianceScalingConstant
-
+import numpy
 
 class FactorizedNoisyLinear(chainer.Chain):
     """Linear layer in Factorized Noisy Network
