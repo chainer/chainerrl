@@ -169,7 +169,8 @@ class TestA3C(unittest.TestCase):
                 agent=agent, steps=steps,
                 max_episode_len=max_episode_len,
                 eval_interval=500,
-                eval_n_runs=5,
+                eval_n_steps=None,
+                eval_n_episodes=5,
                 successful_score=1)
             assert len(warns) == 0, warns[0]
 

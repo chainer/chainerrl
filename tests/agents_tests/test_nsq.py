@@ -106,7 +106,8 @@ class TestNSQ(unittest.TestCase):
                 make_agent=make_agent, steps=steps,
                 max_episode_len=5,
                 eval_interval=500,
-                eval_n_runs=5,
+                eval_n_steps=None,
+                eval_n_episodes=5,
                 successful_score=1,
             )
             # There should be no AbnormalExitWarning
