@@ -57,7 +57,7 @@ class TestDPPOnContinuousABC(
 @testing.parameterize(
     *testing.product({
         'dpp_type': ['DPP', 'DPPL', 'DPPGreedy'],
-    }),
+    })
 )
 class TestDPPOnDiscretePOABC(
         _TestBatchTrainingMixin,
