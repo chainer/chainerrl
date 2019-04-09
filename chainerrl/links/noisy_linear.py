@@ -1,5 +1,5 @@
 import chainer
-from chainer.backends import cuda
+from chainer import cuda
 import chainer.functions as F
 from chainer.initializers import LeCunUniform
 import chainer.links as L
