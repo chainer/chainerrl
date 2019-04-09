@@ -103,11 +103,10 @@ class DistributionalDuelingDQN(
         batch_size = x.shape[0]
 
         h = self.activation(self.main_stream(h))
-        split_axis = len(self.xp.shape(h)) - 1
+        split_axis = len(h.shape) - 1
         h_a, h_v = chainer.functions.split_axis(h, 2, split_axis)
         ya = F.reshape(self.a_stream(h_a), (batch_size, self.n_actions, self.n_atoms))
 
-        # ya = F.reshape(self.a_stream(h), (batch_size, self.n_actions, self.n_atoms))
         mean = F.sum(ya, axis=1, keepdims=True) / self.n_actions
 
         ya, mean = F.broadcast(ya, mean)
