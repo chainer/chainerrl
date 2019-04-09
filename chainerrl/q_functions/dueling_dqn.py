@@ -118,6 +118,6 @@ class DistributionalDuelingDQN(
         ys = F.reshape(self.v_stream(h[...,512:]), (batch_size, 1, self.n_atoms))
         # ys = F.reshape(self.v_stream(h), (batch_size, 1, self.n_atoms))
         ya, ys = F.broadcast(ya, ys)
-        q = F.softmax(ya + ys, axis=2)
+        q = F.softmax(F.add(ya, ys), axis=2)
 
         return action_value.DistributionalDiscreteActionValue(q, self.z_values)
