@@ -5,11 +5,8 @@ from __future__ import absolute_import
 from future import standard_library
 from builtins import *  # NOQA
 standard_library.install_aliases()  # NOQA
-import unittest
 
-import chainer
 import chainer.links as L
-from chainer import testing
 
 import basetest_dqn_like as base
 from basetest_training import _TestBatchTrainingMixin

@@ -6,6 +6,7 @@ from builtins import *  # NOQA
 from future import standard_library
 standard_library.install_aliases()  # NOQA
 import argparse
+import json
 import os
 
 import chainer
@@ -20,8 +21,6 @@ from chainerrl import explorers
 from chainerrl import links
 from chainerrl import misc
 from chainerrl.q_functions import DistributionalDuelingDQN
-from chainerrl.q_functions \
-    import DistributionalFCStateQFunctionWithDiscreteAction
 from chainerrl import replay_buffer
 from chainerrl.wrappers import atari_wrappers
 
@@ -55,7 +54,7 @@ def main():
     parser.add_argument('--monitor', action='store_true', default=False,
                         help='Monitor env. Videos and additional information'
                              ' are saved as output files.')
-    parser.add_argument('--n-best-episodes', type=int, default=200)    
+    parser.add_argument('--n-best-episodes', type=int, default=200)
     args = parser.parse_args()
 
     import logging
@@ -90,7 +89,6 @@ def main():
             env = chainerrl.wrappers.Render(env)
         return env
 
-
     env = make_env(test=False)
     eval_env = make_env(test=True)
 
@@ -100,7 +98,7 @@ def main():
     v_max = 10
     v_min = -10
     q_func = DistributionalDuelingDQN(n_actions, n_atoms, v_min, v_max,)
-    
+
     # Noisy nets
     links.to_factorized_noisy(q_func)
     # Turn off explorer
@@ -122,7 +120,6 @@ def main():
     rbuf = replay_buffer.PrioritizedReplayBuffer(
         10 ** 6, alpha=0.5, beta0=0.4, betasteps=betasteps,
         num_steps=3)
-
 
     def phi(x):
         # Feature extractor
@@ -184,6 +181,7 @@ def main():
         print("The results of the best scoring network:")
         for stat in stats:
             print(str(stat) + ":" + str(stats[stat]))
+
 
 if __name__ == '__main__':
     main()
