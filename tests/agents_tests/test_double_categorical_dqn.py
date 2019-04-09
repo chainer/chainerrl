@@ -10,12 +10,10 @@ import unittest
 import chainer
 import chainer.links as L
 from chainer import testing
-import numpy as np
 
 import basetest_dqn_like as base
 from basetest_training import _TestBatchTrainingMixin
 import chainerrl
-from chainerrl.agents import categorical_double_dqn
 from chainerrl.agents import CategoricalDoubleDQN
 
 

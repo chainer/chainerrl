@@ -3,12 +3,10 @@ from chainer.backends import cuda
 import chainer.functions as F
 from chainer.initializers import LeCunUniform
 import chainer.links as L
+import numpy
 
 from chainerrl.initializers import VarianceScalingConstant
 from chainerrl.functions import muladd
-
-import numpy
-
 
 
 class FactorizedNoisyLinear(chainer.Chain):
@@ -59,15 +57,14 @@ class FactorizedNoisyLinear(chainer.Chain):
             return xp.copysign(xp.sqrt(xp.abs(r)), r)
         else:
             r = xp.random.standard_normal(shape, dtype)
-            # apply the function f
             self.noise_function(r)
             return r
 
     def __call__(self, x):
         if self.mu.W.array is None:
-            self.mu.W.initialize((self.out_size, self.xp.prod(x.shape[1:])))
+            self.mu.W.initialize((self.out_size, numpy.prod(x.shape[1:])))
         if self.sigma.W.array is None:
-            self.sigma.W.initialize((self.out_size, self.xp.prod(x.shape[1:])))
+            self.sigma.W.initialize((self.out_size, numpy.prod(x.shape[1:])))
 
         # use info of sigma.W to avoid strange error messages
         dtype = self.sigma.W.dtype
@@ -77,10 +74,8 @@ class FactorizedNoisyLinear(chainer.Chain):
         eps_x = eps[:in_size]
         eps_y = eps[in_size:]
         W = muladd(self.sigma.W, self.xp.outer(eps_y, eps_x), self.mu.W)
-        # W = self.mu.W + self.sigma.W * self.xp.outer(eps_y, eps_x)
         if self.nobias:
             return F.linear(x, W)
         else:
             b = muladd(self.sigma.b, eps_y, self.mu.b)
-            # b = self.mu.b + self.sigma.b * eps_y
             return F.linear(x, W, b)

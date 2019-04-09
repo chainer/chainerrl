@@ -23,14 +23,7 @@ from chainerrl.q_functions import DistributionalDuelingDQN
 from chainerrl.q_functions \
     import DistributionalFCStateQFunctionWithDiscreteAction
 from chainerrl import replay_buffer
-
 from chainerrl.wrappers import atari_wrappers
-import json
-import io
-import pstats
-import sys
-
-import cProfile
 
 
 def main():

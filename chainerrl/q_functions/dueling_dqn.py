@@ -16,7 +16,6 @@ from chainerrl.links.mlp import MLP
 from chainerrl.q_function import StateQFunction
 from chainerrl.recurrent import RecurrentChainMixin
 
-from pdb import set_trace
 
 class DuelingDQN(chainer.Chain, StateQFunction):
     """Dueling Q-Network
