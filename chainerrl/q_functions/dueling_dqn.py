@@ -92,10 +92,7 @@ class DistributionalDuelingDQN(
             self.main_stream = L.Linear(3136, 1024)
             self.a_stream = L.Linear(512, n_actions * n_atoms)
             self.v_stream = L.Linear(512, n_atoms)
-            # v_stream
-            # self.a_stream = Linear(3136, n_actions * n_atoms, [512])
-            # self.a_stream = MLP(3136, n_actions * n_atoms, [512])
-            # self.v_stream = MLP(3136, n_atoms, [512])
+
 
     def __call__(self, x):
         h = x
@@ -106,7 +103,9 @@ class DistributionalDuelingDQN(
         batch_size = x.shape[0]
 
         h = self.activation(self.main_stream(h))
-        ya = F.reshape(self.a_stream(h[...,:512]), (batch_size, self.n_actions, self.n_atoms))
+        split_axis = len(self.xp.shape(h)) - 1
+        h_a, h_v = chainer.functions.split_axis(h, 2, split_axis)
+        ya = F.reshape(self.a_stream(h_a), (batch_size, self.n_actions, self.n_atoms))
 
         # ya = F.reshape(self.a_stream(h), (batch_size, self.n_actions, self.n_atoms))
         mean = F.sum(ya, axis=1, keepdims=True) / self.n_actions
@@ -115,8 +114,7 @@ class DistributionalDuelingDQN(
         ya -= mean
 
         # State value
-        ys = F.reshape(self.v_stream(h[...,512:]), (batch_size, 1, self.n_atoms))
-        # ys = F.reshape(self.v_stream(h), (batch_size, 1, self.n_atoms))
+        ys = F.reshape(self.v_stream(h_v), (batch_size, 1, self.n_atoms))
         ya, ys = F.broadcast(ya, ys)
         q = F.softmax(F.add(ya, ys), axis=2)
 
