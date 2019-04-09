@@ -7,13 +7,12 @@ standard_library.install_aliases()  # NOQA
 
 import chainer
 from chainer import cuda
-from chainer.utils import type_check
 
 
 class MulAdd(chainer.Function):
-    """Example taken from Chainer docs: 
+    """Example taken from Chainer docs:
 
-    See: https://docs.chainer.org/en/v1.24.0/tutorial/function.html#write-an-elementwise-kernel-function
+    See: https://docs.chainer.org/en/stable/guides/functions.html
     """
 
     def forward_cpu(self, inputs):
@@ -31,7 +30,6 @@ class MulAdd(chainer.Function):
         return gx, gy, gz
 
     def forward_gpu(self, inputs):
-        cupy = cuda.cupy
         x, y, z = inputs
         w = cuda.elementwise(
             'T x, T y, T z',
@@ -55,6 +53,7 @@ class MulAdd(chainer.Function):
 
         gz = gw
         return gx, gy, gz
+
 
 def muladd(x, y, z):
     return MulAdd()(x, y, z)

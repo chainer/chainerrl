@@ -78,7 +78,9 @@ class DistributionalDuelingDQN(
         self.n_atoms = n_atoms
 
         super().__init__()
-        z_values = self.xp.linspace(v_min, v_max, num=n_atoms, dtype=np.float32)
+        z_values = self.xp.linspace(v_min, v_max,
+                                    num=n_atoms,
+                                    dtype=np.float32)
         self.add_persistent('z_values', z_values)
 
         with self.init_scope():
@@ -92,7 +94,6 @@ class DistributionalDuelingDQN(
             self.a_stream = L.Linear(512, n_actions * n_atoms)
             self.v_stream = L.Linear(512, n_atoms)
 
-
     def __call__(self, x):
         h = x
         for l in self.conv_layers:
@@ -104,7 +105,8 @@ class DistributionalDuelingDQN(
         h = self.activation(self.main_stream(h))
         split_axis = len(h.shape) - 1
         h_a, h_v = chainer.functions.split_axis(h, 2, split_axis)
-        ya = F.reshape(self.a_stream(h_a), (batch_size, self.n_actions, self.n_atoms))
+        ya = F.reshape(self.a_stream(h_a),
+                       (batch_size, self.n_actions, self.n_atoms))
 
         mean = F.sum(ya, axis=1, keepdims=True) / self.n_actions
 

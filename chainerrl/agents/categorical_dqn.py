@@ -36,7 +36,7 @@ def _apply_categorical_projection(y, y_probs, z):
     delta_z = z[1] - z[0]
     v_min = z[0]
     v_max = z[-1]
-    xp = chainer.cuda.get_array_module(z)
+    xp = cuda.get_array_module(z)
     y = xp.clip(y, v_min, v_max)
 
     # bj: (batch_size, n_atoms)
@@ -50,7 +50,7 @@ def _apply_categorical_projection(y, y_probs, z):
     assert l.shape == (batch_size, n_atoms)
     assert u.shape == (batch_size, n_atoms)
 
-    if chainer.cuda.available and xp is chainer.cuda.cupy:
+    if cuda.available and xp is cuda.cupy:
         scatter_add = xp.scatter_add
     else:
         scatter_add = np.add.at
