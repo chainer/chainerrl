@@ -76,6 +76,7 @@ def compute_value_loss(eltwise_loss, y, t, batch_accumulator='mean'):
     """Compute a loss for value prediction problem.
 
     Args:
+        eltwise_loss (Variable): Element-wise loss per example per atom
         y (Variable or ndarray): Predicted values.
         t (Variable or ndarray): Target values.
         batch_accumulator (str): 'mean' or 'sum'. 'mean' will use the mean of
@@ -98,6 +99,7 @@ def compute_weighted_value_loss(eltwise_loss,
     """Compute a loss for value prediction problem.
 
     Args:
+        eltwise_loss (Variable): Element-wise loss per example per atom
         y (Variable or ndarray): Predicted values.
         t (Variable or ndarray): Target values.
         weights (ndarray): Weights for y, t.

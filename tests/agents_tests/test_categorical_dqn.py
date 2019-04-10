@@ -16,6 +16,8 @@ import basetest_dqn_like as base
 from basetest_training import _TestBatchTrainingMixin
 import chainerrl
 from chainerrl.agents import categorical_dqn
+from chainerrl.agents.categorical_dqn import compute_value_loss
+from chainerrl.agents.categorical_dqn import compute_weighted_value_loss
 from chainerrl.agents import CategoricalDQN
 
 
@@ -223,3 +225,64 @@ class TestCategoricalDQNOnDiscretePOABC(base._TestDQNOnDiscretePOABC):
             q_func, opt, rbuf, gpu=gpu, gamma=0.9, explorer=explorer,
             replay_start_size=100, target_update_interval=100,
             episodic_update=True)
+
+
+def _huber_loss_1(a):
+    if abs(a) < 1:
+        return 0.5 * a ** 2
+    else:
+        return abs(a) - 0.5
+
+
+@testing.parameterize(
+    *testing.product({
+        'batch_accumulator': ['mean', 'sum'],
+    })
+)
+class TestComputeValueLoss(unittest.TestCase):
+
+    def setUp(self):
+        self.y = np.asarray([1.0, 2.0, 3.0, 4.0], dtype='f')
+        self.t = np.asarray([2.1, 2.2, 2.3, 2.4], dtype='f')
+        self.eltwise_losses = np.asarray(
+                [_huber_loss_1(a) for a in self.y - self.t])
+
+    def test_not_weighted(self):
+        loss = compute_value_loss(
+            self.eltwise_losses, self.y, self.t,
+            batch_accumulator=self.batch_accumulator).array
+        if self.batch_accumulator == 'mean':
+            eltwise_loss = self.eltwise_losses.mean()
+        else:
+            eltwise_loss = self.eltwise_losses.sum()
+        self.assertAlmostEqual(loss, eltwise_loss, places=5)
+
+    def test_uniformly_weighted(self):
+
+        # Uniform weights
+        w1 = np.ones(self.y.size, dtype='f')
+
+        loss_w1 = compute_weighted_value_loss(
+            self.eltwise_losses, self.y,
+            self.t, w1,
+            batch_accumulator=self.batch_accumulator).array
+        if self.batch_accumulator == 'mean':
+            eltwise_loss = self.eltwise_losses.mean()
+        else:
+            eltwise_loss = self.eltwise_losses.sum()
+        self.assertAlmostEqual(loss_w1, eltwise_loss, places=5)
+
+    def test_randomly_weighted(self):
+
+        # Random weights
+        wu = np.random.uniform(low=0, high=2, size=self.y.size).astype('f')
+
+        loss_wu = compute_weighted_value_loss(
+            self.eltwise_losses,
+            self.y, self.t, wu,
+            batch_accumulator=self.batch_accumulator).array
+        if self.batch_accumulator == 'mean':
+            eltwise_loss = (self.eltwise_losses * wu).mean()
+        else:
+            eltwise_loss = (self.eltwise_losses * wu).sum()
+        self.assertAlmostEqual(loss_wu, eltwise_loss, places=5)
