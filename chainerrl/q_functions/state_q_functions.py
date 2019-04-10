@@ -55,9 +55,11 @@ class FCStateQFunctionWithDiscreteAction(
 
     Args:
         n_dim_obs: number of dimensions of observation space
-        n_dim_action: number of dimensions of action space
+        n_actions (int): Number of actions in action space.
         n_hidden_channels: number of hidden channels
         n_hidden_layers: number of hidden layers
+        nonlinearity (callable): Nonlinearity applied after each hidden layer.
+        last_wscale (float): Weight scale of the last layer.
     """
 
     def __init__(self, ndim_obs, n_actions, n_hidden_channels,
