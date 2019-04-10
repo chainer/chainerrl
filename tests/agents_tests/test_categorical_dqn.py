@@ -227,11 +227,9 @@ class TestCategoricalDQNOnDiscretePOABC(base._TestDQNOnDiscretePOABC):
             episodic_update=True)
 
 
-def _huber_loss_1(a):
-    if abs(a) < 1:
-        return 0.5 * a ** 2
-    else:
-        return abs(a) - 0.5
+def categorical_loss(y, t):
+    return -t * np.log(np.clip(y, 1e-10, 1.))
+
 
 
 @testing.parameterize(
@@ -243,14 +241,14 @@ class TestComputeValueLoss(unittest.TestCase):
 
     def setUp(self):
         # y and t are (batchsize, n_atoms)
-        self.y = np.asarray([[1.0, 2.0, 3.0, 4.0],
-                            [1.5, 2.5, 3.5, 4.5]],
+        self.y = np.asarray([[0.1, 0.2, 0.3, 0.4],
+                            [0.05, 0.1, 0.2, 0.65]],
                             dtype='f')
-        self.t = np.asarray([[2.1, 2.2, 2.3, 2.4],
-                            [2.2, 2.3, 2.4, 2.5]],
+        self.t = np.asarray([[0.2, 0.2, 0.2, 0.4],
+                            [0.1, 0.3, 0.3, 2.3]],
                             dtype='f')
-        # self.eltwise_losses = np.asarray(
-        #         [_huber_loss_1(a) for a in self.y - self.t])
+        self.eltwise_losses = np.asarray(
+            [categorical_loss(a, b) for a,b in zip(self.y, self.t)])
 
     def test_not_weighted(self):
         loss = compute_value_loss(
