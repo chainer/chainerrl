@@ -242,10 +242,15 @@ def _huber_loss_1(a):
 class TestComputeValueLoss(unittest.TestCase):
 
     def setUp(self):
-        self.y = np.asarray([1.0, 2.0, 3.0, 4.0], dtype='f')
-        self.t = np.asarray([2.1, 2.2, 2.3, 2.4], dtype='f')
-        self.eltwise_losses = np.asarray(
-                [_huber_loss_1(a) for a in self.y - self.t])
+        # y and t are (batchsize, n_atoms)
+        self.y = np.asarray([[1.0, 2.0, 3.0, 4.0],
+                            [1.5, 2.5, 3.5, 4.5]],
+                            dtype='f')
+        self.t = np.asarray([[2.1, 2.2, 2.3, 2.4],
+                            [2.2, 2.3, 2.4, 2.5]],
+                            dtype='f')
+        # self.eltwise_losses = np.asarray(
+        #         [_huber_loss_1(a) for a in self.y - self.t])
 
     def test_not_weighted(self):
         loss = compute_value_loss(
