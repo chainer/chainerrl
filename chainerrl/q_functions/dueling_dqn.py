@@ -104,7 +104,7 @@ class DistributionalDuelingDQN(
 
         h = self.activation(self.main_stream(h))
         split_axis = len(h.shape) - 1
-        h_a, h_v = chainer.functions.split_axis(h, 2, split_axis)
+        h_a, h_v = F.split_axis(h, 2, split_axis)
         ya = F.reshape(self.a_stream(h_a),
                        (batch_size, self.n_actions, self.n_atoms))
 
@@ -116,6 +116,6 @@ class DistributionalDuelingDQN(
         # State value
         ys = F.reshape(self.v_stream(h_v), (batch_size, 1, self.n_atoms))
         ya, ys = F.broadcast(ya, ys)
-        q = F.softmax(F.add(ya, ys), axis=2)
+        q = F.softmax(ya + ys, axis=2)
 
         return action_value.DistributionalDiscreteActionValue(q, self.z_values)
