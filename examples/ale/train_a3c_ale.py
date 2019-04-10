@@ -100,8 +100,9 @@ def main():
     logging.basicConfig(level=args.logging_level)
 
     # Set a random seed used in ChainerRL.
-    # If you use more than one processes, the results will be no longer
-    # deterministic even with the same random seed.
+    # If you use more than one process (i.e. processes > 1),
+    # the results will be no longer be deterministic
+    # even with the same random seed.
     misc.set_random_seed(args.seed)
 
     # Set different random seeds for different subprocesses.
@@ -189,7 +190,8 @@ def main():
             make_env=make_env,
             profile=args.profile,
             steps=args.steps,
-            eval_n_runs=args.eval_n_runs,
+            eval_n_steps=None,
+            eval_n_episodes=args.eval_n_runs,
             eval_interval=args.eval_interval,
             global_step_hooks=[lr_decay_hook],
             save_best_so_far_agent=False,
