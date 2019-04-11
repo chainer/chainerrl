@@ -90,6 +90,13 @@ def main():
     parser.add_argument('--no-frame-stack', action='store_true', default=False,
                         help='Disable frame stacking so that the agent can'
                              ' only see the current screen.')
+    parser.add_argument('--episodic-update-len', type=int, default=10,
+                        help='Maximum length of sequences for updating'
+                             ' recurrent models')
+    parser.add_argument('--batch-size', type=int, default=32,
+                        help='Number of transitions (in a non-recurrent case)'
+                             ' or sequences (in a recurrent case) used for an'
+                             ' update.')
     args = parser.parse_args()
 
     import logging
@@ -199,8 +206,8 @@ def main():
         update_interval=args.update_interval,
         batch_accumulator='mean',
         phi=phi,
-        minibatch_size=32,
-        episodic_update_len=10,
+        minibatch_size=args.batch_size,
+        episodic_update_len=args.episodic_update_len,
         recurrent=args.recurrent,
     )
 
