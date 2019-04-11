@@ -202,7 +202,6 @@ class PPO(agent.AttributeSavingMixin, agent.BatchAgent):
             maxlen=value_loss_stats_window)
         self.policy_loss_record = collections.deque(
             maxlen=policy_loss_stats_window)
-        self.n_updates = 0
 
     def _initialize_batch_variables(self, num_envs):
         self.batch_last_episode = [[] for _ in range(num_envs)]
@@ -303,7 +302,6 @@ class PPO(agent.AttributeSavingMixin, agent.BatchAgent):
                 advs=advs,
                 vs_teacher=vs_teacher,
             )
-            self.n_updates += 1
 
     def _lossfun(self,
                  entropy, vs_pred, log_probs,
@@ -482,5 +480,5 @@ class PPO(agent.AttributeSavingMixin, agent.BatchAgent):
             ('average_entropy', _mean_or_nan(self.entropy_record)),
             ('average_value_loss', _mean_or_nan(self.value_loss_record)),
             ('average_policy_loss', _mean_or_nan(self.policy_loss_record)),
-            ('n_updates', self.n_updates),
+            ('n_updates', self.optimizer.t),
         ]
