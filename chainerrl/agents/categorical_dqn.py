@@ -12,6 +12,7 @@ import numpy as np
 
 from chainerrl.agents import dqn
 
+
 def _apply_categorical_projection(y, y_probs, z):
     """Apply categorical projection.
 
@@ -72,13 +73,11 @@ def _apply_categorical_projection(y, y_probs, z):
     return z_probs
 
 
-def compute_value_loss(eltwise_loss, y, t, batch_accumulator='mean'):
+def compute_value_loss(eltwise_loss, batch_accumulator='mean'):
     """Compute a loss for value prediction problem.
 
     Args:
         eltwise_loss (Variable): Element-wise loss per example per atom
-        y (Variable or ndarray): Predicted values.
-        t (Variable or ndarray): Target values.
         batch_accumulator (str): 'mean' or 'sum'. 'mean' will use the mean of
             the loss values in a batch. 'sum' will use the sum.
     Returns:
@@ -93,15 +92,12 @@ def compute_value_loss(eltwise_loss, y, t, batch_accumulator='mean'):
     return loss
 
 
-def compute_weighted_value_loss(eltwise_loss,
-                                y, t, weights,
+def compute_weighted_value_loss(eltwise_loss, y, weights,
                                 batch_accumulator='mean'):
     """Compute a loss for value prediction problem.
 
     Args:
         eltwise_loss (Variable): Element-wise loss per example per atom
-        y (Variable or ndarray): Predicted values.
-        t (Variable or ndarray): Target values.
         weights (ndarray): Weights for y, t.
         batch_accumulator (str): 'mean' will divide loss by batchsize
     Returns:
@@ -178,7 +174,7 @@ class CategoricalDQN(dqn.DQN):
     def _compute_loss(self, exp_batch, errors_out=None):
         """Compute a loss of categorical DQN."""
         y, t = self._compute_y_and_t(exp_batch)
-        # Minimize the cross entropy
+        # Minimize the cross entropy  
         # y is clipped to avoid log(0)
         eltwise_loss = -t * F.log(F.clip(y, 1e-10, 1.))
 
@@ -191,8 +187,8 @@ class CategoricalDQN(dqn.DQN):
 
         if 'weights' in exp_batch:
             return compute_weighted_value_loss(
-                eltwise_loss, y, t, exp_batch['weights'],
+                eltwise_loss, y, exp_batch['weights'],
                 batch_accumulator=self.batch_accumulator)
         else:
-            return compute_value_loss(eltwise_loss, y, t,
-                                      batch_accumulator=self.batch_accumulator)
+            return compute_value_loss(
+                eltwise_loss, batch_accumulator=self.batch_accumulator)
