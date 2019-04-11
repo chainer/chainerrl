@@ -5,6 +5,8 @@ Links
 Link implementations
 ============================
 
+.. autoclass:: chainerrl.links.Branched
+
 .. autoclass:: chainerrl.links.EmpiricalNormalization
 
 .. autoclass:: chainerrl.links.FactorizedNoisyLinear
@@ -16,8 +18,6 @@ Link implementations
 .. autoclass:: chainerrl.links.NIPSDQNHead
 
 .. autoclass:: chainerrl.links.NatureDQNHead
-
-.. autoclass:: chainerrl.links.ParallelLink
 
 .. autoclass:: chainerrl.links.Sequence
 
