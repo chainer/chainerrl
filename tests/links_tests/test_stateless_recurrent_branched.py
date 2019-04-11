@@ -14,11 +14,11 @@ from chainer import links as L
 from chainer import testing
 import numpy as np
 
-from chainerrl.links import StatelessRecurrentParallelLink
+from chainerrl.links import StatelessRecurrentBranched
 from chainerrl.links import StatelessRecurrentSequential
 
 
-class TestStatelessRecurrentParallelLink(unittest.TestCase):
+class TestStatelessRecurrentBranched(unittest.TestCase):
 
     def _test_n_step_forward(self, gpu):
         in_size = 2
@@ -26,7 +26,7 @@ class TestStatelessRecurrentParallelLink(unittest.TestCase):
         out1_size = 4
         out2_size = 1
 
-        par = StatelessRecurrentParallelLink(
+        par = StatelessRecurrentBranched(
             L.NStepLSTM(1, in_size, out0_size, 0),
             StatelessRecurrentSequential(
                 L.NStepRNNReLU(1, in_size, out1_size, 0),
@@ -101,7 +101,7 @@ class TestStatelessRecurrentParallelLink(unittest.TestCase):
         in_size = 2
         out0_size = 2
         out1_size = 3
-        par = StatelessRecurrentParallelLink(
+        par = StatelessRecurrentBranched(
             L.NStepGRU(1, in_size, out0_size, 0),
             StatelessRecurrentSequential(
                 L.NStepLSTM(1, in_size, out1_size, 0),

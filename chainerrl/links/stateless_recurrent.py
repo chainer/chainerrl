@@ -43,7 +43,7 @@ class StatelessRecurrent(object):
     In most casese, you can just use ChainerRL's existing containers like
     `chainerrl.links.StatelessRecurrentChainList`,
     `chainerrl.links.StatelessRecurrentSequential`, and
-    `chainerrl.links.StatelessRecurrentParallelLink` to define a recurrent
+    `chainerrl.links.StatelessRecurrentBranched` to define a recurrent
     link. You can use Chainer's recurrent links such as L.NStepLSTM inside the
     containers.
 
