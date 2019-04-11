@@ -14,7 +14,7 @@ from chainer import links as L
 from chainer import testing
 import numpy as np
 
-from chainerrl.links import ParallelLink
+from chainerrl.links import Branched
 
 
 @testing.parameterize(*(
@@ -22,7 +22,7 @@ from chainerrl.links import ParallelLink
         'batch_size': [1, 2],
     })
 ))
-class TestParallelLink(unittest.TestCase):
+class TestBranched(unittest.TestCase):
 
     def test_manual(self):
         link1 = L.Linear(2, 3)
@@ -31,7 +31,7 @@ class TestParallelLink(unittest.TestCase):
             L.Linear(2, 7),
             F.tanh,
         )
-        plink = ParallelLink(link1, link2, link3)
+        plink = Branched(link1, link2, link3)
         x = np.zeros((self.batch_size, 2), dtype=np.float32)
         pout = plink(x)
         self.assertIsInstance(pout, tuple)

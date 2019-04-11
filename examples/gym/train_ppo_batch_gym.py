@@ -152,7 +152,7 @@ This example only supports gym.spaces.Box or gym.spaces.Discrete action spaces."
     )
 
     # Combine a policy and a value function into a single model
-    model = chainerrl.links.ParallelLink(policy, vf)
+    model = chainerrl.links.Branched(policy, vf)
 
     opt = chainer.optimizers.Adam(alpha=args.lr, eps=1e-5)
     opt.setup(model)
