@@ -37,14 +37,13 @@ def main():
     parser.add_argument('--demo', action='store_true', default=False)
     parser.add_argument('--load', type=str, default=None)
     parser.add_argument('--use-sdl', action='store_true', default=False)
-    parser.add_argument('--final-epsilon', type=float, default=0.1)
-    parser.add_argument('--eval-epsilon', type=float, default=0.05)
+    parser.add_argument('--eval-epsilon', type=float, default=0.001)
     parser.add_argument('--noisy-net-sigma', type=float, default=0.5)
     parser.add_argument('--steps', type=int, default=5 * 10 ** 7)
     parser.add_argument('--max-frames', type=int,
                         default=30 * 60 * 60,  # 30 minutes with 60 fps
                         help='Maximum number of frames for each episode.')
-    parser.add_argument('--replay-start-size', type=int, default=8 * 10 ** 4)
+    parser.add_argument('--replay-start-size', type=int, default=2 * 10 ** 4)
     parser.add_argument('--eval-n-steps', type=int, default=125000)
     parser.add_argument('--eval-interval', type=int, default=250000)
     parser.add_argument('--logging-level', type=int, default=20,
@@ -80,7 +79,7 @@ def main():
         env.seed(int(env_seed))
         if test:
             # Randomize actions like epsilon-greedy in evaluation as well
-            env = chainerrl.wrappers.RandomizeAction(env, 0.001)
+            env = chainerrl.wrappers.RandomizeAction(env, args.eval_epsilon)
         if args.monitor:
             env = gym.wrappers.Monitor(
                 env, args.outdir,

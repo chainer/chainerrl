@@ -92,7 +92,7 @@ def compute_value_loss(eltwise_loss, batch_accumulator='mean'):
     return loss
 
 
-def compute_weighted_value_loss(eltwise_loss, y, weights,
+def compute_weighted_value_loss(eltwise_loss, batch_size, weights,
                                 batch_accumulator='mean'):
     """Compute a loss for value prediction problem.
 
@@ -106,11 +106,11 @@ def compute_weighted_value_loss(eltwise_loss, y, weights,
     assert batch_accumulator in ('mean', 'sum')
 
     # eltwise_loss is (batchsize, n_atoms) array of losses
-    # weights is an array of (batch_size)
+    # weights is an array of shape (batch_size)
     # sum loss across atoms and then apply weight per example in batch
-    loss_sum = F.matmul(F.sum(eltwise_loss, axis=1), weights) 
+    loss_sum = F.matmul(F.sum(eltwise_loss, axis=1), weights)
     if batch_accumulator == 'mean':
-        loss = loss_sum / y.shape[0]
+        loss = loss_sum / batch_size
     elif batch_accumulator == 'sum':
         loss = loss_sum
     return loss
@@ -174,7 +174,7 @@ class CategoricalDQN(dqn.DQN):
     def _compute_loss(self, exp_batch, errors_out=None):
         """Compute a loss of categorical DQN."""
         y, t = self._compute_y_and_t(exp_batch)
-        # Minimize the cross entropy  
+        # Minimize the cross entropy
         # y is clipped to avoid log(0)
         eltwise_loss = -t * F.log(F.clip(y, 1e-10, 1.))
 
@@ -187,7 +187,7 @@ class CategoricalDQN(dqn.DQN):
 
         if 'weights' in exp_batch:
             return compute_weighted_value_loss(
-                eltwise_loss, y, exp_batch['weights'],
+                eltwise_loss, y.shape[0], exp_batch['weights'],
                 batch_accumulator=self.batch_accumulator)
         else:
             return compute_value_loss(

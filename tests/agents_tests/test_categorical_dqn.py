@@ -231,7 +231,6 @@ def categorical_loss(y, t):
     return -t * np.log(np.clip(y, 1e-10, 1.))
 
 
-
 @testing.parameterize(
     *testing.product({
         'batch_accumulator': ['mean', 'sum'],
@@ -248,7 +247,7 @@ class TestComputeValueLoss(unittest.TestCase):
                             [0.1, 0.3, 0.3, 0.3]],
                             dtype='f')
         self.eltwise_losses = np.asarray(
-            [categorical_loss(a, b) for a,b in zip(self.y, self.t)])
+            [categorical_loss(a, b) for a, b in zip(self.y, self.t)])
 
     def test_not_weighted(self):
         loss = compute_value_loss(
@@ -266,7 +265,7 @@ class TestComputeValueLoss(unittest.TestCase):
         w1 = np.ones(self.y.shape[0], dtype='f')
 
         loss_w1 = compute_weighted_value_loss(
-            self.eltwise_losses, self.y, w1,
+            self.eltwise_losses, self.y.shape[0], w1,
             batch_accumulator=self.batch_accumulator).array
         if self.batch_accumulator == 'mean':
             eltwise_loss = self.eltwise_losses.sum(axis=1).mean()
@@ -281,7 +280,7 @@ class TestComputeValueLoss(unittest.TestCase):
 
         loss_wu = compute_weighted_value_loss(
             self.eltwise_losses,
-            self.y, wu,
+            self.y.shape[0], wu,
             batch_accumulator=self.batch_accumulator).array
         if self.batch_accumulator == 'mean':
             eltwise_loss = (self.eltwise_losses.sum(axis=1) * wu).mean()
