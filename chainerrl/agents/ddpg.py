@@ -383,11 +383,6 @@ class DDPG(AttributeSavingMixin, BatchAgent):
             self.explorer.select_action(
                 self.t, lambda: batch_greedy_action[i])
             for i in range(len(batch_greedy_action))]
-        self.t += 1
-
-        # Update the target network
-        if self.t % self.target_update_interval == 0:
-            self.sync_target_network()
 
         self.batch_last_obs = list(batch_obs)
         self.batch_last_action = list(batch_action)
