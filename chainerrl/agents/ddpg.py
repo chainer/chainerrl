@@ -424,7 +424,7 @@ class DDPG(AttributeSavingMixin, BatchAgent):
                 )
                 if batch_reset[i] or batch_done[i]:
                     self.batch_last_obs[i] = None
-                    self.stop_current_episode(env_id=i)
+                    self.replay_buffer.stop_current_episode(env_id=i)
             self.replay_updater.update_if_necessary(self.t)
 
     def batch_observe(self, batch_obs, batch_reward,
