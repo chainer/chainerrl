@@ -120,6 +120,7 @@ def main():
     parser.add_argument('--prioritized', action='store_true', default=False,
                         help='Use prioritized experience replay.')
     parser.add_argument('--num-envs', type=int, default=1)
+    parser.add_argument('--n-step-return', type=int, default=1)
     args = parser.parse_args()
 
     import logging
@@ -192,9 +193,12 @@ def main():
         # Anneal beta from beta0 to 1 throughout training
         betasteps = args.steps / args.update_interval
         rbuf = replay_buffer.PrioritizedReplayBuffer(
-            10 ** 6, alpha=0.6, beta0=0.4, betasteps=betasteps)
+            10 ** 6, alpha=0.6, beta0=0.4, betasteps=betasteps,
+            num_steps=args.n_step_return,
+        )
     else:
-        rbuf = replay_buffer.ReplayBuffer(10 ** 6)
+        rbuf = replay_buffer.ReplayBuffer(
+            10 ** 6, num_steps=args.n_step_return)
 
     explorer = explorers.LinearDecayEpsilonGreedy(
         1.0, args.final_epsilon,
