@@ -37,7 +37,7 @@ def main():
     parser.add_argument('--demo', action='store_true', default=False)
     parser.add_argument('--load', type=str, default=None)
     parser.add_argument('--use-sdl', action='store_true', default=False)
-    parser.add_argument('--eval-epsilon', type=float, default=0.001)
+    parser.add_argument('--eval-epsilon', type=float, default=0.0)
     parser.add_argument('--noisy-net-sigma', type=float, default=0.5)
     parser.add_argument('--steps', type=int, default=5 * 10 ** 7)
     parser.add_argument('--max-frames', type=int,

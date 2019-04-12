@@ -241,10 +241,10 @@ class TestComputeValueLoss(unittest.TestCase):
     def setUp(self):
         # y and t are (batchsize, n_atoms)
         self.y = np.asarray([[0.1, 0.2, 0.3, 0.4],
-                            [0.05, 0.1, 0.2, 0.65]],
+                             [0.05, 0.1, 0.2, 0.65]],
                             dtype='f')
         self.t = np.asarray([[0.2, 0.2, 0.2, 0.4],
-                            [0.1, 0.3, 0.3, 0.3]],
+                             [0.1, 0.3, 0.3, 0.3]],
                             dtype='f')
         self.eltwise_losses = np.asarray(
             [categorical_loss(a, b) for a, b in zip(self.y, self.t)])
