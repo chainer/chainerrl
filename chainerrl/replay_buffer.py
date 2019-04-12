@@ -156,7 +156,7 @@ class ReplayBuffer(AbstractReplayBuffer):
             next_state=next_state,
             next_action=next_action,
             is_state_terminal=is_state_terminal,
-            **kwargs,
+            **kwargs
         )
         last_n_transitions.append(experience)
         if is_state_terminal:

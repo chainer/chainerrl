@@ -506,17 +506,17 @@ class TestReplayBufferWithEnvID(unittest.TestCase):
         for i in range(2):
             trans1 = dict(state=0, action=1, reward=2, next_state=3,
                           next_action=4, is_state_terminal=False)
-            rbuf.append(**trans1, env_id=0)
+            rbuf.append(env_id=0, **trans1)
         # 4 transitions for env_id=1 with a terminal state
         for i in range(4):
             trans1 = dict(state=0, action=1, reward=2, next_state=3,
                           next_action=4, is_state_terminal=(i == 3))
-            rbuf.append(**trans1, env_id=1)
+            rbuf.append(env_id=1, **trans1)
         # 9 transitions for env_id=2
         for i in range(9):
             trans1 = dict(state=0, action=1, reward=2, next_state=3,
                           next_action=4, is_state_terminal=False)
-            rbuf.append(**trans1, env_id=2)
+            rbuf.append(env_id=2, **trans1)
 
         # It should have:
         #   - 4 transitions from env_id=1
@@ -554,17 +554,17 @@ class TestEpisodicReplayBufferWithEnvID(unittest.TestCase):
         for i in range(2):
             trans1 = dict(state=0, action=1, reward=2, next_state=3,
                           next_action=4, is_state_terminal=False)
-            rbuf.append(**trans1, env_id=0)
+            rbuf.append(env_id=0, **trans1)
         # 4 transitions for env_id=1 with a terminal state
         for i in range(4):
             trans1 = dict(state=0, action=1, reward=2, next_state=3,
                           next_action=4, is_state_terminal=(i == 3))
-            rbuf.append(**trans1, env_id=1)
+            rbuf.append(env_id=1, **trans1)
         # 9 transitions for env_id=2
         for i in range(9):
             trans1 = dict(state=0, action=1, reward=2, next_state=3,
                           next_action=4, is_state_terminal=False)
-            rbuf.append(**trans1, env_id=2)
+            rbuf.append(env_id=2, **trans1)
 
         # It should have 4 transitions from env_id=1
         self.assertEqual(len(rbuf), 4)
