@@ -24,7 +24,7 @@ def train_agent_batch(agent, env, steps, outdir, log_interval=None,
 
     Args:
         agent: Agent to train.
-        env: Environment train the againt against.
+        env: Environment to train the agent against.
         steps (int): Number of total time steps for training.
         eval_interval (int): Interval of evaluation.
         outdir (str): Path to the directory to output things.
