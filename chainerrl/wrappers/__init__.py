@@ -8,3 +8,5 @@ from chainerrl.wrappers.randomize_action import RandomizeAction  # NOQA
 from chainerrl.wrappers.render import Render  # NOQA
 
 from chainerrl.wrappers.scale_reward import ScaleReward  # NOQA
+
+from chainerrl.wrappers.vector_frame_stack import VectorFrameStack  # NOQA
