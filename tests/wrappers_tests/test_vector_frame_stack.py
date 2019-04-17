@@ -63,7 +63,7 @@ class TestVectorFrameStack(unittest.TestCase):
                 for _ in range(steps)]
             env.action_space = gym.spaces.Discrete(2)
             env.observation_space = gym.spaces.Box(
-                low=0, high=1, shape=(1, 84, 84), dtype=np.uint8)
+                low=0, high=255, shape=(1, 84, 84), dtype=np.uint8)
             return env
 
         # Wrap by FrameStack and MultiprocessVectorEnv
@@ -78,6 +78,9 @@ class TestVectorFrameStack(unittest.TestCase):
                 [(lambda: make_env(idx))
                  for idx, env in enumerate(range(self.num_envs))]),
             k=self.k, stack_axis=0)
+
+        self.assertEqual(fs_env.action_space, vfs_env.action_space)
+        self.assertEqual(fs_env.observation_space, vfs_env.observation_space)
 
         fs_obs = fs_env.reset()
         vfs_obs = vfs_env.reset()

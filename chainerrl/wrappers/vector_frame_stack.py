@@ -78,11 +78,12 @@ class VectorFrameStack(VectorEnvWrapper):
         self.k = k
         self.stack_axis = stack_axis
         self.frames = [deque([], maxlen=k) for _ in range(env.num_envs)]
-        orig_shape = env.observation_space.shape
-        shape = list(orig_shape)
-        shape[self.stack_axis] *= k
+        orig_obs_space = env.observation_space
+        assert isinstance(orig_obs_space, spaces.Box)
+        low = np.repeat(orig_obs_space.low, k, axis=self.stack_axis)
+        high = np.repeat(orig_obs_space.high, k, axis=self.stack_axis)
         self.observation_space = spaces.Box(
-            low=0, high=255, shape=shape, dtype=np.uint8)
+            low=low, high=high, dtype=orig_obs_space.dtype)
 
     def reset(self, mask=None):
         batch_ob = self.env.reset(mask=mask)
