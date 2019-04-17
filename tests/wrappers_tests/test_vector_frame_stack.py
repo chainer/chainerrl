@@ -17,7 +17,24 @@ import numpy as np
 import chainerrl
 from chainerrl.wrappers.atari_wrappers import FrameStack
 from chainerrl.wrappers.atari_wrappers import LazyFrames
+from chainerrl.wrappers.vector_frame_stack import VectorEnvWrapper
 from chainerrl.wrappers.vector_frame_stack import VectorFrameStack
+
+
+class TestVectorEnvWrapper(unittest.TestCase):
+
+    def test(self):
+
+        vec_env = chainerrl.envs.SerialVectorEnv(
+            [mock.Mock() for _ in range(3)])
+
+        wrapped_vec_env = VectorEnvWrapper(vec_env)
+
+        self.assertIs(wrapped_vec_env.env, vec_env)
+        self.assertIs(wrapped_vec_env.unwrapped, vec_env.unwrapped)
+        self.assertIs(wrapped_vec_env.action_space, vec_env.action_space)
+        self.assertIs(
+            wrapped_vec_env.observation_space, vec_env.observation_space)
 
 
 @testing.parameterize(*testing.product({
