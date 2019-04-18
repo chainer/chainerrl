@@ -85,8 +85,8 @@ def main():
                              ' If it does not exist, it will be created.')
     parser.add_argument('--seed', type=int, default=0,
                         help='Random seed [0, 2 ** 31)')
-    parser.add_argument('--gpu', type=int, default=0,
-                        help='GPU to use, set to -1 if no GPU.')
+    parser.add_argument('--device', type=str, default='@numpy',
+                        help='String representing a device.')
     parser.add_argument('--demo', action='store_true', default=False)
     parser.add_argument('--load', type=str, default=None)
     parser.add_argument('--final-exploration-frames',
@@ -135,15 +135,13 @@ def main():
                         help='Learning rate.')
     parser.add_argument('--prioritized', action='store_true', default=False,
                         help='Use prioritized experience replay.')
-    parser.add_argument('--chainerx', action='store_true', default=False,
-                        help='Use ChainerX.')
     args = parser.parse_args()
 
     import logging
     logging.basicConfig(level=args.logging_level)
 
     # Set a random seed used in ChainerRL.
-    misc.set_random_seed(args.seed, gpus=(args.gpu,))
+    misc.set_random_seed(args.seed, devices=(args.device,))
 
     # Set different random seeds for train and test envs.
     train_seed = args.seed
@@ -192,22 +190,6 @@ def main():
         [q_func(np.zeros((4, 84, 84), dtype=np.float32)[None])],
         os.path.join(args.outdir, 'model'))
 
-    if args.chainerx:
-        assert hasattr(chainer, 'chainerx'),\
-            'To use ChainerX, install chainer>=6.0.0b1'
-        assert chainer.chainerx.is_available(),\
-            'ChainerX is not correctly set up'
-        if args.gpu >= 0:
-            q_func.to_device(('cuda', args.gpu))
-        else:
-            q_func.to_device('native')
-    else:
-        if args.gpu >= 0:
-            q_func.to_device((chainer.cuda.cupy, args.gpu))
-        else:
-            # already in numpy
-            pass
-
     # Use the Nature paper's hyperparameters
     opt = optimizers.RMSpropGraves(
         lr=args.lr, alpha=0.95, momentum=0.0, eps=1e-2)
@@ -231,7 +213,9 @@ def main():
 
     Agent = parse_agent(args.agent)
     agent = Agent(q_func, opt, rbuf, gamma=0.99,
-                  explorer=explorer, replay_start_size=args.replay_start_size,
+                  explorer=explorer,
+                  device=args.device,
+                  replay_start_size=args.replay_start_size,
                   target_update_interval=args.target_update_interval,
                   clip_delta=args.clip_delta,
                   update_interval=args.update_interval,

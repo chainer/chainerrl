@@ -47,7 +47,7 @@ def main():
     parser.add_argument('--env', type=str, default='Pendulum-v0')
     parser.add_argument('--seed', type=int, default=0,
                         help='Random seed [0, 2 ** 32)')
-    parser.add_argument('--gpu', type=int, default=0)
+    parser.add_argument('--device', type=str, default='@numpy')
     parser.add_argument('--final-exploration-steps',
                         type=int, default=10 ** 4)
     parser.add_argument('--start-epsilon', type=float, default=1.0)
@@ -73,8 +73,6 @@ def main():
     parser.add_argument('--render-eval', action='store_true')
     parser.add_argument('--monitor', action='store_true')
     parser.add_argument('--reward-scale-factor', type=float, default=1e-3)
-    parser.add_argument('--chainerx', action='store_true', default=False,
-                        help='Use ChainerX.')
     parser.add_argument('--logging-level', type=int, default=20,
                         help='Logging level. 10:DEBUG, 20:INFO etc.')
     args = parser.parse_args()
@@ -83,7 +81,7 @@ def main():
     logging.basicConfig(level=args.logging_level)
 
     # Set a random seed used in ChainerRL
-    misc.set_random_seed(args.seed, gpus=(args.gpu,))
+    misc.set_random_seed(args.seed, devices=(args.device,))
 
     args.outdir = experiments.prepare_output_dir(
         args, args.outdir, argv=sys.argv)
@@ -151,22 +149,6 @@ def main():
         [q_func(np.zeros_like(obs_space.low, dtype=np.float32)[None])],
         os.path.join(args.outdir, 'model'))
 
-    if args.chainerx:
-        assert hasattr(chainer, 'chainerx'),\
-            'To use ChainerX, install chainer>=6.0.0b1'
-        assert chainer.chainerx.is_available(),\
-            'ChainerX is not correctly set up'
-        if args.gpu >= 0:
-            q_func.to_device(('cuda', args.gpu))
-        else:
-            q_func.to_device('native')
-    else:
-        if args.gpu >= 0:
-            q_func.to_device((chainer.cuda.cupy, args.gpu))
-        else:
-            # already in numpy
-            pass
-
     opt = optimizers.Adam()
     opt.setup(q_func)
 
@@ -193,7 +175,9 @@ def main():
             rbuf = replay_buffer.ReplayBuffer(rbuf_capacity)
 
     agent = DQN(q_func, opt, rbuf, gamma=args.gamma,
-                explorer=explorer, replay_start_size=args.replay_start_size,
+                explorer=explorer,
+                device=args.device,
+                replay_start_size=args.replay_start_size,
                 target_update_interval=args.target_update_interval,
                 update_interval=args.update_interval,
                 minibatch_size=args.minibatch_size,
