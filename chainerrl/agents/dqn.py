@@ -12,7 +12,6 @@ from logging import getLogger
 import chainer
 from chainer import cuda
 import chainer.functions as F
-import numpy as np
 
 from chainerrl import agent
 from chainerrl.misc.batch_states import batch_states
@@ -21,34 +20,6 @@ from chainerrl.recurrent import Recurrent
 from chainerrl.recurrent import state_reset
 from chainerrl.replay_buffer import batch_experiences
 from chainerrl.replay_buffer import ReplayUpdater
-
-
-def deepcopy_link(link):
-    """Deepcopy a link.
-
-    This function handles the case of chainerx, where links do not support
-    deepcopy as of chainer==6.0.0b1.
-
-    See https://github.com/chainer/chainer/issues/5916
-
-    Args:
-        link (chainer.Link): Link to deepcopy.
-
-    Returns:
-        chainer.Link: Deepcopy of the given link.
-    """
-    if (hasattr(chainer, 'chainerx')
-            and chainer.chainerx.is_available()
-            and isinstance(
-                link.device, chainer.backends._chainerx.ChainerxDevice)):
-        device = link.device
-        link.to_device(np)
-        new_link = copy.deepcopy(link)
-        link.to_device(device)
-        new_link.to_device(device)
-        return new_link
-    else:
-        return copy.deepcopy(link)
 
 
 def compute_value_loss(y, t, clip_delta=True, batch_accumulator='mean'):
@@ -214,7 +185,7 @@ class DQN(agent.AttributeSavingMixin, agent.BatchAgent):
     def sync_target_network(self):
         """Synchronize target network with current network."""
         if self.target_model is None:
-            self.target_model = deepcopy_link(self.model)
+            self.target_model = copy.deepcopy(self.model)
             call_orig = self.target_model.__call__
 
             def call_test(self_, x):
