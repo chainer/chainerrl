@@ -537,7 +537,6 @@ class PPO(agent.AttributeSavingMixin, agent.BatchAgent):
             advs=flat_advs,
             vs_teacher=flat_vs_teacher,
         )
-        self.n_updates += 1
 
     def _update_recurrent(self, dataset):
         """Update both the policy and the value function."""
