@@ -24,7 +24,7 @@ def train_agent_batch(agent, env, steps, outdir, log_interval=None,
 
     Args:
         agent: Agent to train.
-        env: Environment train the againt against.
+        env: Environment to train the agent against.
         steps (int): Number of total time steps for training.
         eval_interval (int): Interval of evaluation.
         outdir (str): Path to the directory to output things.
@@ -137,7 +137,8 @@ def train_agent_batch(agent, env, steps, outdir, log_interval=None,
 def train_agent_batch_with_evaluation(agent,
                                       env,
                                       steps,
-                                      eval_n_runs,
+                                      eval_n_steps,
+                                      eval_n_episodes,
                                       eval_interval,
                                       outdir,
                                       max_episode_len=None,
@@ -157,6 +158,7 @@ def train_agent_batch_with_evaluation(agent,
         agent: Agent to train.
         env: Environment train the againt against.
         steps (int): Number of total time steps for training.
+        eval_n_steps (int): Number of timesteps at each evaluation phase.
         eval_n_runs (int): Number of runs for each time of evaluation.
         eval_interval (int): Interval of evaluation.
         outdir (str): Path to the directory to output things.
@@ -190,7 +192,8 @@ def train_agent_batch_with_evaluation(agent,
         eval_max_episode_len = max_episode_len
 
     evaluator = Evaluator(agent=agent,
-                          n_runs=eval_n_runs,
+                          n_steps=eval_n_steps,
+                          n_episodes=eval_n_episodes,
                           eval_interval=eval_interval, outdir=outdir,
                           max_episode_len=eval_max_episode_len,
                           env=eval_env,

@@ -90,7 +90,7 @@ def compute_weighted_value_loss(y, t, weights,
         t (Variable or ndarray): Target values.
         weights (ndarray): Weights for y, t.
         clip_delta (bool): Use the Huber loss function if set True.
-        batch_accumulator (str): 'mean' will devide loss by batchsize
+        batch_accumulator (str): 'mean' will divide loss by batchsize
     Returns:
         (Variable) scalar loss
     """
@@ -203,6 +203,14 @@ class DQN(agent.AttributeSavingMixin, agent.BatchAgent):
         self.average_loss = 0
         self.average_loss_decay = average_loss_decay
 
+        # Error checking
+        if (self.replay_buffer.capacity is not None and
+                self.replay_buffer.capacity <
+                self.replay_updater.replay_start_size):
+            raise ValueError(
+                'Replay start size cannot exceed '
+                'replay buffer capacity.')
+
     def sync_target_network(self):
         """Synchronize target network with current network."""
         if self.target_model is None:
@@ -224,18 +232,21 @@ class DQN(agent.AttributeSavingMixin, agent.BatchAgent):
     def update(self, experiences, errors_out=None):
         """Update the model from experiences
 
-        This function is thread-safe.
         Args:
-          experiences (list): list of lists of dicts.
-          The dict contains
-            state: cupy.ndarray or numpy.ndarray
-            action: int [0, n_action_types)
-            reward: float32
-            is_state_terminal: bool
-            next_state: cupy.ndarray or numpy.ndarray
-            weight (optional): float32
+            experiences (list): List of lists of dicts.
+                For DQN, each dict must contains:
+                  - state (object): State
+                  - action (object): Action
+                  - reward (float): Reward
+                  - is_state_terminal (bool): True iff next state is terminal
+                  - next_state (object): Next state
+                  - weight (float, optional): Weight coefficient. It can be
+                    used for importance sampling.
+            errors_out (list or None): If set to a list, then TD-errors
+                computed from the given experiences are appended to the list.
+
         Returns:
-          None
+            None
         """
         has_weight = 'weight' in experiences[0][0]
         exp_batch = batch_experiences(
@@ -367,7 +378,9 @@ class DQN(agent.AttributeSavingMixin, agent.BatchAgent):
 
         if errors_out is not None:
             del errors_out[:]
-            delta = F.sum(abs(y - t), axis=1)
+            delta = F.absolute(y - t)
+            if delta.ndim == 2:
+                delta = F.sum(delta, axis=1)
             delta = cuda.to_cpu(delta.array)
             for e in delta:
                 errors_out.append(e)
@@ -441,8 +454,8 @@ class DQN(agent.AttributeSavingMixin, agent.BatchAgent):
         with chainer.using_config('train', False), chainer.no_backprop_mode():
             batch_xs = self.batch_states(batch_obs, self.xp, self.phi)
             batch_av = self.model(batch_xs)
-            batch_maxq = batch_av.max.data
-            batch_argmax = cuda.to_cpu(batch_av.greedy_actions.data)
+            batch_maxq = batch_av.max.array
+            batch_argmax = cuda.to_cpu(batch_av.greedy_actions.array)
         batch_action = [
             self.explorer.select_action(
                 self.t, lambda: batch_argmax[i],
@@ -462,7 +475,7 @@ class DQN(agent.AttributeSavingMixin, agent.BatchAgent):
         with chainer.using_config('train', False), chainer.no_backprop_mode():
             batch_xs = self.batch_states(batch_obs, self.xp, self.phi)
             batch_av = self.model(batch_xs)
-            batch_argmax = cuda.to_cpu(batch_av.greedy_actions.data)
+            batch_argmax = cuda.to_cpu(batch_av.greedy_actions.array)
             return batch_argmax
 
     def batch_observe_and_train(self, batch_obs, batch_reward,

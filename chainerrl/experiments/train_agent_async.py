@@ -133,7 +133,8 @@ def train_agent_async(outdir, processes, make_env,
                       profile=False,
                       steps=8 * 10 ** 7,
                       eval_interval=10 ** 6,
-                      eval_n_runs=10,
+                      eval_n_steps=None,
+                      eval_n_episodes=10,
                       max_episode_len=None,
                       step_offset=0,
                       successful_score=None,
@@ -155,7 +156,8 @@ def train_agent_async(outdir, processes, make_env,
         steps (int): Number of global time steps for training.
         eval_interval (int): Interval of evaluation. If set to None, the agent
             will not be evaluated at all.
-        eval_n_runs (int): Number of runs for each time of evaluation.
+        eval_n_steps (int): Number of eval timesteps at each eval phase
+        eval_n_episodes (int): Number of eval episodes at each eval phase
         max_episode_len (int): Maximum episode length.
         step_offset (int): Time step from which training starts.
         successful_score (float): Finish training if the mean score is greater
@@ -194,7 +196,8 @@ def train_agent_async(outdir, processes, make_env,
         evaluator = None
     else:
         evaluator = AsyncEvaluator(
-            n_runs=eval_n_runs,
+            n_steps=eval_n_steps,
+            n_episodes=eval_n_episodes,
             eval_interval=eval_interval, outdir=outdir,
             max_episode_len=max_episode_len,
             step_offset=step_offset,

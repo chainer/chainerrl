@@ -8,9 +8,9 @@ standard_library.install_aliases()  # NOQA
 
 import chainer
 from chainer import functions as F
+from chainer.initializers import LeCunNormal
 from chainer import links as L
 
-from chainerrl.initializers import LeCunNormal
 from chainerrl.links.mlp import MLP
 from chainerrl.links.mlp_bn import MLPBN
 from chainerrl.q_function import StateActionQFunction
@@ -146,8 +146,7 @@ class FCBNSAQFunction(MLPBN, StateActionQFunction):
         return super().__call__(h)
 
 
-class FCBNLateActionSAQFunction(chainer.Chain, StateActionQFunction,
-                                RecurrentChainMixin):
+class FCBNLateActionSAQFunction(chainer.Chain, StateActionQFunction):
     """Fully-connected + BN (s,a)-input Q-function with late action input.
 
     Actions are not included until the second hidden layer and not normalized.
@@ -202,8 +201,7 @@ class FCBNLateActionSAQFunction(chainer.Chain, StateActionQFunction,
         return self.mlp(h)
 
 
-class FCLateActionSAQFunction(chainer.Chain, StateActionQFunction,
-                              RecurrentChainMixin):
+class FCLateActionSAQFunction(chainer.Chain, StateActionQFunction):
     """Fully-connected (s,a)-input Q-function with late action input.
 
     Actions are not included until the second hidden layer and not normalized.

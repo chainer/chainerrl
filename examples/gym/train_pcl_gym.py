@@ -199,7 +199,8 @@ def main():
         eval_stats = experiments.eval_performance(
             env=env,
             agent=agent,
-            n_runs=args.eval_n_runs,
+            n_steps=None,
+            n_episodes=args.eval_n_runs,
             max_episode_len=timestep_limit)
         print('n_runs: {} mean: {} median: {} stdev {}'.format(
             args.eval_n_runs, eval_stats['mean'], eval_stats['median'],
@@ -213,7 +214,8 @@ def main():
                 make_env=make_env,
                 profile=args.profile,
                 steps=args.steps,
-                eval_n_runs=args.eval_n_runs,
+                eval_n_steps=None,
+                eval_n_episodes=args.eval_n_runs,
                 eval_interval=args.eval_interval,
                 max_episode_len=timestep_limit)
         else:
@@ -223,6 +225,7 @@ def main():
                 eval_env=make_env(0, test=True),
                 outdir=args.outdir,
                 steps=args.steps,
+                eval_n_steps=None,
                 eval_n_episodes=args.eval_n_runs,
                 eval_interval=args.eval_interval,
                 train_max_episode_len=timestep_limit)

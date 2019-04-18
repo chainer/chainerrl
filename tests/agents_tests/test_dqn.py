@@ -26,6 +26,16 @@ class TestDQNOnDiscreteABC(
         return DQN(q_func, opt, rbuf, gpu=gpu, gamma=0.9, explorer=explorer,
                    replay_start_size=100, target_update_interval=100)
 
+    def test_replay_capacity_checked(self):
+        env, _ = self.make_env_and_successful_return(test=False)
+        q_func = self.make_q_func(env)
+        opt = self.make_optimizer(env, q_func)
+        explorer = self.make_explorer(env)
+        rbuf = chainerrl.replay_buffer.ReplayBuffer(capacity=90)
+        with self.assertRaises(ValueError):
+            self.make_dqn_agent(env=env, q_func=q_func, opt=opt,
+                                explorer=explorer, rbuf=rbuf, gpu=None)
+
 
 class TestDQNOnDiscreteABCBoltzmann(
         _TestBatchTrainingMixin, base._TestDQNOnDiscreteABC):

@@ -131,6 +131,7 @@ class AbstractEpisodicReplayBuffer(AbstractReplayBuffer):
 class ReplayBuffer(AbstractReplayBuffer):
 
     def __init__(self, capacity=None, num_steps=1):
+        self.capacity = capacity
         assert num_steps > 0
         self.num_steps = num_steps
         self.memory = RandomAccessQueue(maxlen=capacity)
@@ -262,6 +263,7 @@ class PrioritizedReplayBuffer(ReplayBuffer, PriorityWeightError):
                  alpha=0.6, beta0=0.4, betasteps=2e5, eps=0.01,
                  normalize_by_max=True, error_min=0,
                  error_max=1, num_steps=1):
+        self.capacity = capacity
         assert num_steps > 0
         self.num_steps = num_steps
         self.memory = PrioritizedBuffer(capacity=capacity)
@@ -432,12 +434,12 @@ def batch_experiences(experiences, xp, phi, gamma, batch_states=batch_states):
 
     Args:
         experiences: list of experiences. Each experience is a list
-        containing between 1 and n dicts containing
-            state: cupy.ndarray or numpy.ndarray
-            action: int [0, n_action_types)
-            reward: float32
-            is_state_terminal: bool
-            next_state: cupy.ndarray or numpy.ndarray
+            containing between 1 and n dicts containing
+              - state (object): State
+              - action (object): Action
+              - reward (float): Reward
+              - is_state_terminal (bool): True iff next state is terminal
+              - next_state (object): Next state
         xp : Numpy compatible matrix library: e.g. Numpy or CuPy.
         phi : Preprocessing function
         gamma: discount factor

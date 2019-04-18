@@ -144,7 +144,9 @@ def main():
         env = atari_wrappers.wrap_deepmind(
             atari_wrappers.make_atari(args.env, max_frames=args.max_frames),
             episode_life=not test,
-            clip_rewards=not test)
+            clip_rewards=not test,
+            frame_stack=False,
+        )
         if test:
             # Randomize actions like epsilon-greedy in evaluation as well
             env = chainerrl.wrappers.RandomizeAction(env, args.eval_epsilon)
@@ -158,9 +160,11 @@ def main():
         return env
 
     def make_batch_env(test):
-        return chainerrl.envs.MultiprocessVectorEnv(
+        vec_env = chainerrl.envs.MultiprocessVectorEnv(
             [(lambda: make_env(idx, test))
              for idx, env in enumerate(range(args.num_envs))])
+        vec_env = chainerrl.wrappers.VectorFrameStack(vec_env, 4)
+        return vec_env
 
     sample_env = make_env(0, test=False)
 
@@ -217,7 +221,8 @@ def main():
         eval_stats = experiments.eval_performance(
             env=make_batch_env(test=True),
             agent=agent,
-            n_runs=args.eval_n_runs)
+            n_steps=None,
+            n_episodes=args.eval_n_runs)
         print('n_runs: {} mean: {} median: {} stdev {}'.format(
             args.eval_n_runs, eval_stats['mean'], eval_stats['median'],
             eval_stats['stdev']))
@@ -227,7 +232,8 @@ def main():
             env=make_batch_env(test=False),
             eval_env=make_batch_env(test=True),
             steps=args.steps,
-            eval_n_runs=args.eval_n_runs,
+            eval_n_steps=None,
+            eval_n_episodes=args.eval_n_runs,
             eval_interval=args.eval_interval,
             outdir=args.outdir,
             save_best_so_far_agent=False,

@@ -181,6 +181,11 @@ def main():
         links.to_factorized_noisy(q_func)
         # Turn off explorer
         explorer = explorers.Greedy()
+    else:
+        explorer = explorers.LinearDecayEpsilonGreedy(
+            1.0, args.final_epsilon,
+            args.final_exploration_frames,
+            lambda: np.random.randint(n_actions))
 
     # Draw the computational graph and save it in the output directory.
     chainerrl.misc.draw_computational_graph(
@@ -220,11 +225,6 @@ def main():
     else:
         rbuf = replay_buffer.ReplayBuffer(10 ** 6, args.num_step_return)
 
-    explorer = explorers.LinearDecayEpsilonGreedy(
-        1.0, args.final_epsilon,
-        args.final_exploration_frames,
-        lambda: np.random.randint(n_actions))
-
     def phi(x):
         # Feature extractor
         return np.asarray(x, dtype=np.float32) / 255
@@ -245,14 +245,17 @@ def main():
         eval_stats = experiments.eval_performance(
             env=eval_env,
             agent=agent,
-            n_runs=args.eval_n_runs)
+            n_steps=None,
+            n_episodes=args.eval_n_runs)
         print('n_runs: {} mean: {} median: {} stdev {}'.format(
             args.eval_n_runs, eval_stats['mean'], eval_stats['median'],
             eval_stats['stdev']))
     else:
         experiments.train_agent_with_evaluation(
             agent=agent, env=env, steps=args.steps,
-            eval_n_episodes=args.eval_n_runs, eval_interval=args.eval_interval,
+            eval_n_steps=None,
+            eval_n_episodes=args.eval_n_runs,
+            eval_interval=args.eval_interval,
             outdir=args.outdir,
             save_best_so_far_agent=False,
             eval_env=eval_env,

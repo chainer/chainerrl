@@ -10,12 +10,12 @@ from logging import getLogger
 
 import chainer
 from chainer import functions as F
+from chainer.initializers import LeCunNormal
 from chainer import links as L
 import numpy as np
 
 from chainerrl import distribution
 from chainerrl.functions.bound_by_tanh import bound_by_tanh
-from chainerrl.initializers import LeCunNormal
 from chainerrl import links
 from chainerrl.policy import Policy
 
@@ -248,3 +248,53 @@ class FCGaussianPolicyWithFixedCovariance(links.Sequence, Policy):
         layers.append(lambda x: distribution.GaussianDistribution(
             x, get_var_array(x.shape)))
         super().__init__(*layers)
+
+
+class GaussianHeadWithStateIndependentCovariance(chainer.Chain):
+    """Gaussian head with state-independent learned covariance.
+
+    This link is intended to be attached to a neural network that outputs
+    the mean of a Gaussian policy. The only learnable parameter this link has
+    determines the variance in a state-independent way.
+
+    State-independent parameterization of the variance of a Gaussian policy
+    is often used with PPO and TRPO, e.g., in https://arxiv.org/abs/1709.06560.
+
+    Args:
+        action_size (int): Number of dimensions of the action space.
+        var_type (str): Type of parameterization of variance. It must be
+            'spherical' or 'diagonal'.
+        var_func (callable): Callable that computes the variance from the var
+            parameter. It should always return positive values.
+        var_param_init (float): Initial value the var parameter.
+    """
+
+    def __init__(
+            self,
+            action_size,
+            var_type='spherical',
+            var_func=F.softplus,
+            var_param_init=0,
+    ):
+
+        self.var_func = var_func
+        var_size = {'spherical': 1, 'diagonal': action_size}[var_type]
+
+        super().__init__()
+        with self.init_scope():
+            self.var_param = chainer.Parameter(
+                initializer=var_param_init, shape=(var_size,))
+
+    def __call__(self, mean):
+        """Return a Gaussian with given mean.
+
+        Args:
+            mean (chainer.Variable or ndarray): Mean of Gaussian.
+
+        Returns:
+            chainerrl.distribution.Distribution: Gaussian whose mean is the
+                mean argument and whose variance is computed from the parameter
+                of this link.
+        """
+        var = F.broadcast_to(self.var_func(self.var_param), mean.shape)
+        return distribution.GaussianDistribution(mean, var)

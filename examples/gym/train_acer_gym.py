@@ -13,6 +13,7 @@ os.environ['OMP_NUM_THREADS'] = '1'  # NOQA
 
 import chainer
 from chainer import functions as F
+from chainer.initializers import LeCunNormal
 from chainer import links as L
 import gym
 from gym import spaces
@@ -24,7 +25,6 @@ from chainerrl.action_value import DiscreteActionValue
 from chainerrl.agents import acer
 from chainerrl.distribution import SoftmaxDistribution
 from chainerrl import experiments
-from chainerrl.initializers import LeCunNormal
 from chainerrl import links
 from chainerrl import misc
 from chainerrl.optimizers import rmsprop_async
@@ -165,7 +165,8 @@ def main():
         eval_stats = experiments.eval_performance(
             env=env,
             agent=agent,
-            n_runs=args.eval_n_runs,
+            n_steps=None,
+            n_episodes=args.eval_n_runs,
             max_episode_len=timestep_limit)
         print('n_runs: {} mean: {} median: {} stdev {}'.format(
             args.eval_n_runs, eval_stats['mean'], eval_stats['median'],
@@ -178,7 +179,8 @@ def main():
             make_env=make_env,
             profile=args.profile,
             steps=args.steps,
-            eval_n_runs=args.eval_n_runs,
+            eval_n_steps=None,
+            eval_n_episodes=args.eval_n_runs,
             eval_interval=args.eval_interval,
             max_episode_len=timestep_limit)
 

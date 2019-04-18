@@ -12,7 +12,6 @@ from logging import getLogger
 import chainer
 from chainer import cuda
 import chainer.functions as F
-import numpy as np
 
 from chainerrl.agent import Agent
 from chainerrl.agent import AttributeSavingMixin
@@ -20,6 +19,7 @@ from chainerrl.agents.ddpg import disable_train
 from chainerrl.misc.batch_states import batch_states
 from chainerrl.misc.copy_param import synchronize_parameters
 from chainerrl.recurrent import Recurrent
+from chainerrl.replay_buffer import batch_experiences
 from chainerrl.replay_buffer import ReplayUpdater
 
 
@@ -142,22 +142,20 @@ class PGT(AttributeSavingMixin, Agent):
 
         batch_size = len(experiences)
 
-        # Store necessary data in arrays
-        batch_state = self.batch_states(
-            [elem['state'] for elem in experiences], self.xp, self.phi)
+        batch_exp = batch_experiences(
+            experiences,
+            xp=self.xp,
+            phi=self.phi,
+            gamma=self.gamma,
+            batch_states=self.batch_states,
+        )
 
-        batch_actions = self.xp.asarray(
-            [elem['action'] for elem in experiences])
-
-        batch_next_state = self.batch_states(
-            [elem['next_state'] for elem in experiences], self.xp, self.phi)
-
-        batch_rewards = self.xp.asarray(
-            [[elem['reward']] for elem in experiences], dtype=np.float32)
-
-        batch_terminal = self.xp.asarray(
-            [[elem['is_state_terminal']] for elem in experiences],
-            dtype=np.float32)
+        batch_state = batch_exp['state']
+        batch_actions = batch_exp['action']
+        batch_next_state = batch_exp['next_state']
+        batch_rewards = batch_exp['reward']
+        batch_terminal = batch_exp['is_state_terminal']
+        batch_discount = batch_exp['discount']
 
         # Update Q-function
         def compute_critic_loss():
@@ -166,11 +164,16 @@ class PGT(AttributeSavingMixin, Agent):
                 pout = self.target_policy(batch_next_state)
                 next_actions = pout.sample()
                 next_q = self.target_q_function(batch_next_state, next_actions)
+                assert next_q.shape == (batch_size, 1)
 
-                target_q = batch_rewards + self.gamma * \
-                    (1.0 - batch_terminal) * next_q
+                target_q = (batch_rewards[..., None]
+                            + (batch_discount[..., None]
+                               * (1.0 - batch_terminal[..., None])
+                               * next_q))
+                assert target_q.shape == (batch_size, 1)
 
             predict_q = self.q_function(batch_state, batch_actions)
+            assert predict_q.shape == (batch_size, 1)
 
             loss = F.mean_squared_error(target_q, predict_q)
 

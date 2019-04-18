@@ -187,7 +187,8 @@ TRPO only supports gym.spaces.Box or gym.spaces.Discrete action spaces.""")  # N
         eval_stats = chainerrl.experiments.eval_performance(
             env=env,
             agent=agent,
-            n_runs=args.eval_n_runs,
+            n_steps=None,
+            n_episodes=args.eval_n_runs,
             max_episode_len=timestep_limit)
         print('n_runs: {} mean: {} median: {} stdev {}'.format(
             args.eval_n_runs, eval_stats['mean'], eval_stats['median'],
@@ -200,6 +201,7 @@ TRPO only supports gym.spaces.Box or gym.spaces.Discrete action spaces.""")  # N
             eval_env=make_env(test=True),
             outdir=args.outdir,
             steps=args.steps,
+            eval_n_steps=None,
             eval_n_episodes=args.eval_n_runs,
             eval_interval=args.eval_interval,
             train_max_episode_len=timestep_limit,
