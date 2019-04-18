@@ -53,3 +53,12 @@ class VectorEnv(with_metaclass(ABCMeta, object)):
     @abstractmethod
     def close(self):
         raise NotImplementedError()
+
+    @property
+    def unwrapped(self):
+        """Completely unwrap this env.
+
+        Returns:
+            VectorEnv: The base non-wrapped VectorEnv instance
+        """
+        return self
