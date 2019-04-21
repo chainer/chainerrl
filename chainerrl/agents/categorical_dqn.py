@@ -181,6 +181,7 @@ class CategoricalDQN(dqn.DQN):
         if errors_out is not None:
             del errors_out[:]
             # The loss per example is the sum of the atom-wise loss
+            # Prioritization by KL-divergence
             delta = F.sum(eltwise_loss, axis=1)
             delta = cuda.to_cpu(delta.array)
             for e in delta:

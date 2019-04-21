@@ -30,7 +30,7 @@ class FactorizedNoisyLinear(chainer.Chain):
 
         with self.init_scope():
             self.mu = L.Linear(in_size, self.out_size, self.nobias,
-                               initialW=LeCunUniform(1 / self.xp.sqrt(3)))
+                               initialW=LeCunUniform(1 / numpy.sqrt(3)))
 
             self.sigma = L.Linear(in_size, self.out_size, self.nobias,
                                   initialW=VarianceScalingConstant(
@@ -41,7 +41,7 @@ class FactorizedNoisyLinear(chainer.Chain):
         if device_id is not None:
             self.to_gpu(device_id)
 
-    def noise_function(self, r):
+    def _noise_function(self, r):
         if self._kernel is None:
             self._kernel = cuda.elementwise(
                 '', 'T r',
@@ -56,7 +56,7 @@ class FactorizedNoisyLinear(chainer.Chain):
             return xp.copysign(xp.sqrt(xp.abs(r)), r)
         else:
             r = xp.random.standard_normal(shape, dtype)
-            self.noise_function(r)
+            self._noise_function(r)
             return r
 
     def __call__(self, x):
