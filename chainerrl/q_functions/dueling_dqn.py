@@ -103,7 +103,7 @@ class DistributionalDuelingDQN(
         batch_size = x.shape[0]
 
         h = self.activation(self.main_stream(h))
-        h_a, h_v = F.split_axis(h, 2, axis=--1)
+        h_a, h_v = F.split_axis(h, 2, axis=-1)
         ya = F.reshape(self.a_stream(h_a),
                        (batch_size, self.n_actions, self.n_atoms))
 
