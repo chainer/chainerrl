@@ -24,70 +24,89 @@ To view the full list of options, either view the code or run the example with t
 ## Results
 These results reflect ChainerRL  `v0.6.0`.
 
-| Game        | Score           | Reported Scores |           
+| Game        | ChainerRL Score           | Rainbow Paper Scores |
 | ------------- |:-------------:|:-------------:|
-| AirRaid | N/A| N/A|
-| Alien | N/A| **9491.7**|
+| AirRaid | **6926.1**| N/A|
+| Alien | 9376.0| **9491.7**|
 | Amidar | N/A| **5131.2**|
-| Assault | N/A| **14198.5**|
-| Asterix | N/A| **429200.3**|
-| Asteroids | N/A| **2712.8**|
-| Atlantis | N/A| **826659.5**|
-| Bank Heist | N/A| **1358.0**|
-| Battlezone | N/A| **62010.0**|
-| Beamrider | N/A| **16850.2**|
-| Berzerk | N/A| **2545.6**|
-| Bowling | N/A| **30.0**|
-| Boxing | N/A| **99.6**|
-| Breakout | N/A| **417.5**|
-| Carnival | N/A| N/A|
-| Centipede | N/A| **8167.3**|
-| Chopper Command | N/A| **16654.0**|
-| Crazy Climber | N/A| **168788.5**|
+| Assault | **16203.2**| 14198.5|
+| Asterix | **674122.5**| 428200.3|
+| Asteroids | **20008.5**| 2712.8|
+| Atlantis | **938895.5**| 826659.5|
+| BankHeist | 1114.3| **1358.0**|
+| BattleZone | **103190.0**| 62010.0|
+| BeamRider | **20029.4**| 16850.2|
+| Berzerk | **6461.2**| 2545.6|
+| Bowling | **80.8**| 30.0|
+| Boxing | 99.4| **99.6**|
+| Breakout | 360.6| **417.5**|
+| Centipede | **8429.7**| 8167.3|
+| ChopperCommand | **19403.5**| 16654.0|
+| CrazyClimber | **177331.0**| 168788.5|
 | Defender | N/A| **55105.0**|
-| Demon Attack | N/A| **11185.2**|
-| Double Dunk | N/A| **-0.3**|
-| Elevator Action | N/A| N/A|
-| Enduro | N/A| **2125.9**|
-| Fishing Derby | N/A| **31.3**|
-| Freeway | N/A| **34.0**|
-| Frostbite | N/A| **9590.5**|
-| Gopher | N/A| **70354.6**|
-| Gravitar | N/A| **1419.3**|
-| H.E.R.O. | N/A| **55887.4**|
-| Ice Hockey | N/A| **1.1**|
-| James Bond 007 | N/A| N/A|
-| Journey Escape | N/A| N/A|
-| Kangaroo | N/A| **14637.5**|
-| Krull | N/A| **8741.5**|
-| Kung-Fu Master | N/A| **52181.0**|
-| Montezuma's Revenge | N/A| **384.0**|
-| Ms. Pac-Man | N/A| **5380.4**|
-| Name This Game | N/A| **13136.0**|
-| Phoenix | N/A| **108528.6**|
-| Pitfall II | N/A| N/A|
+| DemonAttack | 109342.0| **111185.2**|
+| DoubleDunk | -6.8| **-0.3**|
+| Enduro | 2125.8| **2125.9**|
+| FishingDerby | **57.3**| 31.3|
+| Freeway | 31.9| **34.0**|
+| Frostbite | **10288.5**| 9590.5|
+| Gopher | 69889.0| **70354.6**|
+| Gravitar | **2437.3**| 1419.3|
+| Hero | 37921.8| **55887.4**|
+| IceHockey | **6.2**| 1.1|
+| Jamesbond | **20242.0**| N/A|
+| Kangaroo | **14825.0**| 14637.5|
+| Krull | 7896.7| **8741.5**|
+| KungFuMaster | 32833.5| **52181.0**|
+| MontezumaRevenge | 0.0| **384.0**|
+| MsPacman | 5223.1| **5380.4**|
+| NameThisGame | N/A| **13136.0**|
+| Phoenix | **280612.8**| 108528.6|
+| Pitfall | **-2.2**| N/A|
 | Pitfall! | N/A| **0.0**|
-| Pong | N/A| **20.9**|
-| Pooyan | N/A| N/A|
-| Private Eye | N/A| **4234.0**|
-| Qbert | N/A| **33817.5**|
-| River Raid | N/A| N/A|
-| Road Runner | N/A| **62041.0**|
-| Robot Tank | N/A| **61.4**|
-| Seaquest | N/A| **15898.9**|
-| Skiing | N/A| **-12957.8**|
-| Solaris | N/A| **3560.3**|
-| Space Invaders | N/A| **18789.0**|
-| Stargunner | N/A| **127029.0**|
+| Pong | **20.9**| **20.9**|
+| Pooyan | **20962.1**| N/A|
+| PrivateEye | 100.0| **4234.0**|
+| Qbert | **39152.5**| 33817.5|
+| Riverraid | **18084.6**| N/A|
+| RoadRunner | **68956.5**| 62041.0|
+| Robotank | **74.3**| 61.4|
+| Seaquest | 1836.7| **15898.9**|
+| Skiing | **-9714.6**| -12957.8|
+| Solaris | **7086.3**| 3560.3|
+| SpaceInvaders | 9352.0| **18789.0**|
+| StarGunner | **211851.5**| 127029.0|
 | Surround | N/A| **9.7**|
-| Tennis | N/A| **-0.0**|
-| Time Pilot | N/A| **12926.0**|
-| Tutankham | N/A| **241.0**|
-| Up’n Down | N/A| N/A|
-| Venture | N/A| **5.5**|
-| Video Pinball | N/A| **533936.5**|
-| WizardOfWor | N/A| **17862.5**|
-| YarsRevenge | N/A| **102557.0**|
-| Zaxxon | N/A| **22209.5**|
+| Tennis | **-0.0**| **0.0**|
+| TimePilot | **27177.0**| 12926.0|
+| Tutankham | 161.1| **241.0**|
+| UpNDown | **260453.0**| N/A|
+| Venture | **1359.5**| 5.5|
+| VideoPinball | 465601.0| **533936.5**|
+| WizardOfWor | **22575.0**| 17862.5|
+| YarsRevenge | 80853.9| **102557.0**|
+| Zaxxon | **25779.5**| 22209.5|
 
-						
+
+## Evaluation Protocol
+Our evaluation protocol is designed to mirror the evaluation protocol of the original paper as closely as possible, in order to offer a fair comparison of the quality of our example implementation. Specifically, the details of our evaluation (also can be found in the code) are the following:
+
+- **Evaluation Frequency**: The agent is evaluated after every 1 million frames (250K timesteps). This results in a total of 200 "intermediate" evaluations.
+- **Evaluation Phase**: The agent is evaluated for 500K frames (125K timesteps) in each intermediate evaluation. 
+	- **Output**: The output of an intermediate evaluation phase is a score representing the mean score of all completed evaluation episodes within the 125K timesteps. If there is any unfinished episode by the time the 125K timestep evaluation phase is finished, that episode is discarded.
+- **Intermediate Evaluation Episode**: 
+	- Capped at 30 mins of play, or 108K frames/ 27K timesteps.
+	- Each evaluation episode begins with a random number of no-ops (up to 30), where this number is chosen uniformly at random.
+	- During evaluation episodes the agent uses an epsilon-greedy policy, with epsilon=0.001 (original paper does greedy evaluation because noisy networks are used)
+- **Reporting**: For each run of our DQN example, we take the network weights of the best intermediate agent (i.e. the network weights that achieved the highest intermediate evaluation), and re-evaluate that agent for 200 episodes. In each of these 200 "final evaluation" episodes, the episode is terminated after 30 minutes of play (30 minutes = 1800 seconds * 60 frames-per-second / 4 frames per action = 27000 timesteps). We then output the average of these 200 episodes as the achieved score for the Rainbow agent. The reported value in the table consists of the average of 1 "final evaluation", or 1 run of this Rainbow example.
+
+
+## Training times
+
+Times statistics...
+| Statistic        |            |
+| ------------- |:-------------:|:-------------:|
+| Mean time (in days) across all domains        |  11.8833772893 |
+| Fastest Domain |  Assault | 11.1949926343 |
+| Slowest Domain |  Krull | 12.4206600419 |
+				
