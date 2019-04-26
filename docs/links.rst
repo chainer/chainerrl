@@ -5,6 +5,8 @@ Links
 Link implementations
 ============================
 
+.. autoclass:: chainerrl.links.Branched
+
 .. autoclass:: chainerrl.links.EmpiricalNormalization
 
 .. autoclass:: chainerrl.links.FactorizedNoisyLinear

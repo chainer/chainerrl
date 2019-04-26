@@ -1,3 +1,4 @@
+from chainerrl.links.branched import Branched  # NOQA
 from chainerrl.links.dqn_head import NatureDQNHead  # NOQA
 from chainerrl.links.dqn_head import NIPSDQNHead  # NOQA
 from chainerrl.links.empirical_normalization import EmpiricalNormalization  # NOQA
