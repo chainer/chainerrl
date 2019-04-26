@@ -24,6 +24,15 @@ To view the full list of options, either view the code or run the example with t
 ## Results
 These results reflect ChainerRL  `v0.6.0`.
 
+| Results Summary ||
+| ------------- |:-------------:|
+| Number of seeds | 1 |
+| Number of common domains | 49 |
+| Number of domains where paper scores higher | 20 |
+| Number of domains where ChainerRL scores higher | 27 |
+| Number of ties between paper and ChainerRL | 2 | 
+
+
 | Game        | ChainerRL Score           | Rainbow Paper Scores |
 | ------------- |:-------------:|:-------------:|
 | AirRaid | **6926.1**| N/A|
@@ -103,8 +112,9 @@ Our evaluation protocol is designed to mirror the evaluation protocol of the ori
 
 ## Training times
 
-Times statistics...
-| Statistic        |            |
+Time statistics...
+
+| Statistic        |            |               |
 | ------------- |:-------------:|:-------------:|
 | Mean time (in days) across all domains        |  11.8833772893 |
 | Fastest Domain |  Assault | 11.1949926343 |
