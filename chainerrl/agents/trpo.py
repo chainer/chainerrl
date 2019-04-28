@@ -306,6 +306,8 @@ class TRPO(agent.AttributeSavingMixin, agent.Agent):
         states = batch_states([b['state'] for b in dataset], xp, self.phi)
         with chainer.using_config('train', False),\
                 chainer.no_backprop_mode():
+            if self.obs_normalizer:
+                states = self.obs_normalizer(states, update=False)
             return self.policy(states)
 
     def _compute_old_distrib_recurrent(self, dataset):
