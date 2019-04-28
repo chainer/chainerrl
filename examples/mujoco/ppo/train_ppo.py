@@ -61,6 +61,8 @@ def main():
     parser.add_argument('--batchsize', type=int, default=64)
     parser.add_argument('--epochs', type=int, default=10)
     parser.add_argument('--entropy-coef', type=float, default=0.0)
+    parser.add_argument('--gamma', type=float, default=0.995)
+    parser.add_argument('--lambd', type=float, default=0.97)
     args = parser.parse_args()
 
     logging.basicConfig(level=args.logger_level)
@@ -166,6 +168,8 @@ This example only supports gym.spaces.Box or gym.spaces.Discrete action spaces."
                 minibatch_size=args.batchsize, epochs=args.epochs,
                 clip_eps_vf=None, entropy_coef=args.entropy_coef,
                 standardize_advantages=args.standardize_advantages,
+                gamma=args.gamma,
+                lambd=args.lambd,
                 )
 
     if args.load:
@@ -183,13 +187,6 @@ This example only supports gym.spaces.Box or gym.spaces.Discrete action spaces."
             args.eval_n_runs, eval_stats['mean'], eval_stats['median'],
             eval_stats['stdev']))
     else:
-        # Linearly decay the learning rate to zero
-        def lr_setter(env, agent, value):
-            agent.optimizer.alpha = value
-
-        lr_decay_hook = experiments.LinearInterpolationHook(
-            args.steps, args.lr, 0, lr_setter)
-
         experiments.train_agent_batch_with_evaluation(
             agent=agent,
             env=make_batch_env(False),
@@ -203,9 +200,6 @@ This example only supports gym.spaces.Box or gym.spaces.Discrete action spaces."
             return_window_size=args.window_size,
             max_episode_len=timestep_limit,
             save_best_so_far_agent=False,
-            step_hooks=[
-                lr_decay_hook,
-            ],
         )
 
 
