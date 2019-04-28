@@ -604,6 +604,8 @@ The gradient contains None. The policy may have unused parameters."
         else:
             states = self.batch_states(
                 [transition['state'] for transition in dataset], xp, self.phi)
+            if self.obs_normalizer:
+                states = self.obs_normalizer(states, update=False)
 
             def evaluate_current_policy():
                 return self.policy(states)
