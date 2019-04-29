@@ -306,6 +306,8 @@ class TRPO(agent.AttributeSavingMixin, agent.Agent):
         states = batch_states([b['state'] for b in dataset], xp, self.phi)
         with chainer.using_config('train', False),\
                 chainer.no_backprop_mode():
+            if self.obs_normalizer:
+                states = self.obs_normalizer(states, update=False)
             return self.policy(states)
 
     def _compute_old_distrib_recurrent(self, dataset):
@@ -602,6 +604,8 @@ The gradient contains None. The policy may have unused parameters."
         else:
             states = self.batch_states(
                 [transition['state'] for transition in dataset], xp, self.phi)
+            if self.obs_normalizer:
+                states = self.obs_normalizer(states, update=False)
 
             def evaluate_current_policy():
                 return self.policy(states)
