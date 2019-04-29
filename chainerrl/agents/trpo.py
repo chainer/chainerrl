@@ -301,51 +301,22 @@ class TRPO(agent.AttributeSavingMixin, agent.Agent):
                     self.memory.append(episode)
                     self.batch_last_episode[i] = []
 
-    def _compute_old_distrib(self, dataset):
-        xp = self.policy.xp
-        states = batch_states([b['state'] for b in dataset], xp, self.phi)
-        with chainer.using_config('train', False),\
-                chainer.no_backprop_mode():
-            if self.obs_normalizer:
-                states = self.obs_normalizer(states, update=False)
-            return self.policy(states)
-
-    def _compute_old_distrib_recurrent(self, dataset):
-        seqs_states = []
-        xp = self.policy.xp
-        for ep in dataset:
-            states = self.batch_states(
-                [transition['state'] for transition in ep], xp, self.phi)
-            if self.obs_normalizer:
-                states = self.obs_normalizer(states, update=False)
-            seqs_states.append(states)
-        with chainer.using_config('train', False),\
-                chainer.no_backprop_mode():
-            policy_rs = self.policy.concatenate_recurrent_states(
-                [ep[0]['recurrent_state'][0] for ep in dataset])
-            distrib, _ = self.policy.n_step_forward(
-                seqs_states, recurrent_state=policy_rs, output_mode='concat')
-            return distrib
-
     def _update(self, dataset):
         """Update both the policy and the value function."""
 
-        old_distrib = self._compute_old_distrib(dataset)
         if self.obs_normalizer:
             self._update_obs_normalizer(dataset)
-        self._update_policy(dataset, old_distrib)
+        self._update_policy(dataset)
         self._update_vf(dataset)
 
     def _update_recurrent(self, dataset):
         """Update both the policy and the value function."""
 
-        old_distrib = self._compute_old_distrib_recurrent(dataset)
-
         flat_dataset = list(itertools.chain.from_iterable(dataset))
         if self.obs_normalizer:
             self._update_obs_normalizer(flat_dataset)
 
-        self._update_policy_recurrent(dataset, old_distrib)
+        self._update_policy_recurrent(dataset)
         self._update_vf_recurrent(dataset)
 
     def _update_vf_recurrent(self, dataset):
@@ -416,15 +387,14 @@ class TRPO(agent.AttributeSavingMixin, agent.Agent):
             vf_loss = F.mean_squared_error(vs_pred, vs_teacher[..., None])
             self.vf_optimizer.update(lambda: vf_loss)
 
-    def _compute_gain(self, action_distrib, action_distrib_old, actions, advs):
+    def _compute_gain(self, log_prob, log_prob_old, entropy, advs):
         """Compute a gain to maximize."""
-        prob_ratio = F.exp(action_distrib.log_prob(actions)
-                           - action_distrib_old.log_prob(actions))
-        mean_entropy = F.mean(action_distrib.entropy)
+        prob_ratio = F.exp(log_prob - log_prob_old)
+        mean_entropy = F.mean(entropy)
         surrogate_gain = F.mean(prob_ratio * advs)
         return surrogate_gain + self.entropy_coef * mean_entropy
 
-    def _update_policy(self, dataset, action_distrib_old):
+    def _update_policy(self, dataset):
         """Update the policy using a given dataset.
 
         The policy is updated via CG and line search.
@@ -449,11 +419,18 @@ class TRPO(agent.AttributeSavingMixin, agent.Agent):
         # Recompute action distributions for batch backprop
         action_distrib = self.policy(states)
 
+        log_prob_old = xp.array(
+            [transition['log_prob'] for transition in dataset],
+            dtype=np.float32)
+
         gain = self._compute_gain(
-            action_distrib=action_distrib,
-            action_distrib_old=action_distrib_old,
-            actions=actions,
+            log_prob=action_distrib.log_prob(actions),
+            log_prob_old=log_prob_old,
+            entropy=action_distrib.entropy,
             advs=advs)
+
+        # Distribution to compute KL div against
+        action_distrib_old = action_distrib.copy()
 
         full_step = self._compute_kl_constrained_step(
             action_distrib=action_distrib,
@@ -467,7 +444,7 @@ class TRPO(agent.AttributeSavingMixin, agent.Agent):
             action_distrib_old=action_distrib_old,
             gain=gain)
 
-    def _update_policy_recurrent(self, dataset, action_distrib_old):
+    def _update_policy_recurrent(self, dataset):
         """Update the policy using a given dataset.
 
         The policy is updated via CG and line search.
@@ -504,11 +481,18 @@ class TRPO(agent.AttributeSavingMixin, agent.Agent):
             std_advs = xp.std(flat_advs)
             flat_advs = (flat_advs - mean_advs) / (std_advs + 1e-8)
 
+        log_prob_old = xp.array(
+            [transition['log_prob'] for transition in flat_transitions],
+            dtype=np.float32)
+
         gain = self._compute_gain(
-            action_distrib=flat_distribs,
-            action_distrib_old=action_distrib_old,
-            actions=flat_actions,
+            log_prob=flat_distribs.log_prob(flat_actions),
+            log_prob_old=log_prob_old,
+            entropy=flat_distribs.entropy,
             advs=flat_advs)
+
+        # Distribution to compute KL div against
+        action_distrib_old = flat_distribs.copy()
 
         full_step = self._compute_kl_constrained_step(
             action_distrib=flat_distribs,
@@ -601,6 +585,9 @@ The gradient contains None. The policy may have unused parameters."
             flat_transitions = list(itertools.chain.from_iterable(dataset))
             actions = xp.array(
                 [transition['action'] for transition in flat_transitions])
+            log_prob_old = xp.array(
+                [transition['log_prob'] for transition in flat_transitions],
+                dtype=np.float32)
         else:
             states = self.batch_states(
                 [transition['state'] for transition in dataset], xp, self.phi)
@@ -612,6 +599,9 @@ The gradient contains None. The policy may have unused parameters."
 
             actions = xp.array(
                 [transition['action'] for transition in dataset])
+            log_prob_old = xp.array(
+                [transition['log_prob'] for transition in dataset],
+                dtype=np.float32)
 
         for i in range(self.line_search_max_backtrack + 1):
             self.logger.info(
@@ -627,9 +617,9 @@ The gradient contains None. The policy may have unused parameters."
                     chainer.no_backprop_mode():
                 new_action_distrib = evaluate_current_policy()
                 new_gain = self._compute_gain(
-                    action_distrib=new_action_distrib,
-                    action_distrib_old=action_distrib_old,
-                    actions=actions,
+                    log_prob=new_action_distrib.log_prob(actions),
+                    log_prob_old=log_prob_old,
+                    entropy=new_action_distrib.entropy,
                     advs=advs)
                 new_kl = F.mean(action_distrib_old.kl(new_action_distrib))
 
