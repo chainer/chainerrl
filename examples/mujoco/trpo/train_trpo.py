@@ -1,15 +1,7 @@
-"""An example of training TRPO against OpenAI Gym Envs.
+"""A training script of TRPO on OpenAI Gym Mujoco environments.
 
-This script is an example of training a TRPO agent against OpenAI Gym envs.
-Both discrete and continuous action spaces are supported.
-
-Chainer v3.1.0 or newer is required.
-
-To solve CartPole-v0, run:
-    python train_trpo_gym.py --env CartPole-v0 --steps 100000
-
-To solve InvertedPendulum-v1, run:
-    python train_trpo_gym.py --env InvertedPendulum-v1 --steps 100000
+This script follows the settings of https://arxiv.org/abs/1709.06560 as much
+as possible.
 """
 from __future__ import division
 from __future__ import print_function
@@ -48,9 +40,9 @@ def main():
                              ' If it does not exist, it will be created.')
     parser.add_argument('--steps', type=int, default=2 * 10 ** 6,
                         help='Total time steps for training.')
-    parser.add_argument('--eval-interval', type=int, default=10000,
+    parser.add_argument('--eval-interval', type=int, default=100000,
                         help='Interval between evaluation phases in steps.')
-    parser.add_argument('--eval-n-runs', type=int, default=10,
+    parser.add_argument('--eval-n-runs', type=int, default=100,
                         help='Number of episodes ran in an evaluation phase')
     parser.add_argument('--render', action='store_true', default=False,
                         help='Render the env')
@@ -66,6 +58,9 @@ def main():
     parser.add_argument('--monitor', action='store_true',
                         help='Monitor the env by gym.wrappers.Monitor.'
                              ' Videos and additional log will be saved.')
+    parser.add_argument('--nonlinearity', type=str, default='tanh',
+                        help='Nonlinearity to use. It should be the name of a'
+                             ' Chainer function.')
     args = parser.parse_args()
 
     logging.basicConfig(level=args.logger_level)
@@ -96,26 +91,25 @@ def main():
     print('Observation space:', obs_space)
     print('Action space:', action_space)
 
-    if not isinstance(obs_space, gym.spaces.Box):
-        print("""\
-This example only supports gym.spaces.Box observation spaces. To apply it to
-other observation spaces, use a custom phi function that convert an observation
-to numpy.ndarray of numpy.float32.""")  # NOQA
-        return
+    assert isinstance(obs_space, gym.spaces.Box)
 
     # Normalize observations based on their empirical mean and variance
     obs_normalizer = chainerrl.links.EmpiricalNormalization(
         obs_space.low.size)
 
+    # Orthogonal weight initialization is used as OpenAI Baselines does
     winit = chainerrl.initializers.Orthogonal(1.)
     winit_last = chainerrl.initializers.Orthogonal(1e-2)
+
+    # Nonlinearity must be a chainer function
+    nonlinearity = getattr(F, args.nonlinearity)
 
     action_size = action_space.low.size
     policy = chainer.Sequential(
         L.Linear(None, 64, initialW=winit),
-        F.tanh,
+        nonlinearity,
         L.Linear(None, 64, initialW=winit),
-        F.tanh,
+        nonlinearity,
         L.Linear(None, action_size, initialW=winit_last),
         chainerrl.policies.GaussianHeadWithStateIndependentCovariance(
             action_size=action_size,
@@ -127,9 +121,9 @@ to numpy.ndarray of numpy.float32.""")  # NOQA
 
     vf = chainer.Sequential(
         L.Linear(None, 64, initialW=winit),
-        F.tanh,
+        nonlinearity,
         L.Linear(None, 64, initialW=winit),
-        F.tanh,
+        nonlinearity,
         L.Linear(None, 1, initialW=winit),
     )
 
