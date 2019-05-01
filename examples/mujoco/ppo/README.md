@@ -33,6 +33,6 @@ Reported scores are taken from Table 1 of [Deep Reinforcement Learning that Matt
 
 | Environment    | ChainerRL Score | Reported Score |
 | -------------- |:---------------:|:--------------:|
-| HalfCheetah-v2 |             N/A |    2790 +/- 62 |
-| Hopper-v2      |             N/A |   2201 +/- 323 |
+| HalfCheetah-v2 |             N/A |   2201 +/- 323 |
+| Hopper-v2      |             N/A |    2790 +/- 62 |
 
