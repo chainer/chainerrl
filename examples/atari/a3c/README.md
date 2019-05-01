@@ -9,7 +9,7 @@ This example trains an Asynchronous Advantage Actor Critic (A3C) agent, from the
 ## Running the Example
 
 ```
-python train_a3c.py [options]
+python train_a3c.py <num_processes> [options]
 ```
 
 ### Useful Options
@@ -22,7 +22,9 @@ python train_a3c.py [options]
 To view the full list of options, either view the code or run the example with the `--help` option.
 
 ## Results
-These results reflect ChainerRL  `v0.6.0`. The ChainerRL score currently consists of a single run. The reported results from the IQN paper are also from a single run. We use the same evaluation protocol used in the IQN paper.
+These results reflect ChainerRL  `v0.6.0`. The ChainerRL score currently consists of a single run. The reported results are compared against the scores from the [Noisy Networks Paper](https://arxiv.org/pdf/1706.10295.pdf)
+
+We aim to follow the original paper's evaluation protocol as closely as possible.
 
 | Game        | ChainerRL Score           | Reported Scores |           
 | ------------- |:-------------:|:-------------:|
