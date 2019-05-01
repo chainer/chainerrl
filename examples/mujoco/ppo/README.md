@@ -31,8 +31,16 @@ These scores are evaluated by average return +/- standard error of 100 evaluatio
 
 Reported scores are taken from Table 1 of [Deep Reinforcement Learning that Matters](https://arxiv.org/abs/1709.06560).
 
+ChainerRL scores are based on 20 trials using different random seeds, using the command
+
+```
+python train_ppo.py --gpu -1 --seed [0-19] --env [env]
+```
+
 | Environment    | ChainerRL Score | Reported Score |
 | -------------- |:---------------:|:--------------:|
-| HalfCheetah-v2 |             N/A |   2201 +/- 323 |
-| Hopper-v2      |             N/A |    2790 +/- 62 |
+| HalfCheetah-v2 |    2404 +/- 185 |   2201 +/- 323 |
+| Hopper-v2      |     2719 +/- 67 |    2790 +/- 62 |
+| Walker2d-v2    |    2994 +/- 113 |            N/A |
+| Swimmer-v2     |       111 +/- 4 |            N/A |
 
