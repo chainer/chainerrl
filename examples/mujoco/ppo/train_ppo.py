@@ -1,10 +1,7 @@
-"""An example of training PPO against OpenAI Gym Envs.
+"""A training script of PPO on OpenAI Gym Mujoco environments.
 
-This script is an example of training a PPO agent against OpenAI Gym envs.
-Both discrete and continuous action spaces are supported.
-
-To solve CartPole-v0, run:
-    python train_ppo_gym.py --env CartPole-v0
+This script follows the settings of https://arxiv.org/abs/1709.06560 as much
+as possible.
 """
 from __future__ import division
 from __future__ import print_function
@@ -27,7 +24,6 @@ import chainerrl
 from chainerrl.agents import PPO
 from chainerrl import experiments
 from chainerrl import misc
-from chainerrl.optimizers.nonbias_weight_decay import NonbiasWeightDecay
 
 
 def main():
@@ -42,19 +38,16 @@ def main():
     parser.add_argument('--outdir', type=str, default='results',
                         help='Directory path to save output files.'
                              ' If it does not exist, it will be created.')
-    parser.add_argument('--steps', type=int, default=10 ** 6)
-    parser.add_argument('--eval-interval', type=int, default=10000)
-    parser.add_argument('--eval-n-runs', type=int, default=10)
-    parser.add_argument('--reward-scale-factor', type=float, default=1e-2)
-    parser.add_argument('--standardize-advantages', action='store_true')
+    parser.add_argument('--steps', type=int, default=2 * 10 ** 6)
+    parser.add_argument('--eval-interval', type=int, default=100000)
+    parser.add_argument('--eval-n-runs', type=int, default=100)
+    parser.add_argument('--reward-scale-factor', type=float, default=1)
     parser.add_argument('--render', action='store_true', default=False)
     parser.add_argument('--lr', type=float, default=3e-4)
-    parser.add_argument('--weight-decay', type=float, default=0.0)
     parser.add_argument('--demo', action='store_true', default=False)
     parser.add_argument('--load', type=str, default='')
     parser.add_argument('--logger-level', type=int, default=logging.DEBUG)
     parser.add_argument('--monitor', action='store_true')
-    parser.add_argument('--window-size', type=int, default=100)
 
     parser.add_argument('--update-interval', type=int, default=2048)
     parser.add_argument('--log-interval', type=int, default=1000)
@@ -63,6 +56,7 @@ def main():
     parser.add_argument('--entropy-coef', type=float, default=0.0)
     parser.add_argument('--gamma', type=float, default=0.995)
     parser.add_argument('--lambd', type=float, default=0.97)
+    parser.add_argument('--nonlinearity', type=str, default='tanh')
     args = parser.parse_args()
 
     logging.basicConfig(level=args.logger_level)
@@ -107,50 +101,42 @@ def main():
         'wrapper_config.TimeLimit.max_episode_steps')
     obs_space = sample_env.observation_space
     action_space = sample_env.action_space
+    print('Observation space:', obs_space)
+    print('Action space:', action_space)
+
+    assert isinstance(action_space, gym.spaces.Box)
 
     # Normalize observations based on their empirical mean and variance
     obs_normalizer = chainerrl.links.EmpiricalNormalization(
         obs_space.low.size, clip_threshold=5)
 
+    # Orthogonal weight initialization is used as OpenAI Baselines does
     winit = chainerrl.initializers.Orthogonal(1.)
     winit_last = chainerrl.initializers.Orthogonal(1e-2)
 
-    # Switch policy types accordingly to action space types
-    if isinstance(action_space, gym.spaces.Discrete):
-        n_actions = action_space.n
-        policy = chainer.Sequential(
-            L.Linear(None, 64, initialW=winit),
-            F.tanh,
-            L.Linear(None, 64, initialW=winit),
-            F.tanh,
-            L.Linear(None, n_actions, initialW=winit_last),
-            chainerrl.distribution.SoftmaxDistribution,
-        )
-    elif isinstance(action_space, gym.spaces.Box):
-        action_size = action_space.low.size
-        policy = chainer.Sequential(
-            L.Linear(None, 64, initialW=winit),
-            F.tanh,
-            L.Linear(None, 64, initialW=winit),
-            F.tanh,
-            L.Linear(None, action_size, initialW=winit_last),
-            chainerrl.policies.GaussianHeadWithStateIndependentCovariance(
-                action_size=action_size,
-                var_type='diagonal',
-                var_func=lambda x: F.exp(2 * x),  # Parameterize log std
-                var_param_init=0,  # log std = 0 => std = 1
-            ),
-        )
-    else:
-        print("""\
-This example only supports gym.spaces.Box or gym.spaces.Discrete action spaces.""")  # NOQA
-        return
+    # Nonlinearity must be a chainer function
+    nonlinearity = getattr(F, args.nonlinearity)
+
+    action_size = action_space.low.size
+    policy = chainer.Sequential(
+        L.Linear(None, 64, initialW=winit),
+        nonlinearity,
+        L.Linear(None, 64, initialW=winit),
+        nonlinearity,
+        L.Linear(None, action_size, initialW=winit_last),
+        chainerrl.policies.GaussianHeadWithStateIndependentCovariance(
+            action_size=action_size,
+            var_type='diagonal',
+            var_func=lambda x: F.exp(2 * x),  # Parameterize log std
+            var_param_init=0,  # log std = 0 => std = 1
+        ),
+    )
 
     vf = chainer.Sequential(
         L.Linear(None, 64, initialW=winit),
-        F.tanh,
+        nonlinearity,
         L.Linear(None, 64, initialW=winit),
-        F.tanh,
+        nonlinearity,
         L.Linear(None, 1, initialW=winit),
     )
 
@@ -159,18 +145,21 @@ This example only supports gym.spaces.Box or gym.spaces.Discrete action spaces."
 
     opt = chainer.optimizers.Adam(alpha=args.lr, eps=1e-5)
     opt.setup(model)
-    if args.weight_decay > 0:
-        opt.add_hook(NonbiasWeightDecay(args.weight_decay))
-    agent = PPO(model, opt,
-                obs_normalizer=obs_normalizer,
-                gpu=args.gpu,
-                update_interval=args.update_interval,
-                minibatch_size=args.batchsize, epochs=args.epochs,
-                clip_eps_vf=None, entropy_coef=args.entropy_coef,
-                standardize_advantages=args.standardize_advantages,
-                gamma=args.gamma,
-                lambd=args.lambd,
-                )
+
+    agent = PPO(
+        model,
+        opt,
+        obs_normalizer=obs_normalizer,
+        gpu=args.gpu,
+        update_interval=args.update_interval,
+        minibatch_size=args.batchsize,
+        epochs=args.epochs,
+        clip_eps_vf=None,
+        entropy_coef=args.entropy_coef,
+        standardize_advantages=True,
+        gamma=args.gamma,
+        lambd=args.lambd,
+    )
 
     if args.load:
         agent.load(args.load)
@@ -197,7 +186,6 @@ This example only supports gym.spaces.Box or gym.spaces.Discrete action spaces."
             eval_n_episodes=args.eval_n_runs,
             eval_interval=args.eval_interval,
             log_interval=args.log_interval,
-            return_window_size=args.window_size,
             max_episode_len=timestep_limit,
             save_best_so_far_agent=False,
         )
