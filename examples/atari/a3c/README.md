@@ -9,7 +9,7 @@ This example trains an Asynchronous Advantage Actor Critic (A3C) agent, from the
 ## Running the Example
 
 ```
-python train_a3c.py <num_processes> [options]
+python train_a3c.py [options]
 ```
 
 ### Useful Options

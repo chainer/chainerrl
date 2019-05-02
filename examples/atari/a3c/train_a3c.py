@@ -48,7 +48,7 @@ class A3CFF(chainer.ChainList, a3c.A3CModel):
 def main():
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('processes', type=int)
+    parser.add_argument('--processes', type=int, default=16)
     parser.add_argument('--env', type=str, default='BreakoutNoFrameskip-v4')
     parser.add_argument('--seed', type=int, default=0,
                         help='Random seed [0, 2 ** 31)')
@@ -64,7 +64,7 @@ def main():
                         help='Maximum number of frames for each episode.')
     parser.add_argument('--lr', type=float, default=7e-4)
     parser.add_argument('--eval-interval', type=int, default=10 ** 6)
-    parser.add_argument('--eval-n-runs', type=int, default=10)
+    parser.add_argument('--eval-n-steps', type=int, default=125000)
     parser.add_argument('--weight-decay', type=float, default=0.0)
     parser.add_argument('--demo', action='store_true', default=False)
     parser.add_argument('--load', type=str, default='')
@@ -167,8 +167,8 @@ def main():
             make_env=make_env,
             profile=args.profile,
             steps=args.steps,
-            eval_n_steps=None,
-            eval_n_episodes=args.eval_n_runs,
+            eval_n_steps=args.eval_n_steps,
+            eval_n_episodes=None,
             eval_interval=args.eval_interval,
             global_step_hooks=[lr_decay_hook],
             save_best_so_far_agent=False,
