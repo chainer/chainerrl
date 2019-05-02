@@ -240,7 +240,7 @@ class TestGaussianDistribution(unittest.TestCase):
             desired_entropy = scipy.stats.multivariate_normal(
                 self.mean[b], cov).entropy()
             np.testing.assert_allclose(
-                entropy.array[b], desired_entropy, rtol=1e-5)
+                entropy.array[b], desired_entropy, rtol=1e-4)
 
     def test_self_kl(self):
         kl = self.distrib.kl(self.distrib)

@@ -72,7 +72,6 @@ def run_evaluation_episodes(env, agent, n_steps, n_episodes,
         reset = (done or episode_len == max_episode_len
                  or info.get('needs_reset', False))
         if reset:
-            agent.stop_episode()
             logger.info('evaluation episode %s length:%s R:%s',
                         len(scores), episode_len, test_r)
             # As mixing float and numpy float causes errors in statistics
@@ -82,6 +81,8 @@ def run_evaluation_episodes(env, agent, n_steps, n_episodes,
             terminate = len(scores) >= n_episodes
         else:
             terminate = timestep >= n_steps
+        if reset or terminate:
+            agent.stop_episode()
     # If all steps were used for a single unfinished episode
     if len(scores) == 0:
         scores.append(float(test_r))
@@ -150,8 +151,6 @@ def batch_run_evaluation_episodes(
         resets = np.logical_or(
             resets, [info.get('needs_reset', False) for info in infos])
 
-        # Agent observes the consequences
-        agent.batch_observe(obss, rs, dones, resets)
         # Make mask. 0 if done/reset, 1 if pass
         end = np.logical_or(resets, dones)
         not_end = np.logical_not(end)
@@ -204,6 +203,13 @@ def batch_run_evaluation_episodes(
                 for index in range(n_episodes):
                     eval_episode_returns.append(episode_returns[index])
                     eval_episode_lens.append(episode_lengths[index])
+
+        if termination_conditions:
+            # If this is the last step, make sure the agent observes reset=True
+            resets.fill(True)
+
+        # Agent observes the consequences.
+        agent.batch_observe(obss, rs, dones, resets)
 
         if termination_conditions:
             break

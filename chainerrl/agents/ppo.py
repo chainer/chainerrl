@@ -7,7 +7,6 @@ from future import standard_library
 standard_library.install_aliases()  # NOQA
 
 import collections
-import copy
 import itertools
 
 import chainer
@@ -30,6 +29,64 @@ def _elementwise_clip(x, x_min, x_max):
     Note: chainer.functions.clip supports clipping to constant intervals
     """
     return F.minimum(F.maximum(x, x_min), x_max)
+
+
+def _add_advantage_and_value_target_to_episode(episode, gamma, lambd):
+    """Add advantage and value target values to an episode."""
+    adv = 0.0
+    for transition in reversed(episode):
+        td_err = (
+            transition['reward']
+            + (gamma * transition['nonterminal'] * transition['next_v_pred'])
+            - transition['v_pred']
+        )
+        adv = td_err + gamma * lambd * adv
+        transition['adv'] = adv
+        transition['v_teacher'] = adv + transition['v_pred']
+
+
+def _add_advantage_and_value_target_to_episodes(episodes, gamma, lambd):
+    """Add advantage and value target values to a list of episodes."""
+    for episode in episodes:
+        _add_advantage_and_value_target_to_episode(
+            episode, gamma=gamma, lambd=lambd)
+
+
+def _add_log_prob_and_value_to_episodes(
+        episodes,
+        model,
+        phi,
+        batch_states,
+        obs_normalizer,
+):
+
+    dataset = list(itertools.chain.from_iterable(episodes))
+    xp = model.xp
+
+    # Compute v_pred and next_v_pred
+    states = batch_states([b['state'] for b in dataset], xp, phi)
+    next_states = batch_states([b['next_state'] for b in dataset], xp, phi)
+
+    if obs_normalizer:
+        states = obs_normalizer(states, update=False)
+        next_states = obs_normalizer(next_states, update=False)
+
+    with chainer.using_config('train', False), chainer.no_backprop_mode():
+        distribs, vs_pred = model(states)
+        _, next_vs_pred = model(next_states)
+
+        actions = xp.array([b['action'] for b in dataset])
+        log_probs = chainer.cuda.to_cpu(distribs.log_prob(actions).array)
+        vs_pred = chainer.cuda.to_cpu(vs_pred.array.ravel())
+        next_vs_pred = chainer.cuda.to_cpu(next_vs_pred.array.ravel())
+
+    for transition, log_prob, v_pred, next_v_pred in zip(dataset,
+                                                         log_probs,
+                                                         vs_pred,
+                                                         next_vs_pred):
+        transition['log_prob'] = log_prob
+        transition['v_pred'] = v_pred
+        transition['next_v_pred'] = next_v_pred
 
 
 class PPO(agent.AttributeSavingMixin, agent.BatchAgent):
@@ -165,42 +222,19 @@ class PPO(agent.AttributeSavingMixin, agent.BatchAgent):
             self.memory = []
 
     def _make_dataset(self):
-        dataset = list(itertools.chain.from_iterable(self.memory))
-        xp = self.model.xp
 
-        # Compute v_pred and next_v_pred
-        states = self.batch_states([b['state'] for b in dataset], xp, self.phi)
-        next_states = self.batch_states([b['next_state']
-                                         for b in dataset], xp, self.phi)
-        if self.obs_normalizer:
-            states = self.obs_normalizer(states, update=False)
-            next_states = self.obs_normalizer(next_states, update=False)
-        with chainer.using_config('train', False), chainer.no_backprop_mode():
-            _, vs_pred = self.model(states)
-            vs_pred = chainer.cuda.to_cpu(vs_pred.data.ravel())
-            _, next_vs_pred = self.model(next_states)
-            next_vs_pred = chainer.cuda.to_cpu(next_vs_pred.data.ravel())
-        for transition, v_pred, next_v_pred in zip(dataset,
-                                                   vs_pred,
-                                                   next_vs_pred):
-            transition['v_pred'] = v_pred
-            transition['next_v_pred'] = next_v_pred
+        _add_log_prob_and_value_to_episodes(
+            episodes=self.memory,
+            model=self.model,
+            phi=self.phi,
+            batch_states=self.batch_states,
+            obs_normalizer=self.obs_normalizer,
+        )
 
-        # Compute adv and v_teacher
-        for episode in self.memory:
-            adv = 0.0
-            for transition in reversed(episode):
-                td_err = (
-                    transition['reward']
-                    + (self.gamma * transition['nonterminal']
-                       * transition['next_v_pred'])
-                    - transition['v_pred']
-                )
-                adv = td_err + self.gamma * self.lambd * adv
-                transition['adv'] = adv
-                transition['v_teacher'] = adv + transition['v_pred']
+        _add_advantage_and_value_target_to_episodes(
+            self.memory, gamma=self.gamma, lambd=self.lambd)
 
-        return dataset
+        return list(itertools.chain.from_iterable(self.memory))
 
     def _flush_last_episode(self):
         if self.last_episode:
@@ -229,8 +263,6 @@ class PPO(agent.AttributeSavingMixin, agent.BatchAgent):
         assert 'state' in dataset[0]
         assert 'v_teacher' in dataset[0]
 
-        target_model = copy.deepcopy(self.model)
-
         dataset_iter = chainer.iterators.SerialIterator(
             dataset, self.minibatch_size)
 
@@ -247,14 +279,13 @@ class PPO(agent.AttributeSavingMixin, agent.BatchAgent):
                 states = self.obs_normalizer(states, update=False)
             actions = xp.array([b['action'] for b in batch])
             distribs, vs_pred = self.model(states)
-            with chainer.no_backprop_mode():
-                target_distribs, _ = target_model(states)
-                target_log_probs = target_distribs.log_prob(actions)
 
             advs = xp.array([b['adv'] for b in batch], dtype=xp.float32)
             if self.standardize_advantages:
                 advs = (advs - mean_advs) / (std_advs + 1e-8)
 
+            log_probs_old = xp.array([b['log_prob']
+                                      for b in batch], dtype=xp.float32)
             vs_pred_old = xp.array([b['v_pred']
                                     for b in batch], dtype=xp.float32)
             vs_teacher = xp.array([b['v_teacher']
@@ -265,20 +296,19 @@ class PPO(agent.AttributeSavingMixin, agent.BatchAgent):
 
             self.optimizer.update(
                 self._lossfun,
-                distribs, vs_pred, distribs.log_prob(actions),
+                distribs.entropy, vs_pred, distribs.log_prob(actions),
                 vs_pred_old=vs_pred_old,
-                target_log_probs=target_log_probs,
+                log_probs_old=log_probs_old,
                 advs=advs,
                 vs_teacher=vs_teacher,
             )
 
     def _lossfun(self,
-                 distribs, vs_pred, log_probs,
-                 vs_pred_old, target_log_probs,
+                 entropy, vs_pred, log_probs,
+                 vs_pred_old, log_probs_old,
                  advs, vs_teacher):
 
-        prob_ratio = F.exp(log_probs - target_log_probs)
-        ent = distribs.entropy
+        prob_ratio = F.exp(log_probs - log_probs_old)
 
         loss_policy = - F.mean(F.minimum(
             prob_ratio * advs,
@@ -294,7 +324,7 @@ class PPO(agent.AttributeSavingMixin, agent.BatchAgent):
                                            vs_pred_old + self.clip_eps_vf)
                          - vs_teacher)
             ))
-        loss_entropy = -F.mean(ent)
+        loss_entropy = -F.mean(entropy)
 
         self.value_loss_record.append(float(loss_value_func.array))
         self.policy_loss_record.append(float(loss_policy.array))
@@ -328,9 +358,9 @@ class PPO(agent.AttributeSavingMixin, agent.BatchAgent):
         # action_distrib will be recomputed when computing gradients
         with chainer.using_config('train', False), chainer.no_backprop_mode():
             action_distrib, value = self.model(b_state)
-            action = chainer.cuda.to_cpu(action_distrib.sample().data)[0]
-            self.entropy_record.append(float(action_distrib.entropy.data))
-            self.value_record.append(float(value.data))
+            action = chainer.cuda.to_cpu(action_distrib.sample().array)[0]
+            self.entropy_record.append(float(action_distrib.entropy.array))
+            self.value_record.append(float(value.array))
 
         self.last_state = obs
         self.last_action = action
@@ -346,7 +376,7 @@ class PPO(agent.AttributeSavingMixin, agent.BatchAgent):
 
         with chainer.using_config('train', False), chainer.no_backprop_mode():
             action_distrib, _ = self.model(b_state)
-            action = chainer.cuda.to_cpu(action_distrib.sample().data)[0]
+            action = chainer.cuda.to_cpu(action_distrib.sample().array)[0]
 
         return action
 
@@ -381,7 +411,7 @@ class PPO(agent.AttributeSavingMixin, agent.BatchAgent):
 
         with chainer.using_config('train', False), chainer.no_backprop_mode():
             action_distrib, _ = self.model(b_state)
-            action = chainer.cuda.to_cpu(action_distrib.sample().data)
+            action = chainer.cuda.to_cpu(action_distrib.sample().array)
 
         return action
 
@@ -402,10 +432,10 @@ class PPO(agent.AttributeSavingMixin, agent.BatchAgent):
         # action_distrib will be recomputed when computing gradients
         with chainer.using_config('train', False), chainer.no_backprop_mode():
             action_distrib, batch_value = self.model(b_state)
-            batch_action = chainer.cuda.to_cpu(action_distrib.sample().data)
+            batch_action = chainer.cuda.to_cpu(action_distrib.sample().array)
             self.entropy_record.extend(
-                chainer.cuda.to_cpu(action_distrib.entropy.data))
-            self.value_record.extend(chainer.cuda.to_cpu((batch_value.data)))
+                chainer.cuda.to_cpu(action_distrib.entropy.array))
+            self.value_record.extend(chainer.cuda.to_cpu((batch_value.array)))
 
         self.batch_last_state = list(batch_obs)
         self.batch_last_action = list(batch_action)
@@ -450,4 +480,5 @@ class PPO(agent.AttributeSavingMixin, agent.BatchAgent):
             ('average_entropy', _mean_or_nan(self.entropy_record)),
             ('average_value_loss', _mean_or_nan(self.value_loss_record)),
             ('average_policy_loss', _mean_or_nan(self.policy_loss_record)),
+            ('n_updates', self.optimizer.t),
         ]
