@@ -20,14 +20,19 @@ class AdditiveGaussian(explorer.Explorer):
         scale (float or array_like of floats): Scale parameter.
     """
 
-    def __init__(self, scale):
+    def __init__(self, scale, low=None, high=None):
         self.scale = scale
+        self.low = low
+        self.high = high
 
     def select_action(self, t, greedy_action_func, action_value=None):
         a = greedy_action_func()
         noise = np.random.normal(
             scale=self.scale, size=a.shape).astype(np.float32)
-        return a + noise
+        if self.low is not None or self.high is not None:
+            return np.clip(a + noise, self.low, self.high)
+        else:
+            return a + noise
 
     def __repr__(self):
         return 'AdditiveGaussian(scale={})'.format(self.scale)
