@@ -75,6 +75,9 @@ class DDPG(AttributeSavingMixin, BatchAgent):
         logger (Logger): Logger used
         batch_states (callable): method which makes a batch of observations.
             default is `chainerrl.misc.batch_states.batch_states`
+        burnin_action_func (callable or None): If not None, this callable
+            object is used to select actions before the model is updated
+            one or more times during training.
     """
 
     saved_attributes = ('model',
@@ -95,7 +98,9 @@ class DDPG(AttributeSavingMixin, BatchAgent):
                  episodic_update=False,
                  episodic_update_len=None,
                  logger=getLogger(__name__),
-                 batch_states=batch_states):
+                 batch_states=batch_states,
+                 burnin_action_func=None,
+                 ):
 
         self.model = model
 
@@ -132,6 +137,7 @@ class DDPG(AttributeSavingMixin, BatchAgent):
             update_interval=update_interval,
         )
         self.batch_states = batch_states
+        self.burnin_action_func = burnin_action_func
 
         self.t = 0
         self.last_state = None
@@ -302,8 +308,12 @@ class DDPG(AttributeSavingMixin, BatchAgent):
 
         self.logger.debug('t:%s r:%s', self.t, reward)
 
-        greedy_action = self.act(obs)
-        action = self.explorer.select_action(self.t, lambda: greedy_action)
+        if (self.burnin_action_func is not None
+                and self.actor_optimizer.t == 0):
+            action = self.burnin_action_func()
+        else:
+            greedy_action = self.act(obs)
+            action = self.explorer.select_action(self.t, lambda: greedy_action)
         self.t += 1
 
         # Update the target network
@@ -378,11 +388,16 @@ class DDPG(AttributeSavingMixin, BatchAgent):
             Sequence of ~object: Actions.
         """
 
-        batch_greedy_action = self.batch_act(batch_obs)
-        batch_action = [
-            self.explorer.select_action(
-                self.t, lambda: batch_greedy_action[i])
-            for i in range(len(batch_greedy_action))]
+        if (self.burnin_action_func is not None
+                and self.actor_optimizer.t == 0):
+            batch_action = [self.burnin_action_func()
+                            for _ in range(len(batch_obs))]
+        else:
+            batch_greedy_action = self.batch_act(batch_obs)
+            batch_action = [
+                self.explorer.select_action(
+                    self.t, lambda: batch_greedy_action[i])
+                for i in range(len(batch_greedy_action))]
 
         self.batch_last_obs = list(batch_obs)
         self.batch_last_action = list(batch_action)
