@@ -142,3 +142,8 @@ python examples/grasping/train_dqn_batch_grasping.py --demo --load $model --eval
 python examples/mujoco/ppo/train_ppo.py --steps 10 --update-interval 5 --batch-size 5 --epochs 2 --outdir $outdir/mujoco/ppo --env Pendulum-v0 --gpu $gpu
 model=$(find $outdir/mujoco/ppo -name "*_finish")
 python examples/mujoco/ppo/train_ppo.py --demo --load $model --eval-n-runs 1 --env Pendulum-v0 --outdir $outdir/temp --gpu $gpu
+
+# mujoco/trpo (specify non-mujoco env to test without mujoco)
+python examples/mujoco/trpo/train_trpo.py --steps 10 --trpo-update-interval 5 --outdir $outdir/mujoco/trpo --env Pendulum-v0 --gpu $gpu
+model=$(find $outdir/mujoco/trpo -name "*_finish")
+python examples/mujoco/trpo/train_trpo.py --demo --load $model --eval-n-runs 1 --env Pendulum-v0 --outdir $outdir/temp --gpu $gpu
