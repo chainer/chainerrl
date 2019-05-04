@@ -95,7 +95,7 @@ def main():
 
     # Normalize observations based on their empirical mean and variance
     obs_normalizer = chainerrl.links.EmpiricalNormalization(
-        obs_space.low.size)
+        obs_space.low.size, clip_threshold=5)
 
     # Orthogonal weight initialization is used as OpenAI Baselines does
     winit = chainerrl.initializers.Orthogonal(1.)
