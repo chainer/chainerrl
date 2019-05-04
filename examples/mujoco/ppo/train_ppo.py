@@ -30,33 +30,43 @@ def main():
     import logging
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('--gpu', type=int, default=0)
-    parser.add_argument('--env', type=str, default='Hopper-v2')
-    parser.add_argument('--num-envs', type=int, default=1)
+    parser.add_argument('--gpu', type=int, default=0,
+                        help='GPU to use, set to -1 if no GPU.')
+    parser.add_argument('--env', type=str, default='Hopper-v2',
+                        help='OpenAI Gym MuJoCo env to perform algorithm on.')
+    parser.add_argument('--num-envs', type=int, default=1,
+                        help='Number of envs run in parallel.')
     parser.add_argument('--seed', type=int, default=0,
                         help='Random seed [0, 2 ** 32)')
     parser.add_argument('--outdir', type=str, default='results',
                         help='Directory path to save output files.'
                              ' If it does not exist, it will be created.')
-    parser.add_argument('--steps', type=int, default=2 * 10 ** 6)
-    parser.add_argument('--eval-interval', type=int, default=100000)
-    parser.add_argument('--eval-n-runs', type=int, default=100)
-    parser.add_argument('--reward-scale-factor', type=float, default=1)
-    parser.add_argument('--render', action='store_true', default=False)
-    parser.add_argument('--lr', type=float, default=3e-4)
-    parser.add_argument('--demo', action='store_true', default=False)
-    parser.add_argument('--load', type=str, default='')
-    parser.add_argument('--logger-level', type=int, default=logging.DEBUG)
-    parser.add_argument('--monitor', action='store_true')
-
-    parser.add_argument('--update-interval', type=int, default=2048)
-    parser.add_argument('--log-interval', type=int, default=1000)
-    parser.add_argument('--batchsize', type=int, default=64)
-    parser.add_argument('--epochs', type=int, default=10)
-    parser.add_argument('--entropy-coef', type=float, default=0.0)
-    parser.add_argument('--gamma', type=float, default=0.995)
-    parser.add_argument('--lambd', type=float, default=0.97)
-    parser.add_argument('--nonlinearity', type=str, default='tanh')
+    parser.add_argument('--steps', type=int, default=2 * 10 ** 6,
+                        help='Total number of timesteps to train the agent.')
+    parser.add_argument('--eval-interval', type=int, default=100000,
+                        help='Interval in timesteps between evaluations.')
+    parser.add_argument('--eval-n-runs', type=int, default=100,
+                        help='Number of episodes run for each evaluation.')
+    parser.add_argument('--render', action='store_true',
+                        help='Render env states in a GUI window.')
+    parser.add_argument('--demo', action='store_true',
+                        help='Just run evaluation, not training.')
+    parser.add_argument('--load', type=str, default='',
+                        help='Directory to load agent from.')
+    parser.add_argument('--logger-level', type=int, default=logging.INFO,
+                        help='Level of the root logger.')
+    parser.add_argument('--monitor', action='store_true',
+                        help='Wrap env with gym.wrappers.Monitor.')
+    parser.add_argument('--log-interval', type=int, default=1000,
+                        help='Interval in timesteps between outputting log'
+                             ' messages during training')
+    parser.add_argument('--update-interval', type=int, default=2048,
+                        help='Interval in timesteps between model updates.')
+    parser.add_argument('--epochs', type=int, default=10,
+                        help='Number of epochs to update model for per PPO'
+                             ' iteration.')
+    parser.add_argument('--batch-size', type=int, default=64,
+                        help='Minibatch size')
     args = parser.parse_args()
 
     logging.basicConfig(level=args.logger_level)
@@ -82,10 +92,6 @@ def main():
         env = chainerrl.wrappers.CastObservationToFloat32(env)
         if args.monitor:
             env = gym.wrappers.Monitor(env, args.outdir)
-        if not test:
-            # Scale rewards (and thus returns) to a reasonable range so that
-            # training is easier
-            env = chainerrl.wrappers.ScaleReward(env, args.reward_scale_factor)
         if args.render:
             env = chainerrl.wrappers.Render(env)
         return env
@@ -114,15 +120,12 @@ def main():
     winit = chainerrl.initializers.Orthogonal(1.)
     winit_last = chainerrl.initializers.Orthogonal(1e-2)
 
-    # Nonlinearity must be a chainer function
-    nonlinearity = getattr(F, args.nonlinearity)
-
     action_size = action_space.low.size
     policy = chainer.Sequential(
         L.Linear(None, 64, initialW=winit),
-        nonlinearity,
+        F.tanh,
         L.Linear(None, 64, initialW=winit),
-        nonlinearity,
+        F.tanh,
         L.Linear(None, action_size, initialW=winit_last),
         chainerrl.policies.GaussianHeadWithStateIndependentCovariance(
             action_size=action_size,
@@ -134,16 +137,16 @@ def main():
 
     vf = chainer.Sequential(
         L.Linear(None, 64, initialW=winit),
-        nonlinearity,
+        F.tanh,
         L.Linear(None, 64, initialW=winit),
-        nonlinearity,
+        F.tanh,
         L.Linear(None, 1, initialW=winit),
     )
 
     # Combine a policy and a value function into a single model
     model = chainerrl.links.Branched(policy, vf)
 
-    opt = chainer.optimizers.Adam(alpha=args.lr, eps=1e-5)
+    opt = chainer.optimizers.Adam(3e-4, eps=1e-5)
     opt.setup(model)
 
     agent = PPO(
@@ -152,13 +155,13 @@ def main():
         obs_normalizer=obs_normalizer,
         gpu=args.gpu,
         update_interval=args.update_interval,
-        minibatch_size=args.batchsize,
+        minibatch_size=args.batch_size,
         epochs=args.epochs,
         clip_eps_vf=None,
-        entropy_coef=args.entropy_coef,
+        entropy_coef=0,
         standardize_advantages=True,
-        gamma=args.gamma,
-        lambd=args.lambd,
+        gamma=0.995,
+        lambd=0.97,
     )
 
     if args.load:
