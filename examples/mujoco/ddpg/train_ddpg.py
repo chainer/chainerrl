@@ -33,6 +33,7 @@ from chainerrl import replay_buffer
 
 
 def concat_obs_and_action(obs, action):
+    """Concat observation and action to feed the critic."""
     return F.concat((obs, action), axis=-1)
 
 
@@ -42,22 +43,33 @@ def main():
     parser.add_argument('--outdir', type=str, default='results',
                         help='Directory path to save output files.'
                              ' If it does not exist, it will be created.')
-    parser.add_argument('--env', type=str, default='Hopper-v2')
+    parser.add_argument('--env', type=str, default='Hopper-v2',
+                        help='OpenAI Gym MuJoCo env to perform algorithm on.')
     parser.add_argument('--seed', type=int, default=0,
                         help='Random seed [0, 2 ** 32)')
-    parser.add_argument('--gpu', type=int, default=0)
-    parser.add_argument('--load', type=str, default='')
-    parser.add_argument('--steps', type=int, default=10 ** 6)
-    parser.add_argument('--eval-n-runs', type=int, default=10)
-    parser.add_argument('--eval-interval', type=int, default=5000)
-    parser.add_argument('--replay-start-size', type=int, default=10000)
-    parser.add_argument('--batch-size', type=int, default=100)
-    parser.add_argument('--render', action='store_true')
-    parser.add_argument('--demo', action='store_true')
-    parser.add_argument('--monitor', action='store_true')
+    parser.add_argument('--gpu', type=int, default=0,
+                        help='GPU to use, set to -1 if no GPU.')
+    parser.add_argument('--load', type=str, default='',
+                        help='Directory to load agent from.')
+    parser.add_argument('--steps', type=int, default=10 ** 6,
+                        help='Total number of timesteps to train the agent.')
+    parser.add_argument('--eval-n-runs', type=int, default=10,
+                        help='Number of episodes run for each evaluation.')
+    parser.add_argument('--eval-interval', type=int, default=5000,
+                        help='Interval in timesteps between evaluations.')
+    parser.add_argument('--replay-start-size', type=int, default=10000,
+                        help='Minimum replay buffer size before ' +
+                        'performing gradient updates.')
+    parser.add_argument('--batch-size', type=int, default=100,
+                        help='Minibatch size')
+    parser.add_argument('--render', action='store_true',
+                        help='Render env states in a GUI window.')
+    parser.add_argument('--demo', action='store_true',
+                        help='Just run evaluation, not training.')
+    parser.add_argument('--monitor', action='store_true',
+                        help='Wrap env with gym.wrappers.Monitor.')
     parser.add_argument('--logger-level', type=int, default=logging.INFO,
                         help='Level of the root logger.')
-    parser.add_argument('--label', type=str, default='')
     args = parser.parse_args()
 
     logging.basicConfig(level=args.logger_level)
@@ -104,7 +116,7 @@ def main():
         F.relu,
         L.Linear(None, 1, initialW=winit),
     )
-    pi = chainer.Sequential(
+    policy = chainer.Sequential(
         L.Linear(None, 400, initialW=winit),
         F.relu,
         L.Linear(None, 300, initialW=winit),
@@ -113,7 +125,7 @@ def main():
         F.tanh,
         chainerrl.distribution.ContinuousDeterministicDistribution,
     )
-    model = DDPGModel(q_func=q_func, policy=pi)
+    model = DDPGModel(q_func=q_func, policy=policy)
 
     # Draw the computational graph and save it in the output directory.
     fake_obs = chainer.Variable(
@@ -123,7 +135,7 @@ def main():
         model.xp.zeros_like(action_space.low, dtype=np.float32)[None],
         name='action')
     chainerrl.misc.draw_computational_graph(
-        [pi(fake_obs)], os.path.join(args.outdir, 'pi'))
+        [policy(fake_obs)], os.path.join(args.outdir, 'policy'))
     chainerrl.misc.draw_computational_graph(
         [q_func(fake_obs, fake_action)], os.path.join(args.outdir, 'q_func'))
 
@@ -138,9 +150,11 @@ def main():
         scale=0.1, low=action_space.low, high=action_space.high)
 
     def burnin_action_func():
+        """Select random actions until model is updated one or more times."""
         return np.random.uniform(
             action_space.low, action_space.high).astype(np.float32)
 
+    # Hyperparameters in http://arxiv.org/abs/1802.09477
     agent = DDPG(
         model,
         opt_a,
