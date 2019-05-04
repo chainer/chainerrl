@@ -58,9 +58,6 @@ def main():
     parser.add_argument('--monitor', action='store_true',
                         help='Monitor the env by gym.wrappers.Monitor.'
                              ' Videos and additional log will be saved.')
-    parser.add_argument('--nonlinearity', type=str, default='tanh',
-                        help='Nonlinearity to use. It should be the name of a'
-                             ' Chainer function.')
     args = parser.parse_args()
 
     logging.basicConfig(level=args.logger_level)
@@ -101,15 +98,12 @@ def main():
     winit = chainerrl.initializers.Orthogonal(1.)
     winit_last = chainerrl.initializers.Orthogonal(1e-2)
 
-    # Nonlinearity must be a chainer function
-    nonlinearity = getattr(F, args.nonlinearity)
-
     action_size = action_space.low.size
     policy = chainer.Sequential(
         L.Linear(None, 64, initialW=winit),
-        nonlinearity,
+        F.tanh,
         L.Linear(None, 64, initialW=winit),
-        nonlinearity,
+        F.tanh,
         L.Linear(None, action_size, initialW=winit_last),
         chainerrl.policies.GaussianHeadWithStateIndependentCovariance(
             action_size=action_size,
@@ -121,9 +115,9 @@ def main():
 
     vf = chainer.Sequential(
         L.Linear(None, 64, initialW=winit),
-        nonlinearity,
+        F.tanh,
         L.Linear(None, 64, initialW=winit),
-        nonlinearity,
+        F.tanh,
         L.Linear(None, 1, initialW=winit),
     )
 
