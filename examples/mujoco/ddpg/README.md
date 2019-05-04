@@ -73,7 +73,7 @@ Reported scores are taken from the "AHE" row of Table 2 of [Addressing Function 
 
 The shaded region represents a standard deviation of the average evaluation over 10 trials.
 
-![HalfCheetah-v2](assets/Halfcheetah-v2.png)
+![HalfCheetah-v2](assets/HalfCheetah-v2.png)
 ![Hopper-v2](assets/Hopper-v2.png)
 ![Walker2d-v2](assets/Walker2d-v2.png)
 ![Ant-v2](assets/Ant-v2.png)
