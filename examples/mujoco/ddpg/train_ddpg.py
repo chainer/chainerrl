@@ -88,20 +88,21 @@ def main():
 
     action_size = action_space.low.size
 
+    winit = chainer.initializers.LeCunUniform(3 ** -0.5)
     q_func = chainer.Sequential(
         concat_obs_and_action,
-        L.Linear(None, 400),
+        L.Linear(None, 400, initialW=winit),
         F.relu,
-        L.Linear(None, 300),
+        L.Linear(None, 300, initialW=winit),
         F.relu,
-        L.Linear(None, 1),
+        L.Linear(None, 1, initialW=winit),
     )
     pi = chainer.Sequential(
-        L.Linear(None, 400),
+        L.Linear(None, 400, initialW=winit),
         F.relu,
-        L.Linear(None, 300),
+        L.Linear(None, 300, initialW=winit),
         F.relu,
-        L.Linear(None, action_size),
+        L.Linear(None, action_size, initialW=winit),
         F.tanh,
         chainerrl.distribution.ContinuousDeterministicDistribution,
     )
