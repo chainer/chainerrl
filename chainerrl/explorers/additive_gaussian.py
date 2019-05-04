@@ -18,6 +18,12 @@ class AdditiveGaussian(explorer.Explorer):
 
     Args:
         scale (float or array_like of floats): Scale parameter.
+        low (float, array_like of floats, or None): Lower bound of action
+            space used to clip an action after adding a noise. If set to None,
+            clipping is not performed on lower edge.
+        high (float, array_like of floats, or None): Higher bound of action
+            space used to clip an action after adding a noise. If set to None,
+            clipping is not performed on upper edge.
     """
 
     def __init__(self, scale, low=None, high=None):
@@ -35,4 +41,5 @@ class AdditiveGaussian(explorer.Explorer):
             return a + noise
 
     def __repr__(self):
-        return 'AdditiveGaussian(scale={})'.format(self.scale)
+        return 'AdditiveGaussian(scale={}, low={}, high={})'.format(
+            self.scale, self.low, self.high)
