@@ -50,6 +50,8 @@ def main():
     parser.add_argument('--steps', type=int, default=10 ** 6)
     parser.add_argument('--eval-n-runs', type=int, default=10)
     parser.add_argument('--eval-interval', type=int, default=5000)
+    parser.add_argument('--replay-start-size', type=int, default=10000)
+    parser.add_argument('--batch-size', type=int, default=100)
     parser.add_argument('--render', action='store_true')
     parser.add_argument('--demo', action='store_true')
     parser.add_argument('--monitor', action='store_true')
@@ -146,14 +148,14 @@ def main():
         rbuf,
         gamma=0.99,
         explorer=explorer,
-        replay_start_size=10000,
+        replay_start_size=args.replay_start_size,
         target_update_method='soft',
         target_update_interval=1,
         update_interval=1,
         soft_update_tau=5e-3,
         n_times_update=1,
         gpu=args.gpu,
-        minibatch_size=100,
+        minibatch_size=args.batch_size,
         burnin_action_func=burnin_action_func,
     )
 
