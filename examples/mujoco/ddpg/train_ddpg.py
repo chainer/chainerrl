@@ -1,3 +1,8 @@
+"""A training script of DDPG on OpenAI Gym Mujoco environments.
+
+This script follows the settings of http://arxiv.org/abs/1802.09477 as much
+as possible.
+"""
 from __future__ import print_function
 from __future__ import unicode_literals
 from __future__ import division
