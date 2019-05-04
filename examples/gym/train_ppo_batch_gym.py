@@ -110,16 +110,15 @@ def main():
     obs_normalizer = chainerrl.links.EmpiricalNormalization(
         obs_space.low.size, clip_threshold=5)
 
-    winit = chainerrl.initializers.Orthogonal(1.)
-    winit_last = chainerrl.initializers.Orthogonal(1e-2)
+    winit_last = chainer.initializers.LeCunNormal(1e-2)
 
     # Switch policy types accordingly to action space types
     if isinstance(action_space, gym.spaces.Discrete):
         n_actions = action_space.n
         policy = chainer.Sequential(
-            L.Linear(None, 64, initialW=winit),
+            L.Linear(None, 64),
             F.tanh,
-            L.Linear(None, 64, initialW=winit),
+            L.Linear(None, 64),
             F.tanh,
             L.Linear(None, n_actions, initialW=winit_last),
             chainerrl.distribution.SoftmaxDistribution,
@@ -127,9 +126,9 @@ def main():
     elif isinstance(action_space, gym.spaces.Box):
         action_size = action_space.low.size
         policy = chainer.Sequential(
-            L.Linear(None, 64, initialW=winit),
+            L.Linear(None, 64),
             F.tanh,
-            L.Linear(None, 64, initialW=winit),
+            L.Linear(None, 64),
             F.tanh,
             L.Linear(None, action_size, initialW=winit_last),
             chainerrl.policies.GaussianHeadWithStateIndependentCovariance(
@@ -145,11 +144,11 @@ This example only supports gym.spaces.Box or gym.spaces.Discrete action spaces."
         return
 
     vf = chainer.Sequential(
-        L.Linear(None, 64, initialW=winit),
+        L.Linear(None, 64),
         F.tanh,
-        L.Linear(None, 64, initialW=winit),
+        L.Linear(None, 64),
         F.tanh,
-        L.Linear(None, 1, initialW=winit),
+        L.Linear(None, 1),
     )
 
     # Combine a policy and a value function into a single model

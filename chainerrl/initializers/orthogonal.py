@@ -2,11 +2,18 @@
 This is copied from https://github.com/chainer/chainer/pull/6031 and will be
 unnecessary once the PR is merged to Chainer.
 """
+import functools
+import operator
+
 import numpy
 
-from chainer import backend
+from chainer import cuda
 from chainer import initializer
-from chainer import utils
+
+
+# Only Chainer v6 or later has chainer.utils.size_of_shape
+def size_of_shape(shape):
+    return functools.reduce(operator.mul, shape, 1)
 
 
 _orthogonal_constraints = {  # (assert emb., assert proj.)
@@ -69,7 +76,7 @@ class Orthogonal(initializer.Initializer):
     def __call__(self, array):
         if self.dtype is not None:
             assert array.dtype == self.dtype
-        xp = backend.get_array_module(array)
+        xp = cuda.get_array_module(array)
         if not array.shape:  # 0-dim case
             array[...] = self.scale * (2 * numpy.random.randint(2) - 1)
         elif not array.size:
@@ -77,7 +84,7 @@ class Orthogonal(initializer.Initializer):
         else:
             # numpy.prod returns float value when the argument is empty.
             out_dim = len(array)
-            in_dim = utils.size_of_shape(array.shape[1:])
+            in_dim = size_of_shape(array.shape[1:])
             if (in_dim > out_dim and self._checks[0]) or (
                     in_dim < out_dim and self._checks[1]):
                 raise ValueError(
