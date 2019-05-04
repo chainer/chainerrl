@@ -6,7 +6,6 @@ from builtins import *  # NOQA
 from future import standard_library
 standard_library.install_aliases()  # NOQA
 import argparse
-import functools
 import json
 import os
 
@@ -22,6 +21,7 @@ from chainerrl import explorers
 from chainerrl import links
 from chainerrl import misc
 from chainerrl import replay_buffer
+from chainerrl.q_functions import DuelingIQN
 from chainerrl.wrappers import atari_wrappers
 
 
@@ -102,26 +102,7 @@ def main():
     eval_env = make_env(test=True)
     n_actions = env.action_space.n
 
-    q_func = chainerrl.agents.iqn.ImplicitQuantileQFunction(
-        psi=chainerrl.links.Sequence(
-            L.Convolution2D(None, 32, 8, stride=4),
-            F.relu,
-            L.Convolution2D(None, 64, 4, stride=2),
-            F.relu,
-            L.Convolution2D(None, 64, 3, stride=1),
-            F.relu,
-            functools.partial(F.reshape, shape=(-1, 3136)),
-        ),
-        phi=chainerrl.links.Sequence(
-            chainerrl.agents.iqn.CosineBasisLinear(64, 3136),
-            F.relu,
-        ),
-        f=chainerrl.links.Sequence(
-            L.Linear(None, 512),
-            F.relu,
-            L.Linear(None, n_actions),
-        ),
-    )
+    q_func = DuelingIQN(n_actions)
 
     # Noisy nets
     links.to_factorized_noisy(q_func)
