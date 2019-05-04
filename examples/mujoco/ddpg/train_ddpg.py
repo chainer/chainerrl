@@ -64,6 +64,9 @@ def main():
 
     def make_env(test):
         env = gym.make(args.env)
+        # Unwrap TimiLimit wrapper
+        assert isinstance(env, gym.wrappers.TimeLimit)
+        env = env.env
         # Use different random seeds for train and test envs
         env_seed = 2 ** 32 - 1 - args.seed if test else args.seed
         env.seed(env_seed)
@@ -85,20 +88,21 @@ def main():
 
     action_size = action_space.low.size
 
+    winit = chainer.initializers.LeCunUniform(3 ** -0.5)
     q_func = chainer.Sequential(
         concat_obs_and_action,
-        L.Linear(None, 400),
+        L.Linear(None, 400, initialW=winit),
         F.relu,
-        L.Linear(None, 300),
+        L.Linear(None, 300, initialW=winit),
         F.relu,
-        L.Linear(None, 1),
+        L.Linear(None, 1, initialW=winit),
     )
     pi = chainer.Sequential(
-        L.Linear(None, 400),
+        L.Linear(None, 400, initialW=winit),
         F.relu,
-        L.Linear(None, 300),
+        L.Linear(None, 300, initialW=winit),
         F.relu,
-        L.Linear(None, action_size),
+        L.Linear(None, action_size, initialW=winit),
         F.tanh,
         chainerrl.distribution.ContinuousDeterministicDistribution,
     )
