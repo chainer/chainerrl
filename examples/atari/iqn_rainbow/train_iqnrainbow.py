@@ -10,8 +10,6 @@ import json
 import os
 
 import chainer
-import chainer.functions as F
-import chainer.links as L
 import gym
 import numpy as np
 
@@ -20,8 +18,8 @@ from chainerrl import experiments
 from chainerrl import explorers
 from chainerrl import links
 from chainerrl import misc
-from chainerrl import replay_buffer
 from chainerrl.q_functions import DuelingIQN
+from chainerrl import replay_buffer
 from chainerrl.wrappers import atari_wrappers
 
 
@@ -121,7 +119,6 @@ def main():
     opt.setup(q_func)
 
     rbuf = replay_buffer.ReplayBuffer(10 ** 6, num_steps=3)
-
 
     def phi(x):
         # Feature extractor
