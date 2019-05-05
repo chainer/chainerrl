@@ -63,15 +63,17 @@ class TD3(AttributeSavingMixin, BatchAgent):
         update_interval (int): Model update interval in step
         phi (callable): Feature extractor applied to observations
         soft_update_tau (float): Tau of soft target update.
-        episodic_update (bool): Use full episodes for update if set True
-        episodic_update_len (int or None): Subsequences of this length are used
-            for update if set int and episodic_update=True
         logger (Logger): Logger used
         batch_states (callable): method which makes a batch of observations.
             default is `chainerrl.misc.batch_states.batch_states`
         burnin_action_func (callable or None): If not None, this callable
             object is used to select actions before the model is updated
             one or more times during training.
+        policy_update_delay (int): Delay of policy updates. Policy is updated
+            once in `policy_update_delay` times of Q-function updates.
+        target_policy_smoothing_func (callable): Callable that takes a batch of
+            actions as input and outputs a noisy version of it. It is used for
+            target policy smoothing when computing target Q-values.
     """
 
     saved_attributes = (
