@@ -127,7 +127,7 @@ class DuelingIQN(
 
     """
 
-    def __init__(self, n_actions):
+    def __init__(self, n_actions, activation=F.relu):
         super().__init__()
         self.psi = chainerrl.links.Sequence(
             L.Convolution2D(None, 32, 8, stride=4),
@@ -142,11 +142,12 @@ class DuelingIQN(
             chainerrl.agents.iqn.CosineBasisLinear(64, 3136),
             F.relu,
         )
-        self.f = chainerrl.links.Sequence(
-            L.Linear(None, 512),
-            F.relu,
-            L.Linear(None, n_actions),
-        )
+        self.n_actions = n_actions
+        self.main_stream = L.Linear(3136, 1024)
+        self.a_stream = L.Linear(None, n_actions)
+        self.v_stream = L.Linear(None, 1)
+        self.activation = activation
+
 
 
     def __call__(self, x):
@@ -174,12 +175,17 @@ class DuelingIQN(
                 F.expand_dims(psi_x, axis=1), phi_taus.shape)
             h = psi_x_b * phi_taus
             h = F.reshape(h, (-1, hidden_size))
-            assert h.shape == (batch_size * n_taus, hidden_size)
-            h = self.f(h)
-            assert h.ndim == 2
-            assert h.shape[0] == batch_size * n_taus
-            n_actions = h.shape[-1]
-            h = F.reshape(h, (batch_size, n_taus, n_actions))
-            return action_value.QuantileDiscreteActionValue(h)
+            assert h.shape == (batch_size * n_taus, 3136)
+            h = self.activation(self.main_stream(h))
+            h_a, h_v = F.split_axis(h, 2, axis=-1)
+            a_out = F.reshape(self.a_stream(h_a), (batch_size, n_taus, self.n_actions))
+            mean = F.sum(a_out, axis=2, keepdims=True) / self.n_actions
+            a_out, mean = F.broadcast(a_out, mean)
+            a_out -= mean
+            v_out = F.reshape(self.v_stream(h_v), (batch_size, n_taus, 1))
+            a_out, v_out = F.broadcast(a_out, v_out)
+            q_values = F.softmax(a_out + v_out, axis=1)
+            assert q_values.shape == (batch_size, n_taus, self.n_actions)
+            return action_value.QuantileDiscreteActionValue(q_values)
 
         return evaluate_with_quantile_thresholds
