@@ -298,7 +298,7 @@ class TD3(AttributeSavingMixin, BatchAgent):
         """
 
         if (self.burnin_action_func is not None
-                and self.actor_optimizer.t == 0):
+                and self.policy_optimizer.t == 0):
             batch_action = [self.burnin_action_func()
                             for _ in range(len(batch_obs))]
         else:
