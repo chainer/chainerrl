@@ -1,4 +1,4 @@
-"""A training script of DDPG on OpenAI Gym Mujoco environments.
+"""A training script of TD3 on OpenAI Gym Mujoco environments.
 
 This script follows the settings of http://arxiv.org/abs/1802.09477 as much
 as possible.
