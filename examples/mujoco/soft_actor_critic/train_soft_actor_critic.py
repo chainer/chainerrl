@@ -88,7 +88,8 @@ def main():
         env.seed(env_seed)
         # Cast observations to float32 because our model uses float32
         env = chainerrl.wrappers.CastObservationToFloat32(env)
-        # env = ClipAction(env)
+        # Normalize action space to [-1, 1]^n
+        env = chainerrl.wrappers.NormalizeActionSpace(env)
         if args.monitor:
             env = gym.wrappers.Monitor(env, args.outdir)
         if args.render and not test:
