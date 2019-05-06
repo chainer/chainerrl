@@ -4,7 +4,7 @@ To train DRQN for 50M timesteps on Breakout, run:
     python train_drqn_ale.py --recurrent
 
 To train DQRN using a recurrent model on flickering 1-frame Breakout, run:
-    python train_drqn_ale.py --recurrent -flicker --no-frame-stack
+    python train_drqn_ale.py --recurrent --flicker --no-frame-stack
 """
 from __future__ import print_function
 from __future__ import division
