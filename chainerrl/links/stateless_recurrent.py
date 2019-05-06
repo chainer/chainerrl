@@ -13,9 +13,6 @@ import chainer.links as L
 import numpy as np
 
 
-import chainerrl
-
-
 def split_one_step_batch_input(xs):
     """Split one-step batch input.
 
@@ -165,8 +162,6 @@ def split_batched_sequences(xs, sections):
     """
     if isinstance(xs, tuple):
         return list(zip(*[split_batched_sequences(x, sections) for x in xs]))
-    elif isinstance(xs, chainerrl.distribution.Distribution):
-        return list(xs.split(sections))
     else:
         return list(F.split_axis(xs, sections, axis=0))
 
