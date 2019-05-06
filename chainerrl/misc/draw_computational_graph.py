@@ -27,6 +27,8 @@ def collect_variables(obj):
         return list(obj.params)
     elif isinstance(obj, chainerrl.distribution.Distribution):
         return list(obj.params)
+    elif isinstance(obj, chainer.Distribution):
+        return obj.params.values()
     elif isinstance(obj, (list, tuple)):
         variables = []
         for child in obj:

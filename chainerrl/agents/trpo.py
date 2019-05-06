@@ -7,6 +7,7 @@ from future import standard_library
 standard_library.install_aliases()  # NOQA
 
 import collections
+import copy
 import itertools
 from logging import getLogger
 import random
@@ -430,7 +431,7 @@ class TRPO(agent.AttributeSavingMixin, agent.Agent):
             advs=advs)
 
         # Distribution to compute KL div against
-        action_distrib_old = action_distrib.copy()
+        action_distrib_old = copy.deepcopy(action_distrib)
 
         full_step = self._compute_kl_constrained_step(
             action_distrib=action_distrib,
@@ -510,7 +511,8 @@ class TRPO(agent.AttributeSavingMixin, agent.Agent):
                                      gain):
         """Compute a step of policy parameters with a KL constraint."""
         policy_params = _get_ordered_params(self.policy)
-        kl = F.mean(action_distrib_old.kl(action_distrib))
+        kl = F.mean(chainer.kl_divergence(
+            action_distrib_old, action_distrib))
 
         # Check if kl computation fully supports double backprop
         old_style_funcs = _find_old_style_function([kl])
@@ -621,7 +623,8 @@ The gradient contains None. The policy may have unused parameters."
                     log_prob_old=log_prob_old,
                     entropy=new_action_distrib.entropy,
                     advs=advs)
-                new_kl = F.mean(action_distrib_old.kl(new_action_distrib))
+                new_kl = F.mean(chainer.kl_divergence(
+                    action_distrib_old, new_action_distrib))
 
             improve = new_gain.array - gain.array
             self.logger.info(
@@ -717,11 +720,9 @@ Line search coundn't find a good step size. The policy was not updated.")
             else:
                 action_distrib = self.policy(b_state)
             if self.act_deterministically:
-                action = chainer.cuda.to_cpu(
-                    action_distrib.most_probable.array)[0]
+                action = chainer.cuda.to_cpu(action_distrib.mode.array)[0]
             else:
-                action = chainer.cuda.to_cpu(
-                    action_distrib.sample().array)[0]
+                action = chainer.cuda.to_cpu(action_distrib.sample().array)[0]
 
         return action
 
@@ -770,8 +771,7 @@ Line search coundn't find a good step size. The policy was not updated.")
             else:
                 action_distrib, _ = self.model(b_state)
             if self.act_deterministically:
-                action = chainer.cuda.to_cpu(
-                    action_distrib.most_probable.array)
+                action = chainer.cuda.to_cpu(action_distrib.mode.array)
             else:
                 action = chainer.cuda.to_cpu(action_distrib.sample().array)
 

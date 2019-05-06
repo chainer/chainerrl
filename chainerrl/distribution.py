@@ -139,6 +139,11 @@ class Distribution(with_metaclass(ABCMeta, object)):
         """
         raise NotImplementedError()
 
+    @property
+    def mode(self):
+        """Alias of `most_probable`."""
+        return self.most_probable
+
 
 class CategoricalDistribution(Distribution):
     """Distribution of categorical data."""
@@ -173,6 +178,11 @@ class CategoricalDistribution(Distribution):
     def kl(self, distrib):
         return F.sum(
             self.all_prob * (self.all_log_prob - distrib.all_log_prob), axis=1)
+
+@chainer.distribution.register_kl(
+    CategoricalDistribution, CategoricalDistribution)
+def _kl_categorical_categorical(dist1, dist2):
+    return dist1.kl(dist2)
 
 
 class SoftmaxDistribution(CategoricalDistribution):
@@ -233,6 +243,11 @@ class SoftmaxDistribution(CategoricalDistribution):
                                          min_prob=self.min_prob)
                      for logits in split_logits)
 
+@chainer.distribution.register_kl(
+    SoftmaxDistribution, SoftmaxDistribution)
+def _kl_softmax_softmax(dist1, dist2):
+    return dist1.kl(dist2)
+
 
 class MellowmaxDistribution(CategoricalDistribution):
     """Maximum entropy mellowmax distribution.
@@ -277,6 +292,11 @@ class MellowmaxDistribution(CategoricalDistribution):
         split_values = F.split_axis(self.values, indices_or_sections, axis=0)
         return tuple(MellowmaxDistribution(values, omega=self.omega)
                      for values in split_values)
+
+@chainer.distribution.register_kl(
+    MellowmaxDistribution, MellowmaxDistribution)
+def _kl_mellowmax_mellowmax(dist1, dist2):
+    return dist1.kl(dist2)
 
 
 def clip_actions(actions, min_action, max_action):
@@ -346,6 +366,11 @@ class GaussianDistribution(Distribution):
         split_var = F.split_axis(self.var, indices_or_sections, axis=0)
         return tuple(GaussianDistribution(mean, var)
                      for mean, var in zip(split_mean, split_var))
+
+@chainer.distribution.register_kl(
+    GaussianDistribution, GaussianDistribution)
+def _kl_gaussian_gaussian(dist1, dist2):
+    return dist1.kl(dist2)
 
 
 class ContinuousDeterministicDistribution(Distribution):
