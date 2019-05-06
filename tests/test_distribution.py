@@ -121,33 +121,6 @@ class TestSoftmaxDistribution(unittest.TestCase):
 
 
 @testing.parameterize(*testing.product({
-    'n': [1, 2],
-    'beta': [1.0, 10.0],
-    'min_prob': [0.0, 0.01],
-}))
-class TestSoftmaxDistributionSplit(unittest.TestCase):
-
-    def test(self):
-        batch_logits = np.random.uniform(
-            -1, 1, size=(8, self.n)).astype(np.float32)
-        batch_dist = distribution.SoftmaxDistribution(
-            batch_logits,
-            beta=self.beta,
-            min_prob=self.min_prob,
-        )
-        dist0, dist1, dist2 = batch_dist.split([4, 5])
-        self.assertEqual(dist0.beta, batch_dist.beta)
-        self.assertEqual(dist1.beta, batch_dist.beta)
-        self.assertEqual(dist2.beta, batch_dist.beta)
-        self.assertEqual(dist0.min_prob, batch_dist.min_prob)
-        self.assertEqual(dist1.min_prob, batch_dist.min_prob)
-        self.assertEqual(dist2.min_prob, batch_dist.min_prob)
-        np.testing.assert_allclose(dist0.logits.array, batch_dist.logits[:4])
-        np.testing.assert_allclose(dist1.logits.array, batch_dist.logits[4:5])
-        np.testing.assert_allclose(dist2.logits.array, batch_dist.logits[5:])
-
-
-@testing.parameterize(*testing.product({
     'batch_size': [1, 3],
     'n': [1, 2, 10],
     'wrap_by_variable': [True, False],
@@ -212,28 +185,6 @@ class TestMellowmaxDistribution(unittest.TestCase):
 
 
 @testing.parameterize(*testing.product({
-    'n': [1, 2],
-    'omega': [8., 4.],
-}))
-class TestMellowmaxDistributionSplit(unittest.TestCase):
-
-    def test(self):
-        batch_values = np.random.uniform(
-            -1, 1, size=(8, self.n)).astype(np.float32)
-        batch_dist = distribution.MellowmaxDistribution(
-            batch_values,
-            omega=self.omega,
-        )
-        dist0, dist1, dist2 = batch_dist.split([4, 5])
-        self.assertEqual(dist0.omega, batch_dist.omega)
-        self.assertEqual(dist1.omega, batch_dist.omega)
-        self.assertEqual(dist2.omega, batch_dist.omega)
-        np.testing.assert_allclose(dist0.values.array, batch_dist.values[:4])
-        np.testing.assert_allclose(dist1.values.array, batch_dist.values[4:5])
-        np.testing.assert_allclose(dist2.values.array, batch_dist.values[5:])
-
-
-@testing.parameterize(*testing.product({
     'batch_size': [1, 3],
     'ndim': [1, 2, 10],
 }))
@@ -289,7 +240,7 @@ class TestGaussianDistribution(unittest.TestCase):
             desired_entropy = scipy.stats.multivariate_normal(
                 self.mean[b], cov).entropy()
             np.testing.assert_allclose(
-                entropy.array[b], desired_entropy, rtol=1e-5)
+                entropy.array[b], desired_entropy, rtol=1e-4)
 
     def test_self_kl(self):
         kl = self.distrib.kl(self.distrib)
@@ -314,30 +265,6 @@ class TestGaussianDistribution(unittest.TestCase):
         self.assertIsNot(self.distrib, another)
         self.assertIsNot(self.distrib.mean, another.mean)
         self.assertIsNot(self.distrib.var, another.var)
-
-
-@testing.parameterize(*testing.product({
-    'size': [1, 2],
-}))
-class TestGaussianDistributionSplit(unittest.TestCase):
-
-    def test(self):
-        batch_mean = np.random.uniform(
-            -1, 1, size=(8, self.size)).astype(np.float32)
-        batch_var = np.random.uniform(
-            0, 1, size=(8, self.size)).astype(np.float32)
-        batch_dist = distribution.GaussianDistribution(
-            batch_mean,
-            batch_var,
-        )
-        dist0, dist1, dist2 = batch_dist.split([4, 5])
-        np.testing.assert_allclose(dist0.mean.array, batch_dist.mean[:4].array)
-        np.testing.assert_allclose(
-            dist1.mean.array, batch_dist.mean[4:5].array)
-        np.testing.assert_allclose(dist2.mean.array, batch_dist.mean[5:].array)
-        np.testing.assert_allclose(dist0.var.array, batch_dist.var[:4].array)
-        np.testing.assert_allclose(dist1.var.array, batch_dist.var[4:5].array)
-        np.testing.assert_allclose(dist2.var.array, batch_dist.var[5:].array)
 
 
 @testing.parameterize(*testing.product({
@@ -367,18 +294,3 @@ class TestContinuousDeterministicDistribution(unittest.TestCase):
         another = self.distrib.copy()
         self.assertIsNot(self.distrib, another)
         self.assertIsNot(self.distrib.x, another.x)
-
-
-@testing.parameterize(*testing.product({
-    'size': [1, 2],
-}))
-class TestContinuousDeterministicDistributionSplit(unittest.TestCase):
-
-    def test(self):
-        batch_x = np.random.uniform(
-            -1, 1, size=(8, self.size)).astype(np.float32)
-        batch_dist = distribution.ContinuousDeterministicDistribution(batch_x)
-        dist0, dist1, dist2 = batch_dist.split([4, 5])
-        np.testing.assert_allclose(dist0.x.array, batch_dist.x[:4].array)
-        np.testing.assert_allclose(dist1.x.array, batch_dist.x[4:5].array)
-        np.testing.assert_allclose(dist2.x.array, batch_dist.x[5:].array)

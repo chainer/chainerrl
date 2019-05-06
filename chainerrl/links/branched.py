@@ -9,7 +9,7 @@ standard_library.install_aliases()  # NOQA
 import chainer
 
 
-class ParallelLink(chainer.ChainList):
+class Branched(chainer.ChainList):
     """Link that calls forward functions of child links in parallel.
 
     When either the `__call__` method of this link are called, all the

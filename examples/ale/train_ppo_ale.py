@@ -145,7 +145,7 @@ def main():
             L.Linear(None, 512),
             F.relu,
             L.NStepGRU(1, 512, 512, 0),
-            chainerrl.links.ParallelLink(
+            chainerrl.links.Branched(
                 chainer.Sequential(
                     L.Linear(None, n_actions, initialW=winit_last),
                     chainerrl.distribution.SoftmaxDistribution,
@@ -163,7 +163,7 @@ def main():
             F.relu,
             L.Linear(None, 512),
             F.relu,
-            chainerrl.links.ParallelLink(
+            chainerrl.links.Branched(
                 chainer.Sequential(
                     L.Linear(None, n_actions, initialW=winit_last),
                     chainerrl.distribution.SoftmaxDistribution,

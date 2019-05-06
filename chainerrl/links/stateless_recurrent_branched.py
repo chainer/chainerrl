@@ -12,11 +12,11 @@ from chainerrl.links.stateless_recurrent import call_recurrent_link
 from chainerrl.links.stateless_recurrent import StatelessRecurrentChainList
 
 
-class StatelessRecurrentParallelLink(
+class StatelessRecurrentBranched(
         StatelessRecurrentChainList, chainer.ChainList):
     """Stateless recurrent parallel link.
 
-    This is a recurrent analog to chainerrl.links.ParallelLink. It bundles
+    This is a recurrent analog to chainerrl.links.Branched. It bundles
     multiple links that implements `StatelessRecurrent`.
 
     Args:

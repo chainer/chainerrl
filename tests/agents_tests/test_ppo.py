@@ -32,7 +32,7 @@ from chainerrl.misc.batch_states import batch_states
 from chainerrl import policies
 
 from chainerrl.links import StatelessRecurrentSequential
-from chainerrl.links import StatelessRecurrentParallelLink
+from chainerrl.links import StatelessRecurrentBranched
 
 
 def make_random_episodes(n_episodes=10, obs_size=2, n_actions=3):
@@ -479,7 +479,7 @@ class TestPPO(unittest.TestCase):
                         mean_wscale=1e-1,
                     )
                 )
-            return StatelessRecurrentParallelLink(pi, v)
+            return StatelessRecurrentBranched(pi, v)
         else:
             v = chainer.Sequential(
                 L.Linear(None, n_hidden_channels),
