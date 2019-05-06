@@ -316,6 +316,70 @@ class GaussianDistribution(Distribution):
         return GaussianDistribution(self.mean[i], self.var[i])
 
 
+def _gaussian_log_likelihood(x, mean, var, ln_var):
+    # log N(x|mean,var)
+    #   = -0.5log(2pi) - 0.5log(var) - (x - mean)**2 / (2*var)
+    return -0.5 * np.log(2 * np.pi) - \
+        0.5 * ln_var - \
+        ((x - mean) ** 2) / (2 * var)
+
+
+def _atanh(x):
+    return 0.5 * F.log((1 + x) / (1 - x))
+
+
+class SquashedGaussianDistribution(Distribution):
+    """Gaussian distribution squashed by tanh.
+
+    This type of distribution was used in https://arxiv.org/abs/1812.05905.
+    """
+
+    def __init__(self, mean, var):
+        self.mean = _wrap_by_variable(mean)
+        self.var = _wrap_by_variable(var)
+        self.ln_var = F.log(var)
+
+    @property
+    def params(self):
+        return (self.mean, self.var)
+
+    @cached_property
+    def most_probable(self):
+        return F.tanh(self.mean)
+
+    def sample(self):
+        return F.tanh(F.gaussian(self.mean, self.ln_var))
+
+    def prob(self, x):
+        return F.exp(self.log_prob(x))
+
+    def log_prob(self, x):
+        # Note that x is tanh(raw_action)
+        raw_action = _atanh(x)
+        log_probs = _gaussian_log_likelihood(
+            raw_action, self.mean, self.var, self.ln_var) - F.log(1 - x ** 2)
+        return F.sum(log_probs, axis=1)
+
+    @cached_property
+    def entropy(self):
+        raise NotImplementedError
+
+    def copy(self):
+        return SquashedGaussianDistribution(
+            _unwrap_variable(self.mean).copy(),
+            _unwrap_variable(self.var).copy())
+
+    def kl(self, q):
+        raise NotImplementedError
+
+    def __repr__(self):
+        return 'SquashedGaussianDistribution mean:{} ln_var:{} entropy:{}'.format(  # NOQA
+            self.mean.array, self.ln_var.array, self.entropy.array)
+
+    def __getitem__(self, i):
+        return SquashedGaussianDistribution(self.mean[i], self.var[i])
+
+
 class ContinuousDeterministicDistribution(Distribution):
     """Continous deterministic distribution.
 
