@@ -105,7 +105,7 @@ def main():
 
     action_size = action_space.low.size
 
-    winit = chainer.initializers.LeCunUniform(3 ** -0.5)
+    winit = chainer.initializers.GlorotUniform()
 
     def squashed_diagonal_gaussian_head(x):
         assert x.shape[-1] == action_size * 2
