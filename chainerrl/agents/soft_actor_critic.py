@@ -162,6 +162,8 @@ class SoftActorCritic(AttributeSavingMixin, BatchAgent):
             else:
                 self.temperature_optimizer = chainer.optimizers.Adam()
             self.temperature_optimizer.setup(self.temperature_holder)
+            if gpu is not None and gpu >= 0:
+                self.temperature_holder.to_gpu(device=gpu)
         else:
             self.temperature_holder = None
             self.temperature_optimizer = None
