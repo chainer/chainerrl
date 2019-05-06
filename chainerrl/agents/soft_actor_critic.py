@@ -119,6 +119,7 @@ class SoftActorCritic(AttributeSavingMixin, BatchAgent):
             initial_temperature=1.,
             entropy_target=None,
             temperature_optimizer=None,
+            act_deterministically=True,
     ):
 
         self.policy = policy
@@ -167,6 +168,7 @@ class SoftActorCritic(AttributeSavingMixin, BatchAgent):
         else:
             self.temperature_holder = None
             self.temperature_optimizer = None
+        self.act_deterministically = act_deterministically
 
         self.t = 0
         self.last_state = None
@@ -289,10 +291,13 @@ class SoftActorCritic(AttributeSavingMixin, BatchAgent):
         self.update_q_func(batch)
         self.update_policy_and_temperature(batch)
 
-    def select_greedy_action(self, obs):
+    def select_greedy_action(self, obs, deterministic=False):
         with chainer.no_backprop_mode(), chainer.using_config('train', False):
             s = self.batch_states([obs], self.xp, self.phi)
-            action = self.policy(s).sample().array
+            if deterministic:
+                action = self.policy(s).most_probable.array
+            else:
+                action = self.policy(s).sample().array
         return cuda.to_cpu(action)[0]
 
     def act_and_train(self, obs, reward):
@@ -325,7 +330,8 @@ class SoftActorCritic(AttributeSavingMixin, BatchAgent):
         return self.last_action
 
     def act(self, obs):
-        return self.select_greedy_action(obs)
+        return self.select_greedy_action(
+            obs, deterministic=self.act_deterministically)
 
     def batch_select_greedy_action(self, batch_obs):
         with chainer.using_config('train', False), chainer.no_backprop_mode():
@@ -334,7 +340,8 @@ class SoftActorCritic(AttributeSavingMixin, BatchAgent):
         return list(cuda.to_cpu(batch_action))
 
     def batch_act(self, batch_obs):
-        return self.batch_select_greedy_action(batch_obs)
+        return self.batch_select_greedy_action(
+            batch_obs, deterministic=self.act_deterministically)
 
     def batch_act_and_train(self, batch_obs):
         """Select a batch of actions for training.
