@@ -57,7 +57,7 @@ def main():
     parser.add_argument('--replay-start-size', type=int, default=10000,
                         help='Minimum replay buffer size before ' +
                         'performing gradient updates.')
-    parser.add_argument('--batch-size', type=int, default=100,
+    parser.add_argument('--batch-size', type=int, default=256,
                         help='Minibatch size')
     parser.add_argument('--render', action='store_true',
                         help='Render env states in a GUI window.')
