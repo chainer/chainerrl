@@ -124,21 +124,6 @@ class Distribution(with_metaclass(ABCMeta, object)):
         """
         raise NotImplementedError()
 
-    @abstractmethod
-    def split(self, indices_or_sections):
-        """Split into multiple distributions along the batch axis.
-
-        Args:
-            indices_or_sections (int or 1-D array): If this argument is an
-            integer, N, the distribution will be divided into N equal-sized
-            distributions along axis. If it is a 1-D array of sorted integers,
-            it indicates the positions where the distributions is split.
-
-        Returns:
-            tuple: Tuple of distributions.
-        """
-        raise NotImplementedError()
-
     @property
     def mode(self):
         """Alias of `most_probable`."""
@@ -237,11 +222,6 @@ class SoftmaxDistribution(CategoricalDistribution):
         return SoftmaxDistribution(self.logits[i],
                                    beta=self.beta, min_prob=self.min_prob)
 
-    def split(self, indices_or_sections):
-        split_logits = F.split_axis(self.logits, indices_or_sections, axis=0)
-        return tuple(SoftmaxDistribution(logits, beta=self.beta,
-                                         min_prob=self.min_prob)
-                     for logits in split_logits)
 
 @chainer.distribution.register_kl(
     SoftmaxDistribution, SoftmaxDistribution)
@@ -288,10 +268,6 @@ class MellowmaxDistribution(CategoricalDistribution):
     def __getitem__(self, i):
         return MellowmaxDistribution(self.values[i], omega=self.omega)
 
-    def split(self, indices_or_sections):
-        split_values = F.split_axis(self.values, indices_or_sections, axis=0)
-        return tuple(MellowmaxDistribution(values, omega=self.omega)
-                     for values in split_values)
 
 @chainer.distribution.register_kl(
     MellowmaxDistribution, MellowmaxDistribution)
@@ -361,11 +337,6 @@ class GaussianDistribution(Distribution):
     def __getitem__(self, i):
         return GaussianDistribution(self.mean[i], self.var[i])
 
-    def split(self, indices_or_sections):
-        split_mean = F.split_axis(self.mean, indices_or_sections, axis=0)
-        split_var = F.split_axis(self.var, indices_or_sections, axis=0)
-        return tuple(GaussianDistribution(mean, var)
-                     for mean, var in zip(split_mean, split_var))
 
 @chainer.distribution.register_kl(
     GaussianDistribution, GaussianDistribution)
@@ -410,10 +381,3 @@ class ContinuousDeterministicDistribution(Distribution):
     @property
     def params(self):
         return (self.x,)
-
-    def __getitem__(self, i):
-        return ContinuousDeterministicDistribution(self.x[i])
-
-    def split(self, indices_or_sections):
-        split_x = F.split_axis(self.x, indices_or_sections, axis=0)
-        return tuple(ContinuousDeterministicDistribution(x) for x in split_x)
