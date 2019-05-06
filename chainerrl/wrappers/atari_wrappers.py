@@ -183,12 +183,12 @@ class FrameStack(gym.Wrapper):
         gym.Wrapper.__init__(self, env)
         self.k = k
         self.frames = deque([], maxlen=k)
-        orig_shape = env.observation_space.shape
         self.stack_axis = {'hwc': 2, 'chw': 0}[channel_order]
-        shape = list(orig_shape)
-        shape[self.stack_axis] *= k
+        orig_obs_space = env.observation_space
+        low = np.repeat(orig_obs_space.low, k, axis=self.stack_axis)
+        high = np.repeat(orig_obs_space.high, k, axis=self.stack_axis)
         self.observation_space = spaces.Box(
-            low=0, high=255, shape=shape, dtype=np.uint8)
+            low=low, high=high, dtype=orig_obs_space.dtype)
 
     def _reset(self):
         ob = self.env.reset()
