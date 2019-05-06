@@ -324,8 +324,8 @@ def _gaussian_log_likelihood(x, mean, var, ln_var):
         ((x - mean) ** 2) / (2 * var)
 
 
-def _atanh(x):
-    return 0.5 * F.log((1 + x) / (1 - x))
+def _atanh(x, eps=1e-6):
+    return 0.5 * F.log((1 + x + eps) / (1 - x + eps))
 
 
 class SquashedGaussianDistribution(Distribution):
@@ -353,11 +353,12 @@ class SquashedGaussianDistribution(Distribution):
     def prob(self, x):
         return F.exp(self.log_prob(x))
 
-    def log_prob(self, x):
+    def log_prob(self, x, eps=1e-6):
         # Note that x is tanh(raw_action)
         raw_action = _atanh(x)
-        log_probs = _gaussian_log_likelihood(
-            raw_action, self.mean, self.var, self.ln_var) - F.log(1 - x ** 2)
+        normal_log_prob = _gaussian_log_likelihood(
+            raw_action, self.mean, self.var, self.ln_var)
+        log_probs = normal_log_prob - F.log(1 - x ** 2 + eps)
         return F.sum(log_probs, axis=1)
 
     @cached_property
