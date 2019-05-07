@@ -234,8 +234,8 @@ class SoftActorCritic(AttributeSavingMixin, BatchAgent):
         predict_q1 = F.flatten(self.q_func1(batch_state, batch_actions))
         predict_q2 = F.flatten(self.q_func2(batch_state, batch_actions))
 
-        loss1 = F.mean_squared_error(target_q, predict_q1)
-        loss2 = F.mean_squared_error(target_q, predict_q2)
+        loss1 = 0.5 * F.mean_squared_error(target_q, predict_q1)
+        loss2 = 0.5 * F.mean_squared_error(target_q, predict_q2)
 
         # Update stats
         self.q1_record.extend(cuda.to_cpu(predict_q1.array))
