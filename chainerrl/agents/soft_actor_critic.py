@@ -247,6 +247,7 @@ class SoftActorCritic(AttributeSavingMixin, BatchAgent):
         self.q_func2_optimizer.update(lambda: loss2)
 
     def update_temperature(self, log_prob):
+        assert not isinstance(log_prob, chainer.Variable)
         loss = -F.mean(
             self.temperature_holder() * (log_prob + self.entropy_target))
         self.temperature_optimizer.update(lambda: loss)
