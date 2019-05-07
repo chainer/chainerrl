@@ -271,8 +271,7 @@ class SoftActorCritic(AttributeSavingMixin, BatchAgent):
         self.policy_optimizer.update(lambda: loss)
 
         if self.entropy_target is not None:
-            self.update_temperature(
-                action_distrib.log_prob(onpolicy_actions).array)
+            self.update_temperature(log_prob.array)
 
         # Record entropy
         with chainer.no_backprop_mode():
