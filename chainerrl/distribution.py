@@ -16,6 +16,7 @@ from chainer import functions as F
 from future.utils import with_metaclass
 import numpy as np
 
+from chainerrl.functions import arctanh
 from chainerrl.functions import mellowmax
 
 
@@ -324,8 +325,12 @@ def _gaussian_log_likelihood(x, mean, var, ln_var):
         ((x - mean) ** 2) / (2 * var)
 
 
-def _atanh(x, eps=1e-6):
-    return 0.5 * F.log((1 + x + eps) / (1 - x + eps))
+def _tanh_forward_log_det_jacobian(x):
+    """Stable log|det(dy/dx)| except summation where y=tanh(x).
+
+    See https://github.com/tensorflow/probability/blob/master/tensorflow_probability/python/bijectors/tanh.py  # NOQA
+    """
+    return 2. * (np.log(2.) - x - F.softplus(-2. * x))
 
 
 class SquashedGaussianDistribution(Distribution):
@@ -348,17 +353,31 @@ class SquashedGaussianDistribution(Distribution):
         return F.tanh(self.mean)
 
     def sample(self):
-        return F.tanh(F.gaussian(self.mean, self.ln_var))
+        y = F.tanh(F.gaussian(self.mean, self.ln_var))
+        # Avoid edge values that cause arctanh to go inf
+        eps = np.finfo(y.dtype).eps
+        y = F.clip(y, -1 + eps, 1 - eps)
+        if chainer.is_debug:
+            assert not (_unwrap_variable(y) == 1).any()
+            assert not (_unwrap_variable(y) == -1).any()
+        return y
 
     def prob(self, x):
         return F.exp(self.log_prob(x))
 
-    def log_prob(self, x, eps=1e-6):
+    def log_prob(self, x):
+        if chainer.is_debug:
+            assert not (_unwrap_variable(x) == 1).any()
+            assert not (_unwrap_variable(x) == -1).any()
         # Note that x is tanh(raw_action)
-        raw_action = _atanh(x)
+        raw_action = arctanh(x)
+        if chainer.is_debug:
+            xp = chainer.cuda.get_array_module(x)
+            assert xp.isfinite(_unwrap_variable(raw_action)).all()
         normal_log_prob = _gaussian_log_likelihood(
             raw_action, self.mean, self.var, self.ln_var)
-        log_probs = normal_log_prob - F.log(1 - x ** 2 + eps)
+        log_probs = normal_log_prob - _tanh_forward_log_det_jacobian(
+            raw_action)
         return F.sum(log_probs, axis=1)
 
     @cached_property
