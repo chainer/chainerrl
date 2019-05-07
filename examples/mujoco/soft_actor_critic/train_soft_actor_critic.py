@@ -67,6 +67,8 @@ def main():
                         help='Wrap env with gym.wrappers.Monitor.')
     parser.add_argument('--logger-level', type=int, default=logging.INFO,
                         help='Level of the root logger.')
+    parser.add_argument('--policy-output-scale', type=float, default=1.,
+                        help='Weight initialization scale of polity output.')
     args = parser.parse_args()
 
     logging.basicConfig(level=args.logger_level)
@@ -107,6 +109,8 @@ def main():
     action_size = action_space.low.size
 
     winit = chainer.initializers.GlorotUniform()
+    winit_policy_output = chainer.initializers.GlorotUniform(
+        args.policy_output_scale)
 
     def squashed_diagonal_gaussian_head(x):
         assert x.shape[-1] == action_size * 2
@@ -121,7 +125,7 @@ def main():
         F.relu,
         L.Linear(None, 256, initialW=winit),
         F.relu,
-        L.Linear(None, action_size * 2, initialW=winit),
+        L.Linear(None, action_size * 2, initialW=winit_policy_output),
         squashed_diagonal_gaussian_head,
     )
     policy_optimizer = optimizers.Adam(3e-4).setup(policy)
