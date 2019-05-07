@@ -290,6 +290,7 @@ class SoftActorCritic(AttributeSavingMixin, BatchAgent):
         batch = batch_experiences(experiences, self.xp, self.phi, self.gamma)
         self.update_q_func(batch)
         self.update_policy_and_temperature(batch)
+        self.sync_target_network()
 
     def select_greedy_action(self, obs, deterministic=False):
         with chainer.no_backprop_mode(), chainer.using_config('train', False):
