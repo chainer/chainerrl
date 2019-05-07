@@ -263,7 +263,6 @@ class SoftActorCritic(AttributeSavingMixin, BatchAgent):
         q2 = self.q_func2(batch_state, onpolicy_actions)
         q = F.minimum(q1, q2)
 
-        # Since we want to maximize Q, loss is negation of Q
         log_prob = action_distrib.log_prob(onpolicy_actions)
         entropy_term = self.temperature * log_prob[..., None]
         assert q.shape == entropy_term.shape
