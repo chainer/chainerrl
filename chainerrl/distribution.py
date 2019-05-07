@@ -373,7 +373,9 @@ class SquashedGaussianDistribution(Distribution):
         raw_action = arctanh(x)
         if chainer.is_debug:
             xp = chainer.cuda.get_array_module(x)
-            assert xp.isfinite(_unwrap_variable(raw_action)).all()
+            assert xp.isfinite(_unwrap_variable(raw_action)).all(),\
+                'raw_action has should be finite. x:{} raw_action:{}'.format(
+                x, raw_action)
         normal_log_prob = _gaussian_log_likelihood(
             raw_action, self.mean, self.var, self.ln_var)
         log_probs = normal_log_prob - _tanh_forward_log_det_jacobian(
