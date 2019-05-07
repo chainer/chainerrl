@@ -69,9 +69,14 @@ def main():
                         help='Level of the root logger.')
     parser.add_argument('--policy-output-scale', type=float, default=1.,
                         help='Weight initialization scale of polity output.')
+    parser.add_argument('--debug', action='store_true',
+                        help='Debug mode.')
     args = parser.parse_args()
 
     logging.basicConfig(level=args.logger_level)
+
+    if args.debug:
+        chainer.set_debug(True)
 
     args.outdir = experiments.prepare_output_dir(
         args, args.outdir, argv=sys.argv)
