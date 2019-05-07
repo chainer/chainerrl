@@ -364,7 +364,7 @@ class SquashedGaussianDistribution(Distribution):
         # Avoid edge values that cause arctanh to go inf
         eps = np.finfo(y.dtype).eps
         y = F.clip(y, -1 + eps, 1 - eps)
-        if chainer.is_debug:
+        if chainer.is_debug():
             assert not (_unwrap_variable(y) == 1).any()
             assert not (_unwrap_variable(y) == -1).any()
             xp = chainer.cuda.get_array_module(y)
@@ -376,7 +376,7 @@ class SquashedGaussianDistribution(Distribution):
         return F.exp(self.log_prob(x))
 
     def log_prob(self, x):
-        if chainer.is_debug:
+        if chainer.is_debug():
             assert not (_unwrap_variable(x) == 1).any()
             assert not (_unwrap_variable(x) == -1).any()
             xp = chainer.cuda.get_array_module(x)
@@ -384,13 +384,11 @@ class SquashedGaussianDistribution(Distribution):
                 'x should be finite. actual x:{}'.format(x)
         # Note that x is tanh(raw_action)
         raw_action = arctanh(x)
-        if chainer.is_debug:
+        if chainer.is_debug():
             xp = chainer.cuda.get_array_module(x)
             assert xp.isfinite(_unwrap_variable(raw_action)).all(),\
                 'raw_action should be finite. actual raw_action:{}'.format(
                 raw_action)
-        # normal_log_prob = _gaussian_log_likelihood(
-        #     raw_action, self.mean, self.var, self.ln_var)
         normal_log_prob = _gaussian_log_likelihood2(
             raw_action, self.mean, self.var, self.ln_var)
         log_probs = normal_log_prob - _tanh_forward_log_det_jacobian(
