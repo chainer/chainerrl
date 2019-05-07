@@ -224,7 +224,7 @@ class SoftActorCritic(AttributeSavingMixin, BatchAgent):
             next_q1 = self.target_q_func1(batch_next_state, next_actions)
             next_q2 = self.target_q_func2(batch_next_state, next_actions)
             next_q = F.minimum(next_q1, next_q2)
-            next_log_prob = next_action_distrib.log_prob(next_actions)
+            next_log_prob = next_action_distrib.log_prob(next_actions).array
             entropy_term = self.temperature * next_log_prob[..., None]
             assert next_q.shape == entropy_term.shape
 
