@@ -325,6 +325,13 @@ def _gaussian_log_likelihood(x, mean, var, ln_var):
         ((x - mean) ** 2) / (2 * var)
 
 
+def _gaussian_log_likelihood2(x, mean, var, ln_var):
+    z = (x - mean) / F.sqrt(var)
+    log_unnormalized_prob = -0.5 * z ** 2
+    log_normalization = 0.5 * np.log(2. * np.pi) + 0.5 * ln_var
+    return log_unnormalized_prob - log_normalization
+
+
 def _tanh_forward_log_det_jacobian(x):
     """Stable log|det(dy/dx)| except summation where y=tanh(x).
 
@@ -382,7 +389,9 @@ class SquashedGaussianDistribution(Distribution):
             assert xp.isfinite(_unwrap_variable(raw_action)).all(),\
                 'raw_action should be finite. actual raw_action:{}'.format(
                 raw_action)
-        normal_log_prob = _gaussian_log_likelihood(
+        # normal_log_prob = _gaussian_log_likelihood(
+        #     raw_action, self.mean, self.var, self.ln_var)
+        normal_log_prob = _gaussian_log_likelihood2(
             raw_action, self.mean, self.var, self.ln_var)
         log_probs = normal_log_prob - _tanh_forward_log_det_jacobian(
             raw_action)
