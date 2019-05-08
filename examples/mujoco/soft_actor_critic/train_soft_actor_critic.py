@@ -11,6 +11,7 @@ from future import standard_library
 standard_library.install_aliases()  # NOQA
 
 import argparse
+import functools
 import logging
 import os
 import sys
@@ -42,6 +43,8 @@ def main():
                              ' If it does not exist, it will be created.')
     parser.add_argument('--env', type=str, default='Hopper-v2',
                         help='OpenAI Gym MuJoCo env to perform algorithm on.')
+    parser.add_argument('--num-envs', type=int, default=1,
+                        help='Number of envs run in parallel.')
     parser.add_argument('--seed', type=int, default=0,
                         help='Random seed [0, 2 ** 32)')
     parser.add_argument('--gpu', type=int, default=0,
@@ -65,6 +68,9 @@ def main():
                         help='Just run evaluation, not training.')
     parser.add_argument('--monitor', action='store_true',
                         help='Wrap env with gym.wrappers.Monitor.')
+    parser.add_argument('--log-interval', type=int, default=1000,
+                        help='Interval in timesteps between outputting log'
+                             ' messages during training')
     parser.add_argument('--logger-level', type=int, default=logging.INFO,
                         help='Level of the root logger.')
     parser.add_argument('--policy-output-scale', type=float, default=1.,
@@ -85,13 +91,20 @@ def main():
     # Set a random seed used in ChainerRL
     misc.set_random_seed(args.seed, gpus=(args.gpu,))
 
-    def make_env(test):
+    # Set different random seeds for different subprocesses.
+    # If seed=0 and processes=4, subprocess seeds are [0, 1, 2, 3].
+    # If seed=1 and processes=4, subprocess seeds are [4, 5, 6, 7].
+    process_seeds = np.arange(args.num_envs) + args.seed * args.num_envs
+    assert process_seeds.max() < 2 ** 32
+
+    def make_env(process_idx, test):
         env = gym.make(args.env)
         # Unwrap TimiLimit wrapper
         assert isinstance(env, gym.wrappers.TimeLimit)
         env = env.env
         # Use different random seeds for train and test envs
-        env_seed = 2 ** 32 - 1 - args.seed if test else args.seed
+        process_seed = int(process_seeds[process_idx])
+        env_seed = 2 ** 32 - 1 - process_seed if test else process_seed
         env.seed(env_seed)
         # Cast observations to float32 because our model uses float32
         env = chainerrl.wrappers.CastObservationToFloat32(env)
@@ -103,11 +116,16 @@ def main():
             env = chainerrl.wrappers.Render(env)
         return env
 
-    env = make_env(test=False)
-    timestep_limit = env.spec.tags.get(
+    def make_batch_env(test):
+        return chainerrl.envs.MultiprocessVectorEnv(
+            [functools.partial(make_env, idx, test)
+             for idx, env in enumerate(range(args.num_envs))])
+
+    sample_env = make_env(process_idx=0, test=False)
+    timestep_limit = sample_env.spec.tags.get(
         'wrapper_config.TimeLimit.max_episode_steps')
-    obs_space = env.observation_space
-    action_space = env.action_space
+    obs_space = sample_env.observation_space
+    action_space = sample_env.action_space
     print('Observation space:', obs_space)
     print('Action space:', action_space)
 
@@ -192,24 +210,30 @@ def main():
     if len(args.load) > 0:
         agent.load(args.load)
 
-    eval_env = make_env(test=True)
     if args.demo:
         eval_stats = experiments.eval_performance(
-            env=eval_env,
+            env=make_batch_env(test=True),
             agent=agent,
             n_steps=None,
             n_episodes=args.eval_n_runs,
-            max_episode_len=timestep_limit)
+            max_episode_len=timestep_limit,
+        )
         print('n_runs: {} mean: {} median: {} stdev {}'.format(
             args.eval_n_runs, eval_stats['mean'], eval_stats['median'],
             eval_stats['stdev']))
     else:
-        experiments.train_agent_with_evaluation(
-            agent=agent, env=env, steps=args.steps,
-            eval_env=eval_env, eval_n_steps=None,
-            eval_n_episodes=args.eval_n_runs, eval_interval=args.eval_interval,
+        experiments.train_agent_batch_with_evaluation(
+            agent=agent,
+            env=make_batch_env(test=False),
+            eval_env=make_batch_env(test=True),
             outdir=args.outdir,
-            train_max_episode_len=timestep_limit)
+            steps=args.steps,
+            eval_n_steps=None,
+            eval_n_episodes=args.eval_n_runs,
+            eval_interval=args.eval_interval,
+            log_interval=args.log_interval,
+            max_episode_len=timestep_limit,
+        )
 
 
 if __name__ == '__main__':

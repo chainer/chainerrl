@@ -290,14 +290,18 @@ class SoftActorCritic(AttributeSavingMixin, BatchAgent):
         self.update_policy_and_temperature(batch)
         self.sync_target_network()
 
-    def select_greedy_action(self, obs, deterministic=False):
-        with chainer.no_backprop_mode(), chainer.using_config('train', False):
-            s = self.batch_states([obs], self.xp, self.phi)
+    def batch_select_greedy_action(self, batch_obs, deterministic=False):
+        with chainer.using_config('train', False), chainer.no_backprop_mode():
+            batch_xs = self.batch_states(batch_obs, self.xp, self.phi)
             if deterministic:
-                action = self.policy(s).most_probable.array
+                batch_action = self.policy(batch_xs).most_probable.array
             else:
-                action = self.policy(s).sample().array
-        return cuda.to_cpu(action)[0]
+                batch_action = self.policy(batch_xs).sample().array
+        return list(cuda.to_cpu(batch_action))
+
+    def select_greedy_action(self, obs, deterministic=False):
+        return self.batch_select_greedy_action(
+            [obs], deterministic=deterministic)[0]
 
     def act_and_train(self, obs, reward):
 
@@ -331,12 +335,6 @@ class SoftActorCritic(AttributeSavingMixin, BatchAgent):
     def act(self, obs):
         return self.select_greedy_action(
             obs, deterministic=self.act_deterministically)
-
-    def batch_select_greedy_action(self, batch_obs):
-        with chainer.using_config('train', False), chainer.no_backprop_mode():
-            batch_xs = self.batch_states(batch_obs, self.xp, self.phi)
-            batch_action = self.policy(batch_xs).sample().array
-        return list(cuda.to_cpu(batch_action))
 
     def batch_act(self, batch_obs):
         return self.batch_select_greedy_action(
