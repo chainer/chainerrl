@@ -126,6 +126,15 @@ class Distribution(with_metaclass(ABCMeta, object)):
         raise NotImplementedError()
 
     def sample_with_log_prob(self):
+        """Do `sample` and `log_prob` at the same time.
+
+        This can be more efficient than calling `sample` and `log_prob`
+        separately.
+
+        Returns:
+            chainer.Variable: Samples.
+            chainer.Variable: Log probability of the samples.
+        """
         y = self.samples()
         return y, self.log_prob(y)
 
@@ -372,6 +381,9 @@ class SquashedGaussianDistribution(Distribution):
         return y, F.sum(log_probs, axis=1)
 
     def sample(self):
+        # Caution: If you would like to apply `log_prob` later, use
+        # `sample_with_log_prob` instead for stability, especially when
+        # tanh(x) can be close to -1 or 1.
         y = F.tanh(F.gaussian(self.mean, self.ln_var))
         return y
 
@@ -379,7 +391,9 @@ class SquashedGaussianDistribution(Distribution):
         return F.exp(self.log_prob(x))
 
     def log_prob(self, x):
-        # Note that x is tanh(raw_action)
+        # Caution: If you would like to apply this to samples from the same
+        # distribution, use `sample_with_log_prob` instead for stability,
+        # especially when tanh(x) can be close to -1 or 1.
         raw_action = arctanh(x)
         normal_log_prob = _gaussian_log_likelihood2(
             raw_action, self.mean, self.var, self.ln_var)
