@@ -220,7 +220,8 @@ class SoftActorCritic(AttributeSavingMixin, BatchAgent):
 
         with chainer.no_backprop_mode(), chainer.using_config('train', False):
             next_action_distrib = self.policy(batch_next_state)
-            next_actions, next_log_prob = next_action_distrib.sample_with_log_prob()
+            next_actions, next_log_prob =\
+                next_action_distrib.sample_with_log_prob()
             next_q1 = self.target_q_func1(batch_next_state, next_actions)
             next_q2 = self.target_q_func2(batch_next_state, next_actions)
             next_q = F.minimum(next_q1, next_q2)
