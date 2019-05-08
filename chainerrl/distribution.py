@@ -346,10 +346,9 @@ def _gaussian_log_likelihood2(x, mean, var, ln_var):
 
 
 def _tanh_forward_log_det_jacobian(x):
-    """Stable log|det(dy/dx)| except summation where y=tanh(x).
-
-    See https://github.com/tensorflow/probability/blob/master/tensorflow_probability/python/bijectors/tanh.py  # NOQA
-    """
+    """Compute log|det(dy/dx)| except summation where y=tanh(x)."""
+    # For the derivation of this formula, see:
+    # https://github.com/tensorflow/probability/blob/master/tensorflow_probability/python/bijectors/tanh.py  # NOQA
     return 2. * (np.log(2.) - x - F.softplus(-2. * x))
 
 
