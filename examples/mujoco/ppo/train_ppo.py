@@ -11,6 +11,7 @@ from builtins import *  # NOQA
 from future import standard_library
 standard_library.install_aliases()  # NOQA
 import argparse
+import functools
 
 import chainer
 from chainer import functions as F
@@ -98,7 +99,7 @@ def main():
 
     def make_batch_env(test):
         return chainerrl.envs.MultiprocessVectorEnv(
-            [(lambda: make_env(idx, test))
+            [functools.partial(make_env, idx, test)
              for idx, env in enumerate(range(args.num_envs))])
 
     # Only for getting timesteps, and obs-action spaces
