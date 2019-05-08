@@ -125,6 +125,10 @@ class Distribution(with_metaclass(ABCMeta, object)):
         """
         raise NotImplementedError()
 
+    def sample_with_log_prob(self):
+        y = self.samples()
+        return y, self.log_prob(y)
+
 
 class CategoricalDistribution(Distribution):
     """Distribution of categorical data."""
@@ -359,36 +363,24 @@ class SquashedGaussianDistribution(Distribution):
     def most_probable(self):
         return F.tanh(self.mean)
 
+    def sample_with_log_prob(self):
+        x = F.gaussian(self.mean, self.ln_var)
+        normal_log_prob = _gaussian_log_likelihood2(
+            x, self.mean, self.var, self.ln_var)
+        log_probs = normal_log_prob - _tanh_forward_log_det_jacobian(x)
+        y = F.tanh(x)
+        return y, F.sum(log_probs, axis=1)
+
     def sample(self):
         y = F.tanh(F.gaussian(self.mean, self.ln_var))
-        # Avoid edge values that cause arctanh to go inf
-        eps = np.finfo(y.dtype).eps
-        y = F.clip(y, -1 + eps, 1 - eps)
-        if chainer.is_debug():
-            assert not (_unwrap_variable(y) == 1).any()
-            assert not (_unwrap_variable(y) == -1).any()
-            xp = chainer.cuda.get_array_module(y)
-            assert xp.isfinite(_unwrap_variable(y)).all(),\
-                'y should be finite. actual y:{}'.format(y)
         return y
 
     def prob(self, x):
         return F.exp(self.log_prob(x))
 
     def log_prob(self, x):
-        if chainer.is_debug():
-            assert not (_unwrap_variable(x) == 1).any()
-            assert not (_unwrap_variable(x) == -1).any()
-            xp = chainer.cuda.get_array_module(x)
-            assert xp.isfinite(_unwrap_variable(x)).all(),\
-                'x should be finite. actual x:{}'.format(x)
         # Note that x is tanh(raw_action)
         raw_action = arctanh(x)
-        if chainer.is_debug():
-            xp = chainer.cuda.get_array_module(x)
-            assert xp.isfinite(_unwrap_variable(raw_action)).all(),\
-                'raw_action should be finite. actual raw_action:{}'.format(
-                raw_action)
         normal_log_prob = _gaussian_log_likelihood2(
             raw_action, self.mean, self.var, self.ln_var)
         log_probs = normal_log_prob - _tanh_forward_log_det_jacobian(

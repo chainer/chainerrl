@@ -220,11 +220,10 @@ class SoftActorCritic(AttributeSavingMixin, BatchAgent):
 
         with chainer.no_backprop_mode(), chainer.using_config('train', False):
             next_action_distrib = self.policy(batch_next_state)
-            next_actions = next_action_distrib.sample().array
+            next_actions, next_log_prob = next_action_distrib.sample_with_log_prob()
             next_q1 = self.target_q_func1(batch_next_state, next_actions)
             next_q2 = self.target_q_func2(batch_next_state, next_actions)
             next_q = F.minimum(next_q1, next_q2)
-            next_log_prob = next_action_distrib.log_prob(next_actions).array
             entropy_term = self.temperature * next_log_prob[..., None]
             assert next_q.shape == entropy_term.shape
 
@@ -258,12 +257,11 @@ class SoftActorCritic(AttributeSavingMixin, BatchAgent):
         batch_state = batch['state']
 
         action_distrib = self.policy(batch_state)
-        onpolicy_actions = action_distrib.sample()
-        q1 = self.q_func1(batch_state, onpolicy_actions)
-        q2 = self.q_func2(batch_state, onpolicy_actions)
+        actions, log_prob = action_distrib.sample_with_log_prob()
+        q1 = self.q_func1(batch_state, actions)
+        q2 = self.q_func2(batch_state, actions)
         q = F.minimum(q1, q2)
 
-        log_prob = action_distrib.log_prob(onpolicy_actions)
         entropy_term = self.temperature * log_prob[..., None]
         assert q.shape == entropy_term.shape
         loss = F.mean(entropy_term - q)
