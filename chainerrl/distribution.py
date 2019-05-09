@@ -273,6 +273,14 @@ def clip_actions(actions, min_action, max_action):
     return F.maximum(F.minimum(actions, max_actions), min_actions)
 
 
+def _eltwise_gaussian_log_likelihood(x, mean, var, ln_var):
+    # log N(x|mean,var)
+    #   = -0.5log(2pi) - 0.5log(var) - (x - mean)**2 / (2*var)
+    return -0.5 * np.log(2 * np.pi) - \
+        0.5 * ln_var - \
+        ((x - mean) ** 2) / (2 * var)
+
+
 class GaussianDistribution(Distribution):
     """Gaussian distribution."""
 
@@ -296,12 +304,9 @@ class GaussianDistribution(Distribution):
         return F.exp(self.log_prob(x))
 
     def log_prob(self, x):
-        # log N(x|mean,var)
-        #   = -0.5log(2pi) - 0.5log(var) - (x - mean)**2 / (2*var)
-        log_probs = -0.5 * np.log(2 * np.pi) - \
-            0.5 * self.ln_var - \
-            ((x - self.mean) ** 2) / (2 * self.var)
-        return F.sum(log_probs, axis=1)
+        eltwise_log_prob = _eltwise_gaussian_log_likelihood(
+            x, self.mean, self.var, self.ln_var)
+        return F.sum(eltwise_log_prob, axis=1)
 
     @cached_property
     def entropy(self):
@@ -328,21 +333,6 @@ class GaussianDistribution(Distribution):
 
     def __getitem__(self, i):
         return GaussianDistribution(self.mean[i], self.var[i])
-
-
-def _gaussian_log_likelihood(x, mean, var, ln_var):
-    # log N(x|mean,var)
-    #   = -0.5log(2pi) - 0.5log(var) - (x - mean)**2 / (2*var)
-    return -0.5 * np.log(2 * np.pi) - \
-        0.5 * ln_var - \
-        ((x - mean) ** 2) / (2 * var)
-
-
-def _gaussian_log_likelihood2(x, mean, var, ln_var):
-    z = (x - mean) / F.sqrt(var)
-    log_unnormalized_prob = -0.5 * z ** 2
-    log_normalization = 0.5 * np.log(2. * np.pi) + 0.5 * ln_var
-    return log_unnormalized_prob - log_normalization
 
 
 def _tanh_forward_log_det_jacobian(x):
@@ -373,7 +363,7 @@ class SquashedGaussianDistribution(Distribution):
 
     def sample_with_log_prob(self):
         x = F.gaussian(self.mean, self.ln_var)
-        normal_log_prob = _gaussian_log_likelihood2(
+        normal_log_prob = _eltwise_gaussian_log_likelihood(
             x, self.mean, self.var, self.ln_var)
         log_probs = normal_log_prob - _tanh_forward_log_det_jacobian(x)
         y = F.tanh(x)
@@ -394,7 +384,7 @@ class SquashedGaussianDistribution(Distribution):
         # distribution, use `sample_with_log_prob` instead for stability,
         # especially when tanh(x) can be close to -1 or 1.
         raw_action = arctanh(x)
-        normal_log_prob = _gaussian_log_likelihood2(
+        normal_log_prob = _eltwise_gaussian_log_likelihood(
             raw_action, self.mean, self.var, self.ln_var)
         log_probs = normal_log_prob - _tanh_forward_log_det_jacobian(
             raw_action)
