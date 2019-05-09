@@ -81,6 +81,150 @@ def compute_weighted_value_loss(y, t, weights,
     return loss
 
 
+# class Actor(object):
+#
+#     def __init__(self, batch_greedy_action_func, explorer=None):
+#         self.batch_greedy_action_func = batch_greedy_action_func
+#
+#     def act(self, obs):
+#         return self.batch_greedy_action_func([obs])[0]
+#
+#     def act_and_train(self, obs):
+#         greedy_action = self.batch_greedy_action_func([obs])[0]
+#         if self.explorer is not None:
+#             action = self.explorer.select_action(
+#                 self.t, lambda: greedy_action, action_value=action_value)
+#         else:
+#             action = self.explorer.select_action(
+#                 self.t, lambda: greedy_action, action_value=action_value)
+#         self.t += 1
+
+
+class StateQFunctionActor(object):
+
+    def __init__(
+        self,
+        model,
+        explorer,
+        phi=lambda x: x,
+        logger=getLogger(__name__),
+        batch_states=batch_states,
+    ):
+        self.model = model
+        self.explorer = explorer
+        self.phi = phi
+        self.logger = logger
+        self.batch_states = batch_states
+
+        self.t = 0
+        self.last_state = None
+        self.last_state = None
+        self.batch_last_action = None
+        self.batch_last_action = None
+
+    @property
+    def xp(self):
+        return self.model.xp
+
+    def compute_action_value(self, batch_obs):
+        with chainer.using_config('train', False), chainer.no_backprop_mode():
+            return self.model(self.batch_states(batch_obs, self.xp, self.phi))
+
+    def act(self, obs):
+        action_value = self.compute_action_value([obs])
+        action = cuda.to_cpu(action_value.greedy_actions.array)[0]
+        return action
+
+    def act_and_train(self, obs, reward):
+
+        action_value = self.compute_action_value([obs])
+        greedy_action = cuda.to_cpu(action_value.greedy_actions.array)[0]
+
+        action = self.explorer.select_action(
+            self.t, lambda: greedy_action, action_value=action_value)
+        self.t += 1
+
+        if self.last_state is not None:
+            assert self.last_action is not None
+            # Add a transition to the replay buffer
+            self.send_to_learner(
+                state=self.last_state,
+                action=self.last_action,
+                reward=reward,
+                next_state=obs,
+                next_action=action,
+                is_state_terminal=False)
+
+        self.last_state = obs
+        self.last_action = action
+
+        return self.last_action
+
+    def stop_episode_and_train(self, state, reward, done=False):
+
+        assert self.last_state is not None
+        assert self.last_action is not None
+
+        # Add a transition to the replay buffer
+        self.replay_buffer.append(
+            state=self.last_state,
+            action=self.last_action,
+            reward=reward,
+            next_state=state,
+            next_action=self.last_action,
+            is_state_terminal=done)
+
+        self.last_state = None
+        self.last_action = None
+        self.replay_buffer.stop_current_episode()
+
+    def stop_episode(self):
+        pass
+
+    def batch_act(self, batch_obs):
+        batch_av = self.compute_action_value(batch_obs)
+        batch_argmax = cuda.to_cpu(batch_av.greedy_actions.array)
+        return batch_argmax
+
+    def batch_act_and_train(self, batch_obs):
+        batch_av = self.compute_action_value(batch_obs)
+        batch_argmax = cuda.to_cpu(batch_av.greedy_actions.array)
+        batch_action = [
+            self.explorer.select_action(
+                self.t, lambda: batch_argmax[i],
+                action_value=batch_av[i:i + 1],
+            )
+            for i in range(len(batch_obs))]
+        self.batch_last_obs = list(batch_obs)
+        self.batch_last_action = list(batch_action)
+        return batch_action
+
+    def batch_observe_and_train(self, batch_obs, batch_reward,
+                                batch_done, batch_reset):
+        for i in range(len(batch_obs)):
+            self.t += 1
+            # Update the target network
+            if self.t % self.target_update_interval == 0:
+                self.sync_target_network()
+            if self.batch_last_obs[i] is not None:
+                assert self.batch_last_action[i] is not None
+                # Add a transition to the replay buffer
+                self.replay_buffer.append(
+                    state=self.batch_last_obs[i],
+                    action=self.batch_last_action[i],
+                    reward=batch_reward[i],
+                    next_state=batch_obs[i],
+                    next_action=None,
+                    is_state_terminal=batch_done[i],
+                )
+                if batch_reset[i] or batch_done[i]:
+                    self.batch_last_obs[i] = None
+
+    def batch_observe(self, batch_obs, batch_reward,
+                      batch_done, batch_reset):
+        pass
+
+
 class DQN(agent.AttributeSavingMixin, agent.BatchAgent):
     """Deep Q-Network algorithm.
 
