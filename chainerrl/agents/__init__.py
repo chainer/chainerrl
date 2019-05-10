@@ -19,3 +19,4 @@ from chainerrl.agents.reinforce import REINFORCE  # NOQA
 from chainerrl.agents.residual_dqn import ResidualDQN  # NOQA
 from chainerrl.agents.sarsa import SARSA  # NOQA
 from chainerrl.agents.trpo import TRPO  # NOQA
+from chainerrl.agents.state_q_function_actor import StateQFunctionActor  # NOQA

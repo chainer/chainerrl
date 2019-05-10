@@ -8,14 +8,19 @@ standard_library.install_aliases()  # NOQA
 
 import copy
 from logging import getLogger
+import multiprocessing as mp
+import threading
+import time
 
 import chainer
 from chainer import cuda
 import chainer.functions as F
 
+import chainerrl
 from chainerrl import agent
 from chainerrl.misc.batch_states import batch_states
 from chainerrl.misc.copy_param import synchronize_parameters
+from chainerrl.misc.copy_param import copy_param
 from chainerrl.recurrent import Recurrent
 from chainerrl.recurrent import state_reset
 from chainerrl.replay_buffer import batch_experiences
@@ -79,150 +84,6 @@ def compute_weighted_value_loss(y, t, weights,
     elif batch_accumulator == 'sum':
         loss = loss_sum
     return loss
-
-
-# class Actor(object):
-#
-#     def __init__(self, batch_greedy_action_func, explorer=None):
-#         self.batch_greedy_action_func = batch_greedy_action_func
-#
-#     def act(self, obs):
-#         return self.batch_greedy_action_func([obs])[0]
-#
-#     def act_and_train(self, obs):
-#         greedy_action = self.batch_greedy_action_func([obs])[0]
-#         if self.explorer is not None:
-#             action = self.explorer.select_action(
-#                 self.t, lambda: greedy_action, action_value=action_value)
-#         else:
-#             action = self.explorer.select_action(
-#                 self.t, lambda: greedy_action, action_value=action_value)
-#         self.t += 1
-
-
-class StateQFunctionActor(object):
-
-    def __init__(
-        self,
-        model,
-        explorer,
-        phi=lambda x: x,
-        logger=getLogger(__name__),
-        batch_states=batch_states,
-    ):
-        self.model = model
-        self.explorer = explorer
-        self.phi = phi
-        self.logger = logger
-        self.batch_states = batch_states
-
-        self.t = 0
-        self.last_state = None
-        self.last_state = None
-        self.batch_last_action = None
-        self.batch_last_action = None
-
-    @property
-    def xp(self):
-        return self.model.xp
-
-    def compute_action_value(self, batch_obs):
-        with chainer.using_config('train', False), chainer.no_backprop_mode():
-            return self.model(self.batch_states(batch_obs, self.xp, self.phi))
-
-    def act(self, obs):
-        action_value = self.compute_action_value([obs])
-        action = cuda.to_cpu(action_value.greedy_actions.array)[0]
-        return action
-
-    def act_and_train(self, obs, reward):
-
-        action_value = self.compute_action_value([obs])
-        greedy_action = cuda.to_cpu(action_value.greedy_actions.array)[0]
-
-        action = self.explorer.select_action(
-            self.t, lambda: greedy_action, action_value=action_value)
-        self.t += 1
-
-        if self.last_state is not None:
-            assert self.last_action is not None
-            # Add a transition to the replay buffer
-            self.send_to_learner(
-                state=self.last_state,
-                action=self.last_action,
-                reward=reward,
-                next_state=obs,
-                next_action=action,
-                is_state_terminal=False)
-
-        self.last_state = obs
-        self.last_action = action
-
-        return self.last_action
-
-    def stop_episode_and_train(self, state, reward, done=False):
-
-        assert self.last_state is not None
-        assert self.last_action is not None
-
-        # Add a transition to the replay buffer
-        self.replay_buffer.append(
-            state=self.last_state,
-            action=self.last_action,
-            reward=reward,
-            next_state=state,
-            next_action=self.last_action,
-            is_state_terminal=done)
-
-        self.last_state = None
-        self.last_action = None
-        self.replay_buffer.stop_current_episode()
-
-    def stop_episode(self):
-        pass
-
-    def batch_act(self, batch_obs):
-        batch_av = self.compute_action_value(batch_obs)
-        batch_argmax = cuda.to_cpu(batch_av.greedy_actions.array)
-        return batch_argmax
-
-    def batch_act_and_train(self, batch_obs):
-        batch_av = self.compute_action_value(batch_obs)
-        batch_argmax = cuda.to_cpu(batch_av.greedy_actions.array)
-        batch_action = [
-            self.explorer.select_action(
-                self.t, lambda: batch_argmax[i],
-                action_value=batch_av[i:i + 1],
-            )
-            for i in range(len(batch_obs))]
-        self.batch_last_obs = list(batch_obs)
-        self.batch_last_action = list(batch_action)
-        return batch_action
-
-    def batch_observe_and_train(self, batch_obs, batch_reward,
-                                batch_done, batch_reset):
-        for i in range(len(batch_obs)):
-            self.t += 1
-            # Update the target network
-            if self.t % self.target_update_interval == 0:
-                self.sync_target_network()
-            if self.batch_last_obs[i] is not None:
-                assert self.batch_last_action[i] is not None
-                # Add a transition to the replay buffer
-                self.replay_buffer.append(
-                    state=self.batch_last_obs[i],
-                    action=self.batch_last_action[i],
-                    reward=batch_reward[i],
-                    next_state=batch_obs[i],
-                    next_action=None,
-                    is_state_terminal=batch_done[i],
-                )
-                if batch_reset[i] or batch_done[i]:
-                    self.batch_last_obs[i] = None
-
-    def batch_observe(self, batch_obs, batch_reward,
-                      batch_done, batch_reset):
-        pass
 
 
 class DQN(agent.AttributeSavingMixin, agent.BatchAgent):
@@ -651,6 +512,90 @@ class DQN(agent.AttributeSavingMixin, agent.BatchAgent):
         if isinstance(self.model, Recurrent):
             self.model.reset_state()
         self.replay_buffer.stop_current_episode()
+
+    def _poll_pipe(self, pipe, shared_model):
+        while pipe.poll():
+            i, cmd, data = pipe.recv()
+            self.logger.debug(
+                'Learner thread received a message from actoor %s: %s %s',
+                i, cmd, data)
+            if cmd == 'get_statistics':
+                pipe.send(self.get_statistics())
+            elif cmd == 'load':
+                self.load(data)
+                pipe.send(None)
+            elif cmd == 'save':
+                self.save(data)
+                pipe.send(None)
+            else:
+                raise RuntimeError(
+                    'Unknown command from actor: {}'.format(cmd))
+
+    def _poll_queue(self, queue):
+        while not queue.empty():
+            i, cmd, data = queue.get()
+            if cmd == 'transition':
+                self.replay_buffer.append(**data, env_id=i)
+                self.t += 1
+            elif cmd == 'stop_episode':
+                assert data is None
+                self.replay_buffer.stop_current_episode(env_id=i)
+            else:
+                raise RuntimeError(
+                    'Unknown command from actor: {}'.format(cmd))
+
+    def _learner_loop(self, shared_model, queues, pipes, stop_event):
+        # To stop this loop, call stop_event.set()
+        while not stop_event.wait(0):
+            # Poll actors for messages
+            for pipe in pipes:
+                self._poll_pipe(pipe, shared_model)
+            # Poll actors for transitions
+            for queue in queues:
+                self._poll_queue(queue)
+            # Update model if possible
+            if self.replay_updater.update_if_necessary(self.t):
+                copy_param(src=self.model, tgt=shared_model)
+            else:
+                time.sleep(1e-6)
+
+    def start_actor_learner_training(self, n_actors):
+        # Make a copy on shared memory and share among actors and a learner
+        shared_model = copy.deepcopy(self.model).to_cpu()
+        shared_arrays = chainerrl.misc.async_.extract_params_as_shared_arrays(
+            shared_model)
+        chainerrl.misc.async_.set_shared_params(shared_model, shared_arrays)
+
+        # Queues are used for actors to send transitions to a learner
+        queues = [mp.Queue() for _ in range(n_actors)]
+
+        # Pipes are used for infrequent communication
+        learner_pipes, actor_pipes = list(zip(*[
+            mp.Pipe() for _ in range(n_actors)]))
+
+        def make_actor(i):
+            return chainerrl.agents.StateQFunctionActor(
+                queue=queues[i],
+                pipe=actor_pipes[i],
+                model=shared_model,
+                explorer=self.explorer,
+                phi=self.phi,
+                batch_states=self.batch_states,
+                logger=self.logger,
+            )
+
+        stop_event = threading.Event()
+
+        learner = threading.Thread(
+            target=self._learner_loop,
+            kwargs=dict(
+                shared_model=shared_model,
+                queues=queues,
+                pipes=learner_pipes,
+                stop_event=stop_event,
+            )
+        )
+        return make_actor, learner, stop_event
 
     def get_statistics(self):
         return [
