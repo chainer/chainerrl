@@ -112,7 +112,7 @@ def main():
         env = chainerrl.wrappers.NormalizeActionSpace(env)
         if args.monitor:
             env = gym.wrappers.Monitor(env, args.outdir)
-        if args.render and not test:
+        if args.render:
             env = chainerrl.wrappers.Render(env)
         return env
 
