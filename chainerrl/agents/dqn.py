@@ -564,7 +564,6 @@ class DQN(agent.AttributeSavingMixin, agent.BatchAgent):
         shared_model = copy.deepcopy(self.model).to_cpu()
         shared_arrays = chainerrl.misc.async_.extract_params_as_shared_arrays(
             shared_model)
-        chainerrl.misc.async_.set_shared_params(shared_model, shared_arrays)
 
         # Queues are used for actors to send transitions to a learner
         queues = [mp.Queue() for _ in range(n_actors)]
@@ -574,6 +573,8 @@ class DQN(agent.AttributeSavingMixin, agent.BatchAgent):
             mp.Pipe() for _ in range(n_actors)]))
 
         def make_actor(i):
+            chainerrl.misc.async_.set_shared_params(
+                shared_model, shared_arrays)
             return chainerrl.agents.StateQFunctionActor(
                 queue=queues[i],
                 pipe=actor_pipes[i],
