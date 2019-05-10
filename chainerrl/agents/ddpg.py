@@ -13,8 +13,8 @@ import chainer
 from chainer import cuda
 import chainer.functions as F
 
-from chainerrl.agent import Agent
 from chainerrl.agent import AttributeSavingMixin
+from chainerrl.agent import BatchAgent
 from chainerrl.misc.batch_states import batch_states
 from chainerrl.misc.copy_param import synchronize_parameters
 from chainerrl.recurrent import Recurrent
@@ -40,7 +40,7 @@ class DDPGModel(chainer.Chain, RecurrentChainMixin):
         super().__init__(policy=policy, q_function=q_func)
 
 
-class DDPG(AttributeSavingMixin, Agent):
+class DDPG(AttributeSavingMixin, BatchAgent):
     """Deep Deterministic Policy Gradients.
 
     This can be used as SVG(0) by specifying a Gaussian policy instead of a
@@ -75,6 +75,9 @@ class DDPG(AttributeSavingMixin, Agent):
         logger (Logger): Logger used
         batch_states (callable): method which makes a batch of observations.
             default is `chainerrl.misc.batch_states.batch_states`
+        burnin_action_func (callable or None): If not None, this callable
+            object is used to select actions before the model is updated
+            one or more times during training.
     """
 
     saved_attributes = ('model',
@@ -95,7 +98,9 @@ class DDPG(AttributeSavingMixin, Agent):
                  episodic_update=False,
                  episodic_update_len=None,
                  logger=getLogger(__name__),
-                 batch_states=batch_states):
+                 batch_states=batch_states,
+                 burnin_action_func=None,
+                 ):
 
         self.model = model
 
@@ -132,6 +137,7 @@ class DDPG(AttributeSavingMixin, Agent):
             update_interval=update_interval,
         )
         self.batch_states = batch_states
+        self.burnin_action_func = burnin_action_func
 
         self.t = 0
         self.last_state = None
@@ -178,7 +184,6 @@ class DDPG(AttributeSavingMixin, Agent):
         batch_terminal = batch['is_state_terminal']
         batch_state = batch['state']
         batch_actions = batch['action']
-        batch_next_actions = batch['next_action']
         batchsize = len(batch_rewards)
 
         with chainer.no_backprop_mode():
@@ -193,6 +198,7 @@ class DDPG(AttributeSavingMixin, Agent):
 
             # Target Q-function observes s_{t+1} and a_{t+1}
             if isinstance(self.target_q_function, Recurrent):
+                batch_next_actions = batch['next_action']
                 self.target_q_function.update_state(
                     batch_next_state, batch_next_actions)
 
@@ -302,8 +308,12 @@ class DDPG(AttributeSavingMixin, Agent):
 
         self.logger.debug('t:%s r:%s', self.t, reward)
 
-        greedy_action = self.act(obs)
-        action = self.explorer.select_action(self.t, lambda: greedy_action)
+        if (self.burnin_action_func is not None
+                and self.actor_optimizer.t == 0):
+            action = self.burnin_action_func()
+        else:
+            greedy_action = self.act(obs)
+            action = self.explorer.select_action(self.t, lambda: greedy_action)
         self.t += 1
 
         # Update the target network
@@ -343,6 +353,96 @@ class DDPG(AttributeSavingMixin, Agent):
         self.logger.debug('t:%s a:%s q:%s',
                           self.t, action.array[0], q.array)
         return cuda.to_cpu(action.array[0])
+
+    def batch_act(self, batch_obs):
+        """Select a batch of actions for evaluation.
+
+        Args:
+            batch_obs (Sequence of ~object): Observations.
+
+        Returns:
+            Sequence of ~object: Actions.
+        """
+
+        with chainer.using_config('train', False), chainer.no_backprop_mode():
+            batch_xs = self.batch_states(batch_obs, self.xp, self.phi)
+            batch_action = self.policy(batch_xs).sample()
+            # Q is not needed here, but log it just for information
+            q = self.q_function(batch_xs, batch_action)
+
+        # Update stats
+        self.average_q *= self.average_q_decay
+        self.average_q += (1 - self.average_q_decay) * float(
+            q.array.mean(axis=0))
+        self.logger.debug('t:%s a:%s q:%s',
+                          self.t, batch_action.array[0], q.array)
+        return [cuda.to_cpu(action.array) for action in batch_action]
+
+    def batch_act_and_train(self, batch_obs):
+        """Select a batch of actions for training.
+
+        Args:
+            batch_obs (Sequence of ~object): Observations.
+
+        Returns:
+            Sequence of ~object: Actions.
+        """
+
+        if (self.burnin_action_func is not None
+                and self.actor_optimizer.t == 0):
+            batch_action = [self.burnin_action_func()
+                            for _ in range(len(batch_obs))]
+        else:
+            batch_greedy_action = self.batch_act(batch_obs)
+            batch_action = [
+                self.explorer.select_action(
+                    self.t, lambda: batch_greedy_action[i])
+                for i in range(len(batch_greedy_action))]
+
+        self.batch_last_obs = list(batch_obs)
+        self.batch_last_action = list(batch_action)
+
+        return batch_action
+
+    def batch_observe_and_train(
+            self, batch_obs, batch_reward, batch_done, batch_reset):
+        """Observe a batch of action consequences for training.
+
+        Args:
+            batch_obs (Sequence of ~object): Observations.
+            batch_reward (Sequence of float): Rewards.
+            batch_done (Sequence of boolean): Boolean values where True
+                indicates the current state is terminal.
+            batch_reset (Sequence of boolean): Boolean values where True
+                indicates the current episode will be reset, even if the
+                current state is not terminal.
+
+        Returns:
+            None
+        """
+        for i in range(len(batch_obs)):
+            self.t += 1
+            # Update the target network
+            if self.t % self.target_update_interval == 0:
+                self.sync_target_network()
+            if self.batch_last_obs[i] is not None:
+                assert self.batch_last_action[i] is not None
+                # Add a transition to the replay buffer
+                self.replay_buffer.append(
+                    state=self.batch_last_obs[i],
+                    action=self.batch_last_action[i],
+                    reward=batch_reward[i],
+                    next_state=batch_obs[i],
+                    next_action=None,
+                    is_state_terminal=batch_done[i],
+                )
+                if batch_reset[i] or batch_done[i]:
+                    self.batch_last_obs[i] = None
+            self.replay_updater.update_if_necessary(self.t)
+
+    def batch_observe(self, batch_obs, batch_reward,
+                      batch_done, batch_reset):
+        pass
 
     def stop_episode_and_train(self, state, reward, done=False):
 

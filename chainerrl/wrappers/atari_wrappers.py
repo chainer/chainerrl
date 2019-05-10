@@ -4,7 +4,6 @@ https://github.com/openai/baselines/blob/master/baselines/common/atari_wrappers.
 
 from collections import deque
 
-import cv2
 import gym
 import numpy as np
 
@@ -12,7 +11,13 @@ from gym import spaces
 
 import chainerrl
 
-cv2.ocl.setUseOpenCL(False)
+
+try:
+    import cv2
+    cv2.ocl.setUseOpenCL(False)
+    _is_cv2_available = True
+except Exception:
+    _is_cv2_available = False
 
 
 class NoopResetEnv(gym.Wrapper):
@@ -151,7 +156,12 @@ class ClipRewardEnv(gym.RewardWrapper):
 
 class WarpFrame(gym.ObservationWrapper):
     def __init__(self, env, channel_order='hwc'):
-        """Warp frames to 84x84 as done in the Nature paper and later work."""
+        """Warp frames to 84x84 as done in the Nature paper and later work.
+
+        To use this wrapper, OpenCV-Python is required.
+        """
+        if not _is_cv2_available:
+            raise RuntimeError('Cannot import cv2 module. Please install OpenCV-Python to use WarpFrame.')  # NOQA
         gym.ObservationWrapper.__init__(self, env)
         self.width = 84
         self.height = 84
@@ -183,12 +193,12 @@ class FrameStack(gym.Wrapper):
         gym.Wrapper.__init__(self, env)
         self.k = k
         self.frames = deque([], maxlen=k)
-        orig_shape = env.observation_space.shape
         self.stack_axis = {'hwc': 2, 'chw': 0}[channel_order]
-        shape = list(orig_shape)
-        shape[self.stack_axis] *= k
+        orig_obs_space = env.observation_space
+        low = np.repeat(orig_obs_space.low, k, axis=self.stack_axis)
+        high = np.repeat(orig_obs_space.high, k, axis=self.stack_axis)
         self.observation_space = spaces.Box(
-            low=0, high=255, shape=shape, dtype=np.uint8)
+            low=low, high=high, dtype=orig_obs_space.dtype)
 
     def _reset(self):
         ob = self.env.reset()
