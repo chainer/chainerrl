@@ -4,7 +4,6 @@ https://github.com/openai/baselines/blob/master/baselines/common/atari_wrappers.
 
 from collections import deque
 
-import cv2
 import gym
 import numpy as np
 
@@ -12,7 +11,13 @@ from gym import spaces
 
 import chainerrl
 
-cv2.ocl.setUseOpenCL(False)
+
+try:
+    import cv2
+    cv2.ocl.setUseOpenCL(False)
+    _is_cv2_available = True
+except Exception:
+    _is_cv2_available = False
 
 
 class NoopResetEnv(gym.Wrapper):
@@ -151,7 +156,12 @@ class ClipRewardEnv(gym.RewardWrapper):
 
 class WarpFrame(gym.ObservationWrapper):
     def __init__(self, env, channel_order='hwc'):
-        """Warp frames to 84x84 as done in the Nature paper and later work."""
+        """Warp frames to 84x84 as done in the Nature paper and later work.
+
+        To use this wrapper, OpenCV-Python is required.
+        """
+        if not _is_cv2_available:
+            raise RuntimeError('Cannot import cv2 module. Please install OpenCV-Python to use WarpFrame.')  # NOQA
         gym.ObservationWrapper.__init__(self, env)
         self.width = 84
         self.height = 84
