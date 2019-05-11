@@ -8,7 +8,6 @@ standard_library.install_aliases()  # NOQA
 import chainer
 
 from chainerrl.agents import dqn
-from chainerrl.recurrent import state_kept
 
 
 class DoubleDQN(dqn.DQN):
@@ -21,10 +20,24 @@ class DoubleDQN(dqn.DQN):
 
         batch_next_state = exp_batch['next_state']
 
-        with chainer.using_config('train', False), state_kept(self.q_function):
-            next_qout = self.q_function(batch_next_state)
+        with chainer.using_config('train', False):
+            if self.recurrent:
+                next_qout, _ = self.model.n_step_forward(
+                    batch_next_state,
+                    exp_batch['next_recurrent_state'],
+                    output_mode='concat',
+                )
+            else:
+                next_qout = self.model(batch_next_state)
 
-        target_next_qout = self.target_q_function(batch_next_state)
+        if self.recurrent:
+            target_next_qout, _ = self.target_model.n_step_forward(
+                batch_next_state,
+                exp_batch['next_recurrent_state'],
+                output_mode='concat',
+            )
+        else:
+            target_next_qout = self.target_model(batch_next_state)
 
         next_q_max = target_next_qout.evaluate_actions(
             next_qout.greedy_actions)

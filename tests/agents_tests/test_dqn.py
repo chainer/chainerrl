@@ -61,14 +61,14 @@ class TestDQNOnContinuousABC(
                    replay_start_size=100, target_update_interval=100)
 
 
-# Batch or actor-learner training with recurrent models is currently not
-# supported
-class TestDQNOnDiscretePOABC(base._TestDQNOnDiscretePOABC):
+# Actor-learner training with recurrent models is currently not supported
+class TestDQNOnDiscretePOABC(
+        _TestBatchTrainingMixin, base._TestDQNOnDiscretePOABC):
 
     def make_dqn_agent(self, env, q_func, opt, explorer, rbuf, gpu):
         return DQN(q_func, opt, rbuf, gpu=gpu, gamma=0.9, explorer=explorer,
                    replay_start_size=100, target_update_interval=100,
-                   episodic_update=True)
+                   recurrent=True)
 
 
 class TestNStepDQNOnDiscreteABC(base._TestNStepDQNOnDiscreteABC):
