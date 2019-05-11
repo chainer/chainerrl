@@ -59,9 +59,9 @@ class StateQFunctionActor(agent.AsyncAgent):
         return action
 
     def _send_to_learner(self, transition, stop_episode=False):
-        self.queue.put((self.process_idx, 'transition', transition))
+        self.queue.put(('transition', transition))
         if stop_episode:
-            self.queue.put((self.process_idx, 'stop_episode', None))
+            self.queue.put(('stop_episode', None))
 
     def act_and_train(self, obs, reward):
 
@@ -113,13 +113,13 @@ class StateQFunctionActor(agent.AsyncAgent):
         pass
 
     def save(self, dirname):
-        self.pipe.send((self.process_idx, 'save', dirname))
+        self.pipe.send(('save', dirname))
         self.pipe.recv()
 
     def load(self, dirname):
-        self.pipe.send((self.process_idx, 'load', dirname))
+        self.pipe.send(('load', dirname))
         self.pipe.recv()
 
     def get_statistics(self):
-        self.pipe.send((self.process_idx, 'get_statistics', None))
+        self.pipe.send(('get_statistics', None))
         return self.pipe.recv()

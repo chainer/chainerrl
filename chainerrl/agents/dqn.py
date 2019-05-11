@@ -562,12 +562,12 @@ class DQN(agent.AttributeSavingMixin, agent.BatchAgent):
             self.train_recurrent_states = None
         self.replay_buffer.stop_current_episode()
 
-    def _poll_pipe(self, pipe, shared_model):
+    def _poll_pipe(self, actor_idx, pipe, shared_model):
         while pipe.poll():
-            i, cmd, data = pipe.recv()
+            cmd, data = pipe.recv()
             self.logger.debug(
                 'Learner thread received a message from actoor %s: %s %s',
-                i, cmd, data)
+                actor_idx, cmd, data)
             if cmd == 'get_statistics':
                 pipe.send(self.get_statistics())
             elif cmd == 'load':
@@ -580,15 +580,15 @@ class DQN(agent.AttributeSavingMixin, agent.BatchAgent):
                 raise RuntimeError(
                     'Unknown command from actor: {}'.format(cmd))
 
-    def _poll_queue(self, queue):
+    def _poll_queue(self, actor_idx, queue):
         while not queue.empty():
-            i, cmd, data = queue.get()
+            cmd, data = queue.get()
             if cmd == 'transition':
-                self.replay_buffer.append(**data, env_id=i)
+                self.replay_buffer.append(**data, env_id=actor_idx)
                 self.t += 1
             elif cmd == 'stop_episode':
                 assert data is None
-                self.replay_buffer.stop_current_episode(env_id=i)
+                self.replay_buffer.stop_current_episode(env_id=actor_idx)
             else:
                 raise RuntimeError(
                     'Unknown command from actor: {}'.format(cmd))
@@ -597,11 +597,11 @@ class DQN(agent.AttributeSavingMixin, agent.BatchAgent):
         # To stop this loop, call stop_event.set()
         while not stop_event.wait(0):
             # Poll actors for messages
-            for pipe in pipes:
-                self._poll_pipe(pipe, shared_model)
+            for i, pipe in enumerate(pipes):
+                self._poll_pipe(i, pipe, shared_model)
             # Poll actors for transitions
-            for queue in queues:
-                self._poll_queue(queue)
+            for i, queue in enumerate(queues):
+                self._poll_queue(i, queue)
             # Update model if possible
             if self.replay_updater.update_if_necessary(self.t):
                 copy_param(source_link=self.model, target_link=shared_model)
