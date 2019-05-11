@@ -559,7 +559,7 @@ class DQN(agent.AttributeSavingMixin, agent.BatchAgent):
             else:
                 time.sleep(1e-6)
 
-    def start_actor_learner_training(self, n_actors):
+    def setup_actor_learner_training(self, n_actors):
         # Make a copy on shared memory and share among actors and a learner
         shared_model = copy.deepcopy(self.model).to_cpu()
         shared_arrays = chainerrl.misc.async_.extract_params_as_shared_arrays(
