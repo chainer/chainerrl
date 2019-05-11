@@ -16,11 +16,14 @@ from chainerrl.agents.dqn import compute_value_loss
 from chainerrl.agents.dqn import compute_weighted_value_loss
 from chainerrl.agents.dqn import DQN
 
+from basetest_training import _TestActorLearnerTrainingMixin
 from basetest_training import _TestBatchTrainingMixin
 
 
 class TestDQNOnDiscreteABC(
-        _TestBatchTrainingMixin, base._TestDQNOnDiscreteABC):
+        _TestActorLearnerTrainingMixin,
+        _TestBatchTrainingMixin,
+        base._TestDQNOnDiscreteABC):
 
     def make_dqn_agent(self, env, q_func, opt, explorer, rbuf, gpu):
         return DQN(q_func, opt, rbuf, gpu=gpu, gamma=0.9, explorer=explorer,
@@ -38,7 +41,9 @@ class TestDQNOnDiscreteABC(
 
 
 class TestDQNOnDiscreteABCBoltzmann(
-        _TestBatchTrainingMixin, base._TestDQNOnDiscreteABC):
+        _TestActorLearnerTrainingMixin,
+        _TestBatchTrainingMixin,
+        base._TestDQNOnDiscreteABC):
 
     def make_dqn_agent(self, env, q_func, opt, explorer, rbuf, gpu):
         explorer = chainerrl.explorers.Boltzmann()
@@ -47,14 +52,17 @@ class TestDQNOnDiscreteABCBoltzmann(
 
 
 class TestDQNOnContinuousABC(
-        _TestBatchTrainingMixin, base._TestDQNOnContinuousABC):
+        _TestActorLearnerTrainingMixin,
+        _TestBatchTrainingMixin,
+        base._TestDQNOnContinuousABC):
 
     def make_dqn_agent(self, env, q_func, opt, explorer, rbuf, gpu):
         return DQN(q_func, opt, rbuf, gpu=gpu, gamma=0.9, explorer=explorer,
                    replay_start_size=100, target_update_interval=100)
 
 
-# Batch training with recurrent models is currently not supported
+# Batch or actor-learner training with recurrent models is currently not
+# supported
 class TestDQNOnDiscretePOABC(base._TestDQNOnDiscretePOABC):
 
     def make_dqn_agent(self, env, q_func, opt, explorer, rbuf, gpu):
