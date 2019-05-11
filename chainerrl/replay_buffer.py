@@ -524,15 +524,23 @@ class ReplayUpdater(object):
         self.update_interval = update_interval
 
     def update_if_necessary(self, iteration):
+        """Update the model if the condition is met.
+
+        Args:
+            iteration (int): Timestep.
+
+        Returns:
+            bool: True iff the condition was updated this time.
+        """
         if len(self.replay_buffer) < self.replay_start_size:
-            return
+            return False
 
         if (self.episodic_update
                 and self.replay_buffer.n_episodes < self.batchsize):
-            return
+            return False
 
         if iteration % self.update_interval != 0:
-            return
+            return False
 
         for _ in range(self.n_times_update):
             if self.episodic_update:
@@ -542,3 +550,4 @@ class ReplayUpdater(object):
             else:
                 transitions = self.replay_buffer.sample(self.batchsize)
                 self.update_func(transitions)
+        return True

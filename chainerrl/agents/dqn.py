@@ -170,6 +170,8 @@ class DQN(agent.AttributeSavingMixin, agent.BatchAgent):
             replay_start_size=replay_start_size,
             update_interval=update_interval,
         )
+        assert target_update_interval % update_interval == 0,\
+            "target_update_interval should be a multiple of update_interval"
 
         self.t = 0
         self.last_state = None
@@ -555,9 +557,15 @@ class DQN(agent.AttributeSavingMixin, agent.BatchAgent):
                 self._poll_queue(queue)
             # Update model if possible
             if self.replay_updater.update_if_necessary(self.t):
-                copy_param(src=self.model, tgt=shared_model)
-            else:
-                time.sleep(1e-6)
+                copy_param(source_link=self.model, target_link=shared_model)
+                # To keep the ratio of target updates to model updates,
+                # here we calculate back the effective current timestep from
+                # update_interval and number of updates so far.
+                effective_timestep = (
+                    self.optimizer.t * self.replay_updater.update_interval)
+                if effective_timestep % self.target_update_interval == 0:
+                    self.sync_target_network()
+            time.sleep(1e-6)
 
     def setup_actor_learner_training(self, n_actors):
         # Make a copy on shared memory and share among actors and a learner
