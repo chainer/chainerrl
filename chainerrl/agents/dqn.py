@@ -7,6 +7,7 @@ from future import standard_library
 standard_library.install_aliases()  # NOQA
 
 import copy
+import collections
 from logging import getLogger
 import multiprocessing as mp
 import threading
@@ -15,6 +16,7 @@ import time
 import chainer
 from chainer import cuda
 import chainer.functions as F
+import numpy as np
 
 import chainerrl
 from chainerrl import agent
@@ -24,6 +26,11 @@ from chainerrl.misc.copy_param import copy_param
 from chainerrl.replay_buffer import batch_experiences
 from chainerrl.replay_buffer import batch_recurrent_experiences
 from chainerrl.replay_buffer import ReplayUpdater
+
+
+def _mean_or_nan(xs):
+    """Return its mean a non-empty sequence, numpy.nan for a empty one."""
+    return np.mean(xs) if xs else np.nan
 
 
 def compute_value_loss(y, t, clip_delta=True, batch_accumulator='mean'):
@@ -128,10 +135,6 @@ class DQN(agent.AttributeSavingMixin, agent.BatchAgent):
         target_update_method (str): 'hard' or 'soft'.
         soft_update_tau (float): Tau of soft target update.
         n_times_update (int): Number of repetition of update
-        average_q_decay (float): Decay rate of average Q, only used for
-            recording statistics
-        average_loss_decay (float): Decay rate of average loss, only used for
-            recording statistics
         batch_accumulator (str): 'mean' or 'sum'
         episodic_update_len (int or None): Subsequences of this length are used
             for update if set int and episodic_update=True
@@ -152,8 +155,7 @@ class DQN(agent.AttributeSavingMixin, agent.BatchAgent):
                  phi=lambda x: x,
                  target_update_method='hard',
                  soft_update_tau=1e-2,
-                 n_times_update=1, average_q_decay=0.999,
-                 average_loss_decay=0.99,
+                 n_times_update=1,
                  batch_accumulator='mean',
                  episodic_update_len=None,
                  logger=getLogger(__name__),
@@ -207,10 +209,10 @@ class DQN(agent.AttributeSavingMixin, agent.BatchAgent):
         self.sync_target_network()
         # For backward compatibility
         self.target_q_function = self.target_model
-        self.average_q = 0
-        self.average_q_decay = average_q_decay
-        self.average_loss = 0
-        self.average_loss_decay = average_loss_decay
+
+        # Statistics
+        self.q_record = collections.deque(maxlen=1000)
+        self.loss_record = collections.deque(maxlen=100)
 
         # Recurrent states of the model
         self.train_recurrent_states = None
@@ -277,9 +279,7 @@ class DQN(agent.AttributeSavingMixin, agent.BatchAgent):
         if has_weight:
             self.replay_buffer.update_errors(errors_out)
 
-        # Update stats
-        self.average_loss *= self.average_loss_decay
-        self.average_loss += (1 - self.average_loss_decay) * float(loss.array)
+        self.loss_record.append(float(loss.array))
 
         self.model.cleargrads()
         loss.backward()
@@ -295,10 +295,7 @@ class DQN(agent.AttributeSavingMixin, agent.BatchAgent):
             batch_states=self.batch_states,
         )
         loss = self._compute_loss(exp_batch, errors_out=None)
-        # Update stats
-        self.average_loss *= self.average_loss_decay
-        self.average_loss += (1 - self.average_loss_decay) * float(loss.array)
-        self.optimizer.update(lambda: loss)
+        self.loss_record.append(float(loss.array))
 
     def _compute_target_values(self, exp_batch):
         batch_next_state = exp_batch['next_state']
@@ -354,6 +351,8 @@ class DQN(agent.AttributeSavingMixin, agent.BatchAgent):
         """
         y, t = self._compute_y_and_t(exp_batch)
 
+        self.q_record.extend(cuda.to_cpu(y.array).ravel())
+
         if errors_out is not None:
             del errors_out[:]
             delta = F.absolute(y - t)
@@ -378,10 +377,6 @@ class DQN(agent.AttributeSavingMixin, agent.BatchAgent):
                 self._evaluate_model_and_update_test_recurrent_states([obs])
             q = float(action_value.max.array)
             action = cuda.to_cpu(action_value.greedy_actions.array)[0]
-
-        # Update stats
-        self.average_q *= self.average_q_decay
-        self.average_q += (1 - self.average_q_decay) * q
 
         self.logger.debug('t:%s q:%s action_value:%s', self.t, q, action_value)
         return action
@@ -426,10 +421,6 @@ class DQN(agent.AttributeSavingMixin, agent.BatchAgent):
         action = self.explorer.select_action(
             self.t, lambda: greedy_action, action_value=action_value)
 
-        # Update stats
-        self.average_q *= self.average_q_decay
-        self.average_q += (1 - self.average_q_decay) * q
-
         self.t += 1
         self.last_state = obs
         self.last_action = action
@@ -462,7 +453,6 @@ class DQN(agent.AttributeSavingMixin, agent.BatchAgent):
         with chainer.using_config('train', False), chainer.no_backprop_mode():
             batch_av = self._evaluate_model_and_update_train_recurrent_states(
                 batch_obs)
-            batch_maxq = batch_av.max.array
             batch_argmax = cuda.to_cpu(batch_av.greedy_actions.array)
         batch_action = [
             self.explorer.select_action(
@@ -472,10 +462,6 @@ class DQN(agent.AttributeSavingMixin, agent.BatchAgent):
             for i in range(len(batch_obs))]
         self.batch_last_obs = list(batch_obs)
         self.batch_last_action = list(batch_action)
-
-        # Update stats
-        self.average_q *= self.average_q_decay
-        self.average_q += (1 - self.average_q_decay) * float(batch_maxq.mean())
 
         return batch_action
 
@@ -673,7 +659,7 @@ class DQN(agent.AttributeSavingMixin, agent.BatchAgent):
 
     def get_statistics(self):
         return [
-            ('average_q', self.average_q),
-            ('average_loss', self.average_loss),
+            ('average_q', _mean_or_nan(self.q_record)),
+            ('average_loss', _mean_or_nan(self.loss_record)),
             ('n_updates', self.optimizer.t),
         ]
