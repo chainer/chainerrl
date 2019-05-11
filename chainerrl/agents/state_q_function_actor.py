@@ -28,6 +28,7 @@ class StateQFunctionActor(agent.AsyncAgent):
         model,
         explorer,
         phi=lambda x: x,
+        recurrent=False,
         logger=getLogger(__name__),
         batch_states=batch_states,
     ):
@@ -36,26 +37,47 @@ class StateQFunctionActor(agent.AsyncAgent):
         self.model = model
         self.explorer = explorer
         self.phi = phi
+        self.recurrent = recurrent
         self.logger = logger
         self.batch_states = batch_states
 
         self.t = 0
         self.last_state = None
-        self.last_state = None
-        self.batch_last_action = None
-        self.batch_last_action = None
+        self.last_action = None
+
+        # Recurrent states of the model
+        self.train_recurrent_states = None
+        self.train_prev_recurrent_states = None
+        self.test_recurrent_states = None
 
     @property
     def xp(self):
         return self.model.xp
 
-    def compute_action_value(self, batch_obs):
-        with chainer.using_config('train', False), chainer.no_backprop_mode():
-            return self.model(self.batch_states(batch_obs, self.xp, self.phi))
+    def _evaluate_model_and_update_train_recurrent_states(self, batch_obs):
+        batch_xs = self.batch_states(batch_obs, self.xp, self.phi)
+        if self.recurrent:
+            self.train_prev_recurrent_states = self.train_recurrent_states
+            batch_av, self.train_recurrent_states = self.model(
+                batch_xs, self.train_recurrent_states)
+        else:
+            batch_av = self.model(batch_xs)
+        return batch_av
+
+    def _evaluate_model_and_update_test_recurrent_states(self, batch_obs):
+        batch_xs = self.batch_states(batch_obs, self.xp, self.phi)
+        if self.recurrent:
+            batch_av, self.test_recurrent_states = self.model(
+                batch_xs, self.test_recurrent_states)
+        else:
+            batch_av = self.model(batch_xs)
+        return batch_av
 
     def act(self, obs):
-        action_value = self.compute_action_value([obs])
-        action = cuda.to_cpu(action_value.greedy_actions.array)[0]
+        with chainer.using_config('train', False), chainer.no_backprop_mode():
+            action_value =\
+                self._evaluate_model_and_update_test_recurrent_states([obs])
+            action = cuda.to_cpu(action_value.greedy_actions.array)[0]
         return action
 
     def _send_to_learner(self, transition, stop_episode=False):
@@ -65,8 +87,10 @@ class StateQFunctionActor(agent.AsyncAgent):
 
     def act_and_train(self, obs, reward):
 
-        action_value = self.compute_action_value([obs])
-        greedy_action = cuda.to_cpu(action_value.greedy_actions.array)[0]
+        with chainer.using_config('train', False), chainer.no_backprop_mode():
+            action_value =\
+                self._evaluate_model_and_update_train_recurrent_states([obs])
+            greedy_action = cuda.to_cpu(action_value.greedy_actions.array)[0]
 
         action = self.explorer.select_action(
             self.t, lambda: greedy_action, action_value=action_value)
@@ -75,15 +99,23 @@ class StateQFunctionActor(agent.AsyncAgent):
         if self.last_state is not None:
             assert self.last_action is not None
             # Add a transition to the replay buffer
-            self._send_to_learner(dict(
-                state=self.last_state,
-                action=self.last_action,
-                reward=reward,
-                next_state=obs,
-                next_action=action,
-                is_state_terminal=False),
-                stop_episode=False,
-            )
+            transition = {
+                'state': self.last_state,
+                'action': self.last_action,
+                'reward': reward,
+                'next_state': obs,
+                'is_state_terminal': False,
+            }
+            if self.recurrent:
+                transition['recurrent_state'] =\
+                    self.model.get_recurrent_state_at(
+                        self.train_prev_recurrent_states,
+                        0, unwrap_variable=True)
+                self.train_prev_recurrent_states = None
+                transition['next_recurrent_state'] =\
+                    self.model.get_recurrent_state_at(
+                        self.train_recurrent_states, 0, unwrap_variable=True)
+            self._send_to_learner(transition)
 
         self.last_state = obs
         self.last_action = action
@@ -96,21 +128,31 @@ class StateQFunctionActor(agent.AsyncAgent):
         assert self.last_action is not None
 
         # Add a transition to the replay buffer
-        self._send_to_learner(dict(
-            state=self.last_state,
-            action=self.last_action,
-            reward=reward,
-            next_state=state,
-            next_action=self.last_action,
-            is_state_terminal=done),
-            stop_episode=True,
-        )
+        transition = {
+            'state': self.last_state,
+            'action': self.last_action,
+            'reward': reward,
+            'next_state': state,
+            'is_state_terminal': done,
+        }
+        if self.recurrent:
+            transition['recurrent_state'] =\
+                self.model.get_recurrent_state_at(
+                    self.train_prev_recurrent_states, 0, unwrap_variable=True)
+            self.train_prev_recurrent_states = None
+            transition['next_recurrent_state'] =\
+                self.model.get_recurrent_state_at(
+                    self.train_recurrent_states, 0, unwrap_variable=True)
+        self._send_to_learner(transition, stop_episode=True)
 
         self.last_state = None
         self.last_action = None
+        if self.recurrent:
+            self.train_recurrent_states = None
 
     def stop_episode(self):
-        pass
+        if self.recurrent:
+            self.test_recurrent_states = None
 
     def save(self, dirname):
         self.pipe.send(('save', dirname))

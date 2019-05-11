@@ -638,6 +638,7 @@ class DQN(agent.AttributeSavingMixin, agent.BatchAgent):
                 phi=self.phi,
                 batch_states=self.batch_states,
                 logger=self.logger,
+                recurrent=self.recurrent,
             )
 
         stop_event = threading.Event()
