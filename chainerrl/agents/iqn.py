@@ -418,6 +418,7 @@ class IQN(dqn.DQN):
             )
 
         stop_event = threading.Event()
+        replay_buffer_lock = threading.Lock()
 
         learner = threading.Thread(
             target=self._learner_loop,
@@ -425,6 +426,7 @@ class IQN(dqn.DQN):
                 shared_model=shared_model,
                 queues=queues,
                 pipes=learner_pipes,
+                replay_buffer_lock=replay_buffer_lock,
                 stop_event=stop_event,
             )
         )
