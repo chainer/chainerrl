@@ -6,12 +6,17 @@ from builtins import *  # NOQA
 from future import standard_library
 standard_library.install_aliases()  # NOQA
 
+import copy
+import multiprocessing as mp
+import threading
+
 import chainer
 from chainer import cuda
 import chainer.functions as F
 import chainer.links as L
 import numpy as np
 
+import chainerrl
 from chainerrl.action_value import QuantileDiscreteActionValue
 from chainerrl.agents import dqn
 from chainerrl.links import StatelessRecurrentChainList
@@ -378,3 +383,46 @@ class IQN(dqn.DQN):
             0, 1,
             size=(len(batch_obs), self.quantile_thresholds_K)).astype('f')
         return tau2av(taus_tilde)
+
+    def setup_actor_learner_training(self, n_actors):
+        # Override DQN.setup_actor_learner_training to use
+        # `ImplicitQuantileStateQFunctionActor`, not `StateQFunctionActor`.
+
+        # Make a copy on shared memory and share among actors and a learner
+        shared_model = copy.deepcopy(self.model).to_cpu()
+        shared_arrays = chainerrl.misc.async_.extract_params_as_shared_arrays(
+            shared_model)
+
+        # Queues are used for actors to send transitions to a learner
+        queues = [mp.Queue() for _ in range(n_actors)]
+
+        # Pipes are used for infrequent communication
+        learner_pipes, actor_pipes = list(zip(*[
+            mp.Pipe() for _ in range(n_actors)]))
+
+        def make_actor(i):
+            chainerrl.misc.async_.set_shared_params(
+                shared_model, shared_arrays)
+            return chainerrl.agents.ImplicitQuantileStateQFunctionActor(
+                queue=queues[i],
+                pipe=actor_pipes[i],
+                model=shared_model,
+                explorer=self.explorer,
+                phi=self.phi,
+                batch_states=self.batch_states,
+                logger=self.logger,
+                recurrent=self.recurrent,
+            )
+
+        stop_event = threading.Event()
+
+        learner = threading.Thread(
+            target=self._learner_loop,
+            kwargs=dict(
+                shared_model=shared_model,
+                queues=queues,
+                pipes=learner_pipes,
+                stop_event=stop_event,
+            )
+        )
+        return make_actor, learner, stop_event
