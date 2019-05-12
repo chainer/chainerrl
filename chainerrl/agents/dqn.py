@@ -567,10 +567,8 @@ class DQN(agent.AttributeSavingMixin, agent.BatchAgent):
     def _poll_pipe(self, actor_idx, pipe, shared_model):
         while pipe.poll():
             cmd, data = pipe.recv()
-            self.logger.debug(
-                'Learner thread received a message from actoor %s: %s %s',
-                actor_idx, cmd, data)
             if cmd == 'get_statistics':
+                assert data is None
                 pipe.send(self.get_statistics())
             elif cmd == 'load':
                 self.load(data)
@@ -578,14 +576,7 @@ class DQN(agent.AttributeSavingMixin, agent.BatchAgent):
             elif cmd == 'save':
                 self.save(data)
                 pipe.send(None)
-            else:
-                raise RuntimeError(
-                    'Unknown command from actor: {}'.format(cmd))
-
-    def _poll_queue(self, actor_idx, queue):
-        while not queue.empty():
-            cmd, data = queue.get()
-            if cmd == 'transition':
+            elif cmd == 'transition':
                 self.replay_buffer.append(**data, env_id=actor_idx)
                 self.t += 1
             elif cmd == 'stop_episode':
@@ -595,15 +586,12 @@ class DQN(agent.AttributeSavingMixin, agent.BatchAgent):
                 raise RuntimeError(
                     'Unknown command from actor: {}'.format(cmd))
 
-    def _learner_loop(self, shared_model, queues, pipes, stop_event):
+    def _learner_loop(self, shared_model, pipes, stop_event):
         # To stop this loop, call stop_event.set()
         while not stop_event.wait(0):
             # Poll actors for messages
             for i, pipe in enumerate(pipes):
                 self._poll_pipe(i, pipe, shared_model)
-            # Poll actors for transitions
-            for i, queue in enumerate(queues):
-                self._poll_queue(i, queue)
             # Update model if possible
             if self.replay_updater.update_if_necessary(self.t):
                 copy_param(source_link=self.model, target_link=shared_model)
@@ -622,9 +610,6 @@ class DQN(agent.AttributeSavingMixin, agent.BatchAgent):
         shared_arrays = chainerrl.misc.async_.extract_params_as_shared_arrays(
             shared_model)
 
-        # Queues are used for actors to send transitions to a learner
-        queues = [mp.Queue() for _ in range(n_actors)]
-
         # Pipes are used for infrequent communication
         learner_pipes, actor_pipes = list(zip(*[
             mp.Pipe() for _ in range(n_actors)]))
@@ -633,7 +618,6 @@ class DQN(agent.AttributeSavingMixin, agent.BatchAgent):
             chainerrl.misc.async_.set_shared_params(
                 shared_model, shared_arrays)
             return chainerrl.agents.StateQFunctionActor(
-                queue=queues[i],
                 pipe=actor_pipes[i],
                 model=shared_model,
                 explorer=self.explorer,
@@ -649,7 +633,6 @@ class DQN(agent.AttributeSavingMixin, agent.BatchAgent):
             target=self._learner_loop,
             kwargs=dict(
                 shared_model=shared_model,
-                queues=queues,
                 pipes=learner_pipes,
                 stop_event=stop_event,
             )
