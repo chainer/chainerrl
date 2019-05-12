@@ -295,6 +295,7 @@ class DQN(agent.AttributeSavingMixin, agent.BatchAgent):
             batch_states=self.batch_states,
         )
         loss = self._compute_loss(exp_batch, errors_out=None)
+        self.optimizer.update(lambda: loss)
         self.loss_record.append(float(loss.array))
 
     def _compute_target_values(self, exp_batch):
