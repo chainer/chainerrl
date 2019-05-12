@@ -81,6 +81,11 @@ class SoftActorCritic(AttributeSavingMixin, BatchAgent):
             `entropy_target` is set to None, the temperature is fixed to it.
         entropy_target (float or None): If set to a float, the temperature is
             adjusted during training to match the policy's entropy to it.
+        temperature_optimizer (Optimizer or None): Optimizer used to optimize
+            the temperature. If set to None, Adam with default hyperparameters
+            is used.
+        act_deterministically (bool): If set to True, choose most probable
+            actions in the act method instead of sampling from distributions.
     """
 
     saved_attributes = (
@@ -112,7 +117,6 @@ class SoftActorCritic(AttributeSavingMixin, BatchAgent):
             update_interval=1,
             phi=lambda x: x,
             soft_update_tau=5e-3,
-            n_times_update=1,
             logger=getLogger(__name__),
             batch_states=batch_states,
             burnin_action_func=None,
