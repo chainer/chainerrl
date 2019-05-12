@@ -199,6 +199,11 @@ class DQN(agent.AttributeSavingMixin, agent.BatchAgent):
             replay_start_size=replay_start_size,
             update_interval=update_interval,
         )
+        self.minibatch_size = minibatch_size
+        self.episodic_update_len = episodic_update_len
+        self.replay_start_size = replay_start_size
+        self.update_interval = update_interval
+
         assert target_update_interval % update_interval == 0,\
             "target_update_interval should be a multiple of update_interval"
 
@@ -564,7 +569,15 @@ class DQN(agent.AttributeSavingMixin, agent.BatchAgent):
             self.train_recurrent_states = None
         self.replay_buffer.stop_current_episode()
 
-    def _poll_pipe(self, actor_idx, pipe, shared_model):
+    def _can_start_replay(self):
+        if len(self.replay_buffer) < self.replay_start_size:
+            return False
+        if (self.recurrent
+                and self.replay_buffer.n_episodes < self.minibatch_size):
+            return False
+        return True
+
+    def _poll_pipe(self, actor_idx, pipe):
         while pipe.poll():
             cmd, data = pipe.recv()
             self.logger.debug(
@@ -582,39 +595,72 @@ class DQN(agent.AttributeSavingMixin, agent.BatchAgent):
                 raise RuntimeError(
                     'Unknown command from actor: {}'.format(cmd))
 
-    def _poll_queue(self, actor_idx, queue):
+    def _poll_queue(self, actor_idx, queue, replay_buffer_lock):
         while not queue.empty():
             cmd, data = queue.get()
             if cmd == 'transition':
-                self.replay_buffer.append(**data, env_id=actor_idx)
+                with replay_buffer_lock:
+                    self.replay_buffer.append(**data, env_id=actor_idx)
                 self.t += 1
             elif cmd == 'stop_episode':
                 assert data is None
-                self.replay_buffer.stop_current_episode(env_id=actor_idx)
+                with replay_buffer_lock:
+                    self.replay_buffer.stop_current_episode(env_id=actor_idx)
             else:
                 raise RuntimeError(
                     'Unknown command from actor: {}'.format(cmd))
 
-    def _learner_loop(self, shared_model, queues, pipes, stop_event):
+    def _learner_loop(self, queues, pipes, shared_model, replay_buffer_lock,
+                      stop_event):
+
+        poller = threading.Thread(
+            target=self._poller_loop,
+            kwargs=dict(
+                queues=queues,
+                pipes=pipes,
+                replay_buffer_lock=replay_buffer_lock,
+                stop_event=stop_event,
+            )
+        )
+        poller.start()
+
         # To stop this loop, call stop_event.set()
         while not stop_event.wait(0):
+            time.sleep(1e-6)
+            # Update model if possible
+            if not self._can_start_replay():
+                continue
+            if self.recurrent:
+                with replay_buffer_lock:
+                    episodes = self.replay_buffer.sample_episodes(
+                        self.minibatch_size, self.episodic_update_len)
+                self.update_from_episodes(episodes)
+            else:
+                with replay_buffer_lock:
+                    transitions = self.replay_buffer.sample(
+                        self.minibatch_size)
+                self.update(transitions)
+            copy_param(source_link=self.model,
+                       target_link=shared_model)
+            # To keep the ratio of target updates to model updates,
+            # here we calculate back the effective current timestep
+            # from update_interval and number of updates so far.
+            effective_timestep = self.optimizer.t * self.update_interval
+            if effective_timestep % self.target_update_interval == 0:
+                self.sync_target_network()
+
+        poller.join()
+
+    def _poller_loop(self, queues, pipes, replay_buffer_lock, stop_event):
+        # To stop this loop, call stop_event.set()
+        while not stop_event.wait(0):
+            time.sleep(1e-6)
             # Poll actors for messages
             for i, pipe in enumerate(pipes):
-                self._poll_pipe(i, pipe, shared_model)
+                self._poll_pipe(i, pipe)
             # Poll actors for transitions
             for i, queue in enumerate(queues):
-                self._poll_queue(i, queue)
-            # Update model if possible
-            if self.replay_updater.update_if_necessary(self.t):
-                copy_param(source_link=self.model, target_link=shared_model)
-                # To keep the ratio of target updates to model updates,
-                # here we calculate back the effective current timestep from
-                # update_interval and number of updates so far.
-                effective_timestep = (
-                    self.optimizer.t * self.replay_updater.update_interval)
-                if effective_timestep % self.target_update_interval == 0:
-                    self.sync_target_network()
-            time.sleep(1e-6)
+                self._poll_queue(i, queue, replay_buffer_lock)
 
     def setup_actor_learner_training(self, n_actors):
         # Make a copy on shared memory and share among actors and a learner
@@ -644,13 +690,15 @@ class DQN(agent.AttributeSavingMixin, agent.BatchAgent):
             )
 
         stop_event = threading.Event()
+        replay_buffer_lock = threading.Lock()
 
         learner = threading.Thread(
             target=self._learner_loop,
             kwargs=dict(
-                shared_model=shared_model,
                 queues=queues,
                 pipes=learner_pipes,
+                shared_model=shared_model,
+                replay_buffer_lock=replay_buffer_lock,
                 stop_event=stop_event,
             )
         )
