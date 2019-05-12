@@ -345,6 +345,8 @@ class IQN(dqn.DQN):
         with chainer.no_backprop_mode():
             t = self._compute_target_values(exp_batch)
 
+        self.q_record.extend(cuda.to_cpu(y.array.mean(axis=1)).ravel())
+
         eltwise_loss = compute_eltwise_huber_quantile_loss(y, t, taus)
 
         if errors_out is not None:
