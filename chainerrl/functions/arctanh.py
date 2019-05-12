@@ -6,7 +6,7 @@ from chainer.utils import type_check
 
 class Arctanh(function_node.FunctionNode):
 
-    """Inverse hyperbolic tangent function."""
+    """Elementwise inverse hyperbolic tangent function."""
 
     def check_type_forward(self, in_types):
         type_check._argname(in_types, ('x',))
@@ -29,15 +29,13 @@ class Arctanh(function_node.FunctionNode):
 
 
 def arctanh(x):
-    """Inverse hyperbolic tangent function.
+    """Elementwise inverse hyperbolic tangent function.
 
     Args:
-        x (:class:`~chainer.Variable` or :ref:`ndarray`):
-            Input variable. A :math:`(s_1, s_2, ..., s_N)`-shaped float array.
+        x (:class:`~chainer.Variable` or :ref:`ndarray`): Input variable.
 
     Returns:
-        ~chainer.Variable: Output variable. A
-        :math:`(s_1, s_2, ..., s_N)`-shaped float array.
+        ~chainer.Variable: Output variable.
 
     """
     return Arctanh().apply((x,))[0]
