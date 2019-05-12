@@ -49,6 +49,8 @@ Agent implementations
 
 .. autoclass:: chainerrl.agents.SARSA
 
+.. autoclass:: chainerrl.agents.SoftActorCritic
+
 .. autoclass:: chainerrl.agents.TD3
 
 .. autoclass:: chainerrl.agents.TRPO
