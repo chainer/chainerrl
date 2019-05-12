@@ -305,7 +305,7 @@ def main():
             eval_stats['stdev']))
     else:
 
-        make_actor, learner, stop_event = agent.start_actor_learner_training(
+        make_actor, learner, stop_event = agent.setup_actor_learner_training(
             args.num_envs)
 
         learner.start()
