@@ -414,6 +414,7 @@ class IQN(dqn.DQN):
                 batch_states=self.batch_states,
                 logger=self.logger,
                 recurrent=self.recurrent,
+                quantile_thresholds_K=self.quantile_thresholds_K,
             )
 
         stop_event = threading.Event()
