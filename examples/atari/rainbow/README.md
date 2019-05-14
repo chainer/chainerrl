@@ -33,11 +33,11 @@ These results reflect ChainerRL  `v0.6.0`.
 | Number of ties between paper and ChainerRL | 2 | 
 
 
-| Game        | ChainerRL Score           | Rainbow Paper Scores |
+| Game        | ChainerRL Score           | Original Reported Scores |
 | ------------- |:-------------:|:-------------:|
-| AirRaid | **6926.1**| N/A|
+| AirRaid | 6926.1| N/A|
 | Alien | 9376.0| **9491.7**|
-| Amidar | N/A| **5131.2**|
+| Amidar | N/A| 5131.2|
 | Assault | **16203.2**| 14198.5|
 | Asterix | **674122.5**| 428200.3|
 | Asteroids | **20008.5**| 2712.8|
@@ -49,10 +49,11 @@ These results reflect ChainerRL  `v0.6.0`.
 | Bowling | **80.8**| 30.0|
 | Boxing | 99.4| **99.6**|
 | Breakout | 360.6| **417.5**|
+| Carnival | 6050.1| N/A|
 | Centipede | **8429.7**| 8167.3|
 | ChopperCommand | **19403.5**| 16654.0|
 | CrazyClimber | **177331.0**| 168788.5|
-| Defender | N/A| **55105.0**|
+| Defender | N/A| 55105.0|
 | DemonAttack | 109342.0| **111185.2**|
 | DoubleDunk | -6.8| **-0.3**|
 | Enduro | 2125.8| **2125.9**|
@@ -63,21 +64,21 @@ These results reflect ChainerRL  `v0.6.0`.
 | Gravitar | **2437.3**| 1419.3|
 | Hero | 37921.8| **55887.4**|
 | IceHockey | **6.2**| 1.1|
-| Jamesbond | **20242.0**| N/A|
+| Jamesbond | 20242.0| N/A|
 | Kangaroo | **14825.0**| 14637.5|
 | Krull | 7896.7| **8741.5**|
 | KungFuMaster | 32833.5| **52181.0**|
 | MontezumaRevenge | 0.0| **384.0**|
 | MsPacman | 5223.1| **5380.4**|
-| NameThisGame | N/A| **13136.0**|
+| NameThisGame | N/A| 13136.0|
 | Phoenix | **280612.8**| 108528.6|
-| Pitfall | **-2.2**| N/A|
-| Pitfall! | N/A| **0.0**|
+| Pitfall | -2.2| N/A|
+| Pitfall! | N/A| 0.0|
 | Pong | **20.9**| **20.9**|
-| Pooyan | **20962.1**| N/A|
+| Pooyan | 20962.1| N/A|
 | PrivateEye | 100.0| **4234.0**|
 | Qbert | **39152.5**| 33817.5|
-| Riverraid | **18084.6**| N/A|
+| Riverraid | 18084.6| N/A|
 | RoadRunner | **68956.5**| 62041.0|
 | Robotank | **74.3**| 61.4|
 | Seaquest | 1836.7| **15898.9**|
@@ -85,16 +86,18 @@ These results reflect ChainerRL  `v0.6.0`.
 | Solaris | **7086.3**| 3560.3|
 | SpaceInvaders | 9352.0| **18789.0**|
 | StarGunner | **211851.5**| 127029.0|
-| Surround | N/A| **9.7**|
+| Surround | N/A| 9.7|
 | Tennis | **-0.0**| **0.0**|
 | TimePilot | **27177.0**| 12926.0|
 | Tutankham | 161.1| **241.0**|
-| UpNDown | **260453.0**| N/A|
+| UpNDown | 260453.0| N/A|
 | Venture | **1359.5**| 5.5|
 | VideoPinball | 465601.0| **533936.5**|
 | WizardOfWor | **22575.0**| 17862.5|
 | YarsRevenge | 80853.9| **102557.0**|
 | Zaxxon | **25779.5**| 22209.5|
+
+
 
 
 ## Evaluation Protocol
@@ -114,9 +117,9 @@ Our evaluation protocol is designed to mirror the evaluation protocol of the ori
 
 Time statistics...
 
-| Statistic        |            |               |
+| Statistic        |            |            |
 | ------------- |:-------------:|:-------------:|
-| Mean time (in days) across all domains        |  11.8833772893 |
+| Mean time (in days) across all domains        |  11.8778333366 |
 | Fastest Domain |  Assault | 11.1949926343 |
 | Slowest Domain |  Krull | 12.4206600419 |
-				
+
