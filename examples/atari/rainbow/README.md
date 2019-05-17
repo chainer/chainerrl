@@ -98,8 +98,6 @@ These results reflect ChainerRL  `v0.6.0`.
 | Zaxxon | **25779.5**| 22209.5|
 
 
-
-
 ## Evaluation Protocol
 Our evaluation protocol is designed to mirror the evaluation protocol of the original paper as closely as possible, in order to offer a fair comparison of the quality of our example implementation. Specifically, the details of our evaluation (also can be found in the code) are the following:
 
