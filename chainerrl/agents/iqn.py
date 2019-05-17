@@ -395,9 +395,6 @@ class IQN(dqn.DQN):
         shared_arrays = chainerrl.misc.async_.extract_params_as_shared_arrays(
             shared_model)
 
-        # Queues are used for actors to send transitions to a learner
-        queues = [mp.Queue() for _ in range(n_actors)]
-
         # Pipes are used for infrequent communication
         learner_pipes, actor_pipes = list(zip(*[
             mp.Pipe() for _ in range(n_actors)]))
@@ -406,7 +403,6 @@ class IQN(dqn.DQN):
             chainerrl.misc.async_.set_shared_params(
                 shared_model, shared_arrays)
             return chainerrl.agents.ImplicitQuantileStateQFunctionActor(
-                queue=queues[i],
                 pipe=actor_pipes[i],
                 model=shared_model,
                 explorer=self.explorer,
@@ -424,7 +420,6 @@ class IQN(dqn.DQN):
             target=self._learner_loop,
             kwargs=dict(
                 shared_model=shared_model,
-                queues=queues,
                 pipes=learner_pipes,
                 replay_buffer_lock=replay_buffer_lock,
                 stop_event=stop_event,

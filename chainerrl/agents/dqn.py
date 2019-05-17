@@ -6,8 +6,8 @@ from builtins import *  # NOQA
 from future import standard_library
 standard_library.install_aliases()  # NOQA
 
-import copy
 import collections
+import copy
 from logging import getLogger
 import multiprocessing as mp
 import threading
@@ -21,8 +21,8 @@ import numpy as np
 import chainerrl
 from chainerrl import agent
 from chainerrl.misc.batch_states import batch_states
-from chainerrl.misc.copy_param import synchronize_parameters
 from chainerrl.misc.copy_param import copy_param
+from chainerrl.misc.copy_param import synchronize_parameters
 from chainerrl.replay_buffer import batch_experiences
 from chainerrl.replay_buffer import batch_recurrent_experiences
 from chainerrl.replay_buffer import ReplayUpdater
@@ -577,13 +577,11 @@ class DQN(agent.AttributeSavingMixin, agent.BatchAgent):
             return False
         return True
 
-    def _poll_pipe(self, actor_idx, pipe):
+    def _poll_pipe(self, actor_idx, pipe, replay_buffer_lock):
         while pipe.poll():
             cmd, data = pipe.recv()
-            self.logger.debug(
-                'Learner thread received a message from actoor %s: %s %s',
-                actor_idx, cmd, data)
             if cmd == 'get_statistics':
+                assert data is None
                 pipe.send(self.get_statistics())
             elif cmd == 'load':
                 self.load(data)
@@ -591,17 +589,9 @@ class DQN(agent.AttributeSavingMixin, agent.BatchAgent):
             elif cmd == 'save':
                 self.save(data)
                 pipe.send(None)
-            else:
-                raise RuntimeError(
-                    'Unknown command from actor: {}'.format(cmd))
-
-    def _poll_queue(self, actor_idx, queue, replay_buffer_lock):
-        while not queue.empty():
-            cmd, data = queue.get()
-            if cmd == 'transition':
+            elif cmd == 'transition':
                 with replay_buffer_lock:
                     self.replay_buffer.append(**data, env_id=actor_idx)
-                self.t += 1
             elif cmd == 'stop_episode':
                 assert data is None
                 with replay_buffer_lock:
@@ -610,13 +600,12 @@ class DQN(agent.AttributeSavingMixin, agent.BatchAgent):
                 raise RuntimeError(
                     'Unknown command from actor: {}'.format(cmd))
 
-    def _learner_loop(self, queues, pipes, shared_model, replay_buffer_lock,
+    def _learner_loop(self, pipes, shared_model, replay_buffer_lock,
                       stop_event):
 
         poller = threading.Thread(
             target=self._poller_loop,
             kwargs=dict(
-                queues=queues,
                 pipes=pipes,
                 replay_buffer_lock=replay_buffer_lock,
                 stop_event=stop_event,
@@ -651,25 +640,19 @@ class DQN(agent.AttributeSavingMixin, agent.BatchAgent):
 
         poller.join()
 
-    def _poller_loop(self, queues, pipes, replay_buffer_lock, stop_event):
+    def _poller_loop(self, pipes, replay_buffer_lock, stop_event):
         # To stop this loop, call stop_event.set()
         while not stop_event.wait(0):
             time.sleep(1e-6)
             # Poll actors for messages
             for i, pipe in enumerate(pipes):
-                self._poll_pipe(i, pipe)
-            # Poll actors for transitions
-            for i, queue in enumerate(queues):
-                self._poll_queue(i, queue, replay_buffer_lock)
+                self._poll_pipe(i, pipe, replay_buffer_lock)
 
     def setup_actor_learner_training(self, n_actors):
         # Make a copy on shared memory and share among actors and a learner
         shared_model = copy.deepcopy(self.model).to_cpu()
         shared_arrays = chainerrl.misc.async_.extract_params_as_shared_arrays(
             shared_model)
-
-        # Queues are used for actors to send transitions to a learner
-        queues = [mp.Queue() for _ in range(n_actors)]
 
         # Pipes are used for infrequent communication
         learner_pipes, actor_pipes = list(zip(*[
@@ -679,7 +662,6 @@ class DQN(agent.AttributeSavingMixin, agent.BatchAgent):
             chainerrl.misc.async_.set_shared_params(
                 shared_model, shared_arrays)
             return chainerrl.agents.StateQFunctionActor(
-                queue=queues[i],
                 pipe=actor_pipes[i],
                 model=shared_model,
                 explorer=self.explorer,
@@ -695,9 +677,8 @@ class DQN(agent.AttributeSavingMixin, agent.BatchAgent):
         learner = threading.Thread(
             target=self._learner_loop,
             kwargs=dict(
-                queues=queues,
-                pipes=learner_pipes,
                 shared_model=shared_model,
+                pipes=learner_pipes,
                 replay_buffer_lock=replay_buffer_lock,
                 stop_event=stop_event,
             )

@@ -23,7 +23,6 @@ class StateQFunctionActor(agent.AsyncAgent):
 
     def __init__(
         self,
-        queue,
         pipe,
         model,
         explorer,
@@ -32,7 +31,6 @@ class StateQFunctionActor(agent.AsyncAgent):
         logger=getLogger(__name__),
         batch_states=batch_states,
     ):
-        self.queue = queue
         self.pipe = pipe
         self.model = model
         self.explorer = explorer
@@ -81,9 +79,9 @@ class StateQFunctionActor(agent.AsyncAgent):
         return action
 
     def _send_to_learner(self, transition, stop_episode=False):
-        self.queue.put(('transition', transition))
+        self.pipe.send(('transition', transition))
         if stop_episode:
-            self.queue.put(('stop_episode', None))
+            self.pipe.send(('stop_episode', None))
 
     def act_and_train(self, obs, reward):
 
