@@ -105,6 +105,8 @@ We aim to follow the original paper's evaluation protocol as closely as possible
 
 Time statistics...
 
+We trained with 17 CPUs and no GPU.
+
 | Statistic        |            |            |
 | ------------- |:-------------:|:-------------:|
 | Mean time (in days) across all domains        |  1.08299383309 |
