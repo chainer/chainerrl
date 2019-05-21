@@ -386,7 +386,7 @@ class IQN(dqn.DQN):
             size=(len(batch_obs), self.quantile_thresholds_K)).astype('f')
         return tau2av(taus_tilde)
 
-    def setup_actor_learner_training(self, n_actors):
+    def setup_actor_learner_training(self, n_actors, n_updates=None):
         # Override DQN.setup_actor_learner_training to use
         # `ImplicitQuantileStateQFunctionActor`, not `StateQFunctionActor`.
 
@@ -413,16 +413,30 @@ class IQN(dqn.DQN):
                 quantile_thresholds_K=self.quantile_thresholds_K,
             )
 
-        stop_event = threading.Event()
         replay_buffer_lock = threading.Lock()
 
-        learner = threading.Thread(
+        poller_stop_event = mp.Event()
+        poller = chainerrl.misc.StoppableThread(
+            target=self._poller_loop,
+            kwargs=dict(
+                pipes=learner_pipes,
+                replay_buffer_lock=replay_buffer_lock,
+                stop_event=poller_stop_event,
+            ),
+            stop_event=poller_stop_event,
+        )
+
+        learner_stop_event = mp.Event()
+        learner = chainerrl.misc.StoppableThread(
             target=self._learner_loop,
             kwargs=dict(
                 shared_model=shared_model,
                 pipes=learner_pipes,
                 replay_buffer_lock=replay_buffer_lock,
-                stop_event=stop_event,
-            )
+                stop_event=learner_stop_event,
+                n_updates=n_updates,
+            ),
+            stop_event=learner_stop_event,
         )
-        return make_actor, learner, stop_event
+
+        return make_actor, learner, poller

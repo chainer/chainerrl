@@ -209,11 +209,11 @@ class _TestActorLearnerTrainingMixin(object):
 
         # Train
         if steps > 0:
-            make_actor, learner, stop_event =\
+            make_actor, learner, poller =\
                 agent.setup_actor_learner_training(n_actors=2)
 
+            poller.start()
             learner.start()
-
             train_agent_async(
                 processes=2,
                 steps=steps,
@@ -224,10 +224,12 @@ class _TestActorLearnerTrainingMixin(object):
                 successful_score=successful_return,
                 make_env=make_env,
                 make_agent=make_actor,
+                stop_event=learner.stop_event,
             )
-
-            stop_event.set()
+            learner.stop()
             learner.join()
+            poller.stop()
+            poller.join()
 
         # Test
 

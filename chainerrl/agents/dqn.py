@@ -10,7 +10,6 @@ import collections
 import copy
 from logging import getLogger
 import multiprocessing as mp
-import threading
 import time
 
 import chainer
@@ -578,47 +577,48 @@ class DQN(agent.AttributeSavingMixin, agent.BatchAgent):
         return True
 
     def _poll_pipe(self, actor_idx, pipe, replay_buffer_lock):
-        while pipe.poll():
-            cmd, data = pipe.recv()
-            if cmd == 'get_statistics':
-                assert data is None
-                pipe.send(self.get_statistics())
-            elif cmd == 'load':
-                self.load(data)
-                pipe.send(None)
-            elif cmd == 'save':
-                self.save(data)
-                pipe.send(None)
-            elif cmd == 'transition':
-                with replay_buffer_lock:
-                    self.replay_buffer.append(**data, env_id=actor_idx)
-            elif cmd == 'stop_episode':
-                assert data is None
-                with replay_buffer_lock:
-                    self.replay_buffer.stop_current_episode(env_id=actor_idx)
-            else:
-                raise RuntimeError(
-                    'Unknown command from actor: {}'.format(cmd))
+        if pipe.closed:
+            return
+        try:
+            while pipe.poll():
+                cmd, data = pipe.recv()
+                if cmd == 'get_statistics':
+                    assert data is None
+                    pipe.send(self.get_statistics())
+                elif cmd == 'load':
+                    self.load(data)
+                    pipe.send(None)
+                elif cmd == 'save':
+                    self.save(data)
+                    pipe.send(None)
+                elif cmd == 'transition':
+                    with replay_buffer_lock:
+                        self.replay_buffer.append(**data, env_id=actor_idx)
+                elif cmd == 'stop_episode':
+                    assert data is None
+                    with replay_buffer_lock:
+                        self.replay_buffer.stop_current_episode(
+                            env_id=actor_idx)
+                else:
+                    raise RuntimeError(
+                        'Unknown command from actor: {}'.format(cmd))
+        except EOFError:
+            pipe.close()
 
     def _learner_loop(self, pipes, shared_model, replay_buffer_lock,
-                      stop_event):
-
-        poller = threading.Thread(
-            target=self._poller_loop,
-            kwargs=dict(
-                pipes=pipes,
-                replay_buffer_lock=replay_buffer_lock,
-                stop_event=stop_event,
-            )
-        )
-        poller.start()
+                      stop_event, n_updates=None):
 
         # To stop this loop, call stop_event.set()
-        while not stop_event.wait(0):
+        while not stop_event.is_set():
             time.sleep(1e-6)
             # Update model if possible
             if not self._can_start_replay():
                 continue
+            if n_updates is not None:
+                assert self.optimizer.t <= n_updates
+                if self.optimizer.t == n_updates:
+                    stop_event.set()
+                    break
             if self.recurrent:
                 with replay_buffer_lock:
                     episodes = self.replay_buffer.sample_episodes(
@@ -638,17 +638,15 @@ class DQN(agent.AttributeSavingMixin, agent.BatchAgent):
             if effective_timestep % self.target_update_interval == 0:
                 self.sync_target_network()
 
-        poller.join()
-
     def _poller_loop(self, pipes, replay_buffer_lock, stop_event):
         # To stop this loop, call stop_event.set()
-        while not stop_event.wait(0):
+        while not stop_event.is_set():
             time.sleep(1e-6)
             # Poll actors for messages
             for i, pipe in enumerate(pipes):
                 self._poll_pipe(i, pipe, replay_buffer_lock)
 
-    def setup_actor_learner_training(self, n_actors):
+    def setup_actor_learner_training(self, n_actors, n_updates=None):
         # Make a copy on shared memory and share among actors and a learner
         shared_model = copy.deepcopy(self.model).to_cpu()
         shared_arrays = chainerrl.misc.async_.extract_params_as_shared_arrays(
@@ -671,19 +669,33 @@ class DQN(agent.AttributeSavingMixin, agent.BatchAgent):
                 recurrent=self.recurrent,
             )
 
-        stop_event = threading.Event()
-        replay_buffer_lock = threading.Lock()
+        replay_buffer_lock = mp.Lock()
 
-        learner = threading.Thread(
+        poller_stop_event = mp.Event()
+        poller = chainerrl.misc.StoppableThread(
+            target=self._poller_loop,
+            kwargs=dict(
+                pipes=learner_pipes,
+                replay_buffer_lock=replay_buffer_lock,
+                stop_event=poller_stop_event,
+            ),
+            stop_event=poller_stop_event,
+        )
+
+        learner_stop_event = mp.Event()
+        learner = chainerrl.misc.StoppableThread(
             target=self._learner_loop,
             kwargs=dict(
                 shared_model=shared_model,
                 pipes=learner_pipes,
                 replay_buffer_lock=replay_buffer_lock,
-                stop_event=stop_event,
-            )
+                stop_event=learner_stop_event,
+                n_updates=n_updates,
+            ),
+            stop_event=learner_stop_event,
         )
-        return make_actor, learner, stop_event
+
+        return make_actor, learner, poller
 
     def stop_episode(self):
         if self.recurrent:
