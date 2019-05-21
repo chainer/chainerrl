@@ -13,7 +13,7 @@ python train_a3c.py [options]
 ```
 
 ### Useful Options
-- `--gpu`. Specifies the GPU. If you do not have a GPU on your machine, run the example with the option `--gpu -1`. E.g. `python train_dqn.py --gpu -1`.
+- `--gpu`. Specifies the GPU. If you do not have a GPU on your machine, run the example with the option `--gpu -1`. E.g. `python train_a3c.py --gpu -1`.
 - `--env`. Specifies the environment. 
 - `--render`. Add this option to render the states in a GUI window.
 - `--seed`. This option specifies the random seed used.
@@ -22,11 +22,11 @@ python train_a3c.py [options]
 To view the full list of options, either view the code or run the example with the `--help` option.
 
 ## Results
-These results reflect ChainerRL  `v0.6.0`. The ChainerRL score currently consists of a single run. The reported results are compared against the scores from the [Noisy Networks Paper](https://arxiv.org/pdf/1706.10295.pdf), since the original paper does not report scores for the no-op evaluation protocol.
+These results reflect ChainerRL  `v0.6.0`. The ChainerRL score currently consists of a single run. The reported results are compared against the scores from the [Noisy Networks Paper](https://arxiv.org/abs/1706.10295), since the original paper does not report scores for the no-op evaluation protocol.
 
 We use the best intermediate scores on each domain to evaluate A3C.
 
-We aim to follow the original paper's evaluation protocol as closely as possible.
+We aim to follow the evaluation protocol from the [Noisy Networks Paper](https://arxiv.org/abs/1706.10295) as closely as possible. The reported results are from the [Noisy Networks Paper](https://arxiv.org/abs/1706.10295), Table 3.
 
 | Results Summary ||
 | ------------- |:-------------:|
@@ -102,8 +102,6 @@ We aim to follow the original paper's evaluation protocol as closely as possible
 
 
 ## Training times
-
-Time statistics...
 
 We trained with 17 CPUs and no GPU.
 
