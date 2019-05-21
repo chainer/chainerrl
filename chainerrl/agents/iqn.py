@@ -419,6 +419,7 @@ class IQN(dqn.DQN):
         poller = chainerrl.misc.StoppableThread(
             target=self._poller_loop,
             kwargs=dict(
+                shared_model=shared_model,
                 pipes=learner_pipes,
                 replay_buffer_lock=replay_buffer_lock,
                 stop_event=poller_stop_event,
@@ -430,7 +431,6 @@ class IQN(dqn.DQN):
         learner = chainerrl.misc.StoppableThread(
             target=self._learner_loop,
             kwargs=dict(
-                shared_model=shared_model,
                 pipes=learner_pipes,
                 replay_buffer_lock=replay_buffer_lock,
                 stop_event=learner_stop_event,

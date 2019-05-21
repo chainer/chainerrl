@@ -605,9 +605,10 @@ class DQN(agent.AttributeSavingMixin, agent.BatchAgent):
         except EOFError:
             pipe.close()
 
-    def _learner_loop(self, pipes, shared_model, replay_buffer_lock,
-                      stop_event, n_updates=None):
+    def _learner_loop(self, pipes, replay_buffer_lock, stop_event,
+                      n_updates=None):
 
+        # Device.use should be called in a new thread
         self.model.device.use()
         # To stop this loop, call stop_event.set()
         while not stop_event.is_set():
@@ -630,8 +631,6 @@ class DQN(agent.AttributeSavingMixin, agent.BatchAgent):
                     transitions = self.replay_buffer.sample(
                         self.minibatch_size)
                 self.update(transitions)
-            copy_param(source_link=self.model,
-                       target_link=shared_model)
             # To keep the ratio of target updates to model updates,
             # here we calculate back the effective current timestep
             # from update_interval and number of updates so far.
@@ -639,13 +638,17 @@ class DQN(agent.AttributeSavingMixin, agent.BatchAgent):
             if effective_timestep % self.target_update_interval == 0:
                 self.sync_target_network()
 
-    def _poller_loop(self, pipes, replay_buffer_lock, stop_event):
+    def _poller_loop(self, shared_model, pipes, replay_buffer_lock,
+                     stop_event):
         # To stop this loop, call stop_event.set()
         while not stop_event.is_set():
             time.sleep(1e-6)
             # Poll actors for messages
             for i, pipe in enumerate(pipes):
                 self._poll_pipe(i, pipe, replay_buffer_lock)
+            # Synchronize shared model
+            copy_param(source_link=self.model,
+                       target_link=shared_model)
 
     def setup_actor_learner_training(self, n_actors, n_updates=None):
         # Make a copy on shared memory and share among actors and a learner
@@ -676,6 +679,7 @@ class DQN(agent.AttributeSavingMixin, agent.BatchAgent):
         poller = chainerrl.misc.StoppableThread(
             target=self._poller_loop,
             kwargs=dict(
+                shared_model=shared_model,
                 pipes=learner_pipes,
                 replay_buffer_lock=replay_buffer_lock,
                 stop_event=poller_stop_event,
@@ -687,7 +691,6 @@ class DQN(agent.AttributeSavingMixin, agent.BatchAgent):
         learner = chainerrl.misc.StoppableThread(
             target=self._learner_loop,
             kwargs=dict(
-                shared_model=shared_model,
                 pipes=learner_pipes,
                 replay_buffer_lock=replay_buffer_lock,
                 stop_event=learner_stop_event,
