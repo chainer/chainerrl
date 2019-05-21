@@ -305,11 +305,11 @@ def main():
             eval_stats['stdev']))
     else:
 
-        make_actor, learner, stop_event = agent.setup_actor_learner_training(
+        make_actor, learner, poller = agent.setup_actor_learner_training(
             args.num_envs)
 
+        poller.start()
         learner.start()
-
         experiments.train_agent_async(
             processes=args.num_envs,
             make_agent=make_actor,
@@ -319,10 +319,12 @@ def main():
             eval_n_episodes=args.eval_n_runs,
             eval_interval=args.eval_interval,
             outdir=args.outdir,
+            stop_event=learner.stop_event,
         )
-
-        stop_event.set()
+        learner.stop()
         learner.join()
+        poller.stop()
+        poller.join()
 
 
 if __name__ == '__main__':
