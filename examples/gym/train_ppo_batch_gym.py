@@ -14,70 +14,21 @@ from builtins import *  # NOQA
 from future import standard_library
 standard_library.install_aliases()  # NOQA
 import argparse
+import functools
 
 import chainer
 from chainer import functions as F
+from chainer import links as L
 import gym
+import gym.spaces
 import gym.wrappers
 import numpy as np
 
 import chainerrl
-from chainerrl.agents import a3c
 from chainerrl.agents import PPO
 from chainerrl import experiments
-from chainerrl import links
 from chainerrl import misc
 from chainerrl.optimizers.nonbias_weight_decay import NonbiasWeightDecay
-from chainerrl import policies
-
-
-class A3CFFSoftmax(chainer.ChainList, a3c.A3CModel):
-    """An example of A3C feedforward softmax policy."""
-
-    def __init__(self, ndim_obs, n_actions, hidden_sizes=(200, 200)):
-        self.pi = policies.SoftmaxPolicy(
-            model=links.MLP(ndim_obs, n_actions, hidden_sizes))
-        self.v = links.MLP(ndim_obs, 1, hidden_sizes=hidden_sizes)
-        super().__init__(self.pi, self.v)
-
-    def pi_and_v(self, state):
-        return self.pi(state), self.v(state)
-
-
-class A3CFFMellowmax(chainer.ChainList, a3c.A3CModel):
-    """An example of A3C feedforward mellowmax policy."""
-
-    def __init__(self, ndim_obs, n_actions, hidden_sizes=(200, 200)):
-        self.pi = policies.MellowmaxPolicy(
-            model=links.MLP(ndim_obs, n_actions, hidden_sizes))
-        self.v = links.MLP(ndim_obs, 1, hidden_sizes=hidden_sizes)
-        super().__init__(self.pi, self.v)
-
-    def pi_and_v(self, state):
-        return self.pi(state), self.v(state)
-
-
-class A3CFFGaussian(chainer.Chain, a3c.A3CModel):
-    """An example of A3C feedforward Gaussian policy."""
-
-    def __init__(self, obs_size, action_space,
-                 n_hidden_layers=2, n_hidden_channels=64,
-                 bound_mean=None):
-        assert bound_mean in [False, True]
-        super().__init__()
-        hidden_sizes = (n_hidden_channels,) * n_hidden_layers
-        with self.init_scope():
-            self.pi = policies.FCGaussianPolicyWithStateIndependentCovariance(
-                obs_size, action_space.low.size,
-                n_hidden_layers, n_hidden_channels,
-                var_type='diagonal', nonlinearity=F.tanh,
-                bound_mean=bound_mean,
-                min_action=action_space.low, max_action=action_space.high,
-                mean_wscale=1e-2)
-            self.v = links.MLP(obs_size, 1, hidden_sizes=hidden_sizes)
-
-    def pi_and_v(self, state):
-        return self.pi(state), self.v(state)
 
 
 def main():
@@ -87,10 +38,6 @@ def main():
     parser.add_argument('--gpu', type=int, default=0)
     parser.add_argument('--env', type=str, default='Hopper-v2')
     parser.add_argument('--num-envs', type=int, default=1)
-    parser.add_argument('--arch', type=str, default='FFGaussian',
-                        choices=('FFSoftmax', 'FFMellowmax',
-                                 'FFGaussian'))
-    parser.add_argument('--bound-mean', action='store_true')
     parser.add_argument('--seed', type=int, default=0,
                         help='Random seed [0, 2 ** 32)')
     parser.add_argument('--outdir', type=str, default='results',
@@ -150,7 +97,7 @@ def main():
 
     def make_batch_env(test):
         return chainerrl.envs.MultiprocessVectorEnv(
-            [(lambda: make_env(idx, test))
+            [functools.partial(make_env, idx, test)
              for idx, env in enumerate(range(args.num_envs))])
 
     # Only for getting timesteps, and obs-action spaces
@@ -164,14 +111,49 @@ def main():
     obs_normalizer = chainerrl.links.EmpiricalNormalization(
         obs_space.low.size, clip_threshold=5)
 
+    winit_last = chainer.initializers.LeCunNormal(1e-2)
+
     # Switch policy types accordingly to action space types
-    if args.arch == 'FFSoftmax':
-        model = A3CFFSoftmax(obs_space.low.size, action_space.n)
-    elif args.arch == 'FFMellowmax':
-        model = A3CFFMellowmax(obs_space.low.size, action_space.n)
-    elif args.arch == 'FFGaussian':
-        model = A3CFFGaussian(obs_space.low.size, action_space,
-                              bound_mean=args.bound_mean)
+    if isinstance(action_space, gym.spaces.Discrete):
+        n_actions = action_space.n
+        policy = chainer.Sequential(
+            L.Linear(None, 64),
+            F.tanh,
+            L.Linear(None, 64),
+            F.tanh,
+            L.Linear(None, n_actions, initialW=winit_last),
+            chainerrl.distribution.SoftmaxDistribution,
+        )
+    elif isinstance(action_space, gym.spaces.Box):
+        action_size = action_space.low.size
+        policy = chainer.Sequential(
+            L.Linear(None, 64),
+            F.tanh,
+            L.Linear(None, 64),
+            F.tanh,
+            L.Linear(None, action_size, initialW=winit_last),
+            chainerrl.policies.GaussianHeadWithStateIndependentCovariance(
+                action_size=action_size,
+                var_type='diagonal',
+                var_func=lambda x: F.exp(2 * x),  # Parameterize log std
+                var_param_init=0,  # log std = 0 => std = 1
+            ),
+        )
+    else:
+        print("""\
+This example only supports gym.spaces.Box or gym.spaces.Discrete action spaces.""")  # NOQA
+        return
+
+    vf = chainer.Sequential(
+        L.Linear(None, 64),
+        F.tanh,
+        L.Linear(None, 64),
+        F.tanh,
+        L.Linear(None, 1),
+    )
+
+    # Combine a policy and a value function into a single model
+    model = chainerrl.links.Branched(policy, vf)
 
     opt = chainer.optimizers.Adam(alpha=args.lr, eps=1e-5)
     opt.setup(model)
@@ -208,13 +190,6 @@ def main():
         lr_decay_hook = experiments.LinearInterpolationHook(
             args.steps, args.lr, 0, lr_setter)
 
-        # Linearly decay the clipping parameter to zero
-        def clip_eps_setter(env, agent, value):
-            agent.clip_eps = value
-
-        clip_eps_decay_hook = experiments.LinearInterpolationHook(
-            args.steps, 0.2, 0, clip_eps_setter)
-
         experiments.train_agent_batch_with_evaluation(
             agent=agent,
             env=make_batch_env(False),
@@ -230,7 +205,6 @@ def main():
             save_best_so_far_agent=False,
             step_hooks=[
                 lr_decay_hook,
-                clip_eps_decay_hook,
             ],
         )
 

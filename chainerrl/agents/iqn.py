@@ -79,7 +79,7 @@ class ImplicitQuantileQFunction(chainer.Chain):
             -> (batch_size * n_taus, n_actions).
 
     Returns:
-        ImplicitQuantileDiscreteActionValue: Action values.
+        QuantileDiscreteActionValue: Action values.
     """
 
     def __init__(self, psi, phi, f):
@@ -202,7 +202,7 @@ class IQN(dqn.DQN):
             chainer.Variable: (batch_size, N_prime).
         """
         batch_next_state = exp_batch['next_state']
-        batch_size = batch_next_state.shape[0]
+        batch_size = len(exp_batch['reward'])
         taus_tilde = self.xp.random.uniform(
             0, 1, size=(batch_size, self.quantile_thresholds_K)).astype('f')
 
@@ -340,8 +340,8 @@ class IQN(dqn.DQN):
 
     def batch_act_and_train(self, batch_obs):
         batch_av = self._compute_action_value(batch_obs)
-        batch_maxq = batch_av.max.data
-        batch_argmax = cuda.to_cpu(batch_av.greedy_actions.data)
+        batch_maxq = batch_av.max.array
+        batch_argmax = cuda.to_cpu(batch_av.greedy_actions.array)
         batch_action = [
             self.explorer.select_action(
                 self.t, lambda: batch_argmax[i],
@@ -359,5 +359,5 @@ class IQN(dqn.DQN):
 
     def batch_act(self, batch_obs):
         batch_av = self._compute_action_value(batch_obs)
-        batch_argmax = cuda.to_cpu(batch_av.greedy_actions.data)
+        batch_argmax = cuda.to_cpu(batch_av.greedy_actions.array)
         return batch_argmax

@@ -19,7 +19,6 @@ import six.moves.cPickle as pickle
 from chainerrl.misc.batch_states import batch_states
 from chainerrl.misc.collections import RandomAccessQueue
 from chainerrl.misc.prioritized import PrioritizedBuffer
-from pdb import set_trace
 
 
 class AbstractReplayBuffer(with_metaclass(ABCMeta, object)):
@@ -434,15 +433,15 @@ class HindsightReplayBuffer(EpisodicReplayBuffer):
 
     https://arxiv.org/abs/1707.01495
 
-    We currently do not support N-step transitions for the 
+    We currently do not support N-step transitions for the
 
     Hindsight Buffer.
 
     """
 
     def __init__(self, reward_function,
-            capacity=None,
-            future_k=0):
+                 capacity=None,
+                 future_k=0):
         super(HindsightReplayBuffer, self).__init__(capacity)
         self.reward_function = reward_function
         # probability of sampling a future goal instead of a
@@ -488,6 +487,7 @@ class HindsightReplayBuffer(EpisodicReplayBuffer):
             return [random_subseq(ep, max_len) for ep in episodes]
         else:
             return episodes
+
 
 def batch_experiences(experiences, xp, phi, gamma, batch_states=batch_states):
     """Takes a batch of k experiences each of which contains j

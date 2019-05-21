@@ -17,6 +17,11 @@ python examples/atari/dqn/train_dqn.py --env PongNoFrameskip-v4 --steps 100 --re
 model=$(find $outdir/atari/dqn -name "*_finish")
 python examples/atari/dqn/train_dqn.py --env PongNoFrameskip-v4 --demo --load $model --outdir $outdir/temp --eval-n-steps 200 --gpu $gpu
 
+# atari/rainbow
+python examples/atari/rainbow/train_rainbow.py --env PongNoFrameskip-v4 --steps 100 --replay-start-size 50 --outdir $outdir/atari/rainbow --eval-n-steps 200 --eval-interval 50 --n-best-episodes 1 --gpu $gpu
+model=$(find $outdir/atari/rainbow -name "*_finish")
+python examples/atari/rainbow/train_rainbow.py --env PongNoFrameskip-v4 --demo --load $model --outdir $outdir/temp --eval-n-steps 200 --gpu $gpu
+
 # atari/iqn
 python examples/atari/iqn/train_iqn.py --env PongNoFrameskip-v4 --steps 100 --replay-start-size 50 --outdir $outdir/atari/iqn --eval-n-steps 200 --eval-interval 50 --n-best-episodes 1  --gpu $gpu
 model=$(find $outdir/atari/iqn -name "*_finish")
@@ -137,3 +142,8 @@ python examples/gym/train_iqn_gym.py --demo --load $model --eval-n-runs 1 --outd
 python examples/grasping/train_dqn_batch_grasping.py --gpu $gpu --steps 100 --outdir $outdir/grasping/dqn
 model=$(find $outdir/grasping/dqn -name "*_finish")
 python examples/grasping/train_dqn_batch_grasping.py --demo --load $model --eval-n-runs 1 --outdir $outdir/temp --gpu $gpu
+
+# mujoco/ddpg (specify non-mujoco env to test without mujoco)
+python examples/mujoco/ddpg/train_ddpg.py --env Pendulum-v0 --gpu $gpu --steps 10 --replay-start-size 5 --batch-size 5 --outdir $outdir/mujoco/ddpg
+model=$(find $outdir/mujoco/ddpg -name "*_finish")
+python examples/mujoco/ddpg/train_ddpg.py --env Pendulum-v0 --demo --load $model --eval-n-runs 1 --outdir $outdir/temp --gpu $gpu

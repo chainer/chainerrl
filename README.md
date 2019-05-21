@@ -6,7 +6,7 @@
 [![Documentation Status](https://readthedocs.org/projects/chainerrl/badge/?version=latest)](http://chainerrl.readthedocs.io/en/latest/?badge=latest)
 [![PyPI](https://img.shields.io/pypi/v/chainerrl.svg)](https://pypi.python.org/pypi/chainerrl)
 
-ChainerRL is a deep reinforcement learning library that implements various state-of-the-art deep reinforcement algorithms in Python using [Chainer](https://github.com/pfnet/chainer), a flexible deep learning framework.
+ChainerRL is a deep reinforcement learning library that implements various state-of-the-art deep reinforcement algorithms in Python using [Chainer](https://github.com/chainer/chainer), a flexible deep learning framework.
 
 ![Breakout](assets/breakout.gif)
 ![Humanoid](assets/humanoid.gif)
@@ -40,6 +40,7 @@ For more information, you can refer to [ChainerRL's documentation](http://chaine
 |:----------|:---------------:|:----------------:|:---------------:|:------------------:|
 | DQN (including DoubleDQN etc.) | ✓ | ✓ (NAF) | ✓ | x |
 | Categorical DQN | ✓ | x | ✓ | x |
+| Rainbow | ✓ | x | ✓ | x |
 | IQN | ✓ | x | x | x |
 | DDPG | x | ✓ | ✓ | x |
 | A3C  | ✓ | ✓ | ✓ | ✓ |
@@ -53,6 +54,7 @@ Following algorithms have been implemented in ChainerRL:
 - A3C (Asynchronous Advantage Actor-Critic)
 - ACER (Actor-Critic with Experience Replay)
 - Asynchronous N-step Q-learning
+- Rainbow
 - Categorical DQN
 - IQN
 - DQN (including Double DQN, Persistent Advantage Learning (PAL), Double PAL, Dynamic Policy Programming (DPP))
@@ -74,6 +76,7 @@ The following papers have been implemented in ChainerRL:
 - [Asynchronous Methods for Deep Reinforcement Learning](https://arxiv.org/abs/1602.01783)
 - [A Distributional Perspective on Reinforcement Learning](https://arxiv.org/abs/1707.06887)
 - [Implicit Quantile Networks for Distributional Reinforcement Learning](https://arxiv.org/abs/1806.06923)
+- [Rainbow: Combining Improvements in Deep Reinforcement Learning](https://arxiv.org/abs/1710.02298)
 - [Increasing the Action Gap: New Operators for Reinforcement Learning](https://arxiv.org/abs/1512.04860)
 - [Noisy Networks for Exploration](https://arxiv.org/abs/1706.10295)
 - [Continuous control with deep reinforcement learning](https://arxiv.org/abs/1509.02971)
