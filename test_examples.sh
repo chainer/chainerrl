@@ -137,3 +137,8 @@ python examples/gym/train_iqn_gym.py --demo --load $model --eval-n-runs 1 --outd
 python examples/grasping/train_dqn_batch_grasping.py --gpu $gpu --steps 100 --outdir $outdir/grasping/dqn
 model=$(find $outdir/grasping/dqn -name "*_finish")
 python examples/grasping/train_dqn_batch_grasping.py --demo --load $model --eval-n-runs 1 --outdir $outdir/temp --gpu $gpu
+
+# mujoco/ddpg (specify non-mujoco env to test without mujoco)
+python examples/mujoco/ddpg/train_ddpg.py --env Pendulum-v0 --gpu $gpu --steps 10 --replay-start-size 5 --batch-size 5 --outdir $outdir/mujoco/ddpg
+model=$(find $outdir/mujoco/ddpg -name "*_finish")
+python examples/mujoco/ddpg/train_ddpg.py --env Pendulum-v0 --demo --load $model --eval-n-runs 1 --outdir $outdir/temp --gpu $gpu
