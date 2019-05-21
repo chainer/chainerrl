@@ -608,6 +608,7 @@ class DQN(agent.AttributeSavingMixin, agent.BatchAgent):
     def _learner_loop(self, pipes, shared_model, replay_buffer_lock,
                       stop_event, n_updates=None):
 
+        self.model.device.use()
         # To stop this loop, call stop_event.set()
         while not stop_event.is_set():
             time.sleep(1e-6)
