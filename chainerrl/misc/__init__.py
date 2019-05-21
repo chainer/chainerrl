@@ -6,3 +6,4 @@ from chainerrl.misc.draw_computational_graph import is_graphviz_available  # NOQ
 from chainerrl.misc import env_modifiers  # NOQA
 from chainerrl.misc.is_return_code_zero import is_return_code_zero  # NOQA
 from chainerrl.misc.random_seed import set_random_seed  # NOQA
+from chainerrl.misc.stoppable_thread import StoppableThread  # NOQA
