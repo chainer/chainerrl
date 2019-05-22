@@ -103,7 +103,8 @@ We aim to follow the evaluation protocol from the [Noisy Networks Paper](https:/
 
 ## Training times
 
-We trained with 17 CPUs and no GPU.
+We trained with 17 CPUs and no GPU. However, we used 16 processes (as per the A3C paper).
+
 
 | Statistic        |            |            |
 | ------------- |:-------------:|:-------------:|
