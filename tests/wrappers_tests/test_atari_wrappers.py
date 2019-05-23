@@ -17,7 +17,8 @@ import gym
 import gym.spaces
 import numpy as np
 
-from chainerrl.wrappers.atari_wrappers import FrameStack, LazyFrames, ScaledFloatFrame
+from chainerrl.wrappers.atari_wrappers import FrameStack, LazyFrames
+from chainerrl.wrappers.atari_wrappers import ScaledFloatFrame
 
 
 @testing.parameterize(*testing.product({
@@ -137,10 +138,13 @@ class TestScaledFloatFrame(unittest.TestCase):
         s_env = ScaledFloatFrame(make_env(42))
 
         # check observation space
-        self.assertIs(type(env.observation_space), type(s_env.observation_space))
+        self.assertIs(
+            type(env.observation_space), type(s_env.observation_space))
         self.assertIs(s_env.observation_space.dtype, np.dtype(np.float32))
-        self.assertTrue(s_env.observation_space.contains(s_env.observation_space.low))
-        self.assertTrue(s_env.observation_space.contains(s_env.observation_space.high))
+        self.assertTrue(
+            s_env.observation_space.contains(s_env.observation_space.low))
+        self.assertTrue(
+            s_env.observation_space.contains(s_env.observation_space.high))
 
         # check reset
         obs = env.reset()
