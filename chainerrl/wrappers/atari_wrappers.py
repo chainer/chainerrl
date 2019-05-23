@@ -222,6 +222,7 @@ class ScaledFloatFrame(gym.ObservationWrapper):
     Especially, when the original env.observation_space is np.uint8,
     this wrapper converts frame values into [0.0, 1.0] of dtype np.float32.
     """
+
     def __init__(self, env):
         assert isinstance(env.observation_space, spaces.Box)
         gym.ObservationWrapper.__init__(self, env)
