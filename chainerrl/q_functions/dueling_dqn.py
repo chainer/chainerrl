@@ -164,7 +164,7 @@ class DuelingIQN(
         print(type(x[0]))
         print(type(x[0,0]))
         print(type(x[0,0,0]))
-         print(type(x[0,0,0,0]))
+        print(type(x[0,0,0,0]))
         psi_x = self.psi(x)
         assert psi_x.ndim == 2
         assert psi_x.shape[0] == batch_size
