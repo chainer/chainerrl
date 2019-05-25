@@ -24,10 +24,6 @@ To view the full list of options, either view the code or run the example with t
 ## Results
 These results reflect ChainerRL  `v0.6.0`. The ChainerRL score currently consists of a single run. The reported results are compared against the scores from the [Noisy Networks Paper](https://arxiv.org/abs/1706.10295), since the original paper does not report scores for the no-op evaluation protocol.
 
-We use the best intermediate scores on each domain to evaluate A3C.
-
-We aim to follow the evaluation protocol from the [Noisy Networks Paper](https://arxiv.org/abs/1706.10295) as closely as possible. The reported results are from the [Noisy Networks Paper](https://arxiv.org/abs/1706.10295), Table 3.
-
 | Results Summary ||
 | ------------- |:-------------:|
 | Number of seeds | 1 |
@@ -99,6 +95,20 @@ We aim to follow the evaluation protocol from the [Noisy Networks Paper](https:/
 | WizardOfWor | 1.15513805685 days |
 | YarsRevenge | 1.2318219768 days |
 | Zaxxon | 1.14370542539 days |
+
+## Evaluation Protocol
+
+Our evaluation protocol is designed to mirror the evaluation protocol from the [Noisy Networks Paper](https://arxiv.org/abs/1706.10295) as closely as possible, since the original A3C paper does not report reproducible results (they use human starts trajectories which are not publicly available). The reported results are from the [Noisy Networks Paper](https://arxiv.org/abs/1706.10295), Table 3.
+
+Our evaluation protocol is designed to mirror the evaluation protocol of the original paper as closely as possible, in order to offer a fair comparison of the quality of our example implementation. Specifically, the details of our evaluation (also can be found in the code) are the following:
+
+- **Evaluation Frequency**: The agent is evaluated after every 1 million frames (250K timesteps). This results in a total of 200 "intermediate" evaluations.
+- **Evaluation Phase**: The agent is evaluated for 500K frames (125K timesteps) in each intermediate evaluation. 
+	- **Output**: The output of an intermediate evaluation phase is a score representing the mean score of all completed evaluation episodes within the 125K timesteps. If there is any unfinished episode by the time the 125K timestep evaluation phase is finished, that episode is discarded.
+- **Intermediate Evaluation Episode**: 
+	- Each intermediate evaluation episode is capped in length at 27K timesteps or 108K frames.
+	- Each evaluation episode begins with a random number of no-ops (up to 30), where this number is chosen uniformly at random.
+- **Reporting**: For each run of our A3C example, we report the highest scores amongst each of the intermediate evaluation phases. This differs from the original A3C paper which states that: "We additionally used the final network weights for evaluation". This is because the [Noisy Networks Paper](https://arxiv.org/abs/1706.10295) states that "Per-game maximum scores are computed by taking the maximum raw scores of the agent and then averaging over three seeds".
 
 
 ## Training times
