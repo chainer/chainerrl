@@ -159,6 +159,7 @@ class DuelingIQN(
             callable: (batch_size, taus) -> (batch_size, taus, n_actions)
         """
         batch_size = x.shape[0]
+        print(type(x))
         psi_x = self.psi(x)
         assert psi_x.ndim == 2
         assert psi_x.shape[0] == batch_size
