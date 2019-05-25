@@ -102,6 +102,10 @@ def main():
 
     q_func = DuelingIQN(n_actions)
 
+    if args.gpu >= 0:
+        chainer.cuda.get_device(gpu).use()
+        q_func.to_gpu(device=gpu)
+
     # Noisy nets
     links.to_factorized_noisy(q_func)
     # Turn off explorer
