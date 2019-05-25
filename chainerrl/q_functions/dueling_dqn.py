@@ -129,24 +129,25 @@ class DuelingIQN(
 
     def __init__(self, n_actions, activation=F.relu):
         super().__init__()
-        self.psi = chainerrl.links.Sequence(
-            L.Convolution2D(None, 32, 8, stride=4),
-            F.relu,
-            L.Convolution2D(None, 64, 4, stride=2),
-            F.relu,
-            L.Convolution2D(None, 64, 3, stride=1),
-            F.relu,
-            functools.partial(F.reshape, shape=(-1, 3136)),
-        )
-        self.phi = chainerrl.links.Sequence(
-            chainerrl.agents.iqn.CosineBasisLinear(64, 3136),
-            F.relu,
-        )
         self.n_actions = n_actions
-        self.main_stream = L.Linear(3136, 1024)
-        self.a_stream = L.Linear(None, n_actions)
-        self.v_stream = L.Linear(None, 1)
-        self.activation = activation
+        with self.init_scope():
+            self.psi = chainerrl.links.Sequence(
+                L.Convolution2D(None, 32, 8, stride=4),
+                F.relu,
+                L.Convolution2D(None, 64, 4, stride=2),
+                F.relu,
+                L.Convolution2D(None, 64, 3, stride=1),
+                F.relu,
+                functools.partial(F.reshape, shape=(-1, 3136)),
+            )
+            self.phi = chainerrl.links.Sequence(
+                chainerrl.agents.iqn.CosineBasisLinear(64, 3136),
+                F.relu,
+            )
+            self.main_stream = L.Linear(3136, 1024)
+            self.a_stream = L.Linear(None, n_actions)
+            self.v_stream = L.Linear(None, 1)
+            self.activation = activation
 
 
 
