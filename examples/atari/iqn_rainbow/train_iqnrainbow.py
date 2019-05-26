@@ -6,10 +6,14 @@ from builtins import *  # NOQA
 from future import standard_library
 standard_library.install_aliases()  # NOQA
 import argparse
+import functools
+import json
 import json
 import os
 
 import chainer
+import chainer.functions as F
+import chainer.links as L
 import gym
 import numpy as np
 
