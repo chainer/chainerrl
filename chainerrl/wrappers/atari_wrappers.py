@@ -217,13 +217,28 @@ class FrameStack(gym.Wrapper):
 
 
 class ScaledFloatFrame(gym.ObservationWrapper):
+    """Divide frame values by 255.0 and return them as np.float32.
+
+    Especially, when the original env.observation_space is np.uint8,
+    this wrapper converts frame values into [0.0, 1.0] of dtype np.float32.
+    """
+
     def __init__(self, env):
+        assert isinstance(env.observation_space, spaces.Box)
         gym.ObservationWrapper.__init__(self, env)
+
+        self.scale = 255.0
+
+        orig_obs_space = env.observation_space
+        self.observation_space = spaces.Box(
+            low=self._observation(orig_obs_space.low),
+            high=self._observation(orig_obs_space.high),
+            dtype=np.float32)
 
     def _observation(self, observation):
         # careful! This undoes the memory optimization, use
         # with smaller replay buffers only.
-        return np.array(observation).astype(np.float32) / 255.0
+        return np.array(observation).astype(np.float32) / self.scale
 
 
 class LazyFrames(object):
