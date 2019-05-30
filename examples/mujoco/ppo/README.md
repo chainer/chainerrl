@@ -25,6 +25,10 @@ python train_ppo.py [options]
 
 To view the full list of options, either view the code or run the example with the `--help` option.
 
+## Known differences
+
+- While the original paper initialized weights by normal distribution (https://github.com/Breakend/baselines/blob/50ffe01d254221db75cdb5c2ba0ab51a6da06b0a/baselines/ppo1/mlp_policy.py#L28), we use orthogonal initialization as the latest openai/baselines does (https://github.com/openai/baselines/blob/9b68103b737ac46bc201dfb3121cfa5df2127e53/baselines/a2c/utils.py#L61).
+
 ## Results
 
 These scores are evaluated by average return +/- standard error of 100 evaluation episodes after 2M training steps.

@@ -117,7 +117,8 @@ def main():
     obs_normalizer = chainerrl.links.EmpiricalNormalization(
         obs_space.low.size, clip_threshold=5)
 
-    # Orthogonal weight initialization is used as OpenAI Baselines does
+    # While the original paper initialized weights by normal distribution,
+    # we use orthogonal initialization as the latest openai/baselines does.
     winit = chainerrl.initializers.Orthogonal(1.)
     winit_last = chainerrl.initializers.Orthogonal(1e-2)
 
