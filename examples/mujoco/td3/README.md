@@ -39,6 +39,7 @@ Each evaluation reports average return over 10 episodes without exploration nois
 Maximum evaluation scores, averaged over 10 trials (+/- standard deviation), are reported for each environment.
 
 Reported scores are taken from the "TD3" column of Table 1 of [Addressing Function Approximation Error in Actor-Critic Methods](http://arxiv.org/abs/1802.09477).
+Although the original paper used v1 versions of MuJoCo envs, we used v2 as v1 are not supported by recent versions of OpenAI Gym.
 
 | Environment               | ChainerRL Score        | Reported Score        |
 | ------------------------- |:----------------------:|:---------------------:|
@@ -56,6 +57,7 @@ Reported scores are taken from the "TD3" column of Table 1 of [Addressing Functi
 Average return of last 10 evaluation scores, averaged over 10 trials, are reported for each environment.
 
 Reported scores are taken from the "TD3" row of Table 2 of [Addressing Function Approximation Error in Actor-Critic Methods](http://arxiv.org/abs/1802.09477).
+Although the original paper used v1 versions of MuJoCo envs, we used v2 as v1 are not supported by recent versions of OpenAI Gym.
 
 | Environment               | ChainerRL Score | Reported Score |
 | ------------------------- |:---------------:|:--------------:|
