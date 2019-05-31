@@ -79,7 +79,7 @@ class ImplicitQuantileQFunction(chainer.Chain):
             -> (batch_size * n_taus, n_actions).
 
     Returns:
-        ImplicitQuantileDiscreteActionValue: Action values.
+        QuantileDiscreteActionValue: Action values.
     """
 
     def __init__(self, psi, phi, f):

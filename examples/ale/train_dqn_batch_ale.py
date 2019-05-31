@@ -6,6 +6,7 @@ from builtins import *  # NOQA
 from future import standard_library
 standard_library.install_aliases()  # NOQA
 import argparse
+import functools
 import os
 
 import chainer
@@ -120,6 +121,7 @@ def main():
     parser.add_argument('--prioritized', action='store_true', default=False,
                         help='Use prioritized experience replay.')
     parser.add_argument('--num-envs', type=int, default=1)
+    parser.add_argument('--n-step-return', type=int, default=1)
     args = parser.parse_args()
 
     import logging
@@ -144,7 +146,9 @@ def main():
         env = atari_wrappers.wrap_deepmind(
             atari_wrappers.make_atari(args.env, max_frames=args.max_frames),
             episode_life=not test,
-            clip_rewards=not test)
+            clip_rewards=not test,
+            frame_stack=False,
+        )
         if test:
             # Randomize actions like epsilon-greedy in evaluation as well
             env = chainerrl.wrappers.RandomizeAction(env, args.eval_epsilon)
@@ -158,9 +162,11 @@ def main():
         return env
 
     def make_batch_env(test):
-        return chainerrl.envs.MultiprocessVectorEnv(
-            [(lambda: make_env(idx, test))
+        vec_env = chainerrl.envs.MultiprocessVectorEnv(
+            [functools.partial(make_env, idx, test)
              for idx, env in enumerate(range(args.num_envs))])
+        vec_env = chainerrl.wrappers.VectorFrameStack(vec_env, 4)
+        return vec_env
 
     sample_env = make_env(0, test=False)
 
@@ -188,9 +194,12 @@ def main():
         # Anneal beta from beta0 to 1 throughout training
         betasteps = args.steps / args.update_interval
         rbuf = replay_buffer.PrioritizedReplayBuffer(
-            10 ** 6, alpha=0.6, beta0=0.4, betasteps=betasteps)
+            10 ** 6, alpha=0.6, beta0=0.4, betasteps=betasteps,
+            num_steps=args.n_step_return,
+        )
     else:
-        rbuf = replay_buffer.ReplayBuffer(10 ** 6)
+        rbuf = replay_buffer.ReplayBuffer(
+            10 ** 6, num_steps=args.n_step_return)
 
     explorer = explorers.LinearDecayEpsilonGreedy(
         1.0, args.final_epsilon,
