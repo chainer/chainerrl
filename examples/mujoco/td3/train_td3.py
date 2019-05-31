@@ -81,7 +81,7 @@ def main():
 
     def make_env(test):
         env = gym.make(args.env)
-        # Unwrap TimiLimit wrapper
+        # Unwrap TimeLimit wrapper
         assert isinstance(env, gym.wrappers.TimeLimit)
         env = env.env
         # Use different random seeds for train and test envs
