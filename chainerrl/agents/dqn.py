@@ -90,7 +90,7 @@ class DQN(agent.AttributeSavingMixin, agent.BatchAgent):
         replay_buffer (ReplayBuffer): Replay buffer
         gamma (float): Discount factor
         explorer (Explorer): Explorer that specifies an exploration strategy.
-        gpu (int): GPU device id if not None nor negative.
+        device (object): Device object.
         replay_start_size (int): if the replay buffer's size is less than
             replay_start_size, skip update
         minibatch_size (int): Minibatch size
@@ -117,7 +117,7 @@ class DQN(agent.AttributeSavingMixin, agent.BatchAgent):
     saved_attributes = ('model', 'target_model', 'optimizer')
 
     def __init__(self, q_function, optimizer, replay_buffer, gamma,
-                 explorer, gpu=None, replay_start_size=50000,
+                 explorer, device, replay_start_size=50000,
                  minibatch_size=32, update_interval=1,
                  target_update_interval=10000, clip_delta=True,
                  phi=lambda x: x,
@@ -129,19 +129,17 @@ class DQN(agent.AttributeSavingMixin, agent.BatchAgent):
                  episodic_update_len=None,
                  logger=getLogger(__name__),
                  batch_states=batch_states):
-        self.model = q_function
-        self.q_function = q_function  # For backward compatibility
 
-        if gpu is not None and gpu >= 0:
-            cuda.get_device(gpu).use()
-            self.model.to_gpu(device=gpu)
+        self.model = q_function
+        self.model.to_device(device)
+        self.model.device.use()
+        self.q_function = q_function  # For backward compatibility
 
         self.xp = self.model.xp
         self.replay_buffer = replay_buffer
         self.optimizer = optimizer
         self.gamma = gamma
         self.explorer = explorer
-        self.gpu = gpu
         self.target_update_interval = target_update_interval
         self.clip_delta = clip_delta
         self.phi = phi

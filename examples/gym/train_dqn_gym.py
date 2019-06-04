@@ -22,6 +22,7 @@ import argparse
 import os
 import sys
 
+import chainer
 from chainer import optimizers
 import gym
 from gym import spaces
@@ -39,9 +40,6 @@ from chainerrl import replay_buffer
 
 
 def main():
-    import logging
-    logging.basicConfig(level=logging.DEBUG)
-
     parser = argparse.ArgumentParser()
     parser.add_argument('--outdir', type=str, default='results',
                         help='Directory path to save output files.'
@@ -49,7 +47,7 @@ def main():
     parser.add_argument('--env', type=str, default='Pendulum-v0')
     parser.add_argument('--seed', type=int, default=0,
                         help='Random seed [0, 2 ** 32)')
-    parser.add_argument('--gpu', type=int, default=0)
+    parser.add_argument('--device', type=str, default='@numpy')
     parser.add_argument('--final-exploration-steps',
                         type=int, default=10 ** 4)
     parser.add_argument('--start-epsilon', type=float, default=1.0)
@@ -75,10 +73,15 @@ def main():
     parser.add_argument('--render-eval', action='store_true')
     parser.add_argument('--monitor', action='store_true')
     parser.add_argument('--reward-scale-factor', type=float, default=1e-3)
+    parser.add_argument('--logging-level', type=int, default=20,
+                        help='Logging level. 10:DEBUG, 20:INFO etc.')
     args = parser.parse_args()
 
+    import logging
+    logging.basicConfig(level=args.logging_level)
+
     # Set a random seed used in ChainerRL
-    misc.set_random_seed(args.seed, gpus=(args.gpu,))
+    misc.set_random_seed(args.seed, devices=(args.device,))
 
     args.outdir = experiments.prepare_output_dir(
         args, args.outdir, argv=sys.argv)
@@ -171,8 +174,10 @@ def main():
         else:
             rbuf = replay_buffer.ReplayBuffer(rbuf_capacity)
 
-    agent = DQN(q_func, opt, rbuf, gpu=args.gpu, gamma=args.gamma,
-                explorer=explorer, replay_start_size=args.replay_start_size,
+    agent = DQN(q_func, opt, rbuf, gamma=args.gamma,
+                explorer=explorer,
+                device=args.device,
+                replay_start_size=args.replay_start_size,
                 target_update_interval=args.target_update_interval,
                 update_interval=args.update_interval,
                 minibatch_size=args.minibatch_size,

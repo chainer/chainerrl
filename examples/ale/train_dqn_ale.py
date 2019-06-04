@@ -85,8 +85,8 @@ def main():
                              ' If it does not exist, it will be created.')
     parser.add_argument('--seed', type=int, default=0,
                         help='Random seed [0, 2 ** 31)')
-    parser.add_argument('--gpu', type=int, default=0,
-                        help='GPU to use, set to -1 if no GPU.')
+    parser.add_argument('--device', type=str, default='@numpy',
+                        help='String representing a device.')
     parser.add_argument('--demo', action='store_true', default=False)
     parser.add_argument('--load', type=str, default=None)
     parser.add_argument('--final-exploration-frames',
@@ -141,7 +141,7 @@ def main():
     logging.basicConfig(level=args.logging_level)
 
     # Set a random seed used in ChainerRL.
-    misc.set_random_seed(args.seed, gpus=(args.gpu,))
+    misc.set_random_seed(args.seed, devices=(args.device,))
 
     # Set different random seeds for train and test envs.
     train_seed = args.seed
@@ -212,8 +212,10 @@ def main():
         return np.asarray(x, dtype=np.float32) / 255
 
     Agent = parse_agent(args.agent)
-    agent = Agent(q_func, opt, rbuf, gpu=args.gpu, gamma=0.99,
-                  explorer=explorer, replay_start_size=args.replay_start_size,
+    agent = Agent(q_func, opt, rbuf, gamma=0.99,
+                  explorer=explorer,
+                  device=args.device,
+                  replay_start_size=args.replay_start_size,
                   target_update_interval=args.target_update_interval,
                   clip_delta=args.clip_delta,
                   update_interval=args.update_interval,

@@ -13,7 +13,7 @@ import chainer
 import numpy as np
 
 
-def set_random_seed(seed, gpus=()):
+def set_random_seed(seed, devices=()):
     """Set a given random seed to ChainerRL's random sources.
 
     This function sets a given random seed to random sources that ChainerRL
@@ -33,9 +33,10 @@ def set_random_seed(seed, gpus=()):
     # ChainerRL depends on numpy.random
     np.random.seed(seed)
     # ChainerRL depends on cupy.random for GPU computation
-    for gpu in gpus:
-        if gpu >= 0:
-            with chainer.cuda.get_device_from_id(gpu):
+    for device in devices:
+        device = chainer.get_device(device)
+        if device.xp is chainer.cuda.cupy:
+            with chainer.using_device(device):
                 chainer.cuda.cupy.random.seed(seed)
     # chainer.functions.n_step_rnn directly depends on CHAINER_SEED
     os.environ['CHAINER_SEED'] = str(seed)
