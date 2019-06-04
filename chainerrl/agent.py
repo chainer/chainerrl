@@ -100,68 +100,6 @@ class Agent(with_metaclass(ABCMeta, object)):
         pass
 
 
-class ImitationAgent(with_metaclass(ABCMeta, object)):
-    """Abstract agent class."""
-
-    @abstractmethod
-    def update(self, examples):
-        """Update imitation learning parameters.
-
-        Returns:
-            None
-        """
-        raise NotImplementedError()
-
-    @abstractmethod
-    def act(self, obs):
-        """Select an action for evaluation.
-
-        Returns:
-            ~object: action
-        """
-        raise NotImplementedError()
-
-    @abstractmethod
-    def stop_episode(self):
-        """Prepare for a new episode.
-
-        Returns:
-            None
-        """
-        raise NotImplementedError()
-
-    @abstractmethod
-    def save(self, dirname):
-        """Save internal states.
-
-        Returns:
-            None
-        """
-        pass
-
-    @abstractmethod
-    def load(self, dirname):
-        """Load internal states.
-
-        Returns:
-            None
-        """
-        pass
-
-    @abstractmethod
-    def get_statistics(self):
-        """Get statistics of the agent.
-
-        Returns:
-            List of two-item tuples. The first item in a tuple is a str that
-            represents the name of item, while the second item is a value to be
-            recorded.
-
-            Example: [('average_loss': 0), ('average_value': 1), ...]
-        """
-        pass
-
-
 class AttributeSavingMixin(object):
     """Mixin that provides save and load functionalities."""
 
