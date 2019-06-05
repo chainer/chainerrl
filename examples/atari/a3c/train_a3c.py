@@ -61,7 +61,7 @@ def main():
                         default=30 * 60 * 60,  # 30 minutes with 60 fps
                         help='Maximum number of frames for each episode.')
     parser.add_argument('--lr', type=float, default=7e-4)
-    parser.add_argument('--eval-interval', type=int, default=10 ** 6)
+    parser.add_argument('--eval-interval', type=int, default=250000)
     parser.add_argument('--eval-n-steps', type=int, default=125000)
     parser.add_argument('--weight-decay', type=float, default=0.0)
     parser.add_argument('--demo', action='store_true', default=False)
