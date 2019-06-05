@@ -24,7 +24,6 @@ from chainerrl import misc
 from chainerrl import replay_buffer
 
 from chainerrl.wrappers import atari_wrappers
-import json
 
 
 def main():
@@ -48,7 +47,7 @@ def main():
                         help='Monitor env. Videos and additional information'
                              ' are saved as output files.')
     parser.add_argument('--steps', type=int, default=5 * 10 ** 7,
-                        help='Total number of demonstration timesteps to collect')
+                        help='Total number of demonstration timesteps')
     args = parser.parse_args()
 
     import logging
@@ -116,11 +115,11 @@ def main():
 
     # saves demos to outdir/demos.pickle
     experiments.collect_demonstrations(agent=agent,
-        env=env,
-        steps=args.steps,
-        episodes=None,
-        outdir=args.outdir,
-        max_episode_len=None)
+                                       env=env,
+                                       steps=args.steps,
+                                       episodes=None,
+                                       outdir=args.outdir,
+                                       max_episode_len=None)
 
 
 if __name__ == '__main__':
