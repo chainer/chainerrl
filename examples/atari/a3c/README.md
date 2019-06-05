@@ -24,6 +24,8 @@ To view the full list of options, either view the code or run the example with t
 ## Results
 These results reflect ChainerRL  `v0.6.0`. The ChainerRL score currently consists of a single run. The reported results are compared against the scores from the [Noisy Networks Paper](https://arxiv.org/abs/1706.10295), since the original paper does not report scores for the no-op evaluation protocol.
 
+**NOTE: These benchmark scores below come from running train_a3c.py and evaluating every 1 million timesteps, as opposed to every 250K timesteps. New benchmark results will come soon.**
+
 | Results Summary ||
 | ------------- |:-------------:|
 | Number of seeds | 1 |
@@ -33,68 +35,72 @@ These results reflect ChainerRL  `v0.6.0`. The ChainerRL score currently consist
 | Number of ties between paper and ChainerRL | 3 | 
 
 
-
-| Game        | ChainerRL Time           |
+| Game        | ChainerRL Score           | Original Reported Scores |
 | ------------- |:-------------:|:-------------:|
-| AirRaid | 1.17388990544 days |
-| Alien | 1.18438464669 days |
-| Amidar | 1.19360730418 days |
-| Assault | 1.146660133 days |
-| Asterix | 0.975553301926 days |
-| Asteroids | 1.18414117109 days |
-| Atlantis | 0.753091469528 days |
-| BankHeist | 0.769557803519 days |
-| BattleZone | 0.792063550681 days |
-| BeamRider | 0.75736545874 days |
-| Berzerk | 0.756263140633 days |
-| Bowling | 1.16921226389 days |
-| Boxing | 1.24609514639 days |
-| Breakout | 1.16726391949 days |
-| Carnival | 1.01271149436 days |
-| Centipede | 1.18564387133 days |
-| ChopperCommand | 1.22278479479 days |
-| CrazyClimber | 0.742167222315 days |
-| DemonAttack | 0.736027011088 days |
-| DoubleDunk | 0.785350624331 days |
-| Enduro | 1.02262304159 days |
-| FishingDerby | 0.777940351574 days |
-| Freeway | 1.14676468119 days |
-| Frostbite | 1.19256961678 days |
-| Gopher | 1.14953342136 days |
-| Gravitar | 1.14965298631 days |
-| Hero | 0.768612422162 days |
-| IceHockey | 1.02160934827 days |
-| Jamesbond | 1.16947005497 days |
-| JourneyEscape | 0.755416593844 days |
-| Kangaroo | 1.16526888852 days |
-| Krull | 1.05267939805 days |
-| KungFuMaster | 1.16863955053 days |
-| MontezumaRevenge | 1.17643886358 days |
-| MsPacman | 1.19964800659 days |
-| NameThisGame | 0.746000485056 days |
-| Phoenix | 1.04935906721 days |
-| Pitfall | 1.20174458291 days |
-| Pong | 1.19954795655 days |
-| Pooyan | 1.19573762902 days |
-| PrivateEye | 1.17862031261 days |
-| Qbert | 1.20038552089 days |
-| Riverraid | 1.1646893171 days |
-| RoadRunner | 1.20581418721 days |
-| Robotank | 1.24274204857 days |
-| Seaquest | 1.23936292961 days |
-| Skiing | 1.23823434896 days |
-| Solaris | 1.24228741978 days |
-| SpaceInvaders | 1.13197622961 days |
-| StarGunner | 1.1219968725 days |
-| Tennis | 1.19821833329 days |
-| TimePilot | 1.10073837652 days |
-| Tutankham | 1.21187065374 days |
-| UpNDown | 1.25626688715 days |
-| Venture | 1.17066221943 days |
-| VideoPinball | 1.19901385698 days |
-| WizardOfWor | 1.15513805685 days |
-| YarsRevenge | 1.2318219768 days |
-| Zaxxon | 1.14370542539 days |
+| AirRaid | 4625.9| N/A|
+| Alien | 1397.2| **2027**|
+| Amidar | **1110.8**| 904|
+| Assault | **5821.6**| 2879|
+| Asterix | 6820.7| **6822**|
+| Asteroids | 2428.8| **2544**|
+| Atlantis | **732425.0**| 422700|
+| BankHeist | **1308.9**| 1296|
+| BattleZone | 5421.1| **16411**|
+| BeamRider | 8493.4| **9214**|
+| Berzerk | **1594.2**| 1022|
+| Bowling | 31.7| **37**|
+| Boxing | **98.1**| 91|
+| Breakout | **533.6**| 496|
+| Carnival | 5132.9| N/A|
+| Centipede | 4849.9| **5350**|
+| ChopperCommand | 4881.0| **5285**|
+| CrazyClimber | 124400.0| **134783**|
+| Defender | N/A| 52917.0|
+| DemonAttack | **108832.5**| 37085|
+| DoubleDunk | 1.5| **3**|
+| Enduro | **0.0**| **0**|
+| FishingDerby | **36.3**| -7|
+| Freeway | **0.0**| **0**|
+| Frostbite | **313.6**| 288|
+| Gopher | **8746.5**| 7992|
+| Gravitar | 228.0| **379**|
+| Hero | **36892.5**| 30791|
+| IceHockey | -4.6| **-2**|
+| JamesBond | N/A| 509.0|
+| Jamesbond | 370.1| N/A|
+| JourneyEscape | -871.2| N/A|
+| Kangaroo | 115.8| **1166**|
+| Krull | **10601.4**| 9422|
+| KungFuMaster | **40970.4**| 37422|
+| MontezumaRevenge | 1.9| **14**|
+| MsPacman | **2498.0**| 2436|
+| NameThisGame | 6597.0| **7168**|
+| Phoenix | **42654.5**| 9476|
+| Pitfall | -10.8| N/A|
+| Pitfall! | N/A| 0.0|
+| Pong | **20.9**| 7|
+| Pooyan | 4067.9| N/A|
+| PrivateEye | 376.1| **3781**|
+| Qbert | 15610.6| **18586**|
+| Riverraid | 13223.3| N/A|
+| RoadRunner | 39897.8| **45315**|
+| Robotank | 2.9| **6**|
+| Seaquest | **1786.5**| 1744|
+| Skiing | -16090.5| **-12972**|
+| Solaris | 3157.8| **12380**|
+| SpaceInvaders | **1630.6**| 1034|
+| StarGunner | **57943.2**| 49156|
+| Surround | N/A| -8.0|
+| Tennis | **-0.3**| -6|
+| TimePilot | 3850.6| **10294**|
+| Tutankham | **331.4**| 213|
+| UpNDown | 17952.0| **89067**|
+| Venture | **0.0**| **0**|
+| VideoPinball | **407331.2**| 229402|
+| WizardOfWor | 2800.0| **8953**|
+| YarsRevenge | **25175.5**| 21596|
+| Zaxxon | 80.7| **16544**|
+
 
 ## Evaluation Protocol
 
