@@ -10,13 +10,14 @@ import os
 
 import chainer
 
-from chainerrl.experiments.evaluator import Evaluator
-from chainerrl.experiments.evaluator import save_agent
-from chainerrl.misc.ask_yes_no import ask_yes_no
-from chainerrl.misc.makedirs import makedirs
 
-
-def collect_demonstrations(agent, env, steps, episodes, outdir, max_episode_len=None, logger=None):
+def collect_demonstrations(agent,
+                           env,
+                           steps,
+                           episodes,
+                           outdir,
+                           max_episode_len=None,
+                           logger=None):
     """Collects demonstrations from an agent.
 
     Args:
@@ -33,19 +34,20 @@ def collect_demonstrations(agent, env, steps, episodes, outdir, max_episode_len=
     assert (steps is None) != (episodes is None)
     logger = logger or logging.getLogger(__name__)
 
-    with chainer.datasets.open_pickle_dataset_writer(os.path.join(outdir, "demos.pickle")) as dataset:
+    with chainer.datasets.open_pickle_dataset_writer(
+            os.path.join(outdir, "demos.pickle")) as dataset:
         # o_0, r_0
-        terminate = False # True if we should stop collecting demos
-        timestep = 0 # number of timesteps of demos collected
-        episode_num = 0 # number of episodes of demos collected
-        episode_len = 0 # length of most recent episode
-        reset = True # whether to reset environment
-        episode_r = 0 # Episode reward
+        terminate = False  # True if we should stop collecting demos
+        timestep = 0  # number of timesteps of demos collected
+        episode_num = 0  # number of episodes of demos collected
+        episode_len = 0  # length of most recent episode
+        reset = True  # whether to reset environment
+        episode_r = 0  # Episode reward
         while not terminate:
             if reset:
                 if episode_num > 0:
                     logger.info('demonstration episode %s length:%s R:%s',
-                            episode_num, episode_len, episode_r)
+                                episode_num, episode_len, episode_r)
                 obs = env.reset()
                 done = False
                 r = 0
