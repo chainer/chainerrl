@@ -33,6 +33,8 @@ Agent implementations
 
 .. autoclass:: chainerrl.agents.DQN
 
+.. autoclass:: chainerrl.agents.IQN
+
 .. autoclass:: chainerrl.agents.NSQ
 
 .. autoclass:: chainerrl.agents.PAL
