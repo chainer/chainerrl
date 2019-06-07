@@ -11,11 +11,17 @@ Agent interfaces
 Agent implementations
 =====================
 
+.. autoclass:: chainerrl.agents.A2C
+
 .. autoclass:: chainerrl.agents.A3C
 
 .. autoclass:: chainerrl.agents.ACER
 
 .. autoclass:: chainerrl.agents.AL
+
+.. autoclass:: chainerrl.agents.CategoricalDoubleDQN
+
+.. autoclass:: chainerrl.agents.CategoricalDQN
 
 .. autoclass:: chainerrl.agents.DDPG
 
@@ -35,8 +41,14 @@ Agent implementations
 
 .. autoclass:: chainerrl.agents.PGT
 
+.. autoclass:: chainerrl.agents.PPO
+
 .. autoclass:: chainerrl.agents.REINFORCE
 
 .. autoclass:: chainerrl.agents.ResidualDQN
 
 .. autoclass:: chainerrl.agents.SARSA
+
+.. autoclass:: chainerrl.agents.TD3
+
+.. autoclass:: chainerrl.agents.TRPO
