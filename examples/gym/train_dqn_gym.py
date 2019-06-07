@@ -137,7 +137,7 @@ def main():
             action_space.sample)
 
     if args.noisy_net_sigma is not None:
-        links.to_factorized_noisy(q_func)
+        links.to_factorized_noisy(q_func, sigma_scale=args.noisy_net_sigma)
         # Turn off explorer
         explorer = explorers.Greedy()
 
