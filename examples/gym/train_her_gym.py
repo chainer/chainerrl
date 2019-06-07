@@ -113,7 +113,7 @@ def main():
     parser.add_argument('--render', action='store_true')
     parser.add_argument('--demo', action='store_true')
     parser.add_argument('--monitor', action='store_true')
-    parser.add_argument('--epsilon', type=float, default=0.2)
+    parser.add_argument('--epsilon', type=float, default=0.05)
     parser.add_argument('--noise-std', type=float, default=0.05)
     parser.add_argument('--clip-threshold', type=float, default=5.0)
     parser.add_argument('--num-envs', type=int, default=1)
