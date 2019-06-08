@@ -230,6 +230,7 @@ def eval_performance(env, agent, n_steps, n_episodes, max_episode_len=None,
     Args:
         env (Environment): Environment used for evaluation
         agent (Agent): Agent to evaluate.
+        n_steps (int): Number of timesteps to evaluate for.
         n_episodes (int): Number of evaluation episodes.
         max_episode_len (int or None): If specified, episodes longer than this
             value will be truncated.

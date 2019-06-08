@@ -81,7 +81,7 @@ def main():
 
     def make_env(test):
         env = gym.make(args.env)
-        # Unwrap TimiLimit wrapper
+        # Unwrap TimeLimit wrapper
         assert isinstance(env, gym.wrappers.TimeLimit)
         env = env.env
         # Use different random seeds for train and test envs
@@ -167,6 +167,7 @@ def main():
         q_func2_optimizer,
         rbuf,
         gamma=0.99,
+        soft_update_tau=5e-3,
         explorer=explorer,
         replay_start_size=args.replay_start_size,
         gpu=args.gpu,

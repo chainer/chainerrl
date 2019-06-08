@@ -23,6 +23,11 @@ python train_td3.py [options]
 
 To view the full list of options, either view the code or run the example with the `--help` option.
 
+## Known differences
+
+- While the original paper used different numbers of timesteps for which purely random policy is used for different environments (10000 for HalfCheetah and Ant, 1000 for the remaining), we used 10000 across all the environments.
+- While [the original implementation](https://github.com/sfujim/TD3) updates the model N times after every episode where N is the length of the episode, our implementation updates the model once every step. In addition, ours does not update the model until the replay buffer has at least 10000 transitions.
+
 ## Results
 
 ChainerRL scores are based on 10 trials using different random seeds, using the following command.
@@ -39,6 +44,7 @@ Each evaluation reports average return over 10 episodes without exploration nois
 Maximum evaluation scores, averaged over 10 trials (+/- standard deviation), are reported for each environment.
 
 Reported scores are taken from the "TD3" column of Table 1 of [Addressing Function Approximation Error in Actor-Critic Methods](http://arxiv.org/abs/1802.09477).
+Although the original paper used v1 versions of MuJoCo envs, we used v2 as v1 are not supported by recent versions of OpenAI Gym.
 
 | Environment               | ChainerRL Score        | Reported Score        |
 | ------------------------- |:----------------------:|:---------------------:|
@@ -56,6 +62,7 @@ Reported scores are taken from the "TD3" column of Table 1 of [Addressing Functi
 Average return of last 10 evaluation scores, averaged over 10 trials, are reported for each environment.
 
 Reported scores are taken from the "TD3" row of Table 2 of [Addressing Function Approximation Error in Actor-Critic Methods](http://arxiv.org/abs/1802.09477).
+Although the original paper used v1 versions of MuJoCo envs, we used v2 as v1 are not supported by recent versions of OpenAI Gym.
 
 | Environment               | ChainerRL Score | Reported Score |
 | ------------------------- |:---------------:|:--------------:|

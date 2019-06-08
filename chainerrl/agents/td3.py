@@ -241,7 +241,7 @@ class TD3(AttributeSavingMixin, BatchAgent):
             self.update_policy(batch)
             self.sync_target_network()
 
-    def select_greedy_action(self, obs):
+    def select_onpolicy_action(self, obs):
         with chainer.no_backprop_mode(), chainer.using_config('train', False):
             s = self.batch_states([obs], self.xp, self.phi)
             action = self.policy(s).sample().array
@@ -255,8 +255,9 @@ class TD3(AttributeSavingMixin, BatchAgent):
                 and self.policy_optimizer.t == 0):
             action = self.burnin_action_func()
         else:
-            greedy_action = self.select_greedy_action(obs)
-            action = self.explorer.select_action(self.t, lambda: greedy_action)
+            onpolicy_action = self.select_onpolicy_action(obs)
+            action = self.explorer.select_action(
+                self.t, lambda: onpolicy_action)
         self.t += 1
 
         if self.last_state is not None:
@@ -278,16 +279,16 @@ class TD3(AttributeSavingMixin, BatchAgent):
         return self.last_action
 
     def act(self, obs):
-        return self.select_greedy_action(obs)
+        return self.select_onpolicy_action(obs)
 
-    def batch_select_greedy_action(self, batch_obs):
+    def batch_select_onpolicy_action(self, batch_obs):
         with chainer.using_config('train', False), chainer.no_backprop_mode():
             batch_xs = self.batch_states(batch_obs, self.xp, self.phi)
             batch_action = self.policy(batch_xs).sample().array
         return list(cuda.to_cpu(batch_action))
 
     def batch_act(self, batch_obs):
-        return self.batch_select_greedy_action(batch_obs)
+        return self.batch_select_onpolicy_action(batch_obs)
 
     def batch_act_and_train(self, batch_obs):
         """Select a batch of actions for training.
@@ -304,11 +305,12 @@ class TD3(AttributeSavingMixin, BatchAgent):
             batch_action = [self.burnin_action_func()
                             for _ in range(len(batch_obs))]
         else:
-            batch_greedy_action = self.batch_select_greedy_action(batch_obs)
+            batch_onpolicy_action = self.batch_select_onpolicy_action(
+                batch_obs)
             batch_action = [
                 self.explorer.select_action(
-                    self.t, lambda: batch_greedy_action[i])
-                for i in range(len(batch_greedy_action))]
+                    self.t, lambda: batch_onpolicy_action[i])
+                for i in range(len(batch_onpolicy_action))]
 
         self.batch_last_obs = list(batch_obs)
         self.batch_last_action = list(batch_action)
@@ -329,9 +331,11 @@ class TD3(AttributeSavingMixin, BatchAgent):
                     next_state=batch_obs[i],
                     next_action=None,
                     is_state_terminal=batch_done[i],
+                    env_id=i,
                 )
                 if batch_reset[i] or batch_done[i]:
                     self.batch_last_obs[i] = None
+                    self.replay_buffer.stop_current_episode(env_id=i)
             self.replay_updater.update_if_necessary(self.t)
 
     def batch_observe(self, batch_obs, batch_reward,
