@@ -2,7 +2,6 @@ from abc import ABCMeta
 from abc import abstractmethod
 
 
-
 class StateQFunction(object, metaclass=ABCMeta):
 
     @abstractmethod
