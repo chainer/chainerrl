@@ -1,7 +1,6 @@
 language: python
 cache: pip
 python:
-  - "2.7"
   - "3.6"
 env:
   - CHAINER_VERSION=4
