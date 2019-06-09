@@ -1,8 +1,3 @@
-from __future__ import print_function
-from __future__ import unicode_literals
-from __future__ import division
-from __future__ import absolute_import
-
 import basetest_ddpg as base
 from chainerrl.agents.ddpg import DDPG
 

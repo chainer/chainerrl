@@ -1,5 +1,4 @@
 
-
 def ask_yes_no(question):
     while True:
         choice = input("{} [y/N]: ".format(question)).lower()

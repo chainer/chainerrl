@@ -6,10 +6,6 @@ Both discrete and continuous action spaces are supported.
 To solve CartPole-v0, run:
     python train_a2c_gym.py 8 --env CartPole-v0
 """
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-from __future__ import absolute_import
 import argparse
 import functools
 
