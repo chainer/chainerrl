@@ -2,10 +2,6 @@ from __future__ import unicode_literals
 from __future__ import print_function
 from __future__ import division
 from __future__ import absolute_import
-from builtins import *  # NOQA
-from future import standard_library
-from future.utils import with_metaclass
-standard_library.install_aliases()  # NOQA
 
 from abc import ABCMeta
 from abc import abstractmethod
@@ -20,7 +16,7 @@ from chainerrl.misc.collections import RandomAccessQueue
 from chainerrl.misc.prioritized import PrioritizedBuffer
 
 
-class AbstractReplayBuffer(with_metaclass(ABCMeta, object)):
+class AbstractReplayBuffer(object, metaclass=ABCMeta):
     """Defines a common interface of replay buffer.
 
     You can append transitions to the replay buffer and later sample from it.

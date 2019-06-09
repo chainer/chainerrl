@@ -2,9 +2,6 @@ from __future__ import unicode_literals
 from __future__ import print_function
 from __future__ import division
 from __future__ import absolute_import
-from builtins import *  # NOQA
-from future import standard_library
-standard_library.install_aliases()  # NOQA
 
 from abc import ABCMeta
 from abc import abstractmethod
@@ -12,7 +9,6 @@ from abc import abstractproperty
 import os
 
 from chainer import serializers
-from future.utils import with_metaclass
 import numpy
 import warnings
 
@@ -29,7 +25,7 @@ def load_npz_no_strict(filename, obj):
             d.load(obj)
 
 
-class Agent(with_metaclass(ABCMeta, object)):
+class Agent(object, metaclass=ABCMeta):
     """Abstract agent class."""
 
     @abstractmethod
@@ -161,7 +157,7 @@ class AttributeSavingMixin(object):
         ancestors.pop()
 
 
-class AsyncAgent(with_metaclass(ABCMeta, Agent)):
+class AsyncAgent(Agent, metaclass=ABCMeta):
     """Abstract asynchronous agent class."""
 
     @abstractproperty
@@ -175,7 +171,7 @@ class AsyncAgent(with_metaclass(ABCMeta, Agent)):
         pass
 
 
-class BatchAgent(with_metaclass(ABCMeta, Agent)):
+class BatchAgent(Agent, metaclass=ABCMeta):
     """Abstract agent class that can interact with a batch of envs."""
 
     @abstractmethod

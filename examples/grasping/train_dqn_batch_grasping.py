@@ -2,9 +2,6 @@ from __future__ import print_function
 from __future__ import division
 from __future__ import unicode_literals
 from __future__ import absolute_import
-from builtins import *  # NOQA
-from future import standard_library
-standard_library.install_aliases()  # NOQA
 import argparse
 import functools
 import os
@@ -23,17 +20,6 @@ from chainerrl import experiments
 from chainerrl import explorers
 from chainerrl import misc
 from chainerrl import replay_buffer
-
-
-class CastAction(gym.ActionWrapper):
-    """Cast actions to a given type."""
-
-    def __init__(self, env, type_):
-        super().__init__(env)
-        self.type_ = type_
-
-    def _action(self, action):
-        return self.type_(action)
 
 
 class TransposeObservation(gym.ObservationWrapper):
@@ -219,9 +205,6 @@ def main():
         # (84, 84, 3) -> (3, 84, 84)
         env = TransposeObservation(env, (2, 0, 1))
         env = ObserveElapsedSteps(env, max_episode_steps)
-        # KukaDiverseObjectEnv internally asserts int actions and does not
-        # accept python-future's newint.
-        env = CastAction(env, __builtins__.int)
         env.seed(int(env_seed))
         if test and args.record:
             assert args.render,\
