@@ -18,6 +18,17 @@ from chainerrl import misc
 from chainerrl import replay_buffer
 
 
+class CastAction(gym.ActionWrapper):
+    """Cast actions to a given type."""
+
+    def __init__(self, env, type_):
+        super().__init__(env)
+        self.type_ = type_
+
+    def _action(self, action):
+        return self.type_(action)
+
+
 class TransposeObservation(gym.ObservationWrapper):
     """Transpose observations."""
 
@@ -201,6 +212,8 @@ def main():
         # (84, 84, 3) -> (3, 84, 84)
         env = TransposeObservation(env, (2, 0, 1))
         env = ObserveElapsedSteps(env, max_episode_steps)
+        # KukaDiverseObjectEnv internally asserts int actions
+        env = CastAction(env, int)
         env.seed(int(env_seed))
         if test and args.record:
             assert args.render,\
