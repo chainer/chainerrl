@@ -171,10 +171,7 @@ def main():
             max_episode_len=args.max_frames/4,
             logger=None)
         with open(os.path.join(args.outdir, 'bestscores.json'), 'w') as f:
-            # temporary hack to handle python 2/3 support issues.
-            # json dumps does not support non-string literal dict keys
-            json_stats = json.dumps(stats)
-            print(str(json_stats), file=f)
+            json.dump(stats, f)
         print("The results of the best scoring network:")
         for stat in stats:
             print(str(stat) + ":" + str(stats[stat]))
