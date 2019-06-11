@@ -12,7 +12,7 @@ from chainer import optimizers
 import gym
 import chainerrl
 from chainerrl.experiments import collect_demonstrations
-from dqfd import DQfD
+from chainerrl.agents.dqfd import DQfD
 
 
 def main():
