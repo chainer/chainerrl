@@ -20,3 +20,4 @@ from chainerrl.agents.residual_dqn import ResidualDQN  # NOQA
 from chainerrl.agents.sarsa import SARSA  # NOQA
 from chainerrl.agents.td3 import TD3  # NOQA
 from chainerrl.agents.trpo import TRPO  # NOQA
+from chainerrl.agents.dqfd import DQfD  # NOQA
