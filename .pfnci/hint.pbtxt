@@ -1,0 +1,16 @@
+# hint.pbtxt is a config file for xpytest.
+#
+# Proto type: xpytest.proto.HintFile
+# https://github.com/chainer/xpytest/blob/master/proto/test_case.proto
+
+# Slow tests take 60+ seconds.
+rules { name: "agents_tests/test_ppo.py" xdist: 4 deadline: 240 }
+rules { name: "agents_tests/test_trpo.py" xdist: 4 deadline: 240 }
+
+# Slow tests take 10+ seconds.
+rules { name: "agents_tests/test_acer.py" }
+rules { name: "agents_tests/test_ale.py" }
+rules { name: "agents_tests/test_trpo.py" }
+rules { name: "policies_tests/test_deterministic_policy.py" }
+rules { name: "q_functions_tests/test_state_action_q_function.py" }
+rules { name: "tests/test_ale.py" }
