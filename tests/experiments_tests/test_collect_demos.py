@@ -80,6 +80,7 @@ class TestCollectDemos(unittest.TestCase):
                     self.assertEqual(r, true_rewards[i])
                     self.assertEqual(new_obs[1], true_next_states[i])
 
+
     def test_needs_reset(self):
 
         outdir = tempfile.mkdtemp()
@@ -95,21 +96,46 @@ class TestCollectDemos(unittest.TestCase):
             (('state', 2), 0, False, {}),
             (('state', 3), 0, False, {'needs_reset': True}),
             (('state', 5), -0.5, False, {}),
-            (('state', 6), 0, False, {}),
             (('state', 7), 1, True, {}),
         ]
+        if (not self.n_steps and not self.n_episodes) or \
+                (self.n_steps and self.n_episodes):
+                    with self.assertRaises(AssertionError):
+                        experiments.collect_demonstrations(agent,
+                                                           env,
+                                                           self.n_steps,
+                                                           self.n_episodes,
+                                                           outdir,
+                                                           None,
+                                                           None)
+                    return
 
+        steps = self.n_steps
+        # 2 to match the mock env, b/c test is parameterized by episodes=1
+        episodes = 2 if self.n_episodes else self.n_episodes
         experiments.collect_demonstrations(
             agent,
             env,
-            5,
-            None,
+            steps,
+            episodes,
             outdir,
             max_episode_len=None,
             logger=None)
-
         self.assertEqual(agent.act.call_count, 5)
         self.assertEqual(agent.stop_episode.call_count, 2)
-
         self.assertEqual(env.reset.call_count, 2)
         self.assertEqual(env.step.call_count, 5)
+        
+        true_states = [0, 1, 2, 4, 5]
+        true_next_states = [1, 2, 3, 5, 7]
+        true_actions = [0, 1, 2, 3, 4]
+        true_rewards = [0, 0, 0, -0.5, 1]
+        with chainer.datasets.open_pickle_dataset(
+                os.path.join(outdir, "demos.pickle")) as dataset:
+                self.assertEqual(len(dataset), 5)
+                for i in range(5):
+                    obs, a, r, new_obs, _, _ = dataset[i]
+                    self.assertEqual(obs[1], true_states[i])
+                    self.assertEqual(a, true_actions[i])
+                    self.assertEqual(r, true_rewards[i])
+                    self.assertEqual(new_obs[1], true_next_states[i])
