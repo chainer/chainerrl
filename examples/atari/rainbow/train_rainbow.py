@@ -99,7 +99,7 @@ def main():
     q_func = DistributionalDuelingDQN(n_actions, n_atoms, v_min, v_max,)
 
     # Noisy nets
-    links.to_factorized_noisy(q_func)
+    links.to_factorized_noisy(q_func, sigma_scale=args.noisy_net_sigma)
     # Turn off explorer
     explorer = explorers.Greedy()
 
