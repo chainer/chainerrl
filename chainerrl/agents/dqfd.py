@@ -15,7 +15,7 @@ import chainer
 from chainer import cuda
 import chainer.functions as F
 
-from chainerrl.agents import DQN
+from chainerrl.agents import DoubleDQN
 from chainerrl.agents.dqn import compute_value_loss
 from chainerrl.agents.dqn import compute_weighted_value_loss
 
@@ -101,7 +101,7 @@ class DemoReplayUpdater(object):
             self.update_func([], transitions_demo)
 
 
-class DQfD(DQN):
+class DQfD(DoubleDQN):
     """Deep-Q Learning from Demonstrations
     See: https://arxiv.org/abs/1704.03732.
 
@@ -221,34 +221,6 @@ class DQfD(DQN):
             if tpre % self.target_update_interval == 0:
                 self.sync_target_network()
 
-    def compute_weighted_value_loss(y, t, weights,
-                                    clip_delta=True, batch_accumulator='mean'):
-        """Compute a loss for value prediction problem.
-
-        Args:
-            y (Variable or ndarray): Predicted values.
-            t (Variable or ndarray): Target values.
-            weights (ndarray): Weights for y, t.
-            clip_delta (bool): Use the Huber loss function if set True.
-            batch_accumulator (str): 'mean' will divide loss by batchsize
-        Returns:
-            (Variable) scalar loss
-        """
-        assert batch_accumulator in ('mean', 'sum')
-        y = F.reshape(y, (-1, 1))
-        t = F.reshape(t, (-1, 1))
-        if clip_delta:
-            losses = F.huber_loss(y, t, delta=1.0)
-        else:
-            losses = F.square(y - t) / 2
-        losses = F.reshape(losses, (-1,))
-        loss_sum = F.sum(losses * weights)
-        if batch_accumulator == 'mean':
-            loss = loss_sum / np.count_nonzero(weights)
-        elif batch_accumulator == 'sum':
-            loss = loss_sum
-        return loss
-
     def update(self):
         """Invalidate DQN's update()
         DQfD's update happens via combined_loss()
@@ -290,12 +262,8 @@ class DQfD(DQN):
         exp_batch['weights'] = self.xp.asarray(
             [elem[0]['weight']for elem in experiences], dtype=self.xp.float32)
 
-        # Set the weights for demonstration experience to zero to exclude
-        # .. them from Q-loss.
-        exp_batch['weights'][num_exp_rl:] = 0
-
         errors_out = []
-        qloss_nstep_rl = self._compute_loss(exp_batch, errors_out=errors_out)
+        qloss_nstep = self._compute_loss(exp_batch, errors_out=errors_out)
 
         # Update priorities
         self.demo_replay_buffer.update_errors(errors_out[num_exp_rl:])
@@ -327,7 +295,7 @@ class DQfD(DQN):
             # flatparam = param.reshape(-1)
             # loss_l2 += F.matmul(flatparam, flatparam.T)
 
-        loss_combined = qloss_nstep_rl + \
+        loss_combined = qloss_nstep + \
             self.loss_coeff_supervised * loss_supervised
         # L2 loss is directly applied as chainer optimizer hook.
         # loss_combined += self.loss_coeff_l2 * loss_l2
