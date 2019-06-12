@@ -13,7 +13,8 @@ import chainer
 from chainer import testing
 import mock
 
-import chainerrl
+import chainerrl.experiments as experiments
+
 
 @testing.parameterize(
     *testing.product({
@@ -41,23 +42,23 @@ class TestCollectDemos(unittest.TestCase):
         agent = mock.Mock()
         agent.act.side_effect = [0, 1, 2, 3, 4]
         if (not self.n_steps and not self.n_episodes) or \
-            (self.n_steps and self.n_episodes):
-                with self.assertRaises(AssertionError):
-                    chainerrl.experiments.collect_demonstrations(agent,
-                               env,
-                               self.n_steps,
-                               self.n_episodes,
-                               outdir,
-                               max_episode_len=None,
-                               logger=None)
-                return
-        chainerrl.experiments.collect_demonstrations(agent,
-            env,
-            self.n_steps,
-            self.n_episodes,
-            outdir,
-            max_episode_len=None,
-            logger=None)     
+                (self.n_steps and self.n_episodes):
+                    with self.assertRaises(AssertionError):
+                        experiments.collect_demonstrations(agent,
+                                                           env,
+                                                           self.n_steps,
+                                                           self.n_episodes,
+                                                           outdir,
+                                                           None,
+                                                           None)
+                    return
+        experiments.collect_demonstrations(agent,
+                                           env,
+                                           self.n_steps,
+                                           self.n_episodes,
+                                           outdir,
+                                           max_episode_len=None,
+                                           logger=None)
 
         self.assertEqual(agent.act.call_count, 5)
         self.assertEqual(agent.stop_episode.call_count, 1)
@@ -70,17 +71,14 @@ class TestCollectDemos(unittest.TestCase):
         true_actions = [0, 1, 2, 3, 4]
         true_rewards = [0, 0, -0.5, 0, 1]
         with chainer.datasets.open_pickle_dataset(
-            os.path.join(outdir, "demos.pickle")) as dataset:
-            self.assertEqual(len(dataset), 5)
-            print(dataset)
-            for i in range(5):
-                print(dataset[i])
-                obs, a, r, new_obs, _, _ = dataset[i]
-                self.assertEqual(obs[1], true_states[i])
-                self.assertEqual(a, true_actions[i])
-                self.assertEqual(r, true_rewards[i])
-                self.assertEqual(new_obs[1], true_next_states[i])
-
+                os.path.join(outdir, "demos.pickle")) as dataset:
+                self.assertEqual(len(dataset), 5)
+                for i in range(5):
+                    obs, a, r, new_obs, _, _ = dataset[i]
+                    self.assertEqual(obs[1], true_states[i])
+                    self.assertEqual(a, true_actions[i])
+                    self.assertEqual(r, true_rewards[i])
+                    self.assertEqual(new_obs[1], true_next_states[i])
 
     def test_needs_reset(self):
 
@@ -101,13 +99,14 @@ class TestCollectDemos(unittest.TestCase):
             (('state', 7), 1, True, {}),
         ]
 
-        chainerrl.experiments.collect_demonstrations(agent,
-                           env,
-                           5,
-                           None,
-                           outdir,
-                           max_episode_len=None,
-                           logger=None)
+        experiments.collect_demonstrations(
+            agent,
+            env,
+            5,
+            None,
+            outdir,
+            max_episode_len=None,
+            logger=None)
 
         self.assertEqual(agent.act.call_count, 5)
         self.assertEqual(agent.stop_episode.call_count, 2)
