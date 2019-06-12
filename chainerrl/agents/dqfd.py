@@ -15,7 +15,7 @@ import chainer
 from chainer import cuda
 import chainer.functions as F
 
-from chainerrl.agents import DoubleDQN
+from chainerrl.agents import DQN
 from chainerrl.agents.dqn import compute_value_loss
 from chainerrl.agents.dqn import compute_weighted_value_loss
 
@@ -25,17 +25,95 @@ from chainerrl.replay_buffer import batch_experiences
 from chainerrl.replay_buffer import ReplayUpdater
 
 
-class DQfD(DoubleDQN):
+class DemoReplayUpdater(object):
+    """Object that handles update schedule and configurations.
+
+    Args:
+        demo_replay_buffer (ReplayBuffer): Replay buffer for demonstrations
+        replay_buffer (ReplayBuffer): Replay buffer for self-play
+        demo_sample_ratio (float): Sampling ratio from demonstration buffer
+        update_func (callable): Callable that accepts one of these:
+            (1) two lists of transition dicts (if episodic_update=False)
+            (2) two lists of transition dicts (if episodic_update=True)
+        replay_start_size (int): if the replay buffer's size is less than
+            replay_start_size, skip update
+        batchsize (int): Minibatch size
+        update_interval (int): Model update interval in step
+        n_times_update (int): Number of repetition of update
+        episodic_update (bool): Use full episodes for update if set True
+        episodic_update_len (int or None): Subsequences of this length are used
+            for update if set int and episodic_update=True
+    """
+
+    def __init__(self, demo_replay_buffer, replay_buffer, demo_sample_ratio,
+                 update_func, batchsize, episodic_update,
+                 n_times_update, replay_start_size, update_interval,
+                 episodic_update_len=None):
+
+        assert batchsize <= replay_start_size
+        self.minibatch_n_demos = int(demo_sample_ratio * float(batchsize))
+        self.minibatch_n_rl = batchsize - self.minibatch_n_demos
+        self.demo_replay_buffer = demo_replay_buffer
+        self.replay_buffer = replay_buffer
+        self.update_func = update_func
+        self.batchsize = batchsize
+        self.episodic_update = episodic_update
+        self.episodic_update_len = episodic_update_len
+        self.n_times_update = n_times_update
+        self.replay_start_size = replay_start_size
+        self.update_interval = update_interval
+
+    def update_if_necessary(self, iteration):
+        """Called during normal self-play
+        """
+        if len(self.replay_buffer) < self.replay_start_size:
+            return
+
+        if (self.episodic_update
+                and self.replay_buffer.n_episodes < self.batchsize):
+            return
+
+        if iteration % self.update_interval != 0:
+            return
+
+        for _ in range(self.n_times_update):
+            if self.episodic_update:
+                episodes_rl = self.replay_buffer.sample_episodes(
+                    self.batchsize, self.episodic_update_len)
+                episodes_demo = self.demo_replay_buffer.sample_episodes(
+                    self.batch_size, self.episodic_update_len)
+                self.update_func(episodes_rl, episodes_demo)
+            else:
+                transitions_demo = self.demo_replay_buffer.sample(
+                    self.minibatch_n_demos)
+                transitions_rl = self.replay_buffer.sample(self.minibatch_n_rl)
+                self.update_func(transitions_rl, transitions_demo)
+
+    def update_from_demonstrations(self):
+        """Called during pre-train steps. All samples are from demo buffer
+        """
+        if self.episodic_update:
+            episodes_demo = self.demo_replay_buffer.sample_episodes(
+                self.batch_size, self.episodic_update_len)
+            self.update_func([], episodes_demo)
+        else:
+            transitions_demo = self.demo_replay_buffer.sample(self.batchsize)
+            self.update_func([], transitions_demo)
+
+
+class DQfD(DQN):
     """Deep-Q Learning from Demonstrations
     See: https://arxiv.org/abs/1704.03732.
 
     TODO:
-        Fix logging of loss statistics
+        * Double DQN 1-step Update
+        * Test batch observe & train.
+        * Test episodic update
+
 
     Deviations from paper:
         * Fixed proportional sampling from the two replay buffers instead of
         single buffer with bonus priority for demos.
-        * Only n_step update applied (1 or n. Not both)
 
     DQN Args:
         q_function (StateQFunction): Q-function
@@ -105,31 +183,25 @@ class DQfD(DoubleDQN):
                                    episodic_update, episodic_update_len,
                                    logger, batch_states)
 
-        # Overwrite DQN's replay updater
-        # TODO: Dirty. Find a better way.
-        n_demos_sampled = int(float(minibatch_size)*demo_sample_ratio)
-        self.replay_updater = ReplayUpdater(
-            replay_buffer=replay_buffer,
-            update_func=self.dqn_loss,
-            batchsize=(minibatch_size-n_demos_sampled),
-            episodic_update=episodic_update,
-            episodic_update_len=episodic_update_len,
-            n_times_update=n_times_update,
-            replay_start_size=replay_start_size,
-            update_interval=update_interval,
-        )
-
         self.minibatch_size = minibatch_size
         self.n_pretrain_steps = n_pretrain_steps
-        self.demo_replay_buffer = demo_replay_buffer
-        self.demo_sample_ratio = demo_sample_ratio
         self.demo_supervised_margin = demo_supervised_margin
         self.loss_coeff_supervised = loss_coeff_supervised
+        self.loss_coeff_l2 = loss_coeff_l2
+        self.demo_replay_buffer = demo_replay_buffer
 
-        self.demo_replay_updater = ReplayUpdater(
-            replay_buffer=demo_replay_buffer,
-            update_func=self.demo_loss,
-            batchsize=n_demos_sampled,
+        self.optimizer.add_hook(
+            chainer.optimizer_hooks.WeightDecay(loss_coeff_l2))
+
+        # Overwrite DQN's replay updater.
+        # TODO: Is there a better way to do this?
+
+        self.replay_updater = DemoReplayUpdater(
+            demo_replay_buffer=demo_replay_buffer,
+            replay_buffer=replay_buffer,
+            demo_sample_ratio=demo_sample_ratio,
+            update_func=self.combined_loss,
+            batchsize=minibatch_size,
             episodic_update=episodic_update,
             episodic_update_len=episodic_update_len,
             n_times_update=n_times_update,
@@ -137,91 +209,62 @@ class DQfD(DoubleDQN):
             update_interval=update_interval,
         )
 
-        self.optimizer.add_hook(chainer.optimizer.WeightDecay(loss_coeff_l2))
-
-        # TODO: Should this really go here?
+        # TODO: Should this really go here? Move intro train function?
         self.pretrain()
 
     def pretrain(self):
-        """Loads expert demonstrations and does pre-training
+        """Uses expert demonstrations to does pre-training
         """
-        # Gradients are accumulated over two fns. An initial clear is needed.
-        self.model.cleargrads()
-
         for tpre in range(self.n_pretrain_steps):
             # The whole batch can consist of demo transitions in pretrain
-            transitions = self.demo_replay_buffer.sample(self.minibatch_size)
-            self.demo_loss(transitions)
-            self.apply_grads()
-
+            self.replay_updater.update_from_demonstrations()
             if tpre % self.target_update_interval == 0:
                 self.sync_target_network()
 
+    def compute_weighted_value_loss(y, t, weights,
+                                    clip_delta=True, batch_accumulator='mean'):
+        """Compute a loss for value prediction problem.
+
+        Args:
+            y (Variable or ndarray): Predicted values.
+            t (Variable or ndarray): Target values.
+            weights (ndarray): Weights for y, t.
+            clip_delta (bool): Use the Huber loss function if set True.
+            batch_accumulator (str): 'mean' will divide loss by batchsize
+        Returns:
+            (Variable) scalar loss
+        """
+        assert batch_accumulator in ('mean', 'sum')
+        y = F.reshape(y, (-1, 1))
+        t = F.reshape(t, (-1, 1))
+        if clip_delta:
+            losses = F.huber_loss(y, t, delta=1.0)
+        else:
+            losses = F.square(y - t) / 2
+        losses = F.reshape(losses, (-1,))
+        loss_sum = F.sum(losses * weights)
+        if batch_accumulator == 'mean':
+            loss = loss_sum / np.count_nonzero(weights)
+        elif batch_accumulator == 'sum':
+            loss = loss_sum
+        return loss
+
     def update(self):
         """Invalidate DQN's update()
-        DQfD's update happens via dqn_loss and demo_loss
-        .. and then applied via the apply_grads() function
+        DQfD's update happens via combined_loss()
         """
         raise NotImplementedError("update() is not valid for DQfD")
 
-    def _compute_target_values(self, exp_batch):
-        batch_next_state = exp_batch['next_state']
-
-        target_next_qout = self.target_model(batch_next_state)
-        self.target_next_qout = target_next_qout
-        next_q_max = target_next_qout.max
-
-        batch_rewards = exp_batch['reward']
-        batch_terminal = exp_batch['is_state_terminal']
-        discount = exp_batch['discount']
-
-        return batch_rewards + discount * (1.0 - batch_terminal) * next_q_max
-
-    def dqn_loss(self, experiences, errors_out=None):
-        """Calculate the gradients for the DQN update.
-        Args:
-            experiences (list): List of lists of dicts.
-                For DQN, each dict must contains:
-                  - state (object): State
-                  - action (object): Action
-                  - reward (float): Reward
-                  - is_state_terminal (bool): True iff next state is terminal
-                  - next_state (object): Next state
-                  - weight (float, optional): Weight coefficient. It can be
-                    used for importance sampling.
-            errors_out (list or None): If set to a list, then TD-errors
-                computed from the given experiences are appended to the list.
-        Returns:
-            None
-        """
-        exp_batch = batch_experiences(
-            experiences, xp=self.xp,
-            phi=self.phi, gamma=self.gamma,
-            batch_states=self.batch_states)
-        exp_batch['weights'] = self.xp.asarray(
-                [elem[0]['weight']for elem in experiences],
-                dtype=self.xp.float32)
-        if errors_out is None:
-                errors_out = []
-        loss_q = self._compute_loss(exp_batch, errors_out=errors_out)
-        self.replay_buffer.update_errors(errors_out)
-
-        # Update stats
-        self.average_loss *= self.average_loss_decay
-        self.average_loss += (1 - self.average_loss_decay) * \
-            float(loss_q.array)
-        loss_q.backward()
-
-
     def _compute_y_and_t(self, exp_batch):
+        """Overwrites DQN's method
+        """
         batch_size = exp_batch['reward'].shape[0]
 
         # Compute Q-values for current states
         batch_state = exp_batch['state']
-
         qout = self.model(batch_state)
 
-        # Cache Q(s) for use in supervised loss
+        # Caches Q(s) for use in supervised demo loss
         self.qout = qout
 
         batch_actions = exp_batch['action']
@@ -235,61 +278,68 @@ class DQfD(DoubleDQN):
 
         return batch_q, batch_q_target
 
-    def demo_loss(self, experiences):
-        """Calculate the gradients for the demonstration update.
-        Args:
-            experiences (list): List of lists of dicts.
-                For DQN, each dict must contains:
-                  - state (object): State
-                  - action (object): Action
-                  - reward (float): Reward
-                  - is_state_terminal (bool): True iff next state is terminal
-                  - next_state (object): Next state
-                  - weight (float, optional): Weight coefficient. It can be
-                    used for importance sampling.
-        Returns:
-            None
+    def combined_loss(self, experiences_rl, experiences_demo):
+        """Combined DQfD loss function for Demonstration and self-play/RL.
         """
-        # n-step Q-learning loss
+        num_exp_rl = len(experiences_rl)
+        experiences = experiences_rl+experiences_demo
         exp_batch = batch_experiences(experiences, xp=self.xp, phi=self.phi,
                                       gamma=self.gamma,
                                       batch_states=self.batch_states)
+
         exp_batch['weights'] = self.xp.asarray(
             [elem[0]['weight']for elem in experiences], dtype=self.xp.float32)
 
+        # Set the weights for demonstration experience to zero to exclude
+        # .. them from Q-loss.
+        exp_batch['weights'][num_exp_rl:] = 0
+
         errors_out = []
-        loss_q_nstep = self._compute_loss(exp_batch, errors_out=errors_out)
-        self.demo_replay_buffer.update_errors(errors_out)
+        qloss_nstep_rl = self._compute_loss(exp_batch, errors_out=errors_out)
+
+        # Update priorities
+        self.demo_replay_buffer.update_errors(errors_out[num_exp_rl:])
+        if num_exp_rl > 0:
+            self.replay_buffer.update_errors(errors_out[:num_exp_rl])
 
         # Large-margin supervised loss
-        a_expert = exp_batch['action']
-        batch_size = exp_batch['reward'].shape[0]
+        # Grab the cached Q(s) in the forward pass & subset demo exp.
+        q_picked = self.qout.evaluate_actions(exp_batch["action"])
+        q_expert_demos = q_picked[num_exp_rl:]
 
-        # Grab the cached Q(s)
-        q_values = self.qout
-        q_expert = q_values.evaluate_actions(a_expert)
-        q_values = q_values.q_values.array  # unwrap DiscreteActionValue
+        # unwrap DiscreteActionValue and subset demos
+        q_demos = self.qout.q_values[num_exp_rl:]
 
-        margin = np.zeros_like(q_values) + self.demo_supervised_margin
-        margin[:, a_expert] = 0
-        supervised_targets = np.max(q_values + margin, axis=-1)
+        # Calculate margin forall actions (l(a_E,a) in the paper)
+        margin = np.zeros_like(q_demos.array) + self.demo_supervised_margin
+        a_expert_demos = exp_batch["action"][num_exp_rl:]
+        margin[np.arange(len(experiences_demo)), a_expert_demos] = 0.0
 
-        loss_supervised = F.mean_squared_error(supervised_targets, q_expert)
+        supervised_targets = F.max(q_demos + margin, axis=-1)
+        loss_supervised = F.sum(supervised_targets - q_expert_demos)
+        if self.batch_accumulator is "mean":
+            loss_supervised /= len(experiences_demo)
 
-        loss_demo = loss_q_nstep + self.loss_coeff_supervised * loss_supervised
+        # L2 Loss
+        # TODO: Is there a better way to do this?
+        # loss_l2 = chainer.Variable(np.zeros(1,dtype=np.float32))
+        # for param in self.model.params():
+            # flatparam = param.reshape(-1)
+            # loss_l2 += F.matmul(flatparam, flatparam.T)
 
-        loss_demo.backward()
+        loss_combined = qloss_nstep_rl + \
+            self.loss_coeff_supervised * loss_supervised
+        # L2 loss is directly applied as chainer optimizer hook.
+        # loss_combined += self.loss_coeff_l2 * loss_l2
+
+        self.model.cleargrads()
+        loss_combined.backward()
+        self.optimizer.update()
 
         # Update stats
         self.average_loss *= self.average_loss_decay
         self.average_loss += (1 - self.average_loss_decay) * \
-            float(loss_demo.array)
-
-    def apply_grads(self):
-        """Applies the accumulated gradients from dqn_loss and demo_loss
-        """
-        self.optimizer.update()
-        self.model.cleargrads()
+            float(loss_combined.array)
 
     def act_and_train(self, obs, reward):
 
@@ -327,10 +377,7 @@ class DQfD(DoubleDQN):
         self.last_state = obs
         self.last_action = action
 
-        self.demo_replay_updater.update_if_necessary(self.t)
         self.replay_updater.update_if_necessary(self.t)
-        self.apply_grads()
-
         self.logger.debug('t:%s r:%s a:%s', self.t, reward, action)
 
         return self.last_action
@@ -358,5 +405,3 @@ class DQfD(DoubleDQN):
                     self.batch_last_obs[i] = None
                     self.replay_buffer.stop_current_episode(env_id=i)
             self.replay_updater.update_if_necessary(self.t)
-            self.demo_replay_updater.update_if_necessary(self.t)
-            self.apply_grads()
