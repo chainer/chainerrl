@@ -80,7 +80,6 @@ class TestCollectDemos(unittest.TestCase):
                     self.assertEqual(r, true_rewards[i])
                     self.assertEqual(new_obs[1], true_next_states[i])
 
-
     def test_needs_reset(self):
 
         outdir = tempfile.mkdtemp()
@@ -125,7 +124,7 @@ class TestCollectDemos(unittest.TestCase):
         self.assertEqual(agent.stop_episode.call_count, 2)
         self.assertEqual(env.reset.call_count, 2)
         self.assertEqual(env.step.call_count, 5)
-        
+
         true_states = [0, 1, 2, 4, 5]
         true_next_states = [1, 2, 3, 5, 7]
         true_actions = [0, 1, 2, 3, 4]
