@@ -18,7 +18,7 @@ def collect_demonstrations(agent,
                            outdir,
                            max_episode_len=None,
                            logger=None):
-    """Collects demonstrations from an agent.
+    """Collects demonstrations from an agent and writes to a file.
 
     Args:
         agent: Agent from which demonstrations are collected.
@@ -28,8 +28,6 @@ def collect_demonstrations(agent,
         outdir (str): Path to the directory to output demonstrations.
         max_episode_len (int): Maximum episode length.
         logger (logging.Logger): Logger used in this function.
-    Returns:
-        Chainer Dataset
     """
     assert (steps is None) != (episodes is None)
     logger = logger or logging.getLogger(__name__)
