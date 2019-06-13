@@ -43,15 +43,15 @@ class TestCollectDemos(unittest.TestCase):
         agent.act.side_effect = [0, 1, 2, 3, 4]
         if (not self.n_steps and not self.n_episodes) or \
                 (self.n_steps and self.n_episodes):
-                with self.assertRaises(AssertionError):
-                    experiments.collect_demonstrations(agent,
-                                                       env,
-                                                       self.n_steps,
-                                                       self.n_episodes,
-                                                       outdir,
-                                                       None,
-                                                       None)
-                return
+            with self.assertRaises(AssertionError):
+                experiments.collect_demonstrations(agent,
+                                                   env,
+                                                   self.n_steps,
+                                                   self.n_episodes,
+                                                   outdir,
+                                                   None,
+                                                   None)
+            return
         experiments.collect_demonstrations(agent,
                                            env,
                                            self.n_steps,
@@ -99,15 +99,15 @@ class TestCollectDemos(unittest.TestCase):
         ]
         if (not self.n_steps and not self.n_episodes) or \
                 (self.n_steps and self.n_episodes):
-                with self.assertRaises(AssertionError):
-                    experiments.collect_demonstrations(agent,
-                                                       env,
-                                                       self.n_steps,
-                                                       self.n_episodes,
-                                                       outdir,
-                                                       None,
-                                                       None)
-                return
+            with self.assertRaises(AssertionError):
+                experiments.collect_demonstrations(agent,
+                                                   env,
+                                                   self.n_steps,
+                                                   self.n_episodes,
+                                                   outdir,
+                                                   None,
+                                                   None)
+            return
 
         steps = self.n_steps
         # 2 to match the mock env, b/c test is parameterized by episodes=1
