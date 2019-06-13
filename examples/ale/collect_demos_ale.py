@@ -18,7 +18,6 @@ import chainerrl
 from chainerrl.action_value import DiscreteActionValue
 from chainerrl import agents
 from chainerrl import experiments
-from chainerrl import explorers
 from chainerrl import links
 from chainerrl import misc
 from chainerrl import replay_buffer
