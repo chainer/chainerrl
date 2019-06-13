@@ -457,6 +457,10 @@ class HindsightReplayBuffer(EpisodicReplayBuffer):
 
     Hindsight Buffer.
 
+    Args:
+        reward_function: Takes in a state, action, and goal and returns a reward
+        capacity (int): Capacity of the replay buffer
+        future_k (int): number of future goals to sample per true sample
     """
 
     def __init__(self, reward_function,
