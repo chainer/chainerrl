@@ -37,7 +37,6 @@ def main():
                         help='Random seed [0, 2 ** 31)')
     parser.add_argument('--gpu', type=int, default=0,
                         help='GPU to use, set to -1 if no GPU.')
-    parser.add_argument('--demo', action='store_true', default=False)
     parser.add_argument('--load', type=str, default=None, required=True)
     parser.add_argument('--logging-level', type=int, default=20,
                         help='Logging level. 10:DEBUG, 20:INFO etc.')
@@ -88,15 +87,10 @@ def main():
         [q_func(np.zeros((4, 84, 84), dtype=np.float32)[None])],
         os.path.join(args.outdir, 'model'))
 
-    # Use the same hyperparameters as the Nature paper
-    opt = optimizers.RMSpropGraves(
-        lr=2.5e-4, alpha=0.95, momentum=0.0, eps=1e-2)
-
+    # The optimizer and replay buffer are dummy variables required by agent
+    opt = optimizers.RMSpropGraves()
     opt.setup(q_func)
-
-    rbuf = replay_buffer.ReplayBuffer(10 ** 6)
-
-    explorer = explorers.Greedy()
+    rbuf = replay_buffer.ReplayBuffer(1)
 
     def phi(x):
         # Feature extractor
@@ -104,7 +98,7 @@ def main():
 
     Agent = agents.DQN
     agent = Agent(q_func, opt, rbuf, gpu=args.gpu, gamma=0.99,
-                  explorer=explorer, replay_start_size=1,
+                  explorer=None, replay_start_size=1,
                   minibatch_size=1,
                   target_update_interval=None,
                   clip_delta=True,

@@ -56,7 +56,7 @@ def collect_demonstrations(agent,
             a = agent.act(obs)
             # o_{t+1}, r_{t+1}
             new_obs, r, done, info = env.step(a)
-            # s_0, a_0, r__{t+1}, s_{t+1}
+            # o_t, a_t, r__{t+1}, o_{t+1}
             dataset.write((obs, a, r, new_obs, done, info))
             obs = new_obs
             reset = (done or episode_len == max_episode_len
@@ -67,10 +67,11 @@ def collect_demonstrations(agent,
             episode_num = episode_num + 1 if reset else episode_num
             if steps is None:
                 terminate = episode_num >= episodes
-                # log final episode
-                logger.info('demonstration episode %s length:%s R:%s',
-                            episode_num, episode_len, episode_r)
             else:
                 terminate = timestep >= steps
             if reset or terminate:
                 agent.stop_episode()
+                if terminate:
+                    # log final episode
+                    logger.info('demonstration episode %s length:%s R:%s',
+                                episode_num, episode_len, episode_r)
