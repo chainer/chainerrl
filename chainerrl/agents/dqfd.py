@@ -21,7 +21,6 @@ from chainerrl.agents.dqn import compute_weighted_value_loss
 
 from chainerrl.recurrent import state_kept
 from chainerrl.misc.batch_states import batch_states
-from chainerrl.replay_buffer import batch_experiences
 from chainerrl.replay_buffer import ReplayUpdater
 
 
@@ -101,19 +100,68 @@ class DemoReplayUpdater(object):
             self.update_func([], transitions_demo)
 
 
+def batch_experiences(experiences, xp, phi, gamma, batch_states=batch_states):
+    """Takes a batch of k experiences each of which contains j
+    consecutive transitions and vectorizes them, where j is between 1 and n.
+    Args:
+        experiences: list of experiences. Each experience is a list
+            containing between 1 and n dicts containing
+              - state (object): State
+              - action (object): Action
+              - reward (float): Reward
+              - is_state_terminal (bool): True iff next state is terminal
+              - next_state (object): Next state
+        xp : Numpy compatible matrix library: e.g. Numpy or CuPy.
+        phi : Preprocessing function
+        gamma: discount factor
+        batch_states: function that converts a list to a batch
+    Returns:
+        dict of batched transitions
+
+    Changes from chainerrl.replay_buffer.batch_experiences:
+        Calculates and stores both n_step and 1_step reward
+    """
+
+    batch_exp = {
+        'state': batch_states(
+            [elem[0]['state'] for elem in experiences], xp, phi),
+        'action': xp.asarray([elem[0]['action'] for elem in experiences]),
+        'reward_nstep': xp.asarray([sum((gamma ** i) * exp[i]['reward']
+                                        for i in range(len(exp)))
+                                    for exp in experiences],
+                                   dtype=np.float32),
+        'next_state_nstep': batch_states(
+            [elem[-1]['next_state']
+             for elem in experiences], xp, phi),
+
+        'reward_1step': xp.asarray([exp[0]['reward']
+                                    for exp in experiences],
+                                   dtype=np.float32),
+        'next_state_1step': batch_states(
+            [elem[0]['next_state']
+             for elem in experiences], xp, phi),
+
+        'is_state_terminal': xp.asarray(
+            [any(transition['is_state_terminal']
+                 for transition in exp) for exp in experiences],
+            dtype=np.float32),
+        'discount': xp.asarray([(gamma ** len(elem))for elem in experiences],
+                               dtype=np.float32)}
+    if all(elem[-1]['next_action'] is not None for elem in experiences):
+        batch_exp['next_action'] = xp.asarray(
+            [elem[-1]['next_action'] for elem in experiences])
+    return batch_exp
+
+
 class DQfD(DoubleDQN):
     """Deep-Q Learning from Demonstrations
     See: https://arxiv.org/abs/1704.03732.
 
     TODO:
-        * Double DQN 1-step Update
+        * Combined replay buffer
         * Test batch observe & train.
         * Test episodic update
 
-
-    Deviations from paper:
-        * Fixed proportional sampling from the two replay buffers instead of
-        single buffer with bonus priority for demos.
 
     DQN Args:
         q_function (StateQFunction): Q-function
@@ -157,6 +205,7 @@ class DQfD(DoubleDQN):
                  replay_buffer, demo_replay_buffer,
                  gamma, explorer, n_pretrain_steps,
                  demo_supervised_margin=0.8,
+                 loss_coeff_nstep=1.0,
                  loss_coeff_supervised=1.0,
                  loss_coeff_l2=1e-5,
                  demo_sample_ratio=0.2, gpu=None,
@@ -188,6 +237,7 @@ class DQfD(DoubleDQN):
         self.demo_supervised_margin = demo_supervised_margin
         self.loss_coeff_supervised = loss_coeff_supervised
         self.loss_coeff_l2 = loss_coeff_l2
+        self.loss_coeff_nstep = loss_coeff_nstep
         self.demo_replay_buffer = demo_replay_buffer
 
         self.optimizer.add_hook(
@@ -195,7 +245,6 @@ class DQfD(DoubleDQN):
 
         # Overwrite DQN's replay updater.
         # TODO: Is there a better way to do this?
-
         self.replay_updater = DemoReplayUpdater(
             demo_replay_buffer=demo_replay_buffer,
             replay_buffer=replay_buffer,
@@ -209,28 +258,31 @@ class DQfD(DoubleDQN):
             update_interval=update_interval,
         )
 
-        # TODO: Should this really go here? Move intro train function?
+        # TODO: Should this really go here? Move into train function?
         self.pretrain()
 
     def pretrain(self):
-        """Uses expert demonstrations to does pre-training
+        """Uses purely expert demonstrations to do pre-training
         """
         for tpre in range(self.n_pretrain_steps):
-            # The whole batch can consist of demo transitions in pretrain
             self.replay_updater.update_from_demonstrations()
             if tpre % self.target_update_interval == 0:
                 self.sync_target_network()
 
     def update(self):
         """Invalidate DQN's update()
-        DQfD's update happens via combined_loss()
+        DQfDs update happens via combined_loss()
         """
         raise NotImplementedError("update() is not valid for DQfD")
 
-    def _compute_y_and_t(self, exp_batch):
-        """Overwrites DQN's method
+    def _compute_y_and_ts(self, exp_batch):
+        """Compute output and targets
+
+        Changes from DQN:
+            Cache qout for the supervised loss later
+            Calculate both 1-step and n-step targets
         """
-        batch_size = exp_batch['reward'].shape[0]
+        batch_size = exp_batch['reward_nstep'].shape[0]
 
         # Compute Q-values for current states
         batch_state = exp_batch['state']
@@ -244,11 +296,62 @@ class DQfD(DoubleDQN):
             batch_actions), (batch_size, 1))
 
         with chainer.no_backprop_mode():
-            batch_q_target = F.reshape(
+            # Calculate n-step Double DQN targets
+            # Rename n-step rewards and next states
+            # .. to those _compute_target_values expects
+            exp_batch["reward"] = exp_batch["reward_nstep"]
+            exp_batch["next_state"] = exp_batch["next_state_nstep"]
+            batch_q_target_nstep = F.reshape(
                 self._compute_target_values(exp_batch),
                 (batch_size, 1))
 
-        return batch_q, batch_q_target
+            # Calculate 1-step Double DQN targets
+            exp_batch["reward"] = exp_batch["reward_1step"]
+            exp_batch["next_state"] = exp_batch["next_state_1step"]
+            batch_q_target_1step = F.reshape(
+                self._compute_target_values(exp_batch),
+                (batch_size, 1))
+
+        return batch_q, batch_q_target_nstep, batch_q_target_1step
+
+    def _compute_ddqn_losses(self, exp_batch, errors_out=None):
+        """Compute the Q-learning losses for a batch of experiences
+
+        Args:
+          exp_batch (dict): A dict of batched arrays of transitions
+        Returns:
+          Computed loss from the minibatch of experiences
+        """
+        y, t_nstep, t_1step = self._compute_y_and_ts(exp_batch)
+
+        # Calculate the errors_out for priorities with the 1-step err
+        if errors_out is not None:
+            del errors_out[:]
+            delta = F.absolute(y - t_1step)
+            if delta.ndim == 2:
+                delta = F.sum(delta, axis=1)
+            delta = cuda.to_cpu(delta.array)
+            for e in delta:
+                errors_out.append(e)
+
+        if 'weights' in exp_batch:
+            loss_1step = compute_weighted_value_loss(
+                y, t_1step, exp_batch['weights'],
+                clip_delta=self.clip_delta,
+                batch_accumulator=self.batch_accumulator)
+            loss_nstep = compute_weighted_value_loss(
+                y, t_nstep, exp_batch['weights'],
+                clip_delta=self.clip_delta,
+                batch_accumulator=self.batch_accumulator)
+            return loss_nstep, loss_1step
+        else:
+            loss_1step = compute_value_loss(y, t_1step,
+                                            clip_delta=self.clip_delta,
+                                            batch_accumulator=self.batch_accumulator)
+            loss_nstep = compute_value_loss(y, t_nstep,
+                                            clip_delta=self.clip_delta,
+                                            batch_accumulator=self.batch_accumulator)
+            return loss_nstep, loss_1step
 
     def combined_loss(self, experiences_rl, experiences_demo):
         """Combined DQfD loss function for Demonstration and self-play/RL.
@@ -263,7 +366,8 @@ class DQfD(DoubleDQN):
             [elem[0]['weight']for elem in experiences], dtype=self.xp.float32)
 
         errors_out = []
-        qloss_nstep = self._compute_loss(exp_batch, errors_out=errors_out)
+        loss_q_nstep, loss_q_1step = self._compute_ddqn_losses(
+            exp_batch, errors_out=errors_out)
 
         # Update priorities
         self.demo_replay_buffer.update_errors(errors_out[num_exp_rl:])
@@ -288,17 +392,10 @@ class DQfD(DoubleDQN):
         if self.batch_accumulator is "mean":
             loss_supervised /= len(experiences_demo)
 
-        # L2 Loss
-        # TODO: Is there a better way to do this?
-        # loss_l2 = chainer.Variable(np.zeros(1,dtype=np.float32))
-        # for param in self.model.params():
-            # flatparam = param.reshape(-1)
-            # loss_l2 += F.matmul(flatparam, flatparam.T)
-
-        loss_combined = qloss_nstep + \
+        # L2 loss is directly applied as chainer optimizer hook in init
+        loss_combined = loss_q_1step + \
+            self.loss_coeff_nstep * loss_q_nstep + \
             self.loss_coeff_supervised * loss_supervised
-        # L2 loss is directly applied as chainer optimizer hook.
-        # loss_combined += self.loss_coeff_l2 * loss_l2
 
         self.model.cleargrads()
         loss_combined.backward()
