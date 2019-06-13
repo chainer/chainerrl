@@ -28,10 +28,10 @@ from chainerrl.replay_buffer import PrioritizedBuffer
 
 class PrioritizedDemoReplayBuffer(PrioritizedReplayBuffer):
     """Modification of a PrioritizedReplayBuffer to have both persistent
-    demonstration data and normal rl data.
+    demonstration data and normal demonstration data.
 
     Args:
-        capacity(int): Capacity of the buffer *excluding* expert demos
+        capacity(int): Capacity of the buffer *excluding* expert demonstrations
 
     Standard PER parameters:
         alpha, beta0, betasteps, eps (float)
@@ -58,7 +58,7 @@ class PrioritizedDemoReplayBuffer(PrioritizedReplayBuffer):
             m (int): Number of samples to draw
             memory_str (str) ["rl" or "demo"]: Selects which memory to sample from
         """
-        memory = self.memory if memory_str == "rl" else self.memory_demo
+        memory = self.memory if memory_str == "agent" else self.memory_demo
         assert len(memory) >= m
         if m == 0:
             return []
@@ -81,25 +81,26 @@ class PrioritizedDemoReplayBuffer(PrioritizedReplayBuffer):
             return sampled_demo
 
         psum_demo = self.memory_demo.priority_sums.sum()
-        psum_rl = self.memory.priority_sums.sum()
-        psample_rl = psum_rl / (psum_rl + psum_demo)
+        psum_agent = self.memory.priority_sums.sum()
+        psample_agent = psum_agent / (psum_agent + psum_demo)
 
-        nsample_rl = np.random.binomial(n, psample_rl)
+        nsample_agent = np.random.binomial(n, psample_agent)
         # If we don't have enough RL transitions yet, force more demos
-        nsample_rl = min(nsample_rl, len(self.memory))
-        nsample_demo = n - nsample_rl
+        nsample_agent = min(nsample_agent, len(self.memory))
+        nsample_demo = n - nsample_agent
 
-        sampled_rl = self.sample_from_memory("rl", nsample_rl)
+        sampled_agent = self.sample_from_memory("agent", nsample_agent)
         sampled_demo = self.sample_from_memory("demo", nsample_demo)
 
-        return sampled_rl, sampled_demo
+        return sampled_agent, sampled_demo
 
-    def update_errors(self, errors_rl, errors_demo):
-        self.memory_demo.set_last_priority(
-            self.priority_from_errors(errors_demo))
-        if len(errors_rl) > 0:
+    def update_errors(self, errors_agent, errors_demo):
+        if len(errors_demo) > 0:
+            self.memory_demo.set_last_priority(
+                self.priority_from_errors(errors_demo))
+        if len(errors_agent) > 0:
             self.memory.set_last_priority(
-                self.priority_from_errors(errors_rl))
+                self.priority_from_errors(errors_agent))
 
     def append(self, state, action, reward, next_state=None, next_action=None,
                is_state_terminal=False, env_id=0, demo=False, **kwargs):
@@ -190,16 +191,16 @@ class DemoReplayUpdater(object):
         for _ in range(self.n_times_update):
             if self.episodic_update:
                 raise NotImplementedError()
-                # episodes_rl = self.replay_buffer_rl.sample_episodes(
+                # episodes_agent = self.replay_buffer_agent.sample_episodes(
                 # self.batchsize, self.episodic_update_len)
                 # episodes_demo = self.replay_buffer_demo.sample_episodes(
                 # self.batch_size, self.episodic_update_len)
-                # epissodes_rl, episodes_demo = self.replay_buffer.sample(self.batch_size, )
-                # self.update_func(episodes_rl, episodes_demo)
+                # epissodes_agent, episodes_demo = self.replay_buffer.sample(self.batch_size, )
+                # self.update_func(episodes_agent, episodes_demo)
             else:
-                transitions_rl, transitions_demo = self.replay_buffer.sample(
+                transitions_agent, transitions_demo = self.replay_buffer.sample(
                     self.batchsize)
-                self.update_func(transitions_rl, transitions_demo)
+                self.update_func(transitions_agent, transitions_demo)
 
     def update_from_demonstrations(self):
         """Called during pre-train steps. All samples are from demo buffer
@@ -310,12 +311,16 @@ class DQfD(DoubleDQN):
         loss_coeff_nstep(float): Coefficient used to regulate n-step q loss
         loss_coeff_supervised (float): Coefficient for the supervised loss term
         loss_coeff_l2 (float): Coefficient used to regulate weight decay rate
+        bonus_priority_agent(float): Bonus priorities added to agent generated data
+        bonus_priority_demo (float): Bonus priorities added to demonstration data
     """
 
     def __init__(self, q_function, optimizer,
                  replay_buffer,
                  gamma, explorer, n_pretrain_steps,
                  demo_supervised_margin=0.8,
+                 bonus_priority_agent=0.001,
+                 bonus_priority_demo=1.0,
                  loss_coeff_nstep=1.0,
                  loss_coeff_supervised=1.0,
                  loss_coeff_l2=1e-5, gpu=None,
@@ -349,6 +354,8 @@ class DQfD(DoubleDQN):
         self.loss_coeff_supervised = loss_coeff_supervised
         self.loss_coeff_l2 = loss_coeff_l2
         self.loss_coeff_nstep = loss_coeff_nstep
+        self.bonus_priority_demo = bonus_priority_demo
+        self.bonus_priority_agent = bonus_priority_agent
 
         self.optimizer.add_hook(
             chainer.optimizer_hooks.WeightDecay(loss_coeff_l2))
@@ -377,11 +384,11 @@ class DQfD(DoubleDQN):
             if tpre % self.target_update_interval == 0:
                 self.sync_target_network()
 
-    def update(self, experiences_rl, experiences_demo):
+    def update(self, experiences_agent, experiences_demo):
         """Combined DQfD loss function for Demonstration and self-play/RL.
         """
-        num_exp_rl = len(experiences_rl)
-        experiences = experiences_rl+experiences_demo
+        num_exp_agent = len(experiences_agent)
+        experiences = experiences_agent+experiences_demo
         exp_batch = batch_experiences(experiences, xp=self.xp, phi=self.phi,
                                       gamma=self.gamma,
                                       batch_states=self.batch_states)
@@ -393,20 +400,23 @@ class DQfD(DoubleDQN):
         loss_q_nstep, loss_q_1step = self._compute_ddqn_losses(
             exp_batch, errors_out=errors_out)
 
-        err_rl, err_demo = errors_out[:num_exp_rl], errors_out[num_exp_rl:]
-        self.replay_buffer.update_errors(err_rl, err_demo)
+        # Add the agent/demonstration bonus priorities and update
+        err_agent, err_demo = errors_out[:num_exp_agent], errors_out[num_exp_agent:]
+        err_agent = [e+self.bonus_priority_agent for e in err_agent]
+        err_demo = [e+self.bonus_priority_demo for e in err_demo]
+        self.replay_buffer.update_errors(err_agent, err_demo)
 
         # Large-margin supervised loss
         # Grab the cached Q(s) in the forward pass & subset demo exp.
         q_picked = self.qout.evaluate_actions(exp_batch["action"])
-        q_expert_demos = q_picked[num_exp_rl:]
+        q_expert_demos = q_picked[num_exp_agent:]
 
         # unwrap DiscreteActionValue and subset demos
-        q_demos = self.qout.q_values[num_exp_rl:]
+        q_demos = self.qout.q_values[num_exp_agent:]
 
         # Calculate margin forall actions (l(a_E,a) in the paper)
         margin = np.zeros_like(q_demos.array) + self.demo_supervised_margin
-        a_expert_demos = exp_batch["action"][num_exp_rl:]
+        a_expert_demos = exp_batch["action"][num_exp_agent:]
         margin[np.arange(len(experiences_demo)), a_expert_demos] = 0.0
 
         supervised_targets = F.max(q_demos + margin, axis=-1)
