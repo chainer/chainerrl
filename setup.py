@@ -7,7 +7,7 @@ install_requires = [
     'cached-property',
     'chainer>=2.0.0',
     'future',
-    'gym>=0.9.7,<=0.12.1',
+    'gym>=0.9.7',
     'numpy>=1.10.4',
     'pillow',
     'scipy',
