@@ -101,6 +101,7 @@ class DDPG(AttributeSavingMixin, BatchAgent):
                  episodic_update_len=None,
                  logger=getLogger(__name__),
                  batch_states=batch_states,
+                 l2_action_penalty=None,
                  clip_critic_tgt=None,
                  burnin_action_func=None,
                  ):
@@ -144,6 +145,7 @@ class DDPG(AttributeSavingMixin, BatchAgent):
         )
         self.batch_states = batch_states
         self.clip_critic_tgt = clip_critic_tgt
+        self.l2_action_penalty = l2_action_penalty
         self.burnin_action_func = burnin_action_func
 
         self.t = 0
@@ -262,6 +264,9 @@ class DDPG(AttributeSavingMixin, BatchAgent):
 
         # Since we want to maximize Q, loss is negation of Q
         loss = - F.sum(q) / batch_size
+        if self.l2_action_penalty:
+            loss += self.l2_action_penalty \
+                        * F.square(onpolicy_actions) / batch_size
 
         # Update stats
         self.average_actor_loss *= self.average_loss_decay
