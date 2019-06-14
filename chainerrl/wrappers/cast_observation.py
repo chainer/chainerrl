@@ -25,7 +25,7 @@ class CastObservation(gym.ObservationWrapper):
         super().__init__(env)
         self.dtype = dtype
 
-    def _observation(self, observation):
+    def observation(self, observation):
         self.original_observation = observation
         return observation.astype(self.dtype, copy=False)
 

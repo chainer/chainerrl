@@ -6,6 +6,7 @@ from future import standard_library
 standard_library.install_aliases()  # NOQA
 
 import chainer
+from chainer import cuda
 import chainer.functions as F
 import numpy as np
 
@@ -35,7 +36,7 @@ def _apply_categorical_projection(y, y_probs, z):
     delta_z = z[1] - z[0]
     v_min = z[0]
     v_max = z[-1]
-    xp = chainer.cuda.get_array_module(z)
+    xp = cuda.get_array_module(z)
     y = xp.clip(y, v_min, v_max)
 
     # bj: (batch_size, n_atoms)
@@ -49,7 +50,7 @@ def _apply_categorical_projection(y, y_probs, z):
     assert l.shape == (batch_size, n_atoms)
     assert u.shape == (batch_size, n_atoms)
 
-    if chainer.cuda.available and xp is chainer.cuda.cupy:
+    if cuda.available and xp is cuda.cupy:
         scatter_add = xp.scatter_add
     else:
         scatter_add = np.add.at
@@ -70,6 +71,49 @@ def _apply_categorical_projection(y, y_probs, z):
         (u.astype(xp.int32) + offset).ravel(),
         (y_probs * (bj - l)).ravel())
     return z_probs
+
+
+def compute_value_loss(eltwise_loss, batch_accumulator='mean'):
+    """Compute a loss for value prediction problem.
+
+    Args:
+        eltwise_loss (Variable): Element-wise loss per example per atom
+        batch_accumulator (str): 'mean' or 'sum'. 'mean' will use the mean of
+            the loss values in a batch. 'sum' will use the sum.
+    Returns:
+        (Variable) scalar loss
+    """
+    assert batch_accumulator in ('mean', 'sum')
+
+    if batch_accumulator == 'sum':
+        loss = F.sum(eltwise_loss)
+    else:
+        loss = F.mean(F.sum(eltwise_loss, axis=1))
+    return loss
+
+
+def compute_weighted_value_loss(eltwise_loss, batch_size, weights,
+                                batch_accumulator='mean'):
+    """Compute a loss for value prediction problem.
+
+    Args:
+        eltwise_loss (Variable): Element-wise loss per example per atom
+        weights (ndarray): Weights for y, t.
+        batch_accumulator (str): 'mean' will divide loss by batchsize
+    Returns:
+        (Variable) scalar loss
+    """
+    assert batch_accumulator in ('mean', 'sum')
+
+    # eltwise_loss is (batchsize, n_atoms) array of losses
+    # weights is an array of shape (batch_size)
+    # sum loss across atoms and then apply weight per example in batch
+    loss_sum = F.matmul(F.sum(eltwise_loss, axis=1), weights)
+    if batch_accumulator == 'mean':
+        loss = loss_sum / batch_size
+    elif batch_accumulator == 'sum':
+        loss = loss_sum
+    return loss
 
 
 class CategoricalDQN(dqn.DQN):
@@ -133,8 +177,20 @@ class CategoricalDQN(dqn.DQN):
         # Minimize the cross entropy
         # y is clipped to avoid log(0)
         eltwise_loss = -t * F.log(F.clip(y, 1e-10, 1.))
-        if self.batch_accumulator == 'sum':
-            loss = F.sum(eltwise_loss)
+
+        if errors_out is not None:
+            del errors_out[:]
+            # The loss per example is the sum of the atom-wise loss
+            # Prioritization by KL-divergence
+            delta = F.sum(eltwise_loss, axis=1)
+            delta = cuda.to_cpu(delta.array)
+            for e in delta:
+                errors_out.append(e)
+
+        if 'weights' in exp_batch:
+            return compute_weighted_value_loss(
+                eltwise_loss, y.shape[0], exp_batch['weights'],
+                batch_accumulator=self.batch_accumulator)
         else:
-            loss = F.mean(F.sum(eltwise_loss, axis=1))
-        return loss
+            return compute_value_loss(
+                eltwise_loss, batch_accumulator=self.batch_accumulator)

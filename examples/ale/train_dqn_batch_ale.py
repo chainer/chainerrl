@@ -6,6 +6,7 @@ from builtins import *  # NOQA
 from future import standard_library
 standard_library.install_aliases()  # NOQA
 import argparse
+import functools
 import os
 
 import chainer
@@ -120,6 +121,7 @@ def main():
     parser.add_argument('--prioritized', action='store_true', default=False,
                         help='Use prioritized experience replay.')
     parser.add_argument('--num-envs', type=int, default=1)
+    parser.add_argument('--n-step-return', type=int, default=1)
     args = parser.parse_args()
 
     import logging
@@ -161,7 +163,7 @@ def main():
 
     def make_batch_env(test):
         vec_env = chainerrl.envs.MultiprocessVectorEnv(
-            [(lambda: make_env(idx, test))
+            [functools.partial(make_env, idx, test)
              for idx, env in enumerate(range(args.num_envs))])
         vec_env = chainerrl.wrappers.VectorFrameStack(vec_env, 4)
         return vec_env
@@ -172,7 +174,7 @@ def main():
     q_func = parse_arch(args.arch, n_actions)
 
     if args.noisy_net_sigma is not None:
-        links.to_factorized_noisy(q_func)
+        links.to_factorized_noisy(q_func, sigma_scale=args.noisy_net_sigma)
         # Turn off explorer
         explorer = explorers.Greedy()
 
@@ -192,9 +194,12 @@ def main():
         # Anneal beta from beta0 to 1 throughout training
         betasteps = args.steps / args.update_interval
         rbuf = replay_buffer.PrioritizedReplayBuffer(
-            10 ** 6, alpha=0.6, beta0=0.4, betasteps=betasteps)
+            10 ** 6, alpha=0.6, beta0=0.4, betasteps=betasteps,
+            num_steps=args.n_step_return,
+        )
     else:
-        rbuf = replay_buffer.ReplayBuffer(10 ** 6)
+        rbuf = replay_buffer.ReplayBuffer(
+            10 ** 6, num_steps=args.n_step_return)
 
     explorer = explorers.LinearDecayEpsilonGreedy(
         1.0, args.final_epsilon,
