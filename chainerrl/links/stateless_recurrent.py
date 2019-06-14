@@ -374,9 +374,13 @@ class StatelessRecurrentChainList(StatelessRecurrent, chainer.ChainList):
 
     @cached_property
     def recurrent_children(self):
-        """Return recurrent child links."""
-        return [child for child in self.children()
-                if is_recurrent_link(child)]
+        """Return recurrent child links.
+
+        Returns:
+            tuple: Tuple of `chainer.Link`s that are recurrent.
+        """
+        return tuple(child for child in self.children()
+                     if is_recurrent_link(child))
 
     def mask_recurrent_state_at(self, recurrent_states, indices):
         return mask_recurrent_states_of_links_at(
