@@ -495,13 +495,14 @@ class HindsightReplayBuffer(EpisodicReplayBuffer):
             if index in her_indexes:
                 transition = copy.deepcopy(transition)
                 future_state = episodes[index][future_times[index]]['state']
-                new_goal = future_state['achieved_goal']
-                transition['state']['desired_goal'] = new_goal
-                transition['next_state']['desired_goal'] = new_goal
-                transition['reward'] = self.reward_function(
-                                                    transition['state'],
-                                                    transition['action'],
-                                                    new_goal)
+                if future_state['achieved_goal'] is not None:
+                    new_goal = future_state['achieved_goal']
+                    transition['state']['desired_goal'] = new_goal
+                    transition['next_state']['desired_goal'] = new_goal
+                    transition['reward'] = self.reward_function(
+                                                        transition['state'],
+                                                        transition['action'],
+                                                        new_goal)
             batch.append([transition])
         return batch
 
