@@ -35,7 +35,7 @@ class CastAction(gym.ActionWrapper):
         super().__init__(env)
         self.type_ = type_
 
-    def _action(self, action):
+    def action(self, action):
         return self.type_(action)
 
 
@@ -52,7 +52,7 @@ class TransposeObservation(gym.ObservationWrapper):
             dtype=env.observation_space.dtype,
         )
 
-    def _observation(self, observation):
+    def observation(self, observation):
         return observation.transpose(*self._axes)
 
 
@@ -76,7 +76,7 @@ class ObserveElapsedSteps(gym.Wrapper):
         self._elapsed_steps = 0
         return self.env.reset(), self._elapsed_steps
 
-    def _step(self, action):
+    def step(self, action):
         observation, reward, done, info = self.env.step(action)
         self._elapsed_steps += 1
         assert self._elapsed_steps <= self._max_steps

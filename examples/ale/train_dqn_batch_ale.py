@@ -174,7 +174,7 @@ def main():
     q_func = parse_arch(args.arch, n_actions)
 
     if args.noisy_net_sigma is not None:
-        links.to_factorized_noisy(q_func)
+        links.to_factorized_noisy(q_func, sigma_scale=args.noisy_net_sigma)
         # Turn off explorer
         explorer = explorers.Greedy()
 
