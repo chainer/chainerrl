@@ -33,7 +33,7 @@ def ensure_initialized_update_rule(param):
 
 
 def set_shared_params(a, b):
-    """Set shared params to a link.
+    """Set shared params (and persistent values) to a link.
 
     Args:
       a (chainer.Link): link whose params are to be replaced
@@ -45,6 +45,22 @@ def set_shared_params(a, b):
             shared_param = b[param_name]
             param.array = np.frombuffer(
                 shared_param, dtype=param.dtype).reshape(param.shape)
+    for persistent_name in a._persistent:
+        persistent = a.__dict__[persistent_name]
+        if persistent_name in b:
+            shared_param = b[persistent_name]
+            if isinstance(persistent, np.ndarray):
+                a.__dict__[persistent_name] = np.frombuffer(
+                    shared_param, dtype=persistent.dtype).reshape(
+                        persistent.shape)
+            else:
+                assert np.isscalar(persistent)
+                # We wrap scalars with np.ndarray because
+                # multiprocessing.RawValue cannot be used as a scalar, while
+                # np.ndarray can be.
+                typecode = np.asarray(persistent).dtype.char
+                a.__dict__[persistent_name] = np.frombuffer(
+                    shared_param, dtype=typecode).reshape(())
 
 
 def make_params_not_shared(a):
@@ -85,7 +101,20 @@ def extract_params_as_shared_arrays(link):
     assert isinstance(link, chainer.Link)
     shared_arrays = {}
     for param_name, param in link.namedparams():
-        shared_arrays[param_name] = mp.RawArray('f', param.array.ravel())
+        typecode = param.array.dtype.char
+        shared_arrays[param_name] = mp.RawArray(typecode, param.array.ravel())
+    for persistent_name in link._persistent:
+        persistent = link.__dict__[persistent_name]
+        if isinstance(persistent, np.ndarray):
+            typecode = persistent.dtype.char
+            shared_arrays[persistent_name] = mp.RawArray(
+                typecode, persistent.ravel())
+        else:
+            assert np.isscalar(persistent)
+            persistent_as_array = np.asarray([persistent])
+            typecode = persistent_as_array.dtype.char
+            shared_arrays[persistent_name] = mp.RawArray(
+                typecode, persistent_as_array)
     return shared_arrays
 
 

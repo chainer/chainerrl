@@ -22,12 +22,52 @@ import numpy as np
 from chainerrl.misc import async_
 
 
+def _assert_same_pointers_to_persistent_values(a, b):
+    assert isinstance(a, chainer.Link)
+    assert isinstance(b, chainer.Link)
+    a_persistent_names = set(a._persistent)
+    b_persistent_names = set(b._persistent)
+    assert a_persistent_names == b_persistent_names
+    for key in a_persistent_names:
+        a_persistent = a.__dict__[key]
+        b_persistent = b.__dict__[key]
+        assert isinstance(a_persistent, np.ndarray)
+        assert isinstance(b_persistent, np.ndarray)
+        assert a_persistent.ctypes.data == b_persistent.ctypes.data
+
+
+def _assert_same_pointers_to_param_data(a, b):
+    assert isinstance(a, chainer.Link)
+    assert isinstance(b, chainer.Link)
+    a_params = dict(a.namedparams())
+    b_params = dict(b.namedparams())
+    assert set(a_params.keys()) == set(b_params.keys())
+    for key in a_params.keys():
+        assert isinstance(a_params[key], chainer.Variable)
+        assert isinstance(b_params[key], chainer.Variable)
+        assert (a_params[key].array.ctypes.data
+                == b_params[key].array.ctypes.data)
+
+
+def _assert_different_pointers_to_param_grad(a, b):
+    assert isinstance(a, chainer.Link)
+    assert isinstance(b, chainer.Link)
+    a_params = dict(a.namedparams())
+    b_params = dict(b.namedparams())
+    assert set(a_params.keys()) == set(b_params.keys())
+    for key in a_params.keys():
+        assert isinstance(a_params[key], chainer.Variable)
+        assert isinstance(b_params[key], chainer.Variable)
+        assert (a_params[key].grad.ctypes.data
+                != b_params[key].grad.ctypes.data)
+
+
 class TestAsync(unittest.TestCase):
 
     def setUp(self):
         pass
 
-    def test_share_params(self):
+    def test_share_params_linear(self):
 
         # A's params are shared with B and C so that all the three share the
         # same parameter arrays
@@ -35,6 +75,8 @@ class TestAsync(unittest.TestCase):
         model_a = L.Linear(2, 2)
 
         arrays = async_.share_params_as_shared_arrays(model_a)
+        assert isinstance(arrays, dict)
+        assert set(arrays.keys()) == {'/W', '/b'}
 
         model_b = L.Linear(2, 2)
         model_c = L.Linear(2, 2)
@@ -42,28 +84,58 @@ class TestAsync(unittest.TestCase):
         async_.set_shared_params(model_b, arrays)
         async_.set_shared_params(model_c, arrays)
 
-        a_params = dict(model_a.namedparams())
-        b_params = dict(model_b.namedparams())
-        c_params = dict(model_c.namedparams())
+        # Pointers to parameters must be the same
+        _assert_same_pointers_to_param_data(model_a, model_b)
+        _assert_same_pointers_to_param_data(model_a, model_c)
+        # Pointers to gradients must be different
+        _assert_different_pointers_to_param_grad(model_a, model_b)
+        _assert_different_pointers_to_param_grad(model_a, model_c)
+        _assert_different_pointers_to_param_grad(model_b, model_c)
+        # Pointers to persistent values must be the same
+        _assert_same_pointers_to_persistent_values(model_a, model_b)
+        _assert_same_pointers_to_persistent_values(model_a, model_c)
 
-        def assert_same_pointers_to_data(a, b):
-            self.assertEqual(a['/W'].array.ctypes.data,
-                             b['/W'].array.ctypes.data)
-            self.assertEqual(a['/b'].array.ctypes.data,
-                             b['/b'].array.ctypes.data)
+    def test_share_params_batch_normalization(self):
 
-        def assert_different_pointers_to_grad(a, b):
-            self.assertNotEqual(a['/W'].grad.ctypes.data,
-                                b['/W'].grad.ctypes.data)
-            self.assertNotEqual(a['/b'].grad.ctypes.data,
-                                b['/b'].grad.ctypes.data)
+        # A's params and persistent values are all shared with B and C
+
+        model_a = L.BatchNormalization(3)
+
+        arrays = async_.share_params_as_shared_arrays(model_a)
+        assert isinstance(arrays, dict)
+        assert set(arrays.keys()) == {
+            '/gamma', '/beta', 'avg_mean', 'avg_var', 'N'}
+
+        model_b = L.BatchNormalization(3)
+        model_c = L.BatchNormalization(3)
+
+        async_.set_shared_params(model_b, arrays)
+        async_.set_shared_params(model_c, arrays)
 
         # Pointers to parameters must be the same
-        assert_same_pointers_to_data(a_params, b_params)
-        assert_same_pointers_to_data(a_params, c_params)
+        _assert_same_pointers_to_param_data(model_a, model_b)
+        _assert_same_pointers_to_param_data(model_a, model_c)
         # Pointers to gradients must be different
-        assert_different_pointers_to_grad(a_params, b_params)
-        assert_different_pointers_to_grad(a_params, c_params)
+        _assert_different_pointers_to_param_grad(model_a, model_b)
+        _assert_different_pointers_to_param_grad(model_a, model_c)
+        _assert_different_pointers_to_param_grad(model_b, model_c)
+        # Pointers to persistent values must be the same
+        _assert_same_pointers_to_persistent_values(model_a, model_b)
+        _assert_same_pointers_to_persistent_values(model_a, model_c)
+
+        # Check if N is shared correctly among links
+        assert model_a.N == 0
+        assert model_b.N == 0
+        assert model_c.N == 0
+        test_input = np.random.normal(size=(2, 3)).astype(np.float32)
+        model_a(test_input, finetune=True)
+        assert model_a.N == 1
+        assert model_b.N == 1
+        assert model_c.N == 1
+        model_c(test_input, finetune=True)
+        assert model_a.N == 2
+        assert model_b.N == 2
+        assert model_c.N == 2
 
     def test_share_states(self):
 
