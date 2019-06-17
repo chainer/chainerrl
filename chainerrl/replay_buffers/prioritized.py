@@ -6,6 +6,11 @@ from builtins import *  # NOQA
 from future import standard_library
 standard_library.install_aliases()
 
+import collections
+
+import numpy as np
+
+from chainerrl.misc.prioritized import PrioritizedBuffer
 from chainerrl.replay_buffers import ReplayBuffer
 
 
@@ -107,11 +112,3 @@ class PrioritizedReplayBuffer(ReplayBuffer, PriorityWeightError):
 
     def update_errors(self, errors):
         self.memory.set_last_priority(self.priority_from_errors(errors))
-
-
-def random_subseq(seq, subseq_len):
-    if len(seq) <= subseq_len:
-        return seq
-    else:
-        i = np.random.randint(0, len(seq) - subseq_len + 1)
-        return seq[i:i + subseq_len]

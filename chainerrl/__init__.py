@@ -52,10 +52,10 @@ q_function.FCBNQuadraticStateQFunction = \
 replay_buffer.ReplayBuffer = replay_buffers.ReplayBuffer
 replay_buffer.PriorityWeightError = replay_buffers.PriorityWeightError
 replay_buffer.PrioritizedReplayBuffer = \
-	replay_buffers.PrioritizedReplayBuffer
+    replay_buffers.PrioritizedReplayBuffer
 replay_buffer.EpisodicReplayBuffer = replay_buffers.EpisodicReplayBuffer
 replay_buffer.PrioritizedEpisodicReplayBuffer = \
-	replay_buffers.PrioritizedEpisodicReplayBuffer
+    replay_buffers.PrioritizedEpisodicReplayBuffer
 
 v_function.SingleModelVFunction = v_functions.SingleModelVFunction
 v_function.FCVFunction = v_functions.FCVFunction

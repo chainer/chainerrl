@@ -10,14 +10,10 @@ standard_library.install_aliases()  # NOQA
 from abc import ABCMeta
 from abc import abstractmethod
 from abc import abstractproperty
-import collections
 
 import numpy as np
-import six.moves.cPickle as pickle
 
 from chainerrl.misc.batch_states import batch_states
-from chainerrl.misc.collections import RandomAccessQueue
-from chainerrl.misc.prioritized import PrioritizedBuffer
 
 
 class AbstractReplayBuffer(with_metaclass(ABCMeta, object)):
@@ -134,6 +130,14 @@ class AbstractEpisodicReplayBuffer(AbstractReplayBuffer):
                 training.
         """
         raise NotImplementedError
+
+
+def random_subseq(seq, subseq_len):
+    if len(seq) <= subseq_len:
+        return seq
+    else:
+        i = np.random.randint(0, len(seq) - subseq_len + 1)
+        return seq[i:i + subseq_len]
 
 
 def batch_experiences(experiences, xp, phi, gamma, batch_states=batch_states):

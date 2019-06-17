@@ -6,6 +6,10 @@ from builtins import *  # NOQA
 from future import standard_library
 standard_library.install_aliases()
 
+import collections
+import six.moves.cPickle as pickle
+
+from chainerrl.misc.collections import RandomAccessQueue
 from chainerrl import replay_buffer
 
 

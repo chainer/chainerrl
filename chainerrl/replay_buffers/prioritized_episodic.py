@@ -6,8 +6,13 @@ from builtins import *  # NOQA
 from future import standard_library
 standard_library.install_aliases()
 
+import collections
+
 from chainerrl.replay_buffers import EpisodicReplayBuffer
+from chainerrl.misc.prioritized import PrioritizedBuffer
 from chainerrl.replay_buffers import PriorityWeightError
+from chainerrl.misc.collections import RandomAccessQueue
+from chainerrl.replay_buffer import random_subseq
 
 
 class PrioritizedEpisodicReplayBuffer (
