@@ -56,7 +56,7 @@ class PrioritizedDemoReplayBuffer(PrioritizedReplayBuffer):
 
         Args:
             m (int): Number of samples to draw
-            memory_str (str) ["rl" or "demo"]: Selects which memory to sample from
+            memory_str (str)["agent"/"demo"]: Selects which memory to sample
         """
         memory = self.memory if memory_str == "agent" else self.memory_demo
         assert len(memory) >= m
@@ -80,8 +80,8 @@ class PrioritizedDemoReplayBuffer(PrioritizedReplayBuffer):
             sampled_demo = self.sample_from_memory("demo", n)
             return sampled_demo
 
-        psum_demo = self.memory_demo.priority_sums.sum()
         psum_agent = self.memory.priority_sums.sum()
+        psum_demo = self.memory_demo.priority_sums.sum()
         psample_agent = psum_agent / (psum_agent + psum_demo)
 
         nsample_agent = np.random.binomial(n, psample_agent)
@@ -104,7 +104,11 @@ class PrioritizedDemoReplayBuffer(PrioritizedReplayBuffer):
 
     def append(self, state, action, reward, next_state=None, next_action=None,
                is_state_terminal=False, env_id=0, demo=False, **kwargs):
-        memory = self.memory if demo is False else self.memory_demo
+        """
+        Args:
+            demo: Flags transition as a demonstration and store it persistently
+        """
+        memory = self.memory_demo if demo else self.memory
         last_n_transitions = self.last_n_transitions[env_id]
         experience = dict(
             state=state,
@@ -152,8 +156,6 @@ class DemoReplayUpdater(object):
         update_func (callable): Callable that accepts one of these:
             (1) two lists of transition dicts (if episodic_update=False)
             (2) two lists of transition dicts (if episodic_update=True)
-        replay_start_size (int): if the replay buffer's size is less than
-            replay_start_size, skip update
         batchsize (int): Minibatch size
         update_interval (int): Model update interval in step
         n_times_update (int): Number of repetition of update
@@ -385,7 +387,7 @@ class DQfD(DoubleDQN):
                 self.sync_target_network()
 
     def update(self, experiences_agent, experiences_demo):
-        """Combined DQfD loss function for Demonstration and self-play/RL.
+        """Combined DQfD loss function for Demonstration and agent/RL.
         """
         num_exp_agent = len(experiences_agent)
         experiences = experiences_agent+experiences_demo

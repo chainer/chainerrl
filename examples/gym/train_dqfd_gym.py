@@ -1,3 +1,13 @@
+"""An example of training DQfD for OpenAI gym Environments.
+"""
+from __future__ import print_function
+from __future__ import unicode_literals
+from __future__ import division
+from __future__ import absolute_import
+from builtins import *  # NOQA
+from future import standard_library
+standard_library.install_aliases()  # NOQA
+
 import os
 import logging
 import argparse
@@ -11,9 +21,9 @@ from chainer import optimizers
 
 import gym
 import chainerrl
-from chainerrl.experiments import collect_demonstrations
+# from chainerrl.experiments import collect_demonstrations
 from chainerrl.agents.dqfd import DQfD
-
+from chainerrl.agents.dqfd import PrioritizedDemoReplayBuffer
 
 def main():
     """Parses arguments and runs the example
@@ -25,8 +35,7 @@ def main():
     parser.add_argument('--outdir', type=str, default='results',
                         help='Directory path to save output files.'
                              ' If it does not exist, it will be created.')
-    parser.add_argument('--seed', type=int, default=0,
-                        help='Random seed [0, 2 ** 31)')
+    parser.add_argument('--seed', type=int, default=0)
     parser.add_argument('--gpu', type=int, default=-1,
                         help='GPU to use, set to -1 if no GPU.')
     parser.add_argument('--final-exploration-frames',
@@ -37,7 +46,6 @@ def main():
                         help='Final value of epsilon during training.')
     parser.add_argument('--eval-epsilon', type=float, default=0.01,
                         help='Exploration epsilon used during eval episodes.')
-    parser.add_argument('--noisy-net-sigma', type=float, default=None)
     parser.add_argument('--steps', type=int, default=15000,
                         help='Total number of timesteps to train the agent.')
     parser.add_argument('--replay-start-size', type=int, default=1000,
@@ -57,32 +65,34 @@ def main():
     parser.set_defaults(clip_delta=True)
     parser.add_argument('--logging-level', type=int, default=20,
                         help='Logging level. 10:DEBUG, 20:INFO etc.')
-    # parser.add_argument('--render', action='store_true', default=False,
-    # help='Render env states in a GUI window.')
+    parser.add_argument('--render-train', action='store_true')
+    parser.add_argument('--render-eval', action='store_true')
+    parser.add_argument('--monitor', action='store_true')
     parser.add_argument('--lr', type=float, default=5e-4, help='Learning rate')
     parser.add_argument("--replay-buffer-size", type=int, default=50000,
-                        help="Size of replay buffer (Excluding demonstrations)")
+                        help="Size of replay buffer (w/o demonstrations)")
     parser.add_argument("--minibatch-size", type=int, default=32)
     parser.add_argument('--demo', action='store_true', default=False)
     parser.add_argument('--load', type=str, default=None)
     parser.add_argument("--save-demo-trajectories", action="store_true",
                         default=False)
-
-    # Parameters for the FC/Dense network.
-    parser.add_argument("--n-hidden-channels", type=int, default=64,
-                        help="Number of hidden units in the FC network")
-    parser.add_argument("--n-hidden-layers", type=int, default=2,
-                        help="Number of hidden layers in the FC network")
+    parser.add_argument('--reward-scale-factor', type=float, default=1.0)
+    parser.add_argument("--n-hidden-channels", type=int, default=64)
+    parser.add_argument("--n-hidden-layers", type=int, default=2)
 
     # DQfD specific parameters for loading and pretraining.
     parser.add_argument('--expert-demo-path', type=str, default=None)
     parser.add_argument('--n-pretrain-steps', type=int, default=1500)
     parser.add_argument('--demo-supervised-margin', type=float, default=0.8)
-    parser.add_argument('--demo-sample-ratio', type=float, default=0.2)
     parser.add_argument('--loss-coeff-l2', type=float, default=1e-5)
+    parser.add_argument('--loss-coeff-nstep', type=float, default=1.0)
+    parser.add_argument('--loss-coeff-supervised', type=float, default=1.0)
+    parser.add_argument('--bonus-priority-agent', type=float, default=0.001)
+    parser.add_argument('--bonus-priority-demo', type=float, default=1.0)
     args = parser.parse_args()
 
-    assert args.expert_demo_path is not None
+    assert args.expert_demo_path is not None,"DQfD needs collected \
+                        expert demonstrations"
 
     import logging
     logging.basicConfig(level=args.logging_level)
@@ -103,10 +113,22 @@ def main():
 
         env_seed = test_seed if test else train_seed
         env.seed(env_seed)
+
+        # Cast observations to float32 because our model uses float32
+        # env = chainerrl.wrappers.CastObservationToFloat32(env)
+        # if args.monitor:
+            # env = gym.wrappers.Monitor(env, args.outdir)
+        # if not test:
+            # Scale rewards (and thus returns) to a reasonable range so that
+            # training is easier
+            # env = chainerrl.wrappers.ScaleReward(env, args.reward_scale_factor)
+        # if ((args.render_eval and test) or
+                # (args.render_train and not test)):
+            # env = chainerrl.wrappers.Render(env)
         return env
 
-    env = make_env(train_seed)
-    eval_env = make_env(test_seed)
+    env = make_env(test=True)
+    eval_env = make_env(test=False)
 
     q_func = chainerrl.q_functions.FCStateQFunctionWithDiscreteAction(
         ndim_obs=env.observation_space.low.size,
@@ -115,12 +137,7 @@ def main():
         n_hidden_layers=args.n_hidden_layers,
         nonlinearity=F.relu)
 
-    if args.noisy_net_sigma is not None:
-        links.to_factorized_noisy(q_func)
-        # Turn off explorer
-        explorer = chainerrl.explorers.Greedy()
-    else:
-        explorer = chainerrl.explorers.LinearDecayEpsilonGreedy(
+    explorer = chainerrl.explorers.LinearDecayEpsilonGreedy(
             1.0, args.final_epsilon,
             args.final_exploration_frames,
             lambda: np.random.randint(env.action_space.n))
@@ -130,54 +147,48 @@ def main():
         [q_func(env.observation_space.sample()[None])],
         os.path.join(args.outdir, 'model'))
 
-    # Use the Nature paper's hyperparameters
-    # opt = optimizers.RMSpropGraves(
-    # lr=args.lr, alpha=0.95, momentum=0.0, eps=1e-3)
-
     opt = chainer.optimizers.Adam(args.lr)
     opt.setup(q_func)
 
-    # Anneal beta from beta0 to 1 throughout training
     betasteps = args.steps / args.update_interval
-    rbuf = chainerrl.replay_buffer.PrioritizedReplayBuffer(
+    replay_buffer = PrioritizedDemoReplayBuffer(
         args.replay_buffer_size, alpha=0.6,
         beta0=0.4, betasteps=betasteps,
         num_steps=args.num_step_return)
 
-    # Demo rbuff is set to unlimited capacity.
-    # TODO: How do we do this annealing?
-    betasteps = args.n_pretrain_steps / args.update_interval
-    demo_rbuf = chainerrl.replay_buffer.PrioritizedReplayBuffer(
-        capacity=None, alpha=0.6,
-        beta0=0.4, betasteps=betasteps,
-        num_steps=args.num_step_return)
-
-    n_transitions = 0
     # Fill the demo buffer with expert transitions
+    n_demo_transitions = 0
     with chainer.datasets.open_pickle_dataset(args.expert_demo_path) as dataset:
         for transition in dataset:
             (obs, a, r, new_obs, done, info) = transition
-            n_transitions += 1
-            demo_rbuf.append(state=obs,
-                             action=a,
-                             reward=r,
-                             next_state=new_obs,
-                             next_action=None,
-                             is_state_terminal=done)
-            if done:
-                demo_rbuf.stop_current_episode()
-
-    print("Demo buffer loaded with", len(demo_rbuf),
-          "/", n_transitions, "transitions")
+            n_demo_transitions += 1
+            replay_buffer.append(state=obs,
+                                 action=a,
+                                 reward=r,
+                                 next_state=new_obs,
+                                 next_action=None,
+                                 is_state_terminal=done,
+                                 demo=True)
+            if done or ("needs_reset" in info and info["needs_reset"]):
+                replay_buffer.stop_current_episode(demo=True)
+    print("Demo buffer loaded with", len(replay_buffer),
+          "/", n_demo_transitions, "transitions")
 
     def phi(x):
         # Feature extractor
         return np.asarray(x, dtype=np.float32)
 
-    agent = DQfD(q_func, opt, rbuf, demo_rbuf, gpu=args.gpu, gamma=0.99,
-                 explorer=explorer, n_pretrain_steps=args.n_pretrain_steps,
+    agent = DQfD(q_func, opt, replay_buffer,
+                 gamma=0.99,
+                 explorer=explorer,
+                 n_pretrain_steps=args.n_pretrain_steps,
                  demo_supervised_margin=args.demo_supervised_margin,
-                 demo_sample_ratio=args.demo_sample_ratio,
+                 bonus_priority_agent=args.bonus_priority_agent,
+                 bonus_priority_demo=args.bonus_priority_demo,
+                 loss_coeff_nstep=args.loss_coeff_nstep,
+                 loss_coeff_supervised=args.loss_coeff_supervised,
+                 loss_coeff_l2=args.loss_coeff_l2,
+                 gpu=args.gpu,
                  replay_start_size=args.replay_start_size,
                  target_update_interval=args.target_update_interval,
                  clip_delta=args.clip_delta,
@@ -188,9 +199,20 @@ def main():
     if args.load:
         agent.load(args.load)
 
-    if args.demo and args.save_demo_trajectories:
-        collect_demonstrations(agent, eval_env, steps=None,
-                               episodes=args.eval_n_runs, outdir=args.outdir)
+    if args.demo:
+        if args.save_demo_trajectories:
+            pass
+            # collect_demonstrations(agent, eval_env, steps=None,
+                               # episodes=args.eval_n_runs, outdir=args.outdir)
+        else:
+            eval_stats = experiments.eval_performance(
+                env=eval_env,
+                agent=agent,
+                n_steps=None,
+                n_episodes=args.eval_n_runs)
+        print('n_runs: {} mean: {} median: {} stdev {}'.format(
+            args.eval_n_runs, eval_stats['mean'], eval_stats['median'],
+            eval_stats['stdev']))
     else:
         chainerrl.experiments.train_agent_with_evaluation(
             agent=agent, env=env, steps=args.steps,
