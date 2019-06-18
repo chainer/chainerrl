@@ -182,9 +182,11 @@ class DemoReplayUpdater(object):
         """Called during normal self-play
         """
         if len(self.replay_buffer) < self.replay_start_size:
+            print("TOo small")
             return
 
         if (self.episodic_update and self.replay_buffer.n_episodes < self.batchsize):
+
             return
 
         if iteration % self.update_interval != 0:
@@ -381,10 +383,12 @@ class DQfD(DoubleDQN):
     def pretrain(self):
         """Uses purely expert demonstrations to do pre-training
         """
-        for tpre in range(self.n_pretrain_steps):
+        import tqdm
+        for tpre in tqdm.tqdm(range(self.n_pretrain_steps)):
             self.replay_updater.update_from_demonstrations()
             if tpre % self.target_update_interval == 0:
                 self.sync_target_network()
+            print("Pretrain step",tpre, "Average Loss:", self.average_loss)
 
     def update(self, experiences_agent, experiences_demo):
         """Combined DQfD loss function for Demonstration and agent/RL.
@@ -434,6 +438,7 @@ class DQfD(DoubleDQN):
         self.model.cleargrads()
         loss_combined.backward()
         self.optimizer.update()
+
 
         # Update stats
         self.average_loss *= self.average_loss_decay
