@@ -383,12 +383,10 @@ class DQfD(DoubleDQN):
     def pretrain(self):
         """Uses purely expert demonstrations to do pre-training
         """
-        import tqdm
-        for tpre in tqdm.tqdm(range(self.n_pretrain_steps)):
+        for tpre in range(self.n_pretrain_steps):
             self.replay_updater.update_from_demonstrations()
             if tpre % self.target_update_interval == 0:
                 self.sync_target_network()
-            print("Pretrain step",tpre, "Average Loss:", self.average_loss)
 
     def update(self, experiences_agent, experiences_demo):
         """Combined DQfD loss function for Demonstration and agent/RL.
