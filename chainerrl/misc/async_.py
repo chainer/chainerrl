@@ -71,15 +71,19 @@ def set_shared_params(a, b):
       b (dict): dict that consists of (param_name, multiprocessing.Array)
     """
     assert isinstance(a, chainer.Link)
+    remaining_keys = set(b.keys())
     for param_name, param in a.namedparams():
         if param_name in b:
             shared_param = b[param_name]
             param.array = np.frombuffer(
                 shared_param, dtype=param.dtype).reshape(param.shape)
+            remaining_keys.remove(param_name)
     for persistent_name, _ in chainerrl.misc.namedpersistent(a):
         if persistent_name in b:
             _set_persistent_values_recursively(
                 a, persistent_name, b[persistent_name])
+            remaining_keys.remove(persistent_name)
+    assert not remaining_keys
 
 
 def make_params_not_shared(a):
