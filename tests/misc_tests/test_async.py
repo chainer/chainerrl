@@ -142,22 +142,22 @@ class TestAsync(unittest.TestCase):
 
         model_a = chainer.ChainList(
             L.BatchNormalization(3),
-            L.Linear(3, 5),
+            chainer.ChainList(L.Linear(3, 5)),
         )
 
         arrays = async_.share_params_as_shared_arrays(model_a)
         assert isinstance(arrays, dict)
         assert set(arrays.keys()) == {
             '/0/gamma', '/0/beta', '/0/avg_mean', '/0/avg_var', '/0/N',
-            '/1/W', '/1/b'}
+            '/1/0/W', '/1/0/b'}
 
         model_b = chainer.ChainList(
             L.BatchNormalization(3),
-            L.Linear(3, 5),
+            chainer.ChainList(L.Linear(3, 5)),
         )
         model_c = chainer.ChainList(
             L.BatchNormalization(3),
-            L.Linear(3, 5),
+            chainer.ChainList(L.Linear(3, 5)),
         )
 
         async_.set_shared_params(model_b, arrays)
