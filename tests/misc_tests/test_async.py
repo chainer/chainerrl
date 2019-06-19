@@ -223,10 +223,8 @@ class TestAsync(unittest.TestCase):
         model_a = chainer.ChainList(head.copy(), L.Linear(2, 3))
         model_b = chainer.ChainList(head.copy(), L.Linear(2, 4))
 
-        a_arrays = async_.extract_params_as_shared_arrays(
-            chainer.ChainList(model_a))
-        b_arrays = async_.extract_params_as_shared_arrays(
-            chainer.ChainList(model_b))
+        a_arrays = async_.extract_params_as_shared_arrays(model_a)
+        b_arrays = async_.extract_params_as_shared_arrays(model_b)
 
         print(('model_a shared_arrays', a_arrays))
         print(('model_b shared_arrays', b_arrays))
