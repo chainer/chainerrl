@@ -19,18 +19,19 @@ from chainer import optimizers
 import copy
 import numpy as np
 
+import chainerrl
 from chainerrl.misc import async_
 
 
 def _assert_same_pointers_to_persistent_values(a, b):
     assert isinstance(a, chainer.Link)
     assert isinstance(b, chainer.Link)
-    a_persistent_names = set(a._persistent)
-    b_persistent_names = set(b._persistent)
-    assert a_persistent_names == b_persistent_names
-    for key in a_persistent_names:
-        a_persistent = a.__dict__[key]
-        b_persistent = b.__dict__[key]
+    a_persistents = dict(chainerrl.misc.namedpersistent(a))
+    b_persistents = dict(chainerrl.misc.namedpersistent(b))
+    assert set(a_persistents.keys()) == set(b_persistents.keys())
+    for key in a_persistents:
+        a_persistent = a_persistents[key]
+        b_persistent = b_persistents[key]
         assert isinstance(a_persistent, np.ndarray)
         assert isinstance(b_persistent, np.ndarray)
         assert a_persistent.ctypes.data == b_persistent.ctypes.data
@@ -104,7 +105,7 @@ class TestAsync(unittest.TestCase):
         arrays = async_.share_params_as_shared_arrays(model_a)
         assert isinstance(arrays, dict)
         assert set(arrays.keys()) == {
-            '/gamma', '/beta', 'avg_mean', 'avg_var', 'N'}
+            '/gamma', '/beta', '/avg_mean', '/avg_var', '/N'}
 
         model_b = L.BatchNormalization(3)
         model_c = L.BatchNormalization(3)
@@ -136,6 +137,42 @@ class TestAsync(unittest.TestCase):
         assert model_a.N == 2
         assert model_b.N == 2
         assert model_c.N == 2
+
+    def test_share_params_chain_list(self):
+
+        model_a = chainer.ChainList(
+            L.BatchNormalization(3),
+            L.Linear(3, 5),
+        )
+
+        arrays = async_.share_params_as_shared_arrays(model_a)
+        assert isinstance(arrays, dict)
+        assert set(arrays.keys()) == {
+            '/0/gamma', '/0/beta', '/0/avg_mean', '/0/avg_var', '/0/N',
+            '/1/W', '/1/b'}
+
+        model_b = chainer.ChainList(
+            L.BatchNormalization(3),
+            L.Linear(3, 5),
+        )
+        model_c = chainer.ChainList(
+            L.BatchNormalization(3),
+            L.Linear(3, 5),
+        )
+
+        async_.set_shared_params(model_b, arrays)
+        async_.set_shared_params(model_c, arrays)
+
+        # Pointers to parameters must be the same
+        _assert_same_pointers_to_param_data(model_a, model_b)
+        _assert_same_pointers_to_param_data(model_a, model_c)
+        # Pointers to gradients must be different
+        _assert_different_pointers_to_param_grad(model_a, model_b)
+        _assert_different_pointers_to_param_grad(model_a, model_c)
+        _assert_different_pointers_to_param_grad(model_b, model_c)
+        # Pointers to persistent values must be the same
+        _assert_same_pointers_to_persistent_values(model_a, model_b)
+        _assert_same_pointers_to_persistent_values(model_a, model_c)
 
     def test_share_states(self):
 
