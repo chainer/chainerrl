@@ -13,6 +13,7 @@ import chainer
 import numpy as np
 
 import chainerrl
+from chainerrl.misc import random_seed
 
 
 class AbnormalExitWarning(Warning):
