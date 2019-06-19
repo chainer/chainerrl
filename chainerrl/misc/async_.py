@@ -53,14 +53,13 @@ def _set_persistent_values_recursively(link, persistent_name, shared_array):
     else:
         assert isinstance(link, (chainer.Chain, chainer.ChainList))
         assert '/' in persistent_name
+        child_name, remaining = persistent_name.split('/', maxsplit=1)
         if isinstance(link, chainer.Chain):
-            child_name, remaining = persistent_name.split('/')
             _set_persistent_values_recursively(
                 getattr(link, child_name), remaining, shared_array)
         else:
-            child_idx, remaining = persistent_name.split('/')
             _set_persistent_values_recursively(
-                link._children[int(child_idx)], remaining, shared_array)
+                link._children[int(child_name)], remaining, shared_array)
 
 
 def set_shared_params(a, b):
