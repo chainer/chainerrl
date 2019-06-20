@@ -4,15 +4,15 @@ from __future__ import division
 from __future__ import absolute_import
 from builtins import *  # NOQA
 from future import standard_library
-standard_library.install_aliases()
+standard_library.install_aliases()  # NOQA
 
 import collections
 
-from chainerrl.replay_buffers import EpisodicReplayBuffer
-from chainerrl.misc.prioritized import PrioritizedBuffer
-from chainerrl.replay_buffers import PriorityWeightError
 from chainerrl.misc.collections import RandomAccessQueue
+from chainerrl.misc.prioritized import PrioritizedBuffer
 from chainerrl.replay_buffer import random_subseq
+from chainerrl.replay_buffers import EpisodicReplayBuffer
+from chainerrl.replay_buffers import PriorityWeightError
 
 
 class PrioritizedEpisodicReplayBuffer (

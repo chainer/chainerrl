@@ -4,14 +4,15 @@ from __future__ import division
 from __future__ import absolute_import
 from builtins import *  # NOQA
 from future import standard_library
-standard_library.install_aliases()
+standard_library.install_aliases()  # NOQA
 
 import collections
 
 import numpy as np
 
 from chainerrl.misc.prioritized import PrioritizedBuffer
-from chainerrl.replay_buffers import ReplayBuffer
+from . import replay_buffer
+from .replay_buffer import ReplayBuffer
 
 
 class PriorityWeightError(object):
