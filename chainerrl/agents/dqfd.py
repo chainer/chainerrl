@@ -366,10 +366,7 @@ class DQfD(DoubleDQN):
 
         # Overwrite DQN's replay updater.
         # TODO: Is there a better way to do this?
-        self.repla
-
-
-y_updater = DemoReplayUpdater(
+        self.replay_updater = DemoReplayUpdater(
             replay_buffer=self.replay_buffer,
             update_func=self.update,
             batchsize=minibatch_size,
@@ -387,12 +384,10 @@ y_updater = DemoReplayUpdater(
         """Uses purely expert demonstrations to do pre-training
         """
         logger = getLogger(__name__)
-
         for tpre in range(self.n_pretrain_steps):
             self.replay_updater.update_from_demonstrations()
             if tpre % self.target_update_interval == 0:
                 logger.info('PRETRAIN-step:%s statistics:%s', tpre, self.get_statistics())
-
                 self.sync_target_network()
 
     def update(self, experiences_agent, experiences_demo):
