@@ -152,7 +152,7 @@ class DemoReplayUpdater(object):
     """Object that handles update schedule and configurations.
 
     Args:
-        replay_buffer (PrioritizedDemoReplayBuffer): Replay buffer for self-play
+        replay_buffer (PrioritizedDemoReplayBuffer): Bbuffer for self-play
         update_func (callable): Callable that accepts one of these:
             (1) two lists of transition dicts (if episodic_update=False)
             (2) two lists of transition dicts (if episodic_update=True)
@@ -182,11 +182,10 @@ class DemoReplayUpdater(object):
         """Called during normal self-play
         """
         if len(self.replay_buffer) < self.replay_start_size:
-            print("TOo small")
             return
 
-        if (self.episodic_update and self.replay_buffer.n_episodes < self.batchsize):
-
+        if (self.episodic_update and (
+                self.replay_buffer.n_episodes < self.batchsize)):
             return
 
         if iteration % self.update_interval != 0:
@@ -199,7 +198,8 @@ class DemoReplayUpdater(object):
                 # self.batchsize, self.episodic_update_len)
                 # episodes_demo = self.replay_buffer_demo.sample_episodes(
                 # self.batch_size, self.episodic_update_len)
-                # epissodes_agent, episodes_demo = self.replay_buffer.sample(self.batch_size, )
+                # epissodes_agent, episodes_demo = self.replay_buffer.sample(
+                #                                    self.batch_size, )
                 # self.update_func(episodes_agent, episodes_demo)
             else:
                 transitions_agent, transitions_demo = self.replay_buffer.sample(
@@ -248,14 +248,14 @@ def batch_experiences(experiences, xp, phi, gamma, batch_states=batch_states):
         'reward_nstep': xp.asarray([sum((gamma ** i) * exp[i]['reward']
                                         for i in range(len(exp)))
                                     for exp in experiences],
-                                   dtype=np.float32),
+                                   dtype=xp.float32),
         'next_state_nstep': batch_states(
             [elem[-1]['next_state']
              for elem in experiences], xp, phi),
 
         'reward_1step': xp.asarray([exp[0]['reward']
                                     for exp in experiences],
-                                   dtype=np.float32),
+                                   dtype=xp.float32),
         'next_state_1step': batch_states(
             [elem[0]['next_state']
              for elem in experiences], xp, phi),
@@ -263,9 +263,9 @@ def batch_experiences(experiences, xp, phi, gamma, batch_states=batch_states):
         'is_state_terminal': xp.asarray(
             [any(transition['is_state_terminal']
                  for transition in exp) for exp in experiences],
-            dtype=np.float32),
+            dtype=xp.float32),
         'discount': xp.asarray([(gamma ** len(elem))for elem in experiences],
-                               dtype=np.float32)}
+                               dtype=xp.float32)}
     if all(elem[-1]['next_action'] is not None for elem in experiences):
         batch_exp['next_action'] = xp.asarray(
             [elem[-1]['next_action'] for elem in experiences])
@@ -315,8 +315,8 @@ class DQfD(DoubleDQN):
         loss_coeff_nstep(float): Coefficient used to regulate n-step q loss
         loss_coeff_supervised (float): Coefficient for the supervised loss term
         loss_coeff_l2 (float): Coefficient used to regulate weight decay rate
-        bonus_priority_agent(float): Bonus priorities added to agent generated data
-        bonus_priority_demo (float): Bonus priorities added to demonstration data
+        bonus_priority_agent(float): Bonus priorities for agent generated data
+        bonus_priority_demo (float): Bonus priorities for demonstration data
     """
 
     def __init__(self, q_function, optimizer,
@@ -366,7 +366,10 @@ class DQfD(DoubleDQN):
 
         # Overwrite DQN's replay updater.
         # TODO: Is there a better way to do this?
-        self.replay_updater = DemoReplayUpdater(
+        self.repla
+
+
+y_updater = DemoReplayUpdater(
             replay_buffer=self.replay_buffer,
             update_func=self.update,
             batchsize=minibatch_size,
@@ -383,9 +386,13 @@ class DQfD(DoubleDQN):
     def pretrain(self):
         """Uses purely expert demonstrations to do pre-training
         """
+        logger = getLogger(__name__)
+
         for tpre in range(self.n_pretrain_steps):
             self.replay_updater.update_from_demonstrations()
             if tpre % self.target_update_interval == 0:
+                logger.info('PRETRAIN-step:%s statistics:%s', tpre, self.get_statistics())
+
                 self.sync_target_network()
 
     def update(self, experiences_agent, experiences_demo):
@@ -419,9 +426,9 @@ class DQfD(DoubleDQN):
         q_demos = self.qout.q_values[num_exp_agent:]
 
         # Calculate margin forall actions (l(a_E,a) in the paper)
-        margin = np.zeros_like(q_demos.array) + self.demo_supervised_margin
+        margin = self.xp.zeros_like(q_demos.array) + self.demo_supervised_margin
         a_expert_demos = exp_batch["action"][num_exp_agent:]
-        margin[np.arange(len(experiences_demo)), a_expert_demos] = 0.0
+        margin[self.xp.arange(len(experiences_demo)), a_expert_demos] = 0.0
 
         supervised_targets = F.max(q_demos + margin, axis=-1)
         loss_supervised = F.sum(supervised_targets - q_expert_demos)

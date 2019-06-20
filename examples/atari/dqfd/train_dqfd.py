@@ -1,4 +1,7 @@
 """DQfD on ATARI.
+Things that may differ from the paper:
+* Using 1-step loss to update priorities (not specified. May be be n-step)
+
 
 """
 from __future__ import print_function
@@ -34,6 +37,7 @@ from chainerrl.q_functions import DuelingDQN
 from chainerrl.wrappers import atari_wrappers
 import json
 
+
 class LogScaleReward(gym.RewardWrapper):
     """Convert reward to log scale as described in the DQfD paper
     https://arxiv.org/pdf/1704.03732.pdf
@@ -53,6 +57,7 @@ class LogScaleReward(gym.RewardWrapper):
     def reward(self, reward):
         self.original_reward = reward
         return np.sign(reward)*np.log(1+np.abs(reward))
+
 
 def main():
     parser = argparse.ArgumentParser()
@@ -93,8 +98,8 @@ def main():
 
     parser.add_argument('--num_step_return', type=int, default=10)
     parser.set_defaults(clip_delta=True)
-    parser.add_argument('--no-clip-delta', dest='clip_delta', action='store_false')
-
+    parser.add_argument('--no-clip-delta',
+                        dest='clip_delta', action='store_false')
 
     # DQfD specific parameters
     parser.add_argument('--expert-demo-path', type=str, required=True,
@@ -169,8 +174,8 @@ def main():
 
     # Fill the demo buffer with expert transitions
     n_demo_transitions = 0
-    with chainer.datasets.open_pickle_dataset(args.expert_demo_path) as dataset:
-        for transition in dataset:
+    with chainer.datasets.open_pickle_dataset(args.expert_demo_path) as dset:
+        for transition in dset:
             (obs, a, r, new_obs, done, info) = transition
             n_demo_transitions += 1
             replay_buffer.append(state=obs,
