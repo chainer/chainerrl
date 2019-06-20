@@ -10,9 +10,8 @@ import collections
 
 import numpy as np
 
+from .replay_buffer import ReplayBuffer  # NOQA
 from chainerrl.misc.prioritized import PrioritizedBuffer
-from . import replay_buffer
-from .replay_buffer import ReplayBuffer
 
 
 class PriorityWeightError(object):
