@@ -133,7 +133,7 @@ def main():
         env = atari_wrappers.wrap_deepmind(
             atari_wrappers.make_atari(args.env, max_frames=None),
             episode_life=not test,
-            clip_rewards=not test)
+            clip_rewards=False)
         env.seed(int(env_seed))
         if test:
             # Randomize actions like epsilon-greedy in evaluation as well
