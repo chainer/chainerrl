@@ -8,7 +8,6 @@ standard_library.install_aliases()  # NOQA
 import argparse
 import functools
 import json
-import json
 import os
 
 import chainer
@@ -20,9 +19,7 @@ import numpy as np
 import chainerrl
 from chainerrl import experiments
 from chainerrl import explorers
-from chainerrl import links
 from chainerrl import misc
-from chainerrl.q_functions import DuelingIQN
 from chainerrl import replay_buffer
 from chainerrl.wrappers import atari_wrappers
 
@@ -37,7 +34,6 @@ def main():
                         help='Random seed [0, 2 ** 31)')
     parser.add_argument('--gpu', type=int, default=0)
     parser.add_argument('--demo', action='store_true', default=False)
-    parser.add_argument('--dueling', action='store_true', default=False)
     parser.add_argument('--load', type=str, default=None)
     parser.add_argument('--final-exploration-frames',
                         type=int, default=10 ** 6)
@@ -105,34 +101,30 @@ def main():
     eval_env = make_env(test=True)
     n_actions = env.action_space.n
 
-    if args.dueling:
-        q_func = DuelingIQN(n_actions)
-    else:
-        q_func = chainerrl.agents.iqn.ImplicitQuantileQFunction(
-            psi=chainerrl.links.Sequence(
-                L.Convolution2D(None, 32, 8, stride=4),
-                F.relu,
-                L.Convolution2D(None, 64, 4, stride=2),
-                F.relu,
-                L.Convolution2D(None, 64, 3, stride=1),
-                F.relu,
-                functools.partial(F.reshape, shape=(-1, 3136)),
-            ),
-            phi=chainerrl.links.Sequence(
-                chainerrl.agents.iqn.CosineBasisLinear(64, 3136),
-                F.relu,
-            ),
-            f=chainerrl.links.Sequence(
-                L.Linear(None, 512),
-                F.relu,
-                L.Linear(None, n_actions),
-            ),
-        )
+    q_func = chainerrl.agents.iqn.ImplicitQuantileQFunction(
+        psi=chainerrl.links.Sequence(
+            L.Convolution2D(None, 32, 8, stride=4),
+            F.relu,
+            L.Convolution2D(None, 64, 4, stride=2),
+            F.relu,
+            L.Convolution2D(None, 64, 3, stride=1),
+            F.relu,
+            functools.partial(F.reshape, shape=(-1, 3136)),
+        ),
+        phi=chainerrl.links.Sequence(
+            chainerrl.agents.iqn.CosineBasisLinear(64, 3136),
+            F.relu,
+        ),
+        f=chainerrl.links.Sequence(
+            L.Linear(None, 512),
+            F.relu,
+            L.Linear(None, n_actions),
+        ),
+    )
 
     # Noisy nets
-    links.to_factorized_noisy(q_func)
-    # Turn off explorer
-    explorer = explorers.Greedy()
+    chainerrl.links.to_factorized_noisy(q_func)
+    # explorer = explorers.Greedy()
 
     # Draw the computational graph and save it in the output directory.
     fake_obss = np.zeros((4, 84, 84), dtype=np.float32)[None]
@@ -146,6 +138,13 @@ def main():
     opt.setup(q_func)
 
     rbuf = replay_buffer.ReplayBuffer(10 ** 6, num_steps=3)
+
+    # explorer = explorers.LinearDecayEpsilonGreedy(
+    #     1.0, args.final_epsilon,
+    #     args.final_exploration_frames,
+    #     lambda: np.random.randint(n_actions))
+    # Turn off explorer
+    explorer = explorers.Greedy()
 
     def phi(x):
         # Feature extractor

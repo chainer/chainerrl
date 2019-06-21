@@ -61,9 +61,9 @@ class FactorizedNoisyLinear(chainer.Chain):
 
     def __call__(self, x):
         if self.mu.W.array is None:
-            self.mu.W.initialize((self.out_size, numpy.prod(x.shape[1:])))
+            self.mu.W.initialize((self.out_size, self.xp.prod(x.shape[1:])))
         if self.sigma.W.array is None:
-            self.sigma.W.initialize((self.out_size, numpy.prod(x.shape[1:])))
+            self.sigma.W.initialize((self.out_size, self.xp.prod(x.shape[1:])))
 
         # use info of sigma.W to avoid strange error messages
         dtype = self.sigma.W.dtype
