@@ -30,7 +30,7 @@ class FactorizedNoisyLinear(chainer.Chain):
 
         with self.init_scope():
             self.mu = L.Linear(in_size, self.out_size, self.nobias,
-                               initialW=LeCunUniform(1 / numpy.sqrt(3)))
+                               initialW=LeCunUniform(1 / self.xp.sqrt(3)))
 
             self.sigma = L.Linear(in_size, self.out_size, self.nobias,
                                   initialW=VarianceScalingConstant(

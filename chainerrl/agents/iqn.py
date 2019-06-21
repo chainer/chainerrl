@@ -29,7 +29,7 @@ def cosine_basis_functions(x, n_basis_functions=64):
     xp = chainer.cuda.get_array_module(x)
     # Equation (4) in the IQN paper has an error stating i=0,...,n-1.
     # Actually i=1,...,n is correct (personal communication)
-    i_pi = xp.arange(1, n_basis_functions + 1, dtype=np.float32) * np.pi
+    i_pi = xp.arange(1, n_basis_functions + 1, dtype=xp.float32) * xp.pi
     embedding = xp.cos(x[..., None] * i_pi)
     assert embedding.shape == x.shape + (n_basis_functions,)
     return embedding
