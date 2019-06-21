@@ -123,7 +123,7 @@ def main():
     )
 
     # Noisy nets
-    chainerrl.links.to_factorized_noisy(q_func)
+    chainerrl.links.to_factorized_noisy(q_func, sigma_scale=0.5)
     # explorer = explorers.Greedy()
 
     # Draw the computational graph and save it in the output directory.

@@ -10,7 +10,6 @@ import chainer
 from chainer import cuda
 import chainer.functions as F
 import chainer.links as L
-import numpy as np
 
 from chainerrl.action_value import QuantileDiscreteActionValue
 from chainerrl.agents import dqn
