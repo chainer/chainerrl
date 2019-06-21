@@ -6,6 +6,7 @@ from builtins import *  # NOQA
 from future import standard_library
 standard_library.install_aliases()  # NOQA
 
+import functools
 import mock
 import unittest
 
@@ -68,14 +69,14 @@ class TestVectorFrameStack(unittest.TestCase):
 
         # Wrap by FrameStack and MultiprocessVectorEnv
         fs_env = chainerrl.envs.MultiprocessVectorEnv(
-            [(lambda: FrameStack(
-                make_env(idx), k=self.k, channel_order='chw'))
+            [functools.partial(
+                FrameStack, make_env(idx), k=self.k, channel_order='chw')
              for idx, env in enumerate(range(self.num_envs))])
 
         # Wrap by MultiprocessVectorEnv and VectorFrameStack
         vfs_env = VectorFrameStack(
             chainerrl.envs.MultiprocessVectorEnv(
-                [(lambda: make_env(idx))
+                [functools.partial(make_env, idx)
                  for idx, env in enumerate(range(self.num_envs))]),
             k=self.k, stack_axis=0)
 

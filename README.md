@@ -40,6 +40,7 @@ For more information, you can refer to [ChainerRL's documentation](http://chaine
 |:----------|:---------------:|:----------------:|:---------------:|:------------------:|
 | DQN (including DoubleDQN etc.) | ✓ | ✓ (NAF) | ✓ | x |
 | Categorical DQN | ✓ | x | ✓ | x |
+| Rainbow | ✓ | x | ✓ | x |
 | IQN | ✓ | x | x | x |
 | DDPG | x | ✓ | ✓ | x |
 | A3C  | ✓ | ✓ | ✓ | ✓ |
@@ -48,11 +49,13 @@ For more information, you can refer to [ChainerRL's documentation](http://chaine
 | PCL (Path Consistency Learning) | ✓ | ✓ | ✓ | ✓ |
 | PPO  | ✓ | ✓ | x | x |
 | TRPO | ✓ | ✓ | x | x |
+| TD3 | x | ✓ | x | x |
 
 Following algorithms have been implemented in ChainerRL:
 - A3C (Asynchronous Advantage Actor-Critic)
 - ACER (Actor-Critic with Experience Replay)
 - Asynchronous N-step Q-learning
+- Rainbow
 - Categorical DQN
 - IQN
 - DQN (including Double DQN, Persistent Advantage Learning (PAL), Double PAL, Dynamic Policy Programming (DPP))
@@ -61,6 +64,7 @@ Following algorithms have been implemented in ChainerRL:
 - PCL (Path Consistency Learning)
 - PPO (Proximal Policy Optimization)
 - TRPO (Trust Region Policy Optimization)
+- TD3 (Twin Delayed Deep Deterministic policy gradient algorithm)
 
 Q-function based algorithms such as DQN can utilize a Normalized Advantage Function (NAF) to tackle continuous-action problems as well as DQN-like discrete output networks.
 
@@ -74,6 +78,7 @@ The following papers have been implemented in ChainerRL:
 - [Asynchronous Methods for Deep Reinforcement Learning](https://arxiv.org/abs/1602.01783)
 - [A Distributional Perspective on Reinforcement Learning](https://arxiv.org/abs/1707.06887)
 - [Implicit Quantile Networks for Distributional Reinforcement Learning](https://arxiv.org/abs/1806.06923)
+- [Rainbow: Combining Improvements in Deep Reinforcement Learning](https://arxiv.org/abs/1710.02298)
 - [Increasing the Action Gap: New Operators for Reinforcement Learning](https://arxiv.org/abs/1512.04860)
 - [Noisy Networks for Exploration](https://arxiv.org/abs/1706.10295)
 - [Continuous control with deep reinforcement learning](https://arxiv.org/abs/1509.02971)
@@ -81,6 +86,7 @@ The following papers have been implemented in ChainerRL:
 - [Trust Region Policy Optimization](https://arxiv.org/abs/1502.05477)
 - [Sample Efficient Actor-Critic with Experience Replay](https://arxiv.org/abs/1611.01224)
 - [Bridging the Gap Between Value and Policy Based Reinforcement Learning](https://arxiv.org/abs/1702.08892)
+- [Addressing Function Approximation Error in Actor-Critic Methods](https://arxiv.org/abs/1802.09477)
 
 
 ## Visualization

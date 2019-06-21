@@ -5,6 +5,7 @@ from __future__ import absolute_import
 from future import standard_library
 standard_library.install_aliases()  # NOQA
 import argparse
+import functools
 import sys
 
 import chainer
@@ -106,7 +107,7 @@ def main():
 
     def make_batch_env(test):
         return chainerrl.envs.MultiprocessVectorEnv(
-            [(lambda: make_env(idx, test))
+            [functools.partial(make_env, idx, test)
              for idx, env in enumerate(range(args.num_envs))])
 
     sample_env = make_env(0, test=False)

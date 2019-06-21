@@ -29,7 +29,7 @@ class AbstractReplayBuffer(with_metaclass(ABCMeta, object)):
 
     @abstractmethod
     def append(self, state, action, reward, next_state=None, next_action=None,
-               is_state_terminal=False):
+               is_state_terminal=False, env_id=0, **kwargs):
         """Append a transition to this replay buffer.
 
         Args:
@@ -39,6 +39,9 @@ class AbstractReplayBuffer(with_metaclass(ABCMeta, object)):
             next_state: s_{t+1} (can be None if terminal)
             next_action: a_{t+1} (can be None for off-policy algorithms)
             is_state_terminal (bool)
+            env_id (object): Object that is unique to each env. It indicates
+                which env a given transition came from in multi-env training.
+            **kwargs: Any other information to store.
         """
         raise NotImplementedError
 
@@ -113,7 +116,7 @@ class AbstractEpisodicReplayBuffer(AbstractReplayBuffer):
         raise NotImplementedError
 
     @abstractmethod
-    def stop_current_episode(self):
+    def stop_current_episode(self, env_id=0):
         """Notify the buffer that the current episode is interrupted.
 
         You may want to interrupt the current episode and start a new one
@@ -124,6 +127,11 @@ class AbstractEpisodicReplayBuffer(AbstractReplayBuffer):
 
         This method should not be called after an episode whose termination is
         already notified by appending a transition with is_state_terminal=True.
+
+        Args:
+            env_id (object): Object that is unique to each env. It indicates
+                which env's current episode is interrupted in multi-env
+                training.
         """
         raise NotImplementedError
 
@@ -135,35 +143,44 @@ class ReplayBuffer(AbstractReplayBuffer):
         assert num_steps > 0
         self.num_steps = num_steps
         self.memory = RandomAccessQueue(maxlen=capacity)
-        self.last_n_transitions = collections.deque([], maxlen=num_steps)
+        self.last_n_transitions = collections.defaultdict(
+            lambda: collections.deque([], maxlen=num_steps))
 
     def append(self, state, action, reward, next_state=None, next_action=None,
-               is_state_terminal=False):
-        experience = dict(state=state, action=action, reward=reward,
-                          next_state=next_state, next_action=next_action,
-                          is_state_terminal=is_state_terminal)
-        self.last_n_transitions.append(experience)
+               is_state_terminal=False, env_id=0, **kwargs):
+        last_n_transitions = self.last_n_transitions[env_id]
+        experience = dict(
+            state=state,
+            action=action,
+            reward=reward,
+            next_state=next_state,
+            next_action=next_action,
+            is_state_terminal=is_state_terminal,
+            **kwargs
+        )
+        last_n_transitions.append(experience)
         if is_state_terminal:
-            while self.last_n_transitions:
-                self.memory.append(list(self.last_n_transitions))
-                del self.last_n_transitions[0]
-            assert len(self.last_n_transitions) == 0
+            while last_n_transitions:
+                self.memory.append(list(last_n_transitions))
+                del last_n_transitions[0]
+            assert len(last_n_transitions) == 0
         else:
-            if len(self.last_n_transitions) == self.num_steps:
-                self.memory.append(list(self.last_n_transitions))
+            if len(last_n_transitions) == self.num_steps:
+                self.memory.append(list(last_n_transitions))
 
-    def stop_current_episode(self):
+    def stop_current_episode(self, env_id=0):
+        last_n_transitions = self.last_n_transitions[env_id]
         # if n-step transition hist is not full, add transition;
         # if n-step hist is indeed full, transition has already been added;
-        if 0 < len(self.last_n_transitions) < self.num_steps:
-            self.memory.append(list(self.last_n_transitions))
+        if 0 < len(last_n_transitions) < self.num_steps:
+            self.memory.append(list(last_n_transitions))
         # avoid duplicate entry
-        if 0 < len(self.last_n_transitions) <= self.num_steps:
-            del self.last_n_transitions[0]
-        while self.last_n_transitions:
-            self.memory.append(list(self.last_n_transitions))
-            del self.last_n_transitions[0]
-        assert len(self.last_n_transitions) == 0
+        if 0 < len(last_n_transitions) <= self.num_steps:
+            del last_n_transitions[0]
+        while last_n_transitions:
+            self.memory.append(list(last_n_transitions))
+            del last_n_transitions[0]
+        assert len(last_n_transitions) == 0
 
     def sample(self, num_experiences):
         assert len(self.memory) >= num_experiences
@@ -267,7 +284,8 @@ class PrioritizedReplayBuffer(ReplayBuffer, PriorityWeightError):
         assert num_steps > 0
         self.num_steps = num_steps
         self.memory = PrioritizedBuffer(capacity=capacity)
-        self.last_n_transitions = collections.deque([], maxlen=num_steps)
+        self.last_n_transitions = collections.defaultdict(
+            lambda: collections.deque([], maxlen=num_steps))
         PriorityWeightError.__init__(
             self, alpha, beta0, betasteps, eps, normalize_by_max,
             error_min=error_min, error_max=error_max)
@@ -295,20 +313,21 @@ def random_subseq(seq, subseq_len):
 class EpisodicReplayBuffer(AbstractEpisodicReplayBuffer):
 
     def __init__(self, capacity=None):
-        self.current_episode = []
+        self.current_episode = collections.defaultdict(list)
         self.episodic_memory = RandomAccessQueue()
         self.memory = RandomAccessQueue()
         self.capacity = capacity
 
     def append(self, state, action, reward, next_state=None, next_action=None,
-               is_state_terminal=False, **kwargs):
+               is_state_terminal=False, env_id=0, **kwargs):
+        current_episode = self.current_episode[env_id]
         experience = dict(state=state, action=action, reward=reward,
                           next_state=next_state, next_action=next_action,
                           is_state_terminal=is_state_terminal,
                           **kwargs)
-        self.current_episode.append(experience)
+        current_episode.append(experience)
         if is_state_terminal:
-            self.stop_current_episode()
+            self.stop_current_episode(env_id=env_id)
 
     def sample(self, n):
         assert len(self.memory) >= n
@@ -353,17 +372,19 @@ class EpisodicReplayBuffer(AbstractEpisodicReplayBuffer):
                     self.episodic_memory.append(episode)
                     episode = []
 
-    def stop_current_episode(self):
-        if self.current_episode:
-            self.episodic_memory.append(self.current_episode)
-            self.memory.extend(self.current_episode)
-            self.current_episode = []
+    def stop_current_episode(self, env_id=0):
+        current_episode = self.current_episode[env_id]
+        if current_episode:
+            self.episodic_memory.append(current_episode)
+            for transition in current_episode:
+                self.memory.append([transition])
+            self.current_episode[env_id] = []
             while self.capacity is not None and \
                     len(self.memory) > self.capacity:
                 discarded_episode = self.episodic_memory.popleft()
                 for _ in range(len(discarded_episode)):
                     self.memory.popleft()
-        assert not self.current_episode
+        assert not self.current_episode[env_id]
 
 
 class PrioritizedEpisodicReplayBuffer (
@@ -379,7 +400,7 @@ class PrioritizedEpisodicReplayBuffer (
                  error_min=None,
                  error_max=None,
                  ):
-        self.current_episode = []
+        self.current_episode = collections.defaultdict(list)
         self.episodic_memory = PrioritizedBuffer(
             capacity=None,
             wait_priority_after_sampling=wait_priority_after_sampling)
@@ -409,22 +430,22 @@ class PrioritizedEpisodicReplayBuffer (
         self.episodic_memory.set_last_priority(
             self.priority_from_errors(errors))
 
-    def stop_current_episode(self):
-        if self.current_episode:
+    def stop_current_episode(self, env_id=0):
+        current_episode = self.current_episode[env_id]
+        if current_episode:
             if self.default_priority_func is not None:
-                priority = self.default_priority_func(self.current_episode)
+                priority = self.default_priority_func(current_episode)
             else:
                 priority = None
-            self.memory.extend(self.current_episode)
-            self.episodic_memory.append(self.current_episode,
-                                        priority=priority)
+            self.memory.extend(current_episode)
+            self.episodic_memory.append(current_episode, priority=priority)
             if self.capacity_left is not None:
-                self.capacity_left -= len(self.current_episode)
-            self.current_episode = []
+                self.capacity_left -= len(current_episode)
+            self.current_episode[env_id] = []
             while self.capacity_left is not None and self.capacity_left < 0:
                 discarded_episode = self.episodic_memory.popleft()
                 self.capacity_left += len(discarded_episode)
-        assert not self.current_episode
+        assert not self.current_episode[env_id]
 
 
 def batch_experiences(experiences, xp, phi, gamma, batch_states=batch_states):
