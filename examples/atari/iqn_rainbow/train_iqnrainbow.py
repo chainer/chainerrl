@@ -124,7 +124,6 @@ def main():
 
     # Noisy nets
     chainerrl.links.to_factorized_noisy(q_func, sigma_scale=0.5)
-    # explorer = explorers.Greedy()
 
     # Draw the computational graph and save it in the output directory.
     fake_obss = np.zeros((4, 84, 84), dtype=np.float32)[None]
@@ -139,10 +138,6 @@ def main():
 
     rbuf = replay_buffer.ReplayBuffer(10 ** 6, num_steps=3)
 
-    # explorer = explorers.LinearDecayEpsilonGreedy(
-    #     1.0, args.final_epsilon,
-    #     args.final_exploration_frames,
-    #     lambda: np.random.randint(n_actions))
     # Turn off explorer
     explorer = explorers.Greedy()
 
