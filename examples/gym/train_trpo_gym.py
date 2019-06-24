@@ -25,6 +25,7 @@ import os
 
 import chainer
 from chainer import functions as F
+from chainer import links as L
 import gym
 import gym.spaces
 import gym.wrappers
@@ -106,29 +107,34 @@ to numpy.ndarray of numpy.float32.""")  # NOQA
     obs_normalizer = chainerrl.links.EmpiricalNormalization(
         obs_space.low.size)
 
+    winit = chainerrl.initializers.LeCunNormal(1.)
+    winit_last = chainerrl.initializers.LeCunNormal(1e-2)
+
     if isinstance(action_space, gym.spaces.Box):
-        # Use a Gaussian policy for continuous action spaces
-        policy = \
-            chainerrl.policies.FCGaussianPolicyWithStateIndependentCovariance(
-                obs_space.low.size,
-                action_space.low.size,
-                n_hidden_channels=64,
-                n_hidden_layers=2,
-                mean_wscale=0.01,
-                nonlinearity=F.tanh,
+        action_size = action_space.low.size
+        policy = chainer.Sequential(
+            L.Linear(None, 64, initialW=winit),
+            F.tanh,
+            L.Linear(None, 64, initialW=winit),
+            F.tanh,
+            L.Linear(None, action_size, initialW=winit_last),
+            chainerrl.policies.GaussianHeadWithStateIndependentCovariance(
+                action_size=action_size,
                 var_type='diagonal',
                 var_func=lambda x: F.exp(2 * x),  # Parameterize log std
                 var_param_init=0,  # log std = 0 => std = 1
-            )
+            ),
+        )
     elif isinstance(action_space, gym.spaces.Discrete):
         # Use a Softmax policy for discrete action spaces
-        policy = chainerrl.policies.FCSoftmaxPolicy(
-            obs_space.low.size,
-            action_space.n,
-            n_hidden_channels=64,
-            n_hidden_layers=2,
-            last_wscale=0.01,
-            nonlinearity=F.tanh,
+        n_actions = action_space.n
+        policy = chainer.Sequential(
+            L.Linear(None, 64, initialW=winit),
+            F.tanh,
+            L.Linear(None, 64, initialW=winit),
+            F.tanh,
+            L.Linear(None, n_actions, initialW=winit_last),
+            lambda x: chainer.distributions.Categorical(logit=x),
         )
     else:
         print("""\
@@ -136,12 +142,12 @@ TRPO only supports gym.spaces.Box or gym.spaces.Discrete action spaces.""")  # N
         return
 
     # Use a value function to reduce variance
-    vf = chainerrl.v_functions.FCVFunction(
-        obs_space.low.size,
-        n_hidden_channels=64,
-        n_hidden_layers=2,
-        last_wscale=0.01,
-        nonlinearity=F.tanh,
+    vf = chainer.Sequential(
+        L.Linear(None, 64, initialW=winit),
+        F.tanh,
+        L.Linear(None, 64, initialW=winit),
+        F.tanh,
+        L.Linear(None, 1, initialW=winit),
     )
 
     if args.gpu >= 0:

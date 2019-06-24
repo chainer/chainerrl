@@ -124,6 +124,11 @@ class Distribution(with_metaclass(ABCMeta, object)):
         """
         raise NotImplementedError()
 
+    @property
+    def mode(self):
+        """Alias of `most_probable`."""
+        return self.most_probable
+
 
 class CategoricalDistribution(Distribution):
     """Distribution of categorical data."""
@@ -158,6 +163,11 @@ class CategoricalDistribution(Distribution):
     def kl(self, distrib):
         return F.sum(
             self.all_prob * (self.all_log_prob - distrib.all_log_prob), axis=1)
+
+@chainer.distribution.register_kl(
+    CategoricalDistribution, CategoricalDistribution)
+def _kl_categorical_categorical(dist1, dist2):
+    return dist1.kl(dist2)
 
 
 class SoftmaxDistribution(CategoricalDistribution):
@@ -213,6 +223,12 @@ class SoftmaxDistribution(CategoricalDistribution):
                                    beta=self.beta, min_prob=self.min_prob)
 
 
+@chainer.distribution.register_kl(
+    SoftmaxDistribution, SoftmaxDistribution)
+def _kl_softmax_softmax(dist1, dist2):
+    return dist1.kl(dist2)
+
+
 class MellowmaxDistribution(CategoricalDistribution):
     """Maximum entropy mellowmax distribution.
 
@@ -251,6 +267,12 @@ class MellowmaxDistribution(CategoricalDistribution):
 
     def __getitem__(self, i):
         return MellowmaxDistribution(self.values[i], omega=self.omega)
+
+
+@chainer.distribution.register_kl(
+    MellowmaxDistribution, MellowmaxDistribution)
+def _kl_mellowmax_mellowmax(dist1, dist2):
+    return dist1.kl(dist2)
 
 
 def clip_actions(actions, min_action, max_action):
@@ -314,6 +336,12 @@ class GaussianDistribution(Distribution):
 
     def __getitem__(self, i):
         return GaussianDistribution(self.mean[i], self.var[i])
+
+
+@chainer.distribution.register_kl(
+    GaussianDistribution, GaussianDistribution)
+def _kl_gaussian_gaussian(dist1, dist2):
+    return dist1.kl(dist2)
 
 
 class ContinuousDeterministicDistribution(Distribution):

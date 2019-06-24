@@ -297,4 +297,5 @@ class GaussianHeadWithStateIndependentCovariance(chainer.Chain):
                 of this link.
         """
         var = F.broadcast_to(self.var_func(self.var_param), mean.shape)
-        return distribution.GaussianDistribution(mean, var)
+        return chainer.distributions.Independent(
+            chainer.distributions.Normal(loc=mean, scale=var ** 0.5))
