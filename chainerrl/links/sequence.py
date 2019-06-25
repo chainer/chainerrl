@@ -49,6 +49,7 @@ class Sequence(chainer.ChainList, RecurrentChainMixin):
                 dummy_links.append(layer)
                 self.linkidx_to_layer[len(dummy_links) - 1] = i 
         assert dummy_links == links
+        assert self._children == dummy_links
 
     def __call__(self, x, **kwargs):
         h = x
