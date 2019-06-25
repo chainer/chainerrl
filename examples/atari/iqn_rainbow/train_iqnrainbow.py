@@ -107,7 +107,7 @@ def main():
 
     if args.dueling:
         print("Using a dueling architecture...")
-        q_func = DuelingIQN
+        q_func = DuelingIQN(n_actions)
     else:
         print("Using standard IQN architecture...")
         q_func = chainerrl.agents.iqn.ImplicitQuantileQFunction(
