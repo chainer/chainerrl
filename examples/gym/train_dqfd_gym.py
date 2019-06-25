@@ -1,29 +1,28 @@
 """An example of training DQfD for OpenAI gym Environments.
 """
+from __future__ import absolute_import
+from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
-from __future__ import division
-from __future__ import absolute_import
+
+import argparse
+import os
 from builtins import *  # NOQA
+
+import chainer
+import chainer.functions as F
+
+import chainerrl
+
+from chainerrl.agents.dqfd import DQfD, PrioritizedDemoReplayBuffer
+
 from future import standard_library
 standard_library.install_aliases()  # NOQA
 
-import os
-import logging
-import argparse
-import statistics
+import gym
+
 import numpy as np
 
-import chainer
-from chainer import functions as F
-from chainer import links as L
-from chainer import optimizers
-
-import gym
-import chainerrl
-# from chainerrl.experiments import collect_demonstrations
-from chainerrl.agents.dqfd import DQfD
-from chainerrl.agents.dqfd import PrioritizedDemoReplayBuffer
 
 def main():
     """Parses arguments and runs the example
@@ -91,7 +90,7 @@ def main():
     parser.add_argument('--bonus-priority-demo', type=float, default=1.0)
     args = parser.parse_args()
 
-    assert args.expert_demo_path is not None,"DQfD needs collected \
+    assert args.expert_demo_path is not None, "DQfD needs collected \
                         expert demonstrations"
 
     import logging
@@ -117,14 +116,14 @@ def main():
         # Cast observations to float32 because our model uses float32
         # env = chainerrl.wrappers.CastObservationToFloat32(env)
         # if args.monitor:
-            # env = gym.wrappers.Monitor(env, args.outdir)
+        # env = gym.wrappers.Monitor(env, args.outdir)
         # if not test:
-            # Scale rewards (and thus returns) to a reasonable range so that
-            # training is easier
-            # env = chainerrl.wrappers.ScaleReward(env, args.reward_scale_factor)
+        # Scale rewards (and thus returns) to a reasonable range so that
+        # training is easier
+        # env = chainerrl.wrappers.ScaleReward(env, args.reward_scale_factor)
         # if ((args.render_eval and test) or
-                # (args.render_train and not test)):
-            # env = chainerrl.wrappers.Render(env)
+        # (args.render_train and not test)):
+        # env = chainerrl.wrappers.Render(env)
         return env
 
     env = make_env(test=True)
@@ -138,9 +137,9 @@ def main():
         nonlinearity=F.relu)
 
     explorer = chainerrl.explorers.LinearDecayEpsilonGreedy(
-            1.0, args.final_epsilon,
-            args.final_exploration_frames,
-            lambda: np.random.randint(env.action_space.n))
+        1.0, args.final_epsilon,
+        args.final_exploration_frames,
+        lambda: np.random.randint(env.action_space.n))
 
     # Draw the computational graph and save it in the output directory.
     chainerrl.misc.draw_computational_graph(
@@ -149,7 +148,6 @@ def main():
 
     opt = chainer.optimizers.Adam(args.lr)
     opt.setup(q_func)
-
     betasteps = args.steps / args.update_interval
     replay_buffer = PrioritizedDemoReplayBuffer(
         args.replay_buffer_size, alpha=0.6,
@@ -158,8 +156,8 @@ def main():
 
     # Fill the demo buffer with expert transitions
     n_demo_transitions = 0
-    with chainer.datasets.open_pickle_dataset(args.expert_demo_path) as dataset:
-        for transition in dataset:
+    with chainer.datasets.open_pickle_dataset(args.expert_demo_path) as dset:
+        for transition in dset:
             (obs, a, r, new_obs, done, info) = transition
             n_demo_transitions += 1
             replay_buffer.append(state=obs,
@@ -169,7 +167,7 @@ def main():
                                  next_action=None,
                                  is_state_terminal=done,
                                  demo=True)
-            if done or ("needs_reset" in info and info["needs_reset"]):
+            if ("needs_reset" in info and info["needs_reset"]):
                 replay_buffer.stop_current_episode(demo=True)
     print("Demo buffer loaded with", len(replay_buffer),
           "/", n_demo_transitions, "transitions")
@@ -201,9 +199,10 @@ def main():
 
     if args.demo:
         if args.save_demo_trajectories:
+            # TODO
             pass
             # collect_demonstrations(agent, eval_env, steps=None,
-                               # episodes=args.eval_n_runs, outdir=args.outdir)
+            # episodes=args.eval_n_runs, outdir=args.outdir)
         else:
             eval_stats = experiments.eval_performance(
                 env=eval_env,

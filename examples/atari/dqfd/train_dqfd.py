@@ -2,6 +2,7 @@
 Things that may differ from the paper:
 * Using 1-step loss to update priorities (not specified. May be be n-step)
 * Replay buffer size is exclusive of expert demonstrations
+* Alpha=0.4 & beta0=0.6 as reported in the paper. Inverse in Schaul et al.
 
 """
 from __future__ import absolute_import
@@ -162,8 +163,8 @@ def main():
 
     betasteps = args.steps / args.update_interval
     replay_buffer = PrioritizedDemoReplayBuffer(
-        args.replay_buffer_size, alpha=0.6,
-        beta0=0.4, betasteps=betasteps,
+        args.replay_buffer_size, alpha=0.4,
+        beta0=0.6, betasteps=betasteps,
         num_steps=args.num_step_return)
 
     # Fill the demo buffer with expert transitions
@@ -171,6 +172,7 @@ def main():
     with chainer.datasets.open_pickle_dataset(args.expert_demo_path) as dset:
         for transition in dset:
             (obs, a, r, new_obs, done, info) = transition
+            # Assuming r is already normalized to log-scale.
             n_demo_transitions += 1
             replay_buffer.append(state=obs,
                                  action=a,

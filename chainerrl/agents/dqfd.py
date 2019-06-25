@@ -14,7 +14,7 @@ from chainerrl.agents import DoubleDQN
 from chainerrl.agents.dqn import (compute_value_loss,
                                   compute_weighted_value_loss)
 from chainerrl.misc.batch_states import batch_states
-from chainerrl.replay_buffer import PrioritizedReplayBuffer
+from chainerrl.replay_buffer import PrioritizedBuffer, PrioritizedReplayBuffer
 
 from future import standard_library
 standard_library.install_aliases()  # NOQA
@@ -39,10 +39,14 @@ class PrioritizedDemoReplayBuffer(PrioritizedReplayBuffer):
                  normalize_by_max=True, error_min=0,
                  error_max=1, num_steps=1):
 
-        PrioritizedReplayBuffer.__init__(self, capacity=None,
-                                         alpha=0.6, beta0=0.4, betasteps=2e5,
-                                         eps=0.01, normalize_by_max=True,
-                                         error_min=0, error_max=1, num_steps=1)
+        PrioritizedReplayBuffer.__init__(self, capacity=capacity,
+                                         alpha=alpha, beta0=beta0,
+                                         betasteps=betasteps,
+                                         eps=eps,
+                                         normalize_by_max=normalize_by_max,
+                                         error_min=error_min,
+                                         error_max=error_max,
+                                         num_steps=num_steps)
 
         self.memory = PrioritizedBuffer(capacity)
         self.memory_demo = PrioritizedBuffer(None)
@@ -356,7 +360,11 @@ class DQfD(DoubleDQN):
         self.loss_coeff_l2 = loss_coeff_l2
         self.loss_coeff_nstep = loss_coeff_nstep
         self.bonus_priority_demo = bonus_priority_demo
-        self.bonus_priority_agent = bonus_priority_agent
+        self.bonus_priority_agent = bonus_priority_agenta
+
+        self.average_loss_1step = 0
+        self.average_loss_nstep = 0
+        self.average_loss_supervised = 0
 
         self.optimizer.add_hook(
             chainer.optimizer_hooks.WeightDecay(loss_coeff_l2))
@@ -424,8 +432,8 @@ class DQfD(DoubleDQN):
             q_demos.array) + self.demo_supervised_margin
         a_expert_demos = exp_batch["action"][num_exp_agent:]
         margin[self.xp.arange(len(experiences_demo)), a_expert_demos] = 0.0
-
         supervised_targets = F.max(q_demos + margin, axis=-1)
+
         loss_supervised = F.sum(supervised_targets - q_expert_demos)
         if self.batch_accumulator is "mean":
             loss_supervised /= len(experiences_demo)
@@ -443,6 +451,18 @@ class DQfD(DoubleDQN):
         self.average_loss *= self.average_loss_decay
         self.average_loss += (1 - self.average_loss_decay) * \
             float(loss_combined.array)
+
+        self.average_loss_1step *= self.average_loss_decay
+        self.average_loss_1step += (1 - self.average_loss_decay) * \
+            float(loss_q_1step.array)
+
+        self.average_loss_nstep *= self.average_loss_decay
+        self.average_loss_nstep += (1 - self.average_loss_decay) * \
+            float(loss_q_nstep.array)
+
+        self.average_loss_supervised *= self.average_loss_decay
+        self.average_loss_supervised += (1 - self.average_loss_decay) * \
+            float(loss_supervised.array)
 
     def _compute_y_and_ts(self, exp_batch):
         """Compute output and targets
@@ -562,6 +582,16 @@ class DQfD(DoubleDQN):
         self.logger.debug('t:%s r:%s a:%s', self.t, reward, action)
 
         return self.last_action
+
+    def get_statistics(self):
+        return [
+            ('average_q', self.average_q),
+            ('average_loss_1step', self.average_loss_1step),
+            ('average_loss_nstep', self.average_loss_nstep),
+            ('average_loss_supervised', self.average_loss_supervised),
+            ('average_loss', self.average_loss),
+            ('n_updates', self.optimizer.t),
+        ]
 
     def batch_observe_and_train(self, batch_obs, batch_reward,
                                 batch_done, batch_reset):
