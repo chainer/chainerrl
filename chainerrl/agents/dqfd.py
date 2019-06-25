@@ -434,7 +434,9 @@ class DQfD(DoubleDQN):
         margin[self.xp.arange(len(experiences_demo)), a_expert_demos] = 0.0
         supervised_targets = F.max(q_demos + margin, axis=-1)
 
-        loss_supervised = F.sum(supervised_targets - q_expert_demos)
+        iweights_demos = exp_batch['weights'][num_exp_agent:]
+        loss_supervised = (supervised_targets - q_expert_demos)
+        loss_supervised = F.sum(loss_supervised * iweights_demos)
         if self.batch_accumulator is "mean":
             loss_supervised /= len(experiences_demo)
 
