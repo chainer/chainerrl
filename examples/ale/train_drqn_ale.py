@@ -67,6 +67,7 @@ def main():
                         type=int, default=3 * 10 ** 4,
                         help='Frequency (in timesteps) at which ' +
                         'the target network is updated.')
+    parser.add_argument('--final-eval-n-episodes', type=int, default=30)
     parser.add_argument('--eval-n-steps', type=int, default=125000)
     parser.add_argument('--eval-interval', type=int, default=250000,
                         help='Frequency (in timesteps) of evaluation phase.')
@@ -219,11 +220,14 @@ def main():
             env=eval_env,
             agent=agent,
             n_steps=None,
-            n_episodes=30,
+            n_episodes=args.final_eval_n_episodes,
         )
         print('n_runs: {} mean: {} median: {} stdev {}'.format(
-            args.eval_n_runs, eval_stats['mean'], eval_stats['median'],
-            eval_stats['stdev']))
+            args.final_eval_n_episodes,
+            eval_stats['mean'],
+            eval_stats['median'],
+            eval_stats['stdev'],
+        ))
     else:
         experiments.train_agent_with_evaluation(
             agent=agent, env=env, steps=args.steps,
