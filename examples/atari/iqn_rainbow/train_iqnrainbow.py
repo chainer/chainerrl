@@ -13,6 +13,7 @@ import os
 import chainer
 import chainer.functions as F
 import chainer.links as L
+from chainerrl.q_functions import DuelingIQN
 import gym
 import numpy as np
 
@@ -34,9 +35,12 @@ def main():
                         help='Random seed [0, 2 ** 31)')
     parser.add_argument('--gpu', type=int, default=0)
     parser.add_argument('--demo', action='store_true', default=False)
+    parser.add_argument('--dueling', action='store_true', default=False,
+                        help='Whether or not to use a dueling architecture')
     parser.add_argument('--load', type=str, default=None)
     parser.add_argument('--final-exploration-frames',
                         type=int, default=10 ** 6)
+    parser.add_argument('--noisy-sigma', type=float, default=None)
     parser.add_argument('--final-epsilon', type=float, default=0.01)
     parser.add_argument('--eval-epsilon', type=float, default=0.001)
     parser.add_argument('--steps', type=int, default=5 * 10 ** 7)
@@ -101,29 +105,45 @@ def main():
     eval_env = make_env(test=True)
     n_actions = env.action_space.n
 
-    q_func = chainerrl.agents.iqn.ImplicitQuantileQFunction(
-        psi=chainerrl.links.Sequence(
-            L.Convolution2D(None, 32, 8, stride=4),
-            F.relu,
-            L.Convolution2D(None, 64, 4, stride=2),
-            F.relu,
-            L.Convolution2D(None, 64, 3, stride=1),
-            F.relu,
-            functools.partial(F.reshape, shape=(-1, 3136)),
-        ),
-        phi=chainerrl.links.Sequence(
-            chainerrl.agents.iqn.CosineBasisLinear(64, 3136),
-            F.relu,
-        ),
-        f=chainerrl.links.Sequence(
-            L.Linear(None, 512),
-            F.relu,
-            L.Linear(None, n_actions),
-        ),
-    )
+    if args.dueling:
+        print("Using a dueling architecture...")
+        q_func = DuelingIQN
+    else:
+        print("Using standard IQN architecture...")
+        q_func = chainerrl.agents.iqn.ImplicitQuantileQFunction(
+            psi=chainerrl.links.Sequence(
+                L.Convolution2D(None, 32, 8, stride=4),
+                F.relu,
+                L.Convolution2D(None, 64, 4, stride=2),
+                F.relu,
+                L.Convolution2D(None, 64, 3, stride=1),
+                F.relu,
+                functools.partial(F.reshape, shape=(-1, 3136)),
+            ),
+            phi=chainerrl.links.Sequence(
+                chainerrl.agents.iqn.CosineBasisLinear(64, 3136),
+                F.relu,
+            ),
+            f=chainerrl.links.Sequence(
+                L.Linear(None, 512),
+                F.relu,
+                L.Linear(None, n_actions),
+            ),
+        )
 
     # Noisy nets
-    chainerrl.links.to_factorized_noisy(q_func, sigma_scale=0.5)
+    if args.noisy_sigma:
+        print("Using noisy networks...")
+        # default should be 0.5
+        chainerrl.links.to_factorized_noisy(q_func, sigma_scale=args.noisy_sigma)
+        # Turn off explorer
+        explorer = explorers.Greedy()
+    else:
+        print("Using epsilon greedy exporation...")
+        explorer = explorers.LinearDecayEpsilonGreedy(
+                        1.0, args.final_epsilon,
+                        args.final_exploration_frames,
+                        lambda: np.random.randint(n_actions))
 
     # Draw the computational graph and save it in the output directory.
     fake_obss = np.zeros((4, 84, 84), dtype=np.float32)[None]
@@ -138,8 +158,6 @@ def main():
 
     rbuf = replay_buffer.ReplayBuffer(10 ** 6, num_steps=3)
 
-    # Turn off explorer
-    explorer = explorers.Greedy()
 
     def phi(x):
         # Feature extractor

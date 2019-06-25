@@ -133,19 +133,18 @@ def main():
     opt = chainer.optimizers.Adam(5e-5, eps=1e-2 / args.batch_size)
     opt.setup(q_func)
 
-    rbuf = replay_buffer.ReplayBuffer(10 ** 6, num_steps=3)
+    rbuf = replay_buffer.ReplayBuffer(10 ** 6)
 
-    explorer = explorers.Greedy()
-    # explorer = explorers.LinearDecayEpsilonGreedy(
-    #     1.0, args.final_epsilon,
-    #     args.final_exploration_frames,
-    #     lambda: np.random.randint(n_actions))
+    explorer = explorers.LinearDecayEpsilonGreedy(
+        1.0, args.final_epsilon,
+        args.final_exploration_frames,
+        lambda: np.random.randint(n_actions))
 
     def phi(x):
         # Feature extractor
         return np.asarray(x, dtype=np.float32) / 255
 
-    agent = chainerrl.agents.DoubleIQN(
+    agent = chainerrl.agents.IQN(
         q_func, opt, rbuf, gpu=args.gpu, gamma=0.99,
         explorer=explorer, replay_start_size=args.replay_start_size,
         target_update_interval=args.target_update_interval,

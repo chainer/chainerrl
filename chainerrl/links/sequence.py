@@ -32,6 +32,7 @@ class Sequence(chainer.ChainList, RecurrentChainMixin):
 
     def __init__(self, *layers):
         self.layers = list(layers)
+        self.linkidx_to_layer = dict()
         links = [layer for layer in layers if isinstance(layer, chainer.Link)]
         # Cache the signatures because it might be slow
         self.argnames = [set(signature(layer).parameters)
@@ -39,6 +40,15 @@ class Sequence(chainer.ChainList, RecurrentChainMixin):
         self.accept_var_args = [accept_variable_arguments(layer)
                                 for layer in layers]
         super().__init__(*links)
+        dummy_links = []
+        for i in range(len(layers)):
+            layer = layers[i]
+            if isinstance(layer, chainer.Link):
+                # needed for noisy net compatibility
+                assert layer in self._children
+                dummy_links.append(layer)
+                self.linkidx_to_layer[len(dummy_links) - 1] = i 
+        assert dummy_links == links
 
     def __call__(self, x, **kwargs):
         h = x

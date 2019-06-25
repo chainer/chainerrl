@@ -168,6 +168,48 @@ def compute_eltwise_huber_quantile_loss(y, t, taus, huber_loss_threshold=1.0):
     eltwise_loss = abs(taus - I_delta) * eltwise_huber_loss
     return eltwise_loss
 
+def compute_value_loss(eltwise_loss, batch_accumulator='mean'):
+    """Compute a loss for value prediction problem.
+
+    Args:
+        eltwise_loss (Variable): Element-wise loss per example per atom
+        batch_accumulator (str): 'mean' or 'sum'. 'mean' will use the mean of
+            the loss values in a batch. 'sum' will use the sum.
+    Returns:
+        (Variable) scalar loss
+    """
+    assert batch_accumulator in ('mean', 'sum')
+
+    if batch_accumulator == 'sum':
+        loss = F.sum(eltwise_loss)
+    else:
+        loss = F.mean(F.sum(eltwise_loss, axis=1))
+    return loss
+
+
+def compute_weighted_value_loss(eltwise_loss, batch_size, weights,
+                                batch_accumulator='mean'):
+    """Compute a loss for value prediction problem.
+
+    Args:
+        eltwise_loss (Variable): Element-wise loss per example per atom
+        weights (ndarray): Weights for y, t.
+        batch_accumulator (str): 'mean' will divide loss by batchsize
+    Returns:
+        (Variable) scalar loss
+    """
+    assert batch_accumulator in ('mean', 'sum')
+
+    # eltwise_loss is (batchsize, n_atoms) array of losses
+    # weights is an array of shape (batch_size)
+    # sum loss across atoms and then apply weight per example in batch
+    loss_sum = F.matmul(F.sum(eltwise_loss, axis=1), weights)
+    if batch_accumulator == 'mean':
+        loss = loss_sum / batch_size
+    elif batch_accumulator == 'sum':
+        loss = loss_sum
+    return loss
+
 
 class IQN(dqn.DQN):
     """Implicit Quantile Networks.
@@ -193,12 +235,6 @@ class IQN(dqn.DQN):
             'quantile_thresholds_N_prime', 64)
         self.quantile_thresholds_K = kwargs.pop('quantile_thresholds_K', 32)
         super().__init__(*args, **kwargs)   
-        if self.model.f is not None:
-            for layer in self.model.f.layers:
-                layer.to_gpu(self.gpu)
-        if self.target_model.f is not None:
-            for layer in self.target_model.f.layers:
-                layer.to_gpu(self.gpu)
 
     def _compute_target_values(self, exp_batch):
         """Compute a batch of target return distributions.
@@ -275,6 +311,15 @@ class IQN(dqn.DQN):
             del errors_out[:]
             delta = F.mean(abs(eltwise_loss), axis=(1, 2))
             errors_out.extend(cuda.to_cpu(delta.array))
+
+        # if 'weights' in exp_batch:
+        #     return compute_weighted_value_loss(
+        #         eltwise_loss, y.shape[0], exp_batch['weights'],
+        #         batch_accumulator=self.batch_accumulator)
+        # else:
+        #     return compute_value_loss(
+        #         eltwise_loss, batch_accumulator=self.batch_accumulator)
+
 
         if self.batch_accumulator == 'sum':
             # mean over N_prime, then sum over (batch_size, N)

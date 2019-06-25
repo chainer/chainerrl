@@ -51,4 +51,5 @@ def _map_links(func, link):
 
                 if isinstance(link, Sequence):
                     # assumes i-th layer corresponds with i-th child
-                    link.layers[i] = new_child
+                    index = link.linkidx_to_layer[i]
+                    link.layers[index] = new_child
