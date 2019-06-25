@@ -196,6 +196,9 @@ class IQN(dqn.DQN):
         if self.model.f is not None:
             for layer in self.model.f.layers:
                 layer.to_gpu(self.gpu)
+        if self.target_model.f is not None:
+            for layer in self.target_model.f.layers:
+                layer.to_gpu(self.gpu)
 
     def _compute_target_values(self, exp_batch):
         """Compute a batch of target return distributions.
