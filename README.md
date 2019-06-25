@@ -47,8 +47,9 @@ For more information, you can refer to [ChainerRL's documentation](http://chaine
 | ACER | ✓ | ✓ | ✓ | ✓ |
 | NSQ (N-step Q-learning) | ✓ | ✓ (NAF) | ✓ | ✓ |
 | PCL (Path Consistency Learning) | ✓ | ✓ | ✓ | ✓ |
-| PPO  | ✓ | ✓ | x | x |
+| PPO  | ✓ | ✓ | ✓ | x |
 | TRPO | ✓ | ✓ | x | x |
+| TD3 | x | ✓ | x | x |
 
 Following algorithms have been implemented in ChainerRL:
 - A3C (Asynchronous Advantage Actor-Critic)
@@ -63,6 +64,7 @@ Following algorithms have been implemented in ChainerRL:
 - PCL (Path Consistency Learning)
 - PPO (Proximal Policy Optimization)
 - TRPO (Trust Region Policy Optimization)
+- TD3 (Twin Delayed Deep Deterministic policy gradient algorithm)
 
 Q-function based algorithms such as DQN can utilize a Normalized Advantage Function (NAF) to tackle continuous-action problems as well as DQN-like discrete output networks.
 
@@ -84,6 +86,7 @@ The following papers have been implemented in ChainerRL:
 - [Trust Region Policy Optimization](https://arxiv.org/abs/1502.05477)
 - [Sample Efficient Actor-Critic with Experience Replay](https://arxiv.org/abs/1611.01224)
 - [Bridging the Gap Between Value and Policy Based Reinforcement Learning](https://arxiv.org/abs/1702.08892)
+- [Addressing Function Approximation Error in Actor-Critic Methods](https://arxiv.org/abs/1802.09477)
 
 
 ## Visualization
