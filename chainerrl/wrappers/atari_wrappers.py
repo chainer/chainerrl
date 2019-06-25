@@ -265,6 +265,19 @@ class LazyFrames(object):
         return out
 
 
+class FlickerFrame(gym.ObservationWrapper):
+    """Stochastically flicker frames."""
+
+    def __init__(self, env):
+        gym.ObservationWrapper.__init__(self, env)
+
+    def observation(self, observation):
+        if self.unwrapped.np_random.rand() < 0.5:
+            return np.zeros_like(observation)
+        else:
+            return observation
+
+
 def make_atari(env_id, max_frames=30 * 60 * 60):
     env = gym.make(env_id)
     assert 'NoFrameskip' in env.spec.id
@@ -281,7 +294,9 @@ def make_atari(env_id, max_frames=30 * 60 * 60):
 
 def wrap_deepmind(env, episode_life=True, clip_rewards=True,
                   frame_stack=True, scale=False, fire_reset=False,
-                  channel_order='chw'):
+                  channel_order='chw',
+                  flicker=False,
+                  ):
     """Configure environment for DeepMind-style Atari."""
     if episode_life:
         env = EpisodicLifeEnv(env)
@@ -292,6 +307,8 @@ def wrap_deepmind(env, episode_life=True, clip_rewards=True,
         env = ScaledFloatFrame(env)
     if clip_rewards:
         env = ClipRewardEnv(env)
+    if flicker:
+        env = FlickerFrame(env)
     if frame_stack:
         env = FrameStack(env, 4, channel_order=channel_order)
     return env
