@@ -1,29 +1,25 @@
+from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
-from __future__ import absolute_import
+
 from builtins import *  # NOQA
-from future import standard_library
-standard_library.install_aliases()  # NOQA
-
-import copy
 from logging import getLogger
-
-import numpy as np
 
 import chainer
 from chainer import cuda
 import chainer.functions as F
 
 from chainerrl.agents import DoubleDQN
-from chainerrl.agents.dqn import compute_value_loss
-from chainerrl.agents.dqn import compute_weighted_value_loss
-
-from chainerrl.recurrent import state_kept
+from chainerrl.agents.dqn import (compute_value_loss,
+                                  compute_weighted_value_loss)
 from chainerrl.misc.batch_states import batch_states
-from chainerrl.replay_buffer import ReplayUpdater
 from chainerrl.replay_buffer import PrioritizedReplayBuffer
-from chainerrl.replay_buffer import PrioritizedBuffer
+
+from future import standard_library
+standard_library.install_aliases()  # NOQA
+
+import numpy as np
 
 
 class PrioritizedDemoReplayBuffer(PrioritizedReplayBuffer):
@@ -58,10 +54,11 @@ class PrioritizedDemoReplayBuffer(PrioritizedReplayBuffer):
             m (int): Number of samples to draw
             memory_str (str)["agent"/"demo"]: Selects which memory to sample
         """
-        memory = self.memory if memory_str == "agent" else self.memory_demo
-        assert len(memory) >= m
         if m == 0:
             return []
+
+        memory = self.memory if memory_str == "agent" else self.memory_demo
+        assert len(memory) >= m
 
         sampled, probabilities, min_prob = memory.sample(m)
         weights = self.weights_from_probabilities(probabilities, min_prob)
@@ -130,7 +127,7 @@ class PrioritizedDemoReplayBuffer(PrioritizedReplayBuffer):
                 memory.append(list(last_n_transitions))
 
     def stop_current_episode(self, demo=False, env_id=0):
-        memory = self.memory if demo is False else self.memory_demo
+        memory = self.memory_demo if demo else self.memory
         last_n_transitions = self.last_n_transitions[env_id]
         # if n-step transition hist is not full, add transition;
         # if n-step hist is indeed full, transition has already been added;
@@ -145,7 +142,7 @@ class PrioritizedDemoReplayBuffer(PrioritizedReplayBuffer):
         assert len(last_n_transitions) == 0
 
     def __len__(self):
-        return len(self.memory)+len(self.memory_demo)
+        return len(self.memory) + len(self.memory_demo)
 
 
 class DemoReplayUpdater(object):
@@ -202,9 +199,9 @@ class DemoReplayUpdater(object):
                 #                                    self.batch_size, )
                 # self.update_func(episodes_agent, episodes_demo)
             else:
-                transitions_agent, transitions_demo = self.replay_buffer.sample(
+                trans_agent, trans_demo = self.replay_buffer.sample(
                     self.batchsize)
-                self.update_func(transitions_agent, transitions_demo)
+                self.update_func(trans_agent, trans_demo)
 
     def update_from_demonstrations(self):
         """Called during pre-train steps. All samples are from demo buffer
@@ -214,9 +211,9 @@ class DemoReplayUpdater(object):
                 self.batch_size, self.episodic_update_len)
             self.update_func([], episodes_demo)
         else:
-            transitions_demo = self.replay_buffer.sample(
+            trans_demo = self.replay_buffer.sample(
                 self.batchsize, demo_only=True)
-            self.update_func([], transitions_demo)
+            self.update_func([], trans_demo)
 
 
 def batch_experiences(experiences, xp, phi, gamma, batch_states=batch_states):
@@ -387,14 +384,15 @@ class DQfD(DoubleDQN):
         for tpre in range(self.n_pretrain_steps):
             self.replay_updater.update_from_demonstrations()
             if tpre % self.target_update_interval == 0:
-                logger.info('PRETRAIN-step:%s statistics:%s', tpre, self.get_statistics())
+                logger.info('PRETRAIN-step:%s statistics:%s',
+                            tpre, self.get_statistics())
                 self.sync_target_network()
 
     def update(self, experiences_agent, experiences_demo):
         """Combined DQfD loss function for Demonstration and agent/RL.
         """
         num_exp_agent = len(experiences_agent)
-        experiences = experiences_agent+experiences_demo
+        experiences = experiences_agent + experiences_demo
         exp_batch = batch_experiences(experiences, xp=self.xp, phi=self.phi,
                                       gamma=self.gamma,
                                       batch_states=self.batch_states)
@@ -407,9 +405,10 @@ class DQfD(DoubleDQN):
             exp_batch, errors_out=errors_out)
 
         # Add the agent/demonstration bonus priorities and update
-        err_agent, err_demo = errors_out[:num_exp_agent], errors_out[num_exp_agent:]
-        err_agent = [e+self.bonus_priority_agent for e in err_agent]
-        err_demo = [e+self.bonus_priority_demo for e in err_demo]
+        err_agent = errors_out[:num_exp_agent]
+        err_demo = errors_out[num_exp_agent:]
+        err_agent = [e + self.bonus_priority_agent for e in err_agent]
+        err_demo = [e + self.bonus_priority_demo for e in err_demo]
         self.replay_buffer.update_errors(err_agent, err_demo)
 
         # Large-margin supervised loss
@@ -421,7 +420,8 @@ class DQfD(DoubleDQN):
         q_demos = self.qout.q_values[num_exp_agent:]
 
         # Calculate margin forall actions (l(a_E,a) in the paper)
-        margin = self.xp.zeros_like(q_demos.array) + self.demo_supervised_margin
+        margin = self.xp.zeros_like(
+            q_demos.array) + self.demo_supervised_margin
         a_expert_demos = exp_batch["action"][num_exp_agent:]
         margin[self.xp.arange(len(experiences_demo)), a_expert_demos] = 0.0
 
@@ -438,7 +438,6 @@ class DQfD(DoubleDQN):
         self.model.cleargrads()
         loss_combined.backward()
         self.optimizer.update()
-
 
         # Update stats
         self.average_loss *= self.average_loss_decay
@@ -516,11 +515,11 @@ class DQfD(DoubleDQN):
             return loss_nstep, loss_1step
         else:
             loss_1step = compute_value_loss(y, t_1step,
-                                            clip_delta=self.clip_delta,
-                                            batch_accumulator=self.batch_accumulator)
+                                            self.clip_delta,
+                                            self.batch_accumulator)
             loss_nstep = compute_value_loss(y, t_nstep,
-                                            clip_delta=self.clip_delta,
-                                            batch_accumulator=self.batch_accumulator)
+                                            self.clip_delta,
+                                            self.batch_accumulator)
             return loss_nstep, loss_1step
 
     def act_and_train(self, obs, reward):

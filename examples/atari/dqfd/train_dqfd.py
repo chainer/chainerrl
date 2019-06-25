@@ -1,41 +1,34 @@
 """DQfD on ATARI.
 Things that may differ from the paper:
 * Using 1-step loss to update priorities (not specified. May be be n-step)
-
+* Replay buffer size is exclusive of expert demonstrations
 
 """
-from __future__ import print_function
-from __future__ import division
-from __future__ import unicode_literals
 from __future__ import absolute_import
-from builtins import *  # NOQA
-from future import standard_library
-standard_library.install_aliases()  # NOQA
+from __future__ import division
+from __future__ import print_function
+from __future__ import unicode_literals
+
 import argparse
+import json
 import os
+from builtins import *  # NOQA
 
 import chainer
-from chainer import links as L
-from chainer import optimizers
-import gym
-import gym.wrappers
-import numpy as np
 
 import chainerrl
-from chainerrl.action_value import DiscreteActionValue
-from chainerrl import agents
-from chainerrl import experiments
-from chainerrl import explorers
-from chainerrl import links
-from chainerrl import misc
 
-from chainerrl.agents.dqfd import DQfD
-from chainerrl.agents.dqfd import PrioritizedDemoReplayBuffer
+from chainerrl import experiments, explorers, misc
+from chainerrl.agents.dqfd import DQfD, PrioritizedDemoReplayBuffer
 from chainerrl.q_functions import DuelingDQN
-
-
 from chainerrl.wrappers import atari_wrappers
-import json
+
+from future import standard_library
+standard_library.install_aliases()  # NOQA
+
+import gym
+
+import numpy as np
 
 
 class LogScaleReward(gym.RewardWrapper):
@@ -56,7 +49,7 @@ class LogScaleReward(gym.RewardWrapper):
 
     def reward(self, reward):
         self.original_reward = reward
-        return np.sign(reward)*np.log(1+np.abs(reward))
+        return np.sign(reward) * np.log(1 + np.abs(reward))
 
 
 def main():
@@ -81,6 +74,7 @@ def main():
                              ' are saved as output files.')
     parser.add_argument('--steps', type=int, default=5 * 10 ** 7,
                         help='Total number of timesteps to train the agent.')
+    # replay-start-size set low so expert demos used for the first few steps
     parser.add_argument('--replay-start-size', type=int, default=1000,
                         help='Minimum replay buffer size before ' +
                         'performing gradient updates.')
@@ -161,7 +155,7 @@ def main():
         os.path.join(args.outdir, 'model'))
 
     # Use the same hyperparameters as the Nature paper
-    opt = optimizers.RMSpropGraves(
+    opt = chainer.optimizers.RMSpropGraves(
         lr=2.5e-4, alpha=0.95, momentum=0.0, eps=1e-2)
 
     opt.setup(q_func)
@@ -185,7 +179,7 @@ def main():
                                  next_action=None,
                                  is_state_terminal=done,
                                  demo=True)
-            if done or ("needs_reset" in info and info["needs_reset"]):
+            if ("needs_reset" in info and info["needs_reset"]):
                 replay_buffer.stop_current_episode(demo=True)
     print("Demo buffer loaded with", len(replay_buffer),
           "/", n_demo_transitions, "transitions")
