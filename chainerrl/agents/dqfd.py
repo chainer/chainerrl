@@ -360,7 +360,7 @@ class DQfD(DoubleDQN):
         self.loss_coeff_l2 = loss_coeff_l2
         self.loss_coeff_nstep = loss_coeff_nstep
         self.bonus_priority_demo = bonus_priority_demo
-        self.bonus_priority_agent = bonus_priority_agenta
+        self.bonus_priority_agent = bonus_priority_agent
 
         self.average_loss_1step = 0
         self.average_loss_nstep = 0
