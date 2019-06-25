@@ -1,9 +1,11 @@
 import chainer
+from chainer import cuda
 import chainer.functions as F
 from chainer.initializers import LeCunUniform
 import chainer.links as L
 import numpy
 
+from chainerrl.functions import muladd
 from chainerrl.initializers import VarianceScalingConstant
 
 
@@ -18,6 +20,7 @@ class FactorizedNoisyLinear(chainer.Chain):
 
     def __init__(self, mu_link, sigma_scale=0.4):
         super(FactorizedNoisyLinear, self).__init__()
+        self._kernel = None
         self.out_size = mu_link.out_size
         self.nobias = not ('/b' in [name for name, _ in mu_link.namedparams()])
 
@@ -38,12 +41,23 @@ class FactorizedNoisyLinear(chainer.Chain):
         if device_id is not None:
             self.to_gpu(device_id)
 
+    def _noise_function(self, r):
+        if self._kernel is None:
+            self._kernel = cuda.elementwise(
+                '', 'T r',
+                '''r = copysignf(sqrtf(fabsf(r)), r);''',
+                'noise_func')
+        self._kernel(r)
+
     def _eps(self, shape, dtype):
         xp = self.xp
-        r = xp.random.standard_normal(shape).astype(dtype)
-
-        # apply the function f
-        return xp.copysign(xp.sqrt(xp.abs(r)), r)
+        if xp is numpy:
+            r = xp.random.standard_normal(shape).astype(dtype)
+            return xp.copysign(xp.sqrt(xp.abs(r)), r)
+        else:
+            r = xp.random.standard_normal(shape, dtype)
+            self._noise_function(r)
+            return r
 
     def __call__(self, x):
         if self.mu.W.array is None:
@@ -55,11 +69,12 @@ class FactorizedNoisyLinear(chainer.Chain):
         dtype = self.sigma.W.dtype
         out_size, in_size = self.sigma.W.shape
 
-        eps_x = self._eps(in_size, dtype)
-        eps_y = self._eps(out_size, dtype)
-        W = self.mu.W + self.sigma.W * self.xp.outer(eps_y, eps_x)
+        eps = self._eps(in_size + out_size, dtype)
+        eps_x = eps[:in_size]
+        eps_y = eps[in_size:]
+        W = muladd(self.sigma.W, self.xp.outer(eps_y, eps_x), self.mu.W)
         if self.nobias:
             return F.linear(x, W)
         else:
-            b = self.mu.b + self.sigma.b * eps_y
+            b = muladd(self.sigma.b, eps_y, self.mu.b)
             return F.linear(x, W, b)
