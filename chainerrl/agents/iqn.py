@@ -172,7 +172,7 @@ def compute_value_loss(eltwise_loss, batch_accumulator='mean'):
     """Compute a loss for value prediction problem.
 
     Args:
-        eltwise_loss (Variable): Element-wise loss per example per atom
+        eltwise_loss (Variable): Element-wise loss per example
         batch_accumulator (str): 'mean' or 'sum'. 'mean' will use the mean of
             the loss values in a batch. 'sum' will use the sum.
     Returns:
@@ -181,9 +181,12 @@ def compute_value_loss(eltwise_loss, batch_accumulator='mean'):
     assert batch_accumulator in ('mean', 'sum')
 
     if batch_accumulator == 'sum':
-        loss = F.sum(eltwise_loss)
+        # mean over N_prime, then sum over (batch_size, N)
+        loss =  F.sum(F.mean(eltwise_loss, axis=2))
     else:
-        loss = F.mean(F.sum(eltwise_loss, axis=1))
+        # mean over (batch_size, N_prime), then sum over N
+        loss = F.sum(F.mean(eltwise_loss, axis=(0, 2)))
+
     return loss
 
 
@@ -192,15 +195,14 @@ def compute_weighted_value_loss(eltwise_loss, batch_size, weights,
     """Compute a loss for value prediction problem.
 
     Args:
-        eltwise_loss (Variable): Element-wise loss per example per atom
+        eltwise_loss (Variable): Element-wise loss per example
         weights (ndarray): Weights for y, t.
         batch_accumulator (str): 'mean' will divide loss by batchsize
     Returns:
         (Variable) scalar loss
     """
     assert batch_accumulator in ('mean', 'sum')
-
-    # eltwise_loss is (batchsize, n_atoms) array of losses
+    # eltwise_loss is (batchsize, n quantile threshold, ?) array of losses
     # weights is an array of shape (batch_size)
     # sum loss across atoms and then apply weight per example in batch
     loss_sum = F.matmul(F.sum(eltwise_loss, axis=1), weights)
@@ -306,27 +308,19 @@ class IQN(dqn.DQN):
             t = self._compute_target_values(exp_batch)
 
         eltwise_loss = compute_eltwise_huber_quantile_loss(y, t, taus)
-
         if errors_out is not None:
             del errors_out[:]
             delta = F.mean(abs(eltwise_loss), axis=(1, 2))
             errors_out.extend(cuda.to_cpu(delta.array))
 
-        # if 'weights' in exp_batch:
-        #     return compute_weighted_value_loss(
-        #         eltwise_loss, y.shape[0], exp_batch['weights'],
-        #         batch_accumulator=self.batch_accumulator)
-        # else:
-        #     return compute_value_loss(
-        #         eltwise_loss, batch_accumulator=self.batch_accumulator)
-
-
-        if self.batch_accumulator == 'sum':
-            # mean over N_prime, then sum over (batch_size, N)
-            return F.sum(F.mean(eltwise_loss, axis=2))
+        if 'weights' in exp_batch:
+            return compute_weighted_value_loss(
+                eltwise_loss, y.shape[0], exp_batch['weights'],
+                batch_accumulator=self.batch_accumulator)
         else:
-            # mean over (batch_size, N_prime), then sum over N
-            return F.sum(F.mean(eltwise_loss, axis=(0, 2)))
+            return compute_value_loss(
+                eltwise_loss, batch_accumulator=self.batch_accumulator)
+
 
     def _compute_action_value(self, batch_obs):
         with chainer.using_config('train', False), chainer.no_backprop_mode():

@@ -37,6 +37,8 @@ def main():
     parser.add_argument('--demo', action='store_true', default=False)
     parser.add_argument('--dueling', action='store_true', default=False,
                         help='Whether or not to use a dueling architecture')
+    parser.add_argument('--prioritized', action='store_true', default=False,
+                        help='Whether or not to use a prioritized replay buffer')
     parser.add_argument('--load', type=str, default=None)
     parser.add_argument('--final-exploration-frames',
                         type=int, default=10 ** 6)
@@ -145,6 +147,7 @@ def main():
                         args.final_exploration_frames,
                         lambda: np.random.randint(n_actions))
 
+
     # Draw the computational graph and save it in the output directory.
     fake_obss = np.zeros((4, 84, 84), dtype=np.float32)[None]
     fake_taus = np.zeros(32, dtype=np.float32)[None]
@@ -156,7 +159,15 @@ def main():
     opt = chainer.optimizers.Adam(5e-5, eps=1e-2 / args.batch_size)
     opt.setup(q_func)
 
-    rbuf = replay_buffer.ReplayBuffer(10 ** 6, num_steps=3)
+    if args.prioritized:
+        print("Using prioritized buffer...")
+        betasteps = args.steps / args.update_interval
+        rbuf = replay_buffer.PrioritizedReplayBuffer(
+            10 ** 6, alpha=0.5, beta0=0.4, betasteps=betasteps,
+            num_steps=3)
+    else:
+        print("Using standard replay buffer...")
+        rbuf = replay_buffer.ReplayBuffer(10 ** 6, num_steps=3)
 
 
     def phi(x):
