@@ -5,7 +5,6 @@ from __future__ import absolute_import
 from builtins import *  # NOQA
 from future import standard_library
 standard_library.install_aliases()  # NOQA
-
 import chainer
 from chainer import cuda
 import chainer.functions as F
@@ -202,10 +201,10 @@ def compute_weighted_value_loss(eltwise_loss, batch_size, weights,
         (Variable) scalar loss
     """
     assert batch_accumulator in ('mean', 'sum')
-    # eltwise_loss is (batchsize, n quantile threshold, ?) array of losses
+    # eltwise_loss is (batchsize, n , n') array of losses
     # weights is an array of shape (batch_size)
-    # sum loss across atoms and then apply weight per example in batch
-    loss_sum = F.matmul(F.sum(eltwise_loss, axis=1), weights)
+    # apply weights per example in batch
+    loss_sum =  F.matmul(F.sum(F.mean(eltwise_loss, axis=2), axis=1), weights)
     if batch_accumulator == 'mean':
         loss = loss_sum / batch_size
     elif batch_accumulator == 'sum':
@@ -310,7 +309,7 @@ class IQN(dqn.DQN):
         eltwise_loss = compute_eltwise_huber_quantile_loss(y, t, taus)
         if errors_out is not None:
             del errors_out[:]
-            delta = F.mean(abs(eltwise_loss), axis=(1, 2))
+            delta = F.mean(eltwise_loss, axis=(1, 2))
             errors_out.extend(cuda.to_cpu(delta.array))
 
         if 'weights' in exp_batch:
