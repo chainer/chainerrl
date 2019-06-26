@@ -381,8 +381,6 @@ class DQfD(DoubleDQN):
             replay_start_size=replay_start_size,
             update_interval=update_interval,
         )
-
-        # TODO: Should this really go here? Move into train function?
         self.pretrain()
 
     def pretrain(self):
@@ -437,7 +435,7 @@ class DQfD(DoubleDQN):
         iweights_demos = exp_batch['weights'][num_exp_agent:]
         loss_supervised = (supervised_targets - q_expert_demos)
         loss_supervised = F.sum(loss_supervised * iweights_demos)
-        if self.batch_accumulator is "mean":
+        if self.batch_accumulator == "mean":
             loss_supervised /= len(experiences_demo)
 
         # L2 loss is directly applied as chainer optimizer hook in init

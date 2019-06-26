@@ -229,15 +229,30 @@ def main():
             eval_stats['median'],
             eval_stats['stdev']))
     else:
-        experiments.train_agent_with_evaluation(
-            agent=agent, env=env, steps=args.steps,
-            eval_n_steps=args.eval_n_steps,
-            eval_n_episodes=None,
-            eval_interval=args.eval_interval,
-            outdir=args.outdir,
-            save_best_so_far_agent=True,
-            eval_env=eval_env,
-        )
+        logger = logging.getLogger(__name__)
+        evaluator = experiments.Evaluator(agent=agent,
+                                          n_steps=args.eval_n_steps,
+                                          n_episodes=None,
+                                          eval_interval=args.eval_interval,
+                                          outdir=args.outdir,
+                                          max_episode_len=None,
+                                          env=eval_env,
+                                          step_offset=0,
+                                          save_best_so_far_agent=True,
+                                          logger=logger)
+
+        # Evaluate the agent BEFORE training begins
+        evaluator.evaluate_and_update_max_score(t=0, episodes=0)
+
+        experiments.train_agent(agent=agent,
+                                env=env,
+                                steps=args.steps,
+                                outdir=args.outdir,
+                                max_episode_len=None,
+                                step_offset=0,
+                                evaluator=evaluator,
+                                successful_score=None,
+                                step_hooks=[])
 
         dir_of_best_network = os.path.join(args.outdir, "best")
         agent.load(dir_of_best_network)

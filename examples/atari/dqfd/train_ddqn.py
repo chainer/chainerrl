@@ -1,35 +1,35 @@
 """Prioritized Dueling Double n-step DQN on ATARI with log rewards and
 no clipping
 """
-from __future__ import print_function
-from __future__ import division
-from __future__ import unicode_literals
 from __future__ import absolute_import
-from builtins import *  # NOQA
-from future import standard_library
-standard_library.install_aliases()  # NOQA
+from __future__ import division
+from __future__ import print_function
+from __future__ import unicode_literals
+
 import argparse
 import os
-
-import chainer
-from chainer import functions as F
-from chainer import links as L
-from chainer import optimizers
-import gym
-import gym.wrappers
-import numpy as np
+from builtins import *  # NOQA
 
 import chainerrl
-from chainerrl.action_value import DiscreteActionValue
+
 from chainerrl import agents
 from chainerrl import experiments
 from chainerrl import explorers
-from chainerrl import links
 from chainerrl import misc
-from chainerrl.q_functions import DuelingDQN
 from chainerrl import replay_buffer
-
+from chainerrl.q_functions import DuelingDQN
 from chainerrl.wrappers import atari_wrappers
+
+from chainer import optimizers
+
+from future import standard_library
+standard_library.install_aliases()  # NOQA
+
+import gym
+
+import numpy as np
+
+import json
 
 
 class LogScaleReward(gym.RewardWrapper):
@@ -50,7 +50,7 @@ class LogScaleReward(gym.RewardWrapper):
 
     def reward(self, reward):
         self.original_reward = reward
-        return np.sign(reward)*np.log(1+np.abs(reward))
+        return np.sign(reward) * np.log(1 + np.abs(reward))
 
 
 def main():
@@ -186,15 +186,30 @@ def main():
             eval_stats['median'],
             eval_stats['stdev']))
     else:
-        experiments.train_agent_with_evaluation(
-            agent=agent, env=env, steps=args.steps,
-            eval_n_steps=args.eval_n_steps,
-            eval_n_episodes=None,
-            eval_interval=args.eval_interval,
-            outdir=args.outdir,
-            save_best_so_far_agent=True,
-            eval_env=eval_env,
-        )
+        logger = logging.getLogger(__name__)
+        evaluator = experiments.Evaluator(agent=agent,
+                                          n_steps=args.eval_n_steps,
+                                          n_episodes=None,
+                                          eval_interval=args.eval_interval,
+                                          outdir=args.outdir,
+                                          max_episode_len=None,
+                                          env=eval_env,
+                                          step_offset=0,
+                                          save_best_so_far_agent=True,
+                                          logger=logger)
+
+        # Evaluate the agent BEFORE training begins
+        evaluator.evaluate_and_update_max_score(t=0, episodes=0)
+
+        experiments.train_agent(agent=agent,
+                                env=env,
+                                steps=args.steps,
+                                outdir=args.outdir,
+                                max_episode_len=None,
+                                step_offset=0,
+                                evaluator=evaluator,
+                                successful_score=None,
+                                step_hooks=[])
 
         dir_of_best_network = os.path.join(args.outdir, "best")
         agent.load(dir_of_best_network)
