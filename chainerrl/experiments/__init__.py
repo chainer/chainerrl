@@ -1,4 +1,5 @@
 from chainerrl.experiments.evaluator import eval_performance  # NOQA
+from chainerrl.experiments.evaluator import Evaluator  # NOQA
 
 from chainerrl.experiments.hooks import LinearInterpolationHook  # NOQA
 from chainerrl.experiments.hooks import StepHook  # NOQA
