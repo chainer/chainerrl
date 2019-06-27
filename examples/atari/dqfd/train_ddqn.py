@@ -75,6 +75,9 @@ def main():
                              ' are saved as output files.')
     parser.add_argument('--steps', type=int, default=5 * 10 ** 7,
                         help='Total number of timesteps to train the agent.')
+    parser.add_argument('--max-frames', type=int,
+                        default=30 * 60 * 60,  # 30 minutes with 60 fps
+                        help='Maximum number of frames for each episode.')
     parser.add_argument('--replay-start-size', type=int, default=5 * 10 ** 4,
                         help='Minimum replay buffer size before ' +
                         'performing gradient updates.')
@@ -112,7 +115,7 @@ def main():
         # Use different random seeds for train and test envs
         env_seed = test_seed if test else train_seed
         env = atari_wrappers.wrap_deepmind(
-            atari_wrappers.make_atari(args.env, max_frames=None),
+            atari_wrappers.make_atari(args.env, max_frames=args.max_frames),
             episode_life=not test,
             clip_rewards=False)
         env.seed(int(env_seed))
@@ -154,7 +157,7 @@ def main():
         num_steps=args.num_step_return)
 
     explorer = explorers.LinearDecayEpsilonGreedy(
-        start_epsilon=1.0, end_epsilon=0.001,
+        start_epsilon=1.0, end_epsilon=0.01,
         decay_steps=10 ** 6,
         random_action_func=lambda: np.random.randint(n_actions))
 
@@ -214,13 +217,13 @@ def main():
         dir_of_best_network = os.path.join(args.outdir, "best")
         agent.load(dir_of_best_network)
 
-        # run 30 evaluation episodes, each capped at 5 mins of play
+        # run 30 evaluation episodes, each capped at 30 mins of play
         stats = experiments.evaluator.eval_performance(
             env=eval_env,
             agent=agent,
             n_steps=None,
             n_episodes=args.n_best_episodes,
-            max_episode_len=4500,
+            max_episode_len=27000,
             logger=None)
         with open(os.path.join(args.outdir, 'bestscores.json'), 'w') as f:
             # temporary hack to handle python 2/3 support issues.
