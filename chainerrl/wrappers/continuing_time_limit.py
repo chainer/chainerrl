@@ -70,10 +70,10 @@ class ContinuingTimeLimitMonitor(Monitor):
             raise gym.error.Error(
                 "Detect 'semantics.autoreset=True' in `env.metadata`, "
                 "which means the env comes from deprecated OpenAI Universe.")
-        ret = super()._start(directory=directory, video_callable=video_callable,
-                             force=force, resume=resume,
-                             write_upon_reset=write_upon_reset, uid=uid,
-                             mode=mode)
+        ret = super()._start(directory=directory,
+                             video_callable=video_callable, force=force,
+                             resume=resume, write_upon_reset=write_upon_reset,
+                             uid=uid, mode=mode)
         if self.env.spec is None:
             env_id = '(unknown)'
         else:

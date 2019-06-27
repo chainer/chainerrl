@@ -12,7 +12,6 @@ import tempfile
 import shutil
 import os
 
-import numpy as np
 from chainer import testing
 import gym
 from gym.wrappers import TimeLimit
