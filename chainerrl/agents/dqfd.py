@@ -61,7 +61,8 @@ class PrioritizedDemoReplayBuffer(PrioritizedReplayBuffer):
             weights = [(p / min_probability) ** -self.beta
                        for p in probabilities]
         else:
-            weights = [(len(self.memory) * p) ** -self.beta
+            memory_length = (len(self.memory) + len(self.memory_demo))
+            weights = [(memory_length * p) ** -self.beta
                        for p in probabilities]
         return weights
 
