@@ -51,24 +51,57 @@ class PrioritizedDemoReplayBuffer(PrioritizedReplayBuffer):
         self.memory = PrioritizedBuffer(capacity)
         self.memory_demo = PrioritizedBuffer(None)
 
-    def sample_from_memory(self, memory_str, m):
-        """Samples `m` experiences from memory
+    def weights_from_probabilities(self, probabilities, min_probability):
+        """Overwrite weights_from_probabilities to make beta increment explicit
+        """
+        if self.normalize_by_max == 'batch':
+            # discard global min and compute batch min
+            min_probability = np.min(min_probability)
+        if self.normalize_by_max:
+            weights = [(p / min_probability) ** -self.beta
+                       for p in probabilities]
+        else:
+            weights = [(len(self.memory) * p) ** -self.beta
+                       for p in probabilities]
+        return weights
+
+    def update_beta(self):
+        # Update beta towards 1.
+        self.beta = min(1.0, self.beta + self.beta_add)
+
+    def sample_from_memory(self, nsample_agent, nsample_demo):
+        """Samples experiences from memory
 
         Args:
-            m (int): Number of samples to draw
-            memory_str (str)["agent"/"demo"]: Selects which memory to sample
+            nsample_agent (int): Number of RL transitions to sample
+            nsample_demo (int): Number of demonstration transitions to sample
         """
-        if m == 0:
-            return []
+        if nsample_demo > 0:
+            sampled_demo, prob_demo, min_prob_demo = self.memory_demo.sample(
+                nsample_demo)
+        else:
+            sampled_demo, prob_demo, min_prob_demo = [], [], 1e+10
 
-        memory = self.memory if memory_str == "agent" else self.memory_demo
-        assert len(memory) >= m
+        if nsample_agent > 0:
+            sampled_agent, prob_agent, min_prob_agent = self.memory.sample(
+                nsample_agent)
+        else:
+            sampled_agent, prob_agent, min_prob_agent = [], [], 1e+10
 
-        sampled, probabilities, min_prob = memory.sample(m)
-        weights = self.weights_from_probabilities(probabilities, min_prob)
-        for e, w in zip(sampled, weights):
-            e[0]['weight'] = w
-        return sampled
+        min_prob = min(min_prob_demo, min_prob_agent)
+
+        if nsample_demo > 0:
+            weights_demo = self.weights_from_probabilities(prob_demo, min_prob)
+            for e, w in zip(sampled_demo, weights_demo):
+                e[0]['weight'] = w
+
+        if nsample_agent > 0:
+            weights_agent = self.weights_from_probabilities(
+                prob_agent, min_prob)
+            for e, w in zip(sampled_agent, weights_agent):
+                e[0]['weight'] = w
+
+        return sampled_agent, sampled_demo
 
     def sample(self, n, demo_only=False):
         """Sample `n` experiences from memory.
@@ -78,7 +111,8 @@ class PrioritizedDemoReplayBuffer(PrioritizedReplayBuffer):
             demo_only (bool): Force all samples to be drawn from demo buffer
         """
         if demo_only:
-            sampled_demo = self.sample_from_memory("demo", n)
+            _, sampled_demo = self.sample_from_memory(nsample_agent=0,
+                                                      nsample_demo=n)
             return sampled_demo
 
         psum_agent = self.memory.priority_sums.sum()
@@ -90,18 +124,19 @@ class PrioritizedDemoReplayBuffer(PrioritizedReplayBuffer):
         nsample_agent = min(nsample_agent, len(self.memory))
         nsample_demo = n - nsample_agent
 
-        sampled_agent = self.sample_from_memory("agent", nsample_agent)
-        sampled_demo = self.sample_from_memory("demo", nsample_demo)
+        sampled_agent, sampled_demo = self.sample_from_memory(
+            nsample_agent, nsample_demo)
 
         return sampled_agent, sampled_demo
 
     def update_errors(self, errors_agent, errors_demo):
-        if len(errors_demo) > 0:
-            self.memory_demo.set_last_priority(
-                self.priority_from_errors(errors_demo))
         if len(errors_agent) > 0:
             self.memory.set_last_priority(
                 self.priority_from_errors(errors_agent))
+
+        if len(errors_demo) > 0:
+            self.memory_demo.set_last_priority(
+                self.priority_from_errors(errors_demo))
 
     def append(self, state, action, reward, next_state=None, next_action=None,
                is_state_terminal=False, env_id=0, demo=False, **kwargs):
@@ -206,6 +241,8 @@ class DemoReplayUpdater(object):
                 trans_agent, trans_demo = self.replay_buffer.sample(
                     self.batchsize)
                 self.update_func(trans_agent, trans_demo)
+                # Update beta only during RL
+                self.replay_buffer.update_beta()
 
     def update_from_demonstrations(self):
         """Called during pre-train steps. All samples are from demo buffer
