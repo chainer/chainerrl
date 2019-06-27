@@ -21,8 +21,6 @@ import os
 import chainer
 from chainer import functions as F
 from chainer import links as L
-import gym
-import gym.wrappers
 import numpy as np
 
 import chainerrl
@@ -116,7 +114,7 @@ def main():
         )
         env.seed(env_seed)
         if args.monitor:
-            env = gym.wrappers.Monitor(
+            env = chainerrl.wrappers.ContinuingTimeLimitMonitor(
                 env, args.outdir,
                 mode='evaluation' if test else 'training')
         if args.render:
@@ -208,8 +206,9 @@ def main():
         agent.load(args.load)
 
     if args.demo:
+        env = make_batch_env(test=True)
         eval_stats = experiments.eval_performance(
-            env=make_batch_env(test=True),
+            env=env,
             agent=agent,
             n_steps=None,
             n_episodes=args.eval_n_runs)
@@ -227,10 +226,12 @@ def main():
             experiments.LinearInterpolationHook(
                 args.steps, args.lr, 0, lr_setter))
 
+        env = make_batch_env(False)
+        eval_env = make_batch_env(True)
         experiments.train_agent_batch_with_evaluation(
             agent=agent,
-            env=make_batch_env(False),
-            eval_env=make_batch_env(True),
+            env=env,
+            eval_env=eval_env,
             outdir=args.outdir,
             steps=args.steps,
             eval_n_steps=None,
@@ -240,6 +241,8 @@ def main():
             save_best_so_far_agent=False,
             step_hooks=step_hooks,
         )
+        env.close()
+        eval_env.close()
 
 
 if __name__ == '__main__':

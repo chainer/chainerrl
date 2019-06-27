@@ -13,7 +13,6 @@ import chainer
 from chainer import functions as F
 from chainer import links as L
 from chainer import optimizers
-import gym
 import numpy as np
 
 import chainerrl
@@ -154,7 +153,7 @@ def main():
             env = chainerrl.wrappers.RandomizeAction(env, args.eval_epsilon)
         env.seed(env_seed)
         if args.monitor:
-            env = gym.wrappers.Monitor(
+            env = chainerrl.wrappers.ContinuingTimeLimitMonitor(
                 env, args.outdir,
                 mode='evaluation' if test else 'training')
         if args.render:
@@ -223,19 +222,23 @@ def main():
         agent.load(args.load)
 
     if args.demo:
+        env = make_batch_env(test=True)
         eval_stats = experiments.eval_performance(
-            env=make_batch_env(test=True),
+            env=env,
             agent=agent,
             n_steps=None,
             n_episodes=args.eval_n_runs)
         print('n_runs: {} mean: {} median: {} stdev {}'.format(
             args.eval_n_runs, eval_stats['mean'], eval_stats['median'],
             eval_stats['stdev']))
+        env.close()
     else:
+        env = make_batch_env(test=False)
+        eval_env = make_batch_env(test=True)
         experiments.train_agent_batch_with_evaluation(
             agent=agent,
-            env=make_batch_env(test=False),
-            eval_env=make_batch_env(test=True),
+            env=env,
+            eval_env=eval_env,
             steps=args.steps,
             eval_n_steps=None,
             eval_n_episodes=args.eval_n_runs,
@@ -244,6 +247,8 @@ def main():
             save_best_so_far_agent=False,
             log_interval=1000,
         )
+        env.close()
+        eval_env.close()
 
 
 if __name__ == '__main__':

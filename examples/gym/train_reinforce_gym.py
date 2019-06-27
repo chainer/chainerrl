@@ -22,7 +22,6 @@ import os
 import chainer
 import gym
 import gym.spaces
-import gym.wrappers
 import numpy as np
 
 import chainerrl
@@ -70,7 +69,8 @@ def main():
         # Cast observations to float32 because our model uses float32
         env = chainerrl.wrappers.CastObservationToFloat32(env)
         if args.monitor:
-            env = gym.wrappers.Monitor(env, args.outdir)
+            env = chainerrl.wrappers.ContinuingTimeLimitMonitor(
+                env, args.outdir)
         if not test:
             # Scale rewards (and thus returns) to a reasonable range so that
             # training is easier
@@ -134,6 +134,7 @@ def main():
         print('n_runs: {} mean: {} median: {} stdev {}'.format(
             args.eval_n_runs, eval_stats['mean'], eval_stats['median'],
             eval_stats['stdev']))
+        eval_env.close()
     else:
         experiments.train_agent_with_evaluation(
             agent=agent,
@@ -145,6 +146,8 @@ def main():
             eval_n_episodes=args.eval_n_runs,
             eval_interval=args.eval_interval,
             train_max_episode_len=timestep_limit)
+        train_env.close()
+        eval_env.close()
 
 
 if __name__ == '__main__':

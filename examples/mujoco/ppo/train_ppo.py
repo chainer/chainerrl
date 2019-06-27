@@ -18,7 +18,6 @@ from chainer import functions as F
 from chainer import links as L
 import gym
 import gym.spaces
-import gym.wrappers
 import numpy as np
 
 import chainerrl
@@ -92,7 +91,8 @@ def main():
         # Cast observations to float32 because our model uses float32
         env = chainerrl.wrappers.CastObservationToFloat32(env)
         if args.monitor:
-            env = gym.wrappers.Monitor(env, args.outdir)
+            env = chainerrl.wrappers.ContinuingTimeLimitMonitor(
+                env, args.outdir)
         if args.render:
             env = chainerrl.wrappers.Render(env)
         return env
@@ -180,11 +180,14 @@ def main():
         print('n_runs: {} mean: {} median: {} stdev {}'.format(
             args.eval_n_runs, eval_stats['mean'], eval_stats['median'],
             eval_stats['stdev']))
+        env.close()
     else:
+        env = make_batch_env(False)
+        eval_env = make_batch_env(True)
         experiments.train_agent_batch_with_evaluation(
             agent=agent,
-            env=make_batch_env(False),
-            eval_env=make_batch_env(True),
+            env=env,
+            eval_env=eval_env,
             outdir=args.outdir,
             steps=args.steps,
             eval_n_steps=None,
@@ -194,6 +197,8 @@ def main():
             max_episode_len=timestep_limit,
             save_best_so_far_agent=False,
         )
+        env.close()
+        eval_env.close()
 
 
 if __name__ == '__main__':

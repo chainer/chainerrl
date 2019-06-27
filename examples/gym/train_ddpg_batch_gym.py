@@ -12,7 +12,6 @@ import chainer
 from chainer import optimizers
 import gym
 from gym import spaces
-import gym.wrappers
 import numpy as np
 
 import chainerrl
@@ -94,7 +93,8 @@ def main():
         # Cast observations to float32 because our model uses float32
         env = chainerrl.wrappers.CastObservationToFloat32(env)
         if args.monitor:
-            env = gym.wrappers.Monitor(env, args.outdir)
+            env = chainerrl.wrappers.ContinuingTimeLimitMonitor(
+                env, args.outdir)
         if isinstance(env.action_space, spaces.Box):
             misc.env_modifiers.make_action_filtered(env, clip_action_filter)
         if not test:
@@ -173,8 +173,9 @@ def main():
         agent.load(args.load)
 
     if args.demo:
+        env = make_batch_env(test=True)
         eval_stats = experiments.eval_performance(
-            env=make_batch_env(test=True),
+            env=env,
             agent=agent,
             n_steps=None,
             n_episodes=args.eval_n_runs,
@@ -182,13 +183,18 @@ def main():
         print('n_runs: {} mean: {} median: {} stdev {}'.format(
             args.eval_n_runs, eval_stats['mean'], eval_stats['median'],
             eval_stats['stdev']))
+        env.close()
     else:
+        env = make_batch_env(test=False)
+        eval_env = make_batch_env(test=True)
         experiments.train_agent_batch_with_evaluation(
-            agent=agent, env=make_batch_env(test=False), steps=args.steps,
-            eval_env=make_batch_env(test=True), eval_n_steps=None,
+            agent=agent, env=env, steps=args.steps,
+            eval_env=eval_env, eval_n_steps=None,
             eval_n_episodes=args.eval_n_runs, eval_interval=args.eval_interval,
             outdir=args.outdir,
             max_episode_len=timestep_limit)
+        env.close()
+        eval_env.close()
 
 
 if __name__ == '__main__':

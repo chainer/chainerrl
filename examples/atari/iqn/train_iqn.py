@@ -13,7 +13,6 @@ import os
 import chainer
 import chainer.functions as F
 import chainer.links as L
-import gym
 import numpy as np
 
 import chainerrl
@@ -90,7 +89,7 @@ def main():
             # Randomize actions like epsilon-greedy in evaluation as well
             env = chainerrl.wrappers.RandomizeAction(env, args.eval_epsilon)
         if args.monitor:
-            env = gym.wrappers.Monitor(
+            env = chainerrl.wrappers.ContinuingTimeLimitMonitor(
                 env, args.outdir,
                 mode='evaluation' if test else 'training')
         if args.render:
@@ -169,6 +168,7 @@ def main():
         print('n_steps: {} mean: {} median: {} stdev {}'.format(
             args.eval_n_steps, eval_stats['mean'], eval_stats['median'],
             eval_stats['stdev']))
+        eval_env.close()
     else:
         experiments.train_agent_with_evaluation(
             agent=agent,
@@ -201,6 +201,8 @@ def main():
         print("The results of the best scoring network:")
         for stat in stats:
             print(str(stat) + ":" + str(stats[stat]))
+        env.close()
+        eval_env.close()
 
 
 if __name__ == '__main__':

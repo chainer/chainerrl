@@ -19,7 +19,6 @@ import functools
 import chainer
 from chainer import functions as F
 import gym
-import gym.wrappers
 import numpy as np
 
 import chainerrl
@@ -143,7 +142,8 @@ def main():
         # Cast observations to float32 because our model uses float32
         env = chainerrl.wrappers.CastObservationToFloat32(env)
         if args.monitor and process_idx == 0:
-            env = gym.wrappers.Monitor(env, args.outdir)
+            env = chainerrl.wrappers.ContinuingTimeLimitMonitor(
+                env, args.outdir)
         # Scale rewards observed by agents
         if not test:
             misc.env_modifiers.make_reward_filtered(
@@ -199,11 +199,14 @@ def main():
         print('n_runs: {} mean: {} median: {} stdev {}'.format(
             args.eval_n_runs, eval_stats['mean'], eval_stats['median'],
             eval_stats['stdev']))
+        env.close()
     else:
+        env = make_batch_env(test=False)
+        eval_env = make_batch_env(test=True)
         experiments.train_agent_batch_with_evaluation(
             agent=agent,
-            env=make_batch_env(test=False),
-            eval_env=make_batch_env(test=True),
+            env=env,
+            eval_env=eval_env,
             steps=args.steps,
             log_interval=args.log_interval,
             eval_n_steps=None,
@@ -211,6 +214,8 @@ def main():
             eval_interval=args.eval_interval,
             outdir=args.outdir,
         )
+        env.close()
+        eval_env.close()
     sample_env.close()
 
 
