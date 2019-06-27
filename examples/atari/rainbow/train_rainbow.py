@@ -10,8 +10,6 @@ import json
 import os
 
 import chainer
-import gym
-import gym.wrappers
 import numpy as np
 
 import chainerrl
