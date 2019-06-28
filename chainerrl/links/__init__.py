@@ -7,3 +7,7 @@ from chainerrl.links.mlp_bn import MLPBN  # NOQA
 from chainerrl.links.noisy_chain import to_factorized_noisy  # NOQA
 from chainerrl.links.noisy_linear import FactorizedNoisyLinear  # NOQA
 from chainerrl.links.sequence import Sequence  # NOQA
+from chainerrl.links.stateless_recurrent import StatelessRecurrent  # NOQA
+from chainerrl.links.stateless_recurrent import StatelessRecurrentChainList  # NOQA
+from chainerrl.links.stateless_recurrent_branched import StatelessRecurrentBranched  # NOQA
+from chainerrl.links.stateless_recurrent_sequential import StatelessRecurrentSequential  # NOQA
