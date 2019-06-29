@@ -10,7 +10,7 @@ This directory contains example scripts that learn to grasp objects in an enviro
 
 ## Requirements
 
-- pybullet>=2.1.2
+- pybullet>=2.4.9
 
 ## How to run
 

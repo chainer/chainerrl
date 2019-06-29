@@ -7,7 +7,7 @@ install_requires = [
     'cached-property',
     'chainer>=2.0.0',
     'future',
-    'gym>=0.9.7,<=0.12.1',
+    'gym>=0.9.7',
     'numpy>=1.10.4',
     'pillow',
     'scipy',
@@ -27,7 +27,7 @@ if sys.version_info < (3, 5):
     install_requires.append('funcsigs')
 
 setup(name='chainerrl',
-      version='0.6.0',
+      version='0.7.0',
       description='ChainerRL, a deep reinforcement learning library',
       long_description=codecs.open('README.md', 'r', encoding='utf-8').read(),
       long_description_content_type='text/markdown',

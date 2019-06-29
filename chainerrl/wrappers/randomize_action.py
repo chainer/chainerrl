@@ -36,7 +36,7 @@ class RandomizeAction(gym.ActionWrapper):
         self._random_fraction = random_fraction
         self._np_random = np.random.RandomState()
 
-    def _action(self, action):
+    def action(self, action):
         if self._np_random.rand() < self._random_fraction:
             return self._np_random.randint(self.env.action_space.n)
         else:
