@@ -399,9 +399,10 @@ class TestEpisodicReplayBuffer(unittest.TestCase):
         s5 = rbuf.sample(5)
         self.assertEqual(len(s5), 5)
         for t in s5:
-            n = t['state']
+            assert len(t) == 1
+            n = t[0]['state']
             self.assertIn(n, range(5))
-            self.assertEqual(t, transs[n])
+            self.assertEqual(t[0], transs[n])
 
         # And sampled episodes are exactly what I added!
         s2e = rbuf.sample_episodes(2)

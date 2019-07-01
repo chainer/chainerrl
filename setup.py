@@ -27,7 +27,7 @@ if sys.version_info < (3, 5):
     install_requires.append('funcsigs')
 
 setup(name='chainerrl',
-      version='0.6.0',
+      version='0.7.0',
       description='ChainerRL, a deep reinforcement learning library',
       long_description=codecs.open('README.md', 'r', encoding='utf-8').read(),
       long_description_content_type='text/markdown',
