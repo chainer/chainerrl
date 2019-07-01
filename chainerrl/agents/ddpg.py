@@ -85,7 +85,8 @@ class DDPG(AttributeSavingMixin, BatchAgent):
     saved_attributes = ('model',
                         'target_model',
                         'actor_optimizer',
-                        'critic_optimizer')
+                        'critic_optimizer',
+                        'obs_normalizer')
 
     def __init__(self, model, actor_optimizer, critic_optimizer, replay_buffer,
                  gamma, explorer, obs_normalizer=None,
@@ -356,9 +357,7 @@ class DDPG(AttributeSavingMixin, BatchAgent):
                 is_state_terminal=False)
             # Add to Normalizer
             if self.obs_normalizer:
-                self.obs_normalizer(self.batch_states([obs],
-                                    self.xp,
-                                    self.phi))
+                self.obs_normalizer.experience([obs])
 
         self.last_state = obs
         self.last_action = action
@@ -393,9 +392,10 @@ class DDPG(AttributeSavingMixin, BatchAgent):
         Returns:
             Sequence of ~object: Actions.
         """
-
         with chainer.using_config('train', False), chainer.no_backprop_mode():
             batch_xs = self.batch_states(batch_obs, self.xp, self.phi)
+            if self.obs_normalizer:
+                batch_xs = self.obs_normalizer(batch_xs, update=False)
             batch_action = self.policy(batch_xs).sample()
             # Q is not needed here, but log it just for information
             q = self.q_function(batch_xs, batch_action)
@@ -418,17 +418,22 @@ class DDPG(AttributeSavingMixin, BatchAgent):
             Sequence of ~object: Actions.
         """
 
+
+        if self.obs_normalizer:
+            batch_xs = self.obs_normalizer(batch_xs, update=False)
         if (self.burnin_action_func is not None
                 and self.actor_optimizer.t == 0):
             batch_action = [self.burnin_action_func()
-                            for _ in range(len(batch_obs))]
+                            for _ in range(len(batch_xs))]
         else:
-            batch_greedy_action = self.batch_act(batch_obs)
+            batch_greedy_action = self.batch_act(batch_xs)
             batch_action = [
                 self.explorer.select_action(
                     self.t, lambda: batch_greedy_action[i])
                 for i in range(len(batch_greedy_action))]
-
+        # Add to Normalizer
+        if self.obs_normalizer:
+            self.obs_normalizer.experience(batch_obs)
         self.batch_last_obs = list(batch_obs)
         self.batch_last_action = list(batch_action)
 
