@@ -59,7 +59,11 @@ class TestContinuingTimeLimitMonitor(unittest.TestCase):
         steps = 15
 
         env = gym.make('CartPole-v1')
-        env = TimeLimit(env, max_episode_steps=5)  # done=True at step 5
+        # unwrap default TimeLimit and wrap with new one to simulate done=True
+        # at step 5
+        self.assertIsInstance(env, TimeLimit)
+        env = env.env  # unwrap
+        env = TimeLimit(env, max_episode_steps=5)  # wrap
 
         tmpdir = tempfile.mkdtemp()
         try:
