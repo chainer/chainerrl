@@ -420,7 +420,7 @@ class DDPG(AttributeSavingMixin, BatchAgent):
 
 
         if self.obs_normalizer:
-            batch_xs = self.obs_normalizer(batch_xs, update=False)
+            batch_xs = self.obs_normalizer(batch_obs, update=False)
         if (self.burnin_action_func is not None
                 and self.actor_optimizer.t == 0):
             batch_action = [self.burnin_action_func()
