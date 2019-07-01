@@ -15,7 +15,7 @@ from chainerrl.replay_buffers import EpisodicReplayBuffer
 from chainerrl.replay_buffers import PriorityWeightError
 
 
-class PrioritizedEpisodicReplayBuffer (
+cclass PrioritizedEpisodicReplayBuffer (
         EpisodicReplayBuffer, PriorityWeightError):
 
     def __init__(self, capacity=None,

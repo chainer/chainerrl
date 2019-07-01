@@ -81,7 +81,8 @@ class EpisodicReplayBuffer(AbstractEpisodicReplayBuffer):
         current_episode = self.current_episode[env_id]
         if current_episode:
             self.episodic_memory.append(current_episode)
-            self.memory.extend(current_episode)
+            for transition in current_episode:
+                self.memory.append([transition])
             self.current_episode[env_id] = []
             while self.capacity is not None and \
                     len(self.memory) > self.capacity:

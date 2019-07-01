@@ -164,7 +164,7 @@ def main():
         dir_of_best_network = os.path.join(args.outdir, "best")
         agent.load(dir_of_best_network)
 
-        # run 30 evaluation episodes, each capped at 5 mins of play
+        # run 200 evaluation episodes, each capped at 30 mins of play
         stats = experiments.evaluator.eval_performance(
             env=eval_env,
             agent=agent,
