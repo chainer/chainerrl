@@ -11,8 +11,7 @@ from chainer import cuda
 import chainer.functions as F
 
 from chainerrl.agents import DoubleDQN
-from chainerrl.agents.dqn import (compute_value_loss,
-                                  compute_weighted_value_loss)
+
 from chainerrl.misc.batch_states import batch_states
 from chainerrl.replay_buffer import PrioritizedBuffer, PrioritizedReplayBuffer
 
@@ -22,9 +21,43 @@ standard_library.install_aliases()  # NOQA
 import numpy as np
 
 
+def compute_weighted_value_loss(y, t, weights,
+                                mask, clip_delta=True,
+                                batch_accumulator='mean'):
+    """Compute a loss for value prediction problem.
+
+    Args:
+        y (Variable or ndarray): Predicted values.
+        t (Variable or ndarray): Target values.
+        weights (ndarray): Weights for y, t.
+        mask (ndarray): Mask to use for loss calculation
+        clip_delta (bool): Use the Huber loss function if set True.
+        batch_accumulator (str): 'mean' will divide loss by batchsize
+    Returns:
+        (Variable) scalar loss
+    """
+    assert batch_accumulator in ('mean', 'sum')
+    y = F.reshape(y, (-1, 1))
+    t = F.reshape(t, (-1, 1))
+    if clip_delta:
+        losses = F.huber_loss(y, t, delta=1.0)
+    else:
+        losses = F.square(y - t) / 2
+    losses = F.reshape(losses, (-1,))
+    loss_sum = F.sum(losses * weights * mask)
+    if batch_accumulator == 'mean':
+        loss = loss_sum / F.max(F.sum(mask), 1.0)
+    elif batch_accumulator == 'sum':
+        loss = loss_sum
+    return loss
+
+
 class PrioritizedDemoReplayBuffer(PrioritizedReplayBuffer):
-    """Modification of a PrioritizedReplayBuffer to have both persistent
-    demonstration data and normal demonstration data.
+    """Replay buffer used in DQfD.
+
+    Differences from a normal PrioritizedReplayBuffer
+      Stores both both persistent demonstration data and normal self-play data
+      Stores both 1-step and n-step versions of every transition
 
     Args:
         capacity(int): Capacity of the buffer *excluding* expert demonstrations
@@ -37,7 +70,7 @@ class PrioritizedDemoReplayBuffer(PrioritizedReplayBuffer):
     def __init__(self, capacity=None,
                  alpha=0.6, beta0=0.4, betasteps=2e5, eps=0.01,
                  normalize_by_max=True, error_min=0,
-                 error_max=1, num_steps=1):
+                 error_max=2, num_steps=1):
 
         PrioritizedReplayBuffer.__init__(self, capacity=capacity,
                                          alpha=alpha, beta0=beta0,
@@ -141,7 +174,7 @@ class PrioritizedDemoReplayBuffer(PrioritizedReplayBuffer):
 
     def append(self, state, action, reward, next_state=None, next_action=None,
                is_state_terminal=False, env_id=0, demo=False, **kwargs):
-        """
+        """ Add some experience to the replay buffer as both 1 step and n-step
         Args:
             demo: Flags transition as a demonstration and store it persistently
         """
@@ -156,6 +189,8 @@ class PrioritizedDemoReplayBuffer(PrioritizedReplayBuffer):
             is_state_terminal=is_state_terminal,
             **kwargs
         )
+        #  Append both a 1-step and n-step version of the transition
+        memory.append([experience])
         last_n_transitions.append(experience)
         if is_state_terminal:
             while last_n_transitions:
@@ -166,7 +201,7 @@ class PrioritizedDemoReplayBuffer(PrioritizedReplayBuffer):
             if len(last_n_transitions) == self.num_steps:
                 memory.append(list(last_n_transitions))
 
-    def stop_current_episode(self, demo=False, env_id=0):
+    def stop_current_episode(self, env_id=0, demo=False):
         memory = self.memory_demo if demo else self.memory
         last_n_transitions = self.last_n_transitions[env_id]
         # if n-step transition hist is not full, add transition;
@@ -189,7 +224,7 @@ class DemoReplayUpdater(object):
     """Object that handles update schedule and configurations.
 
     Args:
-        replay_buffer (PrioritizedDemoReplayBuffer): Bbuffer for self-play
+        replay_buffer (PrioritizedDemoReplayBuffer): Replaybuffer for self-play
         update_func (callable): Callable that accepts one of these:
             (1) two lists of transition dicts (if episodic_update=False)
             (2) two lists of transition dicts (if episodic_update=True)
@@ -250,7 +285,7 @@ class DemoReplayUpdater(object):
         """
         if self.episodic_update:
             episodes_demo = self.replay_buffer.sample_episodes(
-                self.batch_size, self.episodic_update_len)
+                self.batchsize, self.episodic_update_len)
             self.update_func([], episodes_demo)
         else:
             trans_demo = self.replay_buffer.sample(
@@ -284,21 +319,15 @@ def batch_experiences(experiences, xp, phi, gamma, batch_states=batch_states):
         'state': batch_states(
             [elem[0]['state'] for elem in experiences], xp, phi),
         'action': xp.asarray([elem[0]['action'] for elem in experiences]),
-        'reward_nstep': xp.asarray([sum((gamma ** i) * exp[i]['reward']
-                                        for i in range(len(exp)))
-                                    for exp in experiences],
-                                   dtype=xp.float32),
-        'next_state_nstep': batch_states(
+        'reward': xp.asarray([sum((gamma ** i) * exp[i]['reward']
+                                  for i in range(len(exp)))
+                              for exp in experiences],
+                             dtype=xp.float32),
+        'next_state': batch_states(
             [elem[-1]['next_state']
              for elem in experiences], xp, phi),
-
-        'reward_1step': xp.asarray([exp[0]['reward']
-                                    for exp in experiences],
-                                   dtype=xp.float32),
-        'next_state_1step': batch_states(
-            [elem[0]['next_state']
-             for elem in experiences], xp, phi),
-
+        'is_n_step': xp.asarray([float(len(elem) > 1) for elem in experiences],
+                                xp, phi),
         'is_state_terminal': xp.asarray(
             [any(transition['is_state_terminal']
                  for transition in exp) for exp in experiences],
@@ -400,6 +429,9 @@ class DQfD(DoubleDQN):
         self.bonus_priority_demo = bonus_priority_demo
         self.bonus_priority_agent = bonus_priority_agent
 
+        self.average_demo_td_error = 0
+        self.average_agent_td_error = 0
+
         self.average_loss_1step = 0
         self.average_loss_nstep = 0
         self.average_loss_supervised = 0
@@ -440,14 +472,12 @@ class DQfD(DoubleDQN):
         exp_batch = batch_experiences(experiences, xp=self.xp, phi=self.phi,
                                       gamma=self.gamma,
                                       batch_states=self.batch_states)
-
         exp_batch['weights'] = self.xp.asarray(
             [elem[0]['weight']for elem in experiences], dtype=self.xp.float32)
 
         errors_out = []
         loss_q_nstep, loss_q_1step = self._compute_ddqn_losses(
             exp_batch, errors_out=errors_out)
-
         # Add the agent/demonstration bonus priorities and update
         err_agent = errors_out[:num_exp_agent]
         err_demo = errors_out[num_exp_agent:]
@@ -474,7 +504,7 @@ class DQfD(DoubleDQN):
         loss_supervised = (supervised_targets - q_expert_demos)
         loss_supervised = F.sum(loss_supervised * iweights_demos)
         if self.batch_accumulator == "mean":
-            loss_supervised /= len(experiences_demo)
+            loss_supervised /= max(len(experiences_demo), 1.0)
 
         # L2 loss is directly applied as chainer optimizer hook in init
         loss_combined = loss_q_1step + \
@@ -502,6 +532,16 @@ class DQfD(DoubleDQN):
         self.average_loss_supervised += (1 - self.average_loss_decay) * \
             float(loss_supervised.array)
 
+        if len(err_demo):
+            self.average_demo_td_error *= self.average_loss_decay
+            self.average_demo_td_error += (1 - self.average_loss_decay) * \
+                np.mean(err_demo)
+
+        if len(err_agent):
+            self.average_agent_td_error *= self.average_loss_decay
+            self.average_agent_td_error += (1 - self.average_loss_decay) * \
+                np.mean(err_agent)
+
     def _compute_y_and_ts(self, exp_batch):
         """Compute output and targets
 
@@ -509,7 +549,7 @@ class DQfD(DoubleDQN):
             Cache qout for the supervised loss later
             Calculate both 1-step and n-step targets
         """
-        batch_size = exp_batch['reward_nstep'].shape[0]
+        batch_size = exp_batch['reward'].shape[0]
 
         # Compute Q-values for current states
         batch_state = exp_batch['state']
@@ -523,23 +563,11 @@ class DQfD(DoubleDQN):
             batch_actions), (batch_size, 1))
 
         with chainer.no_backprop_mode():
-            # Calculate n-step Double DQN targets
-            # Rename n-step rewards and next states
-            # .. to those _compute_target_values expects
-            exp_batch["reward"] = exp_batch["reward_nstep"]
-            exp_batch["next_state"] = exp_batch["next_state_nstep"]
-            batch_q_target_nstep = F.reshape(
+            # Calculate Double DQN targets
+            batch_q_target = F.reshape(
                 self._compute_target_values(exp_batch),
                 (batch_size, 1))
-
-            # Calculate 1-step Double DQN targets
-            exp_batch["reward"] = exp_batch["reward_1step"]
-            exp_batch["next_state"] = exp_batch["next_state_1step"]
-            batch_q_target_1step = F.reshape(
-                self._compute_target_values(exp_batch),
-                (batch_size, 1))
-
-        return batch_q, batch_q_target_nstep, batch_q_target_1step
+        return batch_q, batch_q_target
 
     def _compute_ddqn_losses(self, exp_batch, errors_out=None):
         """Compute the Q-learning losses for a batch of experiences
@@ -549,36 +577,28 @@ class DQfD(DoubleDQN):
         Returns:
           Computed loss from the minibatch of experiences
         """
-        y, t_nstep, t_1step = self._compute_y_and_ts(exp_batch)
+        y, t = self._compute_y_and_ts(exp_batch)
 
-        # Calculate the errors_out for priorities with the 1-step err
-        if errors_out is not None:
-            del errors_out[:]
-            delta = F.absolute(y - t_1step)
-            if delta.ndim == 2:
-                delta = F.sum(delta, axis=1)
-            delta = cuda.to_cpu(delta.array)
-            for e in delta:
-                errors_out.append(e)
+        del errors_out[:]
+        delta = F.absolute(y - t)
+        if delta.ndim == 2:
+            delta = F.sum(delta, axis=1)
+        delta = cuda.to_cpu(delta.array)
+        for e in delta:
+            errors_out.append(e)
 
-        if 'weights' in exp_batch:
-            loss_1step = compute_weighted_value_loss(
-                y, t_1step, exp_batch['weights'],
-                clip_delta=self.clip_delta,
-                batch_accumulator=self.batch_accumulator)
-            loss_nstep = compute_weighted_value_loss(
-                y, t_nstep, exp_batch['weights'],
-                clip_delta=self.clip_delta,
-                batch_accumulator=self.batch_accumulator)
-            return loss_nstep, loss_1step
-        else:
-            loss_1step = compute_value_loss(y, t_1step,
-                                            self.clip_delta,
-                                            self.batch_accumulator)
-            loss_nstep = compute_value_loss(y, t_nstep,
-                                            self.clip_delta,
-                                            self.batch_accumulator)
-            return loss_nstep, loss_1step
+        is_1_step = np.abs(1. - exp_batch["is_n_step"])
+        loss_1step = compute_weighted_value_loss(
+            y, t, exp_batch['weights'],
+            mask=is_1_step,
+            clip_delta=self.clip_delta,
+            batch_accumulator=self.batch_accumulator)
+        loss_nstep = compute_weighted_value_loss(
+            y, t, exp_batch['weights'],
+            mask=exp_batch["is_n_step"],
+            clip_delta=self.clip_delta,
+            batch_accumulator=self.batch_accumulator)
+        return loss_nstep, loss_1step
 
     def act_and_train(self, obs, reward):
 
@@ -629,6 +649,8 @@ class DQfD(DoubleDQN):
             ('average_loss_supervised', self.average_loss_supervised),
             ('average_loss', self.average_loss),
             ('n_updates', self.optimizer.t),
+            ('average_agent_td_error', self.average_agent_td_error),
+            ('average_demo_td_error', self.average_demo_td_error)
         ]
 
     def batch_observe_and_train(self, batch_obs, batch_reward,
