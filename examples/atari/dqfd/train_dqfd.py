@@ -1,9 +1,4 @@
 """DQfD on ATARI.
-Things that may differ from the paper:
-* Using 1-step loss to update priorities (not specified. May be be n-step)
-* Replay buffer size is exclusive of expert demonstrations
-* Alpha=0.4 & beta0=0.6 as reported in the paper. Inverse in Schaul et al.
-
 """
 from __future__ import absolute_import
 from __future__ import division
@@ -110,6 +105,7 @@ def main():
     parser.add_argument('--loss-coeff-supervised', type=float, default=1.0)
     parser.add_argument('--bonus-priority-agent', type=float, default=0.001)
     parser.add_argument('--bonus-priority-demo', type=float, default=1.0)
+    parser.add_argument('--priority-error-max', type=float, default=1.0)
     args = parser.parse_args()
 
     import logging
@@ -166,8 +162,8 @@ def main():
 
     betasteps = args.steps / args.update_interval
     replay_buffer = PrioritizedDemoReplayBuffer(
-        args.replay_buffer_size, alpha=0.4,
-        beta0=0.6, betasteps=betasteps,
+        args.replay_buffer_size, alpha=0.6,
+        beta0=0.4, betasteps=betasteps, error_max=args.priority_error_max,
         num_steps=args.num_step_return)
 
     # Fill the demo buffer with expert transitions

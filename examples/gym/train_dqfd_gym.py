@@ -89,6 +89,7 @@ def main():
     parser.add_argument('--loss-coeff-supervised', type=float, default=1.0)
     parser.add_argument('--bonus-priority-agent', type=float, default=0.001)
     parser.add_argument('--bonus-priority-demo', type=float, default=1.0)
+    parser.add_argument('--priority-error-max', type=float, default=2.0)
     args = parser.parse_args()
 
     assert args.expert_demo_path is not None, "DQfD needs collected \
@@ -152,7 +153,7 @@ def main():
     betasteps = args.steps / args.update_interval
     replay_buffer = PrioritizedDemoReplayBuffer(
         args.replay_buffer_size, alpha=0.6,
-        beta0=0.4, betasteps=betasteps,
+        beta0=0.4, betasteps=betasteps, error_max=args.priority_error_max,
         num_steps=args.num_step_return)
 
     # Fill the demo buffer with expert transitions
@@ -170,8 +171,8 @@ def main():
                                  demo=True)
             if ("needs_reset" in info and info["needs_reset"]):
                 replay_buffer.stop_current_episode(demo=True)
-    print("Demo buffer loaded with", len(replay_buffer),
-          "/", n_demo_transitions, "transitions")
+    print("Demo buffer loaded with", n_demo_transitions,
+          "demonstration transitions")
 
     def phi(x):
         # Feature extractor
