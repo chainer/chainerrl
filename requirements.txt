@@ -2,7 +2,7 @@ cached-property
 chainer>=4.0.0
 fastcache; python_version<'3.2'
 funcsigs; python_version<'3.5'
-gym>=0.9.7,<=0.12.1
+gym>=0.9.7
 numpy>=1.10.4
 pillow
 scipy

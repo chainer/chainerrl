@@ -2,6 +2,12 @@
 Links
 =============
 
+Link interfaces
+============================
+
+.. autoclass:: chainerrl.links.StatelessRecurrent
+   :members:
+
 Link implementations
 ============================
 
@@ -20,6 +26,12 @@ Link implementations
 .. autoclass:: chainerrl.links.NatureDQNHead
 
 .. autoclass:: chainerrl.links.Sequence
+
+.. autoclass:: chainerrl.links.StatelessRecurrentBranched
+
+.. autoclass:: chainerrl.links.StatelessRecurrentChainList
+
+.. autoclass:: chainerrl.links.StatelessRecurrentSequential
 
 Link utility functions
 ============================
