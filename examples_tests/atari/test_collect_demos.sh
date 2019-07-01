@@ -7,7 +7,7 @@ outdir=$(mktemp -d)
 gpu="$1"
 
 # Chainer 4 does not support open_pickle_dataset_writer, which is used by the demonstration collection example.
-pickle_writer_support=$(python -c "import chainer; from distutils.version import StrictVersion; print(1 if StrictVersion(chainer.__version__) >= StrictVersion('3.1.0') else 0)")
+pickle_writer_support=$(python -c "import chainer; from distutils.version import StrictVersion; print(1 if StrictVersion(chainer.__version__) >= StrictVersion('5.0.0') else 0)")
 
 # atari/collect_demos
 if [[ $pickle_writer_support = 1 ]]; then
