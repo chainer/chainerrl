@@ -134,7 +134,7 @@ class DQN(agent.AttributeSavingMixin, agent.BatchAgent):
         batch_states (callable): method which makes a batch of observations.
             default is `chainerrl.misc.batch_states.batch_states`
         recurrent (bool): If set to True, `model` is assumed to implement
-            `chainerrl.links.StatelessRecurrent` and updated in a recurrent
+            `chainerrl.links.StatelessRecurrent` and is updated in a recurrent
             manner.
     """
 
