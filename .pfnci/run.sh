@@ -68,8 +68,7 @@ main() {
         'cython==0.28.0' 'numpy<1.10' 'scipy<0.19' 'more-itertools<=5.0.0'
   fi
 
-  # TODO(chainerrl): Enable ChainerRL to work without -e.
-  "${PYTHON}" -m pip install -e /chainerrl
+  "${PYTHON}" -m pip install /chainerrl
   # TODO(chainerrl): Prepare test target instead.
   "${PYTHON}" -m pip install \
       'pytest==4.1.1' 'pytest-xdist==1.26.1' 'mock' \
