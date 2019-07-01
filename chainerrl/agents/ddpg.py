@@ -419,21 +419,22 @@ class DDPG(AttributeSavingMixin, BatchAgent):
         """
 
 
-        if self.obs_normalizer:
-            batch_xs = self.obs_normalizer(batch_obs, update=False)
         if (self.burnin_action_func is not None
                 and self.actor_optimizer.t == 0):
             batch_action = [self.burnin_action_func()
-                            for _ in range(len(batch_xs))]
+                            for _ in range(len(batch_obs))]
         else:
-            batch_greedy_action = self.batch_act(batch_xs)
+            batch_greedy_action = self.batch_act(batch_obs)
             batch_action = [
                 self.explorer.select_action(
                     self.t, lambda: batch_greedy_action[i])
                 for i in range(len(batch_greedy_action))]
         # Add to Normalizer
         if self.obs_normalizer:
-            self.obs_normalizer.experience(batch_obs)
+            self.obs_normalizer.experience(
+                    self.batch_states(batch_obs,
+                        self.xp,
+                        self.phi))
         self.batch_last_obs = list(batch_obs)
         self.batch_last_action = list(batch_action)
 
