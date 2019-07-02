@@ -22,7 +22,7 @@ class NormalizeActionSpace(gym.ActionWrapper):
             high=np.ones_like(env.action_space.low),
         )
 
-    def _action(self, action):
+    def action(self, action):
         # action is in [0, 1]
         action = action.copy()
 
