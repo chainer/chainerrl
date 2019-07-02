@@ -327,7 +327,7 @@ def batch_experiences(experiences, xp, phi, gamma, batch_states=batch_states):
             [elem[-1]['next_state']
              for elem in experiences], xp, phi),
         'is_n_step': xp.asarray([float(len(elem) > 1) for elem in experiences],
-                                xp, phi),
+                                dtype=xp.float32),
         'is_state_terminal': xp.asarray(
             [any(transition['is_state_terminal']
                  for transition in exp) for exp in experiences],
@@ -587,7 +587,7 @@ class DQfD(DoubleDQN):
         for e in delta:
             errors_out.append(e)
 
-        is_1_step = np.abs(1. - exp_batch["is_n_step"])
+        is_1_step = self.xp.abs(1. - exp_batch["is_n_step"])
         loss_1step = compute_weighted_value_loss(
             y, t, exp_batch['weights'],
             mask=is_1_step,
