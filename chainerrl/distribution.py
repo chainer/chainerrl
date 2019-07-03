@@ -403,8 +403,8 @@ class SquashedGaussianDistribution(Distribution):
         raise NotImplementedError
 
     def __repr__(self):
-        return 'SquashedGaussianDistribution mean:{} ln_var:{} entropy:{}'.format(  # NOQA
-            self.mean.array, self.ln_var.array, self.entropy.array)
+        return 'SquashedGaussianDistribution mean:{} ln_var:{}'.format(  # NOQA
+            self.mean.array, self.ln_var.array)
 
     def __getitem__(self, i):
         return SquashedGaussianDistribution(self.mean[i], self.var[i])
