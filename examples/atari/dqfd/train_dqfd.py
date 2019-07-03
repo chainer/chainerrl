@@ -97,6 +97,7 @@ def main():
     parser.set_defaults(clip_delta=True)
     parser.add_argument('--no-clip-delta',
                         dest='clip_delta', action='store_false')
+    parser.add_argument("--batch-accumulator", type=str, default="sum")
 
     # DQfD specific parameters
     parser.add_argument('--expert-demo-path', type=str, required=True,
@@ -214,7 +215,7 @@ def main():
                  target_update_interval=args.target_update_interval,
                  clip_delta=args.clip_delta,
                  update_interval=args.update_interval,
-                 batch_accumulator='sum',
+                 batch_accumulator=args.batch_accumulator,
                  phi=phi,
                  minibatch_size=args.minibatch_size)
 

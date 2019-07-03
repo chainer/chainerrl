@@ -46,7 +46,7 @@ def compute_weighted_value_loss(y, t, weights,
     losses = F.reshape(losses, (-1,))
     loss_sum = F.sum(losses * weights * mask)
     if batch_accumulator == 'mean':
-        loss = loss_sum / F.max(F.sum(mask), 1.0)
+        loss = loss_sum / max(mask.sum(), 1.0)
     elif batch_accumulator == 'sum':
         loss = loss_sum
     return loss
