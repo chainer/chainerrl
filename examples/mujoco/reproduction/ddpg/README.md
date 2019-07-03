@@ -71,8 +71,9 @@ Reported scores are taken from the "AHE" row of Table 2 of [Addressing Function 
 
 ### Training times
 
-| Game        | ChainerRL Time           |
-| ------------- |:-------------:|:-------------:|
+
+| Game        | ChainerRL Time           |   
+| ------------- |:-------------:|
 | Ant | 3.81203119222 hours |
 | HalfCheetah | 4.74291637403 hours |
 | Hopper | 4.00580256064 hours |
@@ -81,7 +82,7 @@ Reported scores are taken from the "AHE" row of Table 2 of [Addressing Function 
 | Reacher | 3.22501168295 hours |
 | Walker2d | 4.39562471194 hours |
 
-Times statistics...
+
 | Statistic        |            |            |
 | ------------- |:-------------:|:-------------:|
 | Mean time (in hours) across all domains        |  4.03623458214 |
