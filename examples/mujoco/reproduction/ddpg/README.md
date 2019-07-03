@@ -69,6 +69,25 @@ Reported scores are taken from the "AHE" row of Table 2 of [Addressing Function 
 | InvertedPendulum-v2       |          784.79 |            N/A |
 | InvertedDoublePendulum-v2 |         7385.12 |            N/A |
 
+### Training times
+
+| Game        | ChainerRL Time           |
+| ------------- |:-------------:|:-------------:|
+| Ant | 3.81203119222 hours |
+| HalfCheetah | 4.74291637403 hours |
+| Hopper | 4.00580256064 hours |
+| InvertedDoublePendulum | 4.07857200681 hours |
+| InvertedPendulum | 3.9936835464 hours |
+| Reacher | 3.22501168295 hours |
+| Walker2d | 4.39562471194 hours |
+
+Times statistics...
+| Statistic        |            |            |
+| ------------- |:-------------:|:-------------:|
+| Mean time (in hours) across all domains        |  4.03623458214 |
+| Fastest Domain |  Reacher | 3.22501168295 |
+| Slowest Domain |  HalfCheetah | 4.74291637403 |
+
 ### Learning Curves
 
 The shaded region represents a standard deviation of the average evaluation over 10 trials.
