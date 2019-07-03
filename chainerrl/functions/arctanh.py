@@ -9,7 +9,9 @@ class Arctanh(function_node.FunctionNode):
     """Elementwise inverse hyperbolic tangent function."""
 
     def check_type_forward(self, in_types):
-        type_check._argname(in_types, ('x',))
+        if hasattr(type_check, '_argname'):
+            # typecheck._argname is introduced by Chainer v6
+            type_check._argname(in_types, ('x',))
         x_type, = in_types
 
         type_check.expect(x_type.dtype.kind == 'f')
