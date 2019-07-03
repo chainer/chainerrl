@@ -74,6 +74,25 @@ Although the original paper used v1 versions of MuJoCo envs, we used v2 as v1 ar
 | InvertedPendulum-v2       |          908.70 |            N/A |
 | InvertedDoublePendulum-v2 |         8372.44 |            N/A |
 
+### Training times
+
+| Game        | ChainerRL Time           |
+| ------------- |:-------------:|:-------------:|
+| Ant | 4.10951829014 hours |
+| HalfCheetah | 3.7575129584 hours |
+| Hopper | 4.21542213318 hours |
+| InvertedDoublePendulum | 3.56693898845 hours |
+| InvertedPendulum | 3.6195989489 hours |
+| Reacher | 3.64177182645 hours |
+| Walker2d | 3.63201196985 hours |
+
+| Statistic        |            |            |
+| ------------- |:-------------:|:-------------:|
+| Mean time (in hours) across all domains        |  3.79182501648 |
+| Fastest Domain |  InvertedDoublePendulum | 3.56693898845 |
+| Slowest Domain |  Hopper | 4.21542213318 |
+
+
 ### Learning Curves
 
 The shaded region represents a standard deviation of the average evaluation over 10 trials.
