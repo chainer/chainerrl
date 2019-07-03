@@ -71,6 +71,7 @@ Reported scores are taken from the "AHE" row of Table 2 of [Addressing Function 
 
 ### Training times
 
+
 | Game        | ChainerRL Time           |
 | ------------- |:-------------:|
 | Ant | 3.812 hours |

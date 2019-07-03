@@ -87,7 +87,6 @@ Although the original paper used v1 versions of MuJoCo envs, we used v2 as v1 ar
 | Reacher | 3.642 hours |
 | Walker2d | 3.632 hours |
 
-
 | Statistic        |            |            |
 | ------------- |:-------------:|:-------------:|
 | Mean time (in hours) across all domains        |  3.792 |
