@@ -190,7 +190,6 @@ class PrioritizedDemoReplayBuffer(PrioritizedReplayBuffer):
             **kwargs
         )
         #  Append both a 1-step and n-step version of the transition
-        memory.append([experience])
         last_n_transitions.append(experience)
         if is_state_terminal:
             while last_n_transitions:
@@ -198,6 +197,8 @@ class PrioritizedDemoReplayBuffer(PrioritizedReplayBuffer):
                 del last_n_transitions[0]
             assert len(last_n_transitions) == 0
         else:
+            # Only add 1-step transition when not terminal to avoid duplicates
+            memory.append([experience])
             if len(last_n_transitions) == self.num_steps:
                 memory.append(list(last_n_transitions))
 
@@ -281,7 +282,7 @@ class DemoReplayUpdater(object):
                 self.replay_buffer.update_beta()
 
     def update_from_demonstrations(self):
-        """Called during pre-train steps. All samples are from demo buffer
+        """Called during pre-train steps. Only update with demonstrations
         """
         if self.episodic_update:
             episodes_demo = self.replay_buffer.sample_episodes(

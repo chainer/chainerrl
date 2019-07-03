@@ -128,8 +128,8 @@ def main():
         # env = chainerrl.wrappers.Render(env)
         return env
 
-    env = make_env(test=True)
-    eval_env = make_env(test=False)
+    env = make_env(test=False)
+    eval_env = make_env(test=True)
 
     q_func = chainerrl.q_functions.FCStateQFunctionWithDiscreteAction(
         ndim_obs=env.observation_space.low.size,
@@ -171,8 +171,9 @@ def main():
                                  demo=True)
             if ("needs_reset" in info and info["needs_reset"]):
                 replay_buffer.stop_current_episode(demo=True)
-    print("Demo buffer loaded with", n_demo_transitions,
-          "demonstration transitions")
+    print("Demo buffer loaded with %d (1 and n-step) transitions from "
+          "%d expert demonstration transitions" % (len(replay_buffer),
+                                                   n_demo_transitions))
 
     def phi(x):
         # Feature extractor
@@ -200,17 +201,11 @@ def main():
         agent.load(args.load)
 
     if args.demo:
-        if args.save_demo_trajectories:
-            # TODO
-            pass
-            # collect_demonstrations(agent, eval_env, steps=None,
-            # episodes=args.eval_n_runs, outdir=args.outdir)
-        else:
-            eval_stats = experiments.eval_performance(
-                env=eval_env,
-                agent=agent,
-                n_steps=None,
-                n_episodes=args.eval_n_runs)
+        eval_stats = experiments.eval_performance(
+            env=eval_env,
+            agent=agent,
+            n_steps=None,
+            n_episodes=args.eval_n_runs)
         print('n_runs: {} mean: {} median: {} stdev {}'.format(
             args.eval_n_runs, eval_stats['mean'], eval_stats['median'],
             eval_stats['stdev']))

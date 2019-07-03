@@ -27,6 +27,10 @@ import gym
 import numpy as np
 
 
+def log_scale_reward(reward):
+    return np.sign(reward) * np.log(1 + np.abs(reward))
+
+
 class LogScaleReward(gym.RewardWrapper):
     """Convert reward to log scale as described in the DQfD paper
     https://arxiv.org/pdf/1704.03732.pdf
@@ -45,7 +49,7 @@ class LogScaleReward(gym.RewardWrapper):
 
     def reward(self, reward):
         self.original_reward = reward
-        return np.sign(reward) * np.log(1 + np.abs(reward))
+        return log_scale_reward(reward)
 
 
 def main():
@@ -171,8 +175,8 @@ def main():
     with chainer.datasets.open_pickle_dataset(args.expert_demo_path) as dset:
         for transition in dset:
             (obs, a, r, new_obs, done, info) = transition
-            # Assuming r is already normalized to log-scale.
             n_demo_transitions += 1
+            r = log_scale_reward(r)
             replay_buffer.append(state=obs,
                                  action=a,
                                  reward=r,
@@ -182,8 +186,9 @@ def main():
                                  demo=True)
             if ("needs_reset" in info and info["needs_reset"]):
                 replay_buffer.stop_current_episode(demo=True)
-    print("Demo buffer loaded with", len(replay_buffer),
-          "/", n_demo_transitions, "transitions")
+    print("Demo buffer loaded with %d (1 and n-step) transitions from "
+          "%d expert demonstration transitions" % (len(replay_buffer),
+                                                   n_demo_transitions))
 
     explorer = explorers.LinearDecayEpsilonGreedy(
         start_epsilon=1.0, end_epsilon=0.01,
