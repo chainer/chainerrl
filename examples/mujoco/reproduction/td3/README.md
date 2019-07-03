@@ -77,7 +77,7 @@ Although the original paper used v1 versions of MuJoCo envs, we used v2 as v1 ar
 ### Training times
 
 | Game        | ChainerRL Time           |
-| ------------- |:-------------:|:-------------:|
+| ------------- |:-------------:|
 | Ant | 4.10951829014 hours |
 | HalfCheetah | 3.7575129584 hours |
 | Hopper | 4.21542213318 hours |
