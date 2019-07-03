@@ -1,0 +1,58 @@
+# ChainerRL GPU unit tests.
+# NOTE: This tests will not run CPU-only tests. CPU-only tests should be tested
+# in chainerrl.py3.cpu.
+# URL: https://ci.preferred.jp/chainerrl.py3.gpu/
+configs {
+  key: "chainerrl.py3.gpu"
+  value {
+    requirement {
+      cpu: 10
+      memory: 30
+      gpu: 1
+    }
+    environment_variables { key: "GPU" value: "1" }
+    command: "bash .pfnci/script.sh py3.gpu"
+  }
+}
+
+# ChainerRL CPU-only unit tests.
+# URL: https://ci.preferred.jp/chainerrl.py3.cpu/
+configs {
+  key: "chainerrl.py3.cpu"
+  value {
+    requirement {
+      cpu: 10
+      memory: 10
+    }
+    command: "bash .pfnci/script.sh py3.cpu"
+  }
+}
+
+# ChainerRL CPU-only unit tests with python2.
+# TODO(chanerrl): Enable this test target. This test does not work because of
+# https://github.com/chainer/chainerrl/issues/463. This should be resolved by
+# preparing a prebuild Docker image with latest Chainer.
+# URL: https://ci.preferred.jp/chainerrl.py2.cpu/
+configs {
+  key: "chainerrl.py2.cpu"
+  value {
+    requirement {
+      cpu: 10
+      memory: 10
+    }
+    command: "bash .pfnci/script.sh py2.cpu"
+  }
+}
+
+# ChainerRL unit tests with Chainer3.
+# URL: https://ci.preferred.jp/chainerrl.py3.chainer4/
+configs {
+  key: "chainerrl.py3.chainer4"
+  value {
+    requirement {
+      cpu: 10
+      memory: 10
+    }
+    command: "bash .pfnci/script.sh py3.chainer4"
+  }
+}
