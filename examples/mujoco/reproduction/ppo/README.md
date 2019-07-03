@@ -48,6 +48,24 @@ python train_ppo.py --gpu -1 --seed [0-19] --env [env]
 | Walker2d-v2    |      2994+/-113 |            N/A |
 | Swimmer-v2     |         111+/-4 |            N/A |
 
+
+### Training times
+
+| Game        | ChainerRL Time           |
+| ------------- |:-------------:|:-------------:|
+| HalfCheetah | 2.05350290681 hours |
+| Hopper | 2.05661886344 hours |
+| Swimmer | 2.05063875818 hours |
+| Walker2d | 2.06532744526 hours |
+
+Times statistics...
+| Statistic        |            |            |
+| ------------- |:-------------:|:-------------:|
+| Mean time (in hours) across all domains        |  2.05652199342 |
+| Fastest Domain |  Swimmer | 2.05063875818 |
+| Slowest Domain |  Walker2d | 2.06532744526 |
+
+
 ### Learning Curves
 
 The shaded region represents a standard deviation of the average evaluation over 20 trials.
