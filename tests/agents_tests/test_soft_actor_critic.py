@@ -179,7 +179,7 @@ class TestSoftActorCritic(unittest.TestCase):
         def squashed_diagonal_gaussian_head(x):
             assert x.shape[-1] == action_size * 2
             mean, log_scale = F.split_axis(x, 2, axis=1)
-            log_scale = F.clip(log_scale, -20, 2)
+            log_scale = F.clip(log_scale, -20., 2.)
             var = F.exp(log_scale * 2)
             return chainerrl.distribution.SquashedGaussianDistribution(
                 mean, var=var)
