@@ -76,21 +76,24 @@ Although the original paper used v1 versions of MuJoCo envs, we used v2 as v1 ar
 
 ### Training times
 
+
 | Game        | ChainerRL Time           |
-| ------------- |:-------------:|:-------------:|
-| Ant | 4.10951829014 hours |
-| HalfCheetah | 3.7575129584 hours |
-| Hopper | 4.21542213318 hours |
-| InvertedDoublePendulum | 3.56693898845 hours |
-| InvertedPendulum | 3.6195989489 hours |
-| Reacher | 3.64177182645 hours |
-| Walker2d | 3.63201196985 hours |
+| ------------- |:-------------:|
+| Ant | 4.11 hours |
+| HalfCheetah | 3.758 hours |
+| Hopper | 4.215 hours |
+| InvertedDoublePendulum | 3.567 hours |
+| InvertedPendulum | 3.62 hours |
+| Reacher | 3.642 hours |
+| Walker2d | 3.632 hours |
+
 
 | Statistic        |            |            |
 | ------------- |:-------------:|:-------------:|
-| Mean time (in hours) across all domains        |  3.79182501648 |
-| Fastest Domain |  InvertedDoublePendulum | 3.56693898845 |
-| Slowest Domain |  Hopper | 4.21542213318 |
+| Mean time (in hours) across all domains        |  3.792 |
+| Fastest Domain |  InvertedDoublePendulum | 3.567 |
+| Slowest Domain |  Hopper | 4.215 |
+
 
 
 ### Learning Curves

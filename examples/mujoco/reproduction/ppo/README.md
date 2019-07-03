@@ -51,19 +51,21 @@ python train_ppo.py --gpu -1 --seed [0-19] --env [env]
 
 ### Training times
 
-| Game        | ChainerRL Time           |
-| ------------- |:-------------:|:-------------:|
-| HalfCheetah | 2.05350290681 hours |
-| Hopper | 2.05661886344 hours |
-| Swimmer | 2.05063875818 hours |
-| Walker2d | 2.06532744526 hours |
 
-Times statistics...
+| Game        | ChainerRL Time           |
+| ------------- |:-------------:|
+| HalfCheetah | 2.054 hours |
+| Hopper | 2.057 hours |
+| Swimmer | 2.051 hours |
+| Walker2d | 2.065 hours |
+
+
 | Statistic        |            |            |
 | ------------- |:-------------:|:-------------:|
-| Mean time (in hours) across all domains        |  2.05652199342 |
-| Fastest Domain |  Swimmer | 2.05063875818 |
-| Slowest Domain |  Walker2d | 2.06532744526 |
+| Mean time (in hours) across all domains        |  2.057 |
+| Fastest Domain |  Swimmer | 2.051 |
+| Slowest Domain |  Walker2d | 2.065 |
+
 
 
 ### Learning Curves
