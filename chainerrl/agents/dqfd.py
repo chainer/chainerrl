@@ -69,7 +69,7 @@ class PrioritizedDemoReplayBuffer(PrioritizedReplayBuffer):
 
     def __init__(self, capacity=None,
                  alpha=0.6, beta0=0.4, betasteps=2e5, eps=0.01,
-                 normalize_by_max=True, error_min=0,
+                 normalize_by_max=False, error_min=0,
                  error_max=2, num_steps=1):
 
         PrioritizedReplayBuffer.__init__(self, capacity=capacity,
