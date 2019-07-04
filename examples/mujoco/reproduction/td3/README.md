@@ -75,6 +75,8 @@ Although the original paper used v1 versions of MuJoCo envs, we used v2 as v1 ar
 | InvertedDoublePendulum-v2 |         8372.44 |            N/A |
 
 ### Training times
+These training times were obtained by running `train_td3.py` on a single CPU and a single GPU.
+
 
 
 | Game        | ChainerRL Time           |

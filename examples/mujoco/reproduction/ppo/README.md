@@ -50,6 +50,7 @@ python train_ppo.py --gpu -1 --seed [0-19] --env [env]
 
 
 ### Training times
+These training times were obtained by running `train_ppo.py` on a single CPU and no GPU.
 
 
 | Game        | ChainerRL Time           |

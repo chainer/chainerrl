@@ -71,6 +71,8 @@ Reported scores are taken from the "AHE" row of Table 2 of [Addressing Function 
 
 ### Training times
 
+These training times were obtained by running `train_ddpg.py` on a single CPU and a single GPU.
+
 
 | Game        | ChainerRL Time           |
 | ------------- |:-------------:|
