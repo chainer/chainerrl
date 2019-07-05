@@ -495,7 +495,7 @@ class HindsightReplayBuffer(EpisodicReplayBuffer):
             # If we are supposed to sample future goals, replace goals
             if index in her_indexes:
                 transition = copy.deepcopy(transition)
-                future_state = episodes[index][future_times[index]]['state']
+                future_state = episodes[index][future_times[index]]['next_state']
                 if future_state['achieved_goal'] is not None:
                     new_goal = future_state['achieved_goal']
                     transition['state']['desired_goal'] = new_goal
