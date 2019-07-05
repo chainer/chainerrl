@@ -19,9 +19,15 @@ install:
   - pip install -r requirements.txt --only-binary=numpy,scipy
   - pip install jupyter
   # gym 0.11.0 causes an error with Python 2
-  - pip install "gym!=0.11.0"
+  # gym 0.13 requires atari_py 0.2, which is not available in Python 2
   # atari_py==0.1.4 causes an error
-  - pip install atari_py==0.1.1
+  - if [[ $TRAVIS_PYTHON_VERSION == 2.7 ]]; then
+      pip install gym==0.9.7;
+      pip install atari_py==0.1.7;
+    else
+      pip install gym==0.13.0;
+      pip install atari_py==0.2.0;
+    fi
   - pip install autopep8
   - pip install flake8
   - pip install coveralls
@@ -42,6 +48,8 @@ script:
   - test ! -s check_autopep8
   - pytest -m "not gpu and not slow" -x tests --cov=chainerrl
   - ./test_examples.sh -1
-  - if [[ $TRAVIS_PYTHON_VERSION == 3.5.1 && $CHAINER_VERSION == stable ]]; then jupyter nbconvert --to notebook --execute examples/quickstart/quickstart.ipynb --ExecutePreprocessor.timeout=600; fi
+  - if [[ $TRAVIS_PYTHON_VERSION == 3.6 && $CHAINER_VERSION == stable ]]; then
+      jupyter nbconvert --to notebook --execute examples/quickstart/quickstart.ipynb --ExecutePreprocessor.timeout=600;
+    fi
 after_success:
   - coveralls
