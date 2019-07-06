@@ -19,7 +19,7 @@ from chainerrl.misc.makedirs import makedirs
 def train_agent_batch(agent, env, steps, outdir, log_interval=None,
                       max_episode_len=None, eval_interval=None,
                       step_offset=0, evaluator=None, successful_score=None,
-                      step_hooks=[], return_window_size=100, logger=None):
+                      step_hooks=(), return_window_size=100, logger=None):
     """Train an agent in a batch environment.
 
     Args:
@@ -35,7 +35,7 @@ def train_agent_batch(agent, env, steps, outdir, log_interval=None,
             the average returns of the current agent.
         successful_score (float): Finish training if the mean score is greater
             or equal to thisvalue if not None
-        step_hooks (list): List of callable objects that accepts
+        step_hooks (Sequence): Sequence of callable objects that accepts
             (env, agent, step) as arguments. They are called every step.
             See chainerrl.experiments.hooks.
         logger (logging.Logger): Logger used in this function.
@@ -148,7 +148,7 @@ def train_agent_batch_with_evaluation(agent,
                                       eval_env=None,
                                       log_interval=None,
                                       successful_score=None,
-                                      step_hooks=[],
+                                      step_hooks=(),
                                       save_best_so_far_agent=True,
                                       logger=None,
                                       ):
@@ -172,7 +172,7 @@ def train_agent_batch_with_evaluation(agent,
         eval_env: Environment used for evaluation.
         successful_score (float): Finish training if the mean score is greater
             or equal to thisvalue if not None
-        step_hooks (list): List of callable objects that accepts
+        step_hooks (Sequence): Sequence of callable objects that accepts
             (env, agent, step) as arguments. They are called every step.
             See chainerrl.experiments.hooks.
         save_best_so_far_agent (bool): If set to True, after each evaluation,
