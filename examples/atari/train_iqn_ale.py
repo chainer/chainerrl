@@ -28,6 +28,7 @@ def parse_agent(agent):
     return {'IQN': chainerrl.agents.IQN,
             'DoubleIQN': chainerrl.agents.DoubleIQN}[agent]
 
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--env', type=str, default='BreakoutNoFrameskip-v4')

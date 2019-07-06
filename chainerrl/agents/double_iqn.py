@@ -5,12 +5,9 @@ from __future__ import absolute_import
 from future import standard_library
 standard_library.install_aliases()  # NOQA
 
-import chainer
 import chainer.functions as F
 
 from chainerrl.agents import iqn
-from chainerrl.agents.categorical_dqn import _apply_categorical_projection
-from chainerrl.recurrent import state_kept
 
 
 class DoubleIQN(iqn.IQN):
