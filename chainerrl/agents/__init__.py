@@ -6,6 +6,7 @@ from chainerrl.agents.categorical_double_dqn import CategoricalDoubleDQN  # NOQA
 from chainerrl.agents.categorical_dqn import CategoricalDQN  # NOQA
 from chainerrl.agents.ddpg import DDPG  # NOQA
 from chainerrl.agents.double_dqn import DoubleDQN  # NOQA
+from chainerrl.agents.double_iqn import DoubleIQN  # NOQA
 from chainerrl.agents.double_pal import DoublePAL  # NOQA
 from chainerrl.agents.dpp import DPP  # NOQA
 from chainerrl.agents.dqn import DQN  # NOQA
