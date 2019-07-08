@@ -32,6 +32,7 @@ policy.FCGaussianPolicy = policies.FCGaussianPolicy
 policy.MellowmaxPolicy = policies.MellowmaxPolicy
 
 q_function.DuelingDQN = q_functions.DuelingDQN
+q_function.DistributionalDuelingDQN = q_functions.DistributionalDuelingDQN
 q_function.SingleModelStateActionQFunction = \
     q_functions.SingleModelStateActionQFunction
 q_function.FCSAQFunction = q_functions.FCSAQFunction
