@@ -83,9 +83,15 @@ class PrioritizedReplayBuffer(ReplayBuffer, PriorityWeightError):
     proportional prioritization
 
     Args:
-        capacity (int)
-        alpha, beta0, betasteps, eps (float)
-        normalize_by_max (bool)
+        capacity (int): capacity in terms of number of transitions
+        alpha (float): Exponent of errors to compute probabilities to sample
+        beta0 (float): Initial value of beta
+        betasteps (int): Steps to anneal beta to 1
+        eps (float): To revisit a step after its error becomes near zero
+        normalize_by_max (bool): Method to normalize weights. ``'batch'`` or
+            ``True`` (default): divide by the maximum weight in the sampled
+            batch. ``'memory'``: divide by the maximum weight in the memory.
+            ``False``: do not normalize
     """
 
     def __init__(self, capacity=None,

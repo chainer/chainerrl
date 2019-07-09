@@ -14,6 +14,16 @@ from chainerrl import replay_buffer
 
 
 class ReplayBuffer(replay_buffer.AbstractReplayBuffer):
+    """Experience Replay Buffer
+
+    As described in 
+    https://storage.googleapis.com/deepmind-media/dqn/DQNNaturePaper.pdf.
+
+    Args:
+        capacity (int): capacity in terms of number of transitions
+        num_steps (int): Number of timesteps per stored transition
+            (for N-step updates)
+    """
 
     def __init__(self, capacity=None, num_steps=1):
         self.capacity = capacity
