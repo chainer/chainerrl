@@ -22,8 +22,8 @@ import chainerrl.experiments as experiments
         'n_episodes': [None, 1],
     })
 )
+@testing.with_requires('chainer>=5.0.0')
 class TestCollectDemos(unittest.TestCase):
-    @testing.with_requires('chainer>=5.0.0')
     def test(self):
 
         outdir = tempfile.mkdtemp()
