@@ -1,5 +1,3 @@
-from chainerrl.experiments.collect_demos import collect_demonstrations  # NOQA
-
 from chainerrl.experiments.evaluator import eval_performance  # NOQA
 
 from chainerrl.experiments.hooks import LinearInterpolationHook  # NOQA
