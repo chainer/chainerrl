@@ -320,7 +320,7 @@ def concatenate_recurrent_states(link, split_recurrent_states):
         xp = link.xp
         hs = []
         cs = []
-        for i, srs in enumerate(split_recurrent_states):
+        for srs in split_recurrent_states:
             if srs is None:
                 h = xp.zeros((n_layers, 1, out_size), dtype=np.float32)
                 c = xp.zeros((n_layers, 1, out_size), dtype=np.float32)
@@ -342,7 +342,7 @@ def concatenate_recurrent_states(link, split_recurrent_states):
         out_size = link.out_size
         xp = link.xp
         hs = []
-        for i, srs in enumerate(split_recurrent_states):
+        for srs in split_recurrent_states:
             if srs is None:
                 h = xp.zeros((n_layers, 1, out_size), dtype=np.float32)
             else:
