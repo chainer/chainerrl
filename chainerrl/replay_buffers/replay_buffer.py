@@ -16,7 +16,7 @@ from chainerrl import replay_buffer
 class ReplayBuffer(replay_buffer.AbstractReplayBuffer):
     """Experience Replay Buffer
 
-    As described in 
+    As described in
     https://storage.googleapis.com/deepmind-media/dqn/DQNNaturePaper.pdf.
 
     Args:
