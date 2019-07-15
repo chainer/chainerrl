@@ -17,7 +17,8 @@ import gym
 import gym.spaces
 import numpy as np
 
-from chainerrl.wrappers.atari_wrappers import FrameStack, LazyFrames
+from chainerrl.wrappers.atari_wrappers import FrameStack
+from chainerrl.wrappers.atari_wrappers import LazyFrames
 from chainerrl.wrappers.atari_wrappers import ScaledFloatFrame
 
 
