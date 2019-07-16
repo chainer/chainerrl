@@ -39,7 +39,7 @@ python examples/grasping/train_dqn_batch_grasping.py --demo --render --load <pat
 
 ## Results
 
-These results were obtained by training the example file on 24 CPUs, a single GPU, for 96 environments. This was trained fpr 1.79 days, for 20M timesteps. After every 100K timesteps, the agent is evaluated for 100 episodes. The highest achieved grasping performance during training is 81%, where a success corresponds to a successful grasp of any object.
+These results were obtained by training the example file on 24 CPUs, a single GPU, for 96 environments. This was trained for 1.79 days, for 20M timesteps. After every 100K timesteps, the agent is evaluated for 100 episodes. The highest achieved grasping performance during training is 81%, where a success corresponds to a successful grasp of any object.
 
 ![LearningCurve](assets/learningcurve.png)
 
