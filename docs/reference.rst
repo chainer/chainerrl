@@ -11,3 +11,4 @@ API Reference
    experiments
    links
    recurrent
+   replay_buffers
