@@ -66,12 +66,16 @@ Following algorithms have been implemented in ChainerRL:
   - examples: [[atari reproduction]](examples/atari/reproduction/iqn) [[atari]](examples/atari/train_iqn_ale.py) [[general gym]](examples/gym/train_iqn_gym.py)
 - [DQN (Deep Q-Netowrk)](https://storage.googleapis.com/deepmind-media/dqn/DQNNaturePaper.pdf) (including [Double DQN](https://arxiv.org/abs/1509.06461), [Persistent Advantage Learning (PAL)](https://arxiv.org/abs/1512.04860), Double PAL, [Dynamic Policy Programming (DPP)](http://www.jmlr.org/papers/volume13/azar12a/azar12a.pdf))
   - examples: [[atari reproduction]](examples/atari/reproduction/dqn) [[atari]](examples/atari/train_dqn_ale.py) [[atari (batched)]](examples/atari/train_dqn_batch_ale.py) [[general gym]](examples/gym/train_dqn_gym.py)
-- DDPG (Deep Deterministic Policy Gradients) (including SVG(0))
-- PGT (Policy Gradient Theorem)
-- PCL (Path Consistency Learning)
-- PPO (Proximal Policy Optimization)
-- TRPO (Trust Region Policy Optimization)
-- TD3 (Twin Delayed Deep Deterministic policy gradient algorithm)
+- [DDPG (Deep Deterministic Policy Gradients)](https://arxiv.org/abs/1509.02971) (including [SVG(0)](https://arxiv.org/abs/1510.09142))
+  - examples: [[mujoco reproduction]](examples/mujoco/reproduction/ddpg) [[mujoco]](examples/mujoco/train_ddpg_gym.py) [[mujoco (batched)]](examples/mujoco/train_ddpg_batch_gym.py)
+- [PCL (Path Consistency Learning)](https://arxiv.org/abs/1702.08892)
+  - examples: [[general gym]](examples/gym/train_pcl_gym.py)
+- [PPO (Proximal Policy Optimization)](https://arxiv.org/abs/1707.06347)
+  - examples: [[mujoco reproduction]](examples/mujoco/reproduction/ppo) [[atari]](examples/atari/train_ppo_ale.py) [[mujoco]](examples/mujoco/train_ppo_gym.py) [[mujoco (batched)]](examples/mujoco/train_ppo_batch_gym.py)
+- [TRPO (Trust Region Policy Optimization)](https://arxiv.org/abs/1502.05477) with [GAE (Generalized Advantage Estimation)](https://arxiv.org/abs/1506.02438)
+  - examples: [[mujoco]](examples/mujoco/train_trpo_gym.py)
+- [TD3 (Twin Delayed Deep Deterministic policy gradient algorithm)](https://arxiv.org/abs/1802.09477)
+  - examples: [[mujoco reproduction]](examples/mujoco/reproduction/td3)
 
 Q-function based algorithms such as DQN can utilize a Normalized Advantage Function (NAF) to tackle continuous-action problems as well as DQN-like discrete output networks.
 
