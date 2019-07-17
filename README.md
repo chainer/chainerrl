@@ -60,8 +60,10 @@ Following algorithms have been implemented in ChainerRL:
   - examples: [[atari]](examples/atari/train_nsq_ale.py) [[general gym]](examples/gym/train_nsq_gym.py)
 - [Rainbow](https://arxiv.org/abs/1710.02298)
   - examples: [[atari reproduction]](examples/atari/reproduction/rainbow)
-- Categorical DQN
-- IQN
+- [Categorical DQN](https://arxiv.org/abs/1707.06887)
+  - examples: [[atari]](examples/atari/train_categorical_dqn_ale.py) [[general gym]](examples/gym/train_categorical_dqn_gym.py)
+- [IQN (Implicit Quantile Networks)](https://arxiv.org/abs/1806.06923)
+  - examples: [[atari reproduction]](examples/atari/reproduction/iqn) [[atari]](examples/atari/train_iqn_ale.py) [[general gym]](examples/gym/train_iqn_gym.py)
 - DQN (including Double DQN, Persistent Advantage Learning (PAL), Double PAL, Dynamic Policy Programming (DPP))
 - DDPG (Deep Deterministic Policy Gradients) (including SVG(0))
 - PGT (Policy Gradient Theorem)
