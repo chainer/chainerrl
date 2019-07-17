@@ -77,7 +77,7 @@ class FCGaussianPolicy(chainer.ChainList, Policy):
         if n_hidden_layers > 0:
             self.hidden_layers.append(
                 L.Linear(n_input_channels, n_hidden_channels))
-            for i in range(n_hidden_layers - 1):
+            for _ in range(n_hidden_layers - 1):
                 self.hidden_layers.append(
                     L.Linear(n_hidden_channels, n_hidden_channels))
             self.mean_layer = L.Linear(n_hidden_channels, action_size,
