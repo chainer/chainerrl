@@ -59,7 +59,7 @@ Following algorithms have been implemented in ChainerRL:
 - [ACER (Actor-Critic with Experience Replay)](https://arxiv.org/abs/1611.01224)
   - examples: [[atari]](examples/atari/train_acer_ale.py) [[general gym]](examples/gym/train_acer_gym.py)
 - [Asynchronous N-step Q-learning](https://arxiv.org/abs/1602.01783)
-  - examples: [[atari]](examples/atari/train_nsq_ale.py) [[general gym]](examples/gym/train_nsq_gym.py)
+  - examples: [[atari]](examples/atari/train_nsq_ale.py)
 - [Categorical DQN](https://arxiv.org/abs/1707.06887)
   - examples: [[atari]](examples/atari/train_categorical_dqn_ale.py) [[general gym]](examples/gym/train_categorical_dqn_gym.py)
 - [DQN (Deep Q-Netowrk)](https://storage.googleapis.com/deepmind-media/dqn/DQNNaturePaper.pdf) (including [Double DQN](https://arxiv.org/abs/1509.06461), [Persistent Advantage Learning (PAL)](https://arxiv.org/abs/1512.04860), Double PAL, [Dynamic Policy Programming (DPP)](http://www.jmlr.org/papers/volume13/azar12a/azar12a.pdf))
