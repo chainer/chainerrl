@@ -67,7 +67,7 @@ Following algorithms have been implemented in ChainerRL:
 - [DDPG (Deep Deterministic Policy Gradients)](https://arxiv.org/abs/1509.02971) (including [SVG(0)](https://arxiv.org/abs/1510.09142))
   - examples: [[mujoco reproduction]](examples/mujoco/reproduction/ddpg) [[mujoco]](examples/mujoco/train_ddpg_gym.py) [[mujoco (batched)]](examples/mujoco/train_ddpg_batch_gym.py)
 - [IQN (Implicit Quantile Networks)](https://arxiv.org/abs/1806.06923)
-  - examples: [[atari reproduction]](examples/atari/reproduction/iqn) [[atari]](examples/atari/train_iqn_ale.py) [[general gym]](examples/gym/train_iqn_gym.py)
+  - examples: [[atari reproduction]](examples/atari/reproduction/iqn) [[general gym]](examples/gym/train_iqn_gym.py)
 - [PCL (Path Consistency Learning)](https://arxiv.org/abs/1702.08892)
   - examples: [[general gym]](examples/gym/train_pcl_gym.py)
 - [PPO (Proximal Policy Optimization)](https://arxiv.org/abs/1707.06347)
