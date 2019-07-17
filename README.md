@@ -52,10 +52,14 @@ For more information, you can refer to [ChainerRL's documentation](http://chaine
 | TD3 | x | ✓ | x | x |
 
 Following algorithms have been implemented in ChainerRL:
-- A3C (Asynchronous Advantage Actor-Critic)
-- ACER (Actor-Critic with Experience Replay)
-- Asynchronous N-step Q-learning
-- Rainbow
+- [A3C (Asynchronous Advantage Actor-Critic)](https://arxiv.org/abs/1602.01783)
+  - examples: [[atari reproduction]](examples/atari/reproduction/a3c) [[atari]](examples/atari/train_a3c_ale.py) [[general gym]](examples/gym/train_a3c_gym.py)
+- [ACER (Actor-Critic with Experience Replay)](https://arxiv.org/abs/1611.01224)
+  - examples: [[atari]](examples/atari/train_acer_ale.py) [[general gym]](examples/gym/train_acer_gym.py)
+- [Asynchronous N-step Q-learning](https://arxiv.org/abs/1602.01783)
+  - examples: [[atari]](examples/atari/train_nsq_ale.py) [[general gym]](examples/gym/train_nsq_gym.py)
+- [Rainbow](https://arxiv.org/abs/1710.02298)
+  - examples: [[atari reproduction]](examples/atari/reproduction/rainbow)
 - Categorical DQN
 - IQN
 - DQN (including Double DQN, Persistent Advantage Learning (PAL), Double PAL, Dynamic Policy Programming (DPP))
