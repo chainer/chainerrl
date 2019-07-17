@@ -77,27 +77,15 @@ Following algorithms have been implemented in ChainerRL:
 - [TD3 (Twin Delayed Deep Deterministic policy gradient algorithm)](https://arxiv.org/abs/1802.09477)
   - examples: [[mujoco reproduction]](examples/mujoco/reproduction/td3)
 
-Q-function based algorithms such as DQN can utilize a Normalized Advantage Function (NAF) to tackle continuous-action problems as well as DQN-like discrete output networks.
-
-## Paper Implementations
-The following papers have been implemented in ChainerRL:
-- [Playing Atari with Deep Reinforcement Learning](https://www.cs.toronto.edu/~vmnih/docs/dqn.pdf)
-- [Human-level control through Deep Reinforcement Learning](https://storage.googleapis.com/deepmind-media/dqn/DQNNaturePaper.pdf)
-- [Deep Reinforcement Learning with Double Q-learning](https://arxiv.org/abs/1509.06461)
+Following useful techniques have been also implemented in ChainerRL:
+- [NoisyNet](https://arxiv.org/abs/1706.10295)
+  - examples: [[Rainbow]](examples/atari/reproduction/rainbow) [[DQN/DoubleDQN/PAL]](examples/atari/train_dqn_ale.py)
 - [Prioritized Experience Replay](https://arxiv.org/abs/1511.05952)
-- [Dueling Network Architectures for Deep Reinforcement Learning](https://arxiv.org/abs/1511.06581)
-- [Asynchronous Methods for Deep Reinforcement Learning](https://arxiv.org/abs/1602.01783)
-- [A Distributional Perspective on Reinforcement Learning](https://arxiv.org/abs/1707.06887)
-- [Implicit Quantile Networks for Distributional Reinforcement Learning](https://arxiv.org/abs/1806.06923)
-- [Rainbow: Combining Improvements in Deep Reinforcement Learning](https://arxiv.org/abs/1710.02298)
-- [Increasing the Action Gap: New Operators for Reinforcement Learning](https://arxiv.org/abs/1512.04860)
-- [Noisy Networks for Exploration](https://arxiv.org/abs/1706.10295)
-- [Continuous control with deep reinforcement learning](https://arxiv.org/abs/1509.02971)
-- [Proximal Policy Optimization Algorithms](https://arxiv.org/abs/1707.06347)
-- [Trust Region Policy Optimization](https://arxiv.org/abs/1502.05477)
-- [Sample Efficient Actor-Critic with Experience Replay](https://arxiv.org/abs/1611.01224)
-- [Bridging the Gap Between Value and Policy Based Reinforcement Learning](https://arxiv.org/abs/1702.08892)
-- [Addressing Function Approximation Error in Actor-Critic Methods](https://arxiv.org/abs/1802.09477)
+  - examples: [[Rainbow]](examples/atari/reproduction/rainbow) [[DQN/DoubleDQN/PAL]](examples/atari/train_dqn_ale.py)
+- [Dueling Network](https://arxiv.org/abs/1511.06581)
+  - examples: [[Rainbow]](examples/atari/reproduction/rainbow) [[DQN/DoubleDQN/PAL]](examples/atari/train_dqn_ale.py)
+- [Normalized Advantage Function](https://arxiv.org/abs/1603.00748)
+  - examples: [[DQN]](examples/gym/train_dqn_gym.py) (for continuous-action envs only)
 
 
 ## Visualization
