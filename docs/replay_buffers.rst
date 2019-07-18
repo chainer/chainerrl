@@ -8,7 +8,7 @@ ReplayBuffer interfaces
 .. autoclass:: chainerrl.replay_buffer.ReplayBuffer
    :members:
 
-Agent implementations
+ReplayBuffer implementations
 =====================
 
 .. autoclass:: chainerrl.replay_buffer.EpisodicReplayBuffer
