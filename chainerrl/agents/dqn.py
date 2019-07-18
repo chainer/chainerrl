@@ -279,7 +279,8 @@ class DQN(agent.AttributeSavingMixin, agent.BatchAgent):
         self.optimizer.update()
 
     def update_from_episodes(self, episodes, errors_out=None):
-        assert errors_out is None
+        assert errors_out is None,\
+            "Recurrent DQN does not support PrioritizedBuffer"
         exp_batch = batch_recurrent_experiences(
             episodes,
             model=self.model,
