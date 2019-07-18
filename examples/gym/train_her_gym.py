@@ -158,9 +158,9 @@ def main():
 
     sample_env = make_env(0, test=False)
 
-    def reward_function(state, action, goal):
-        return sample_env.compute_reward(achieved_goal=state['achieved_goal'],
-                                  desired_goal=goal,
+    def reward_function(achieved_goal, desired_goal):
+        return sample_env.compute_reward(achieved_goal=achieved_goal,
+                                  desired_goal=desired_goal,
                                   info=None)
 
     timestep_limit = sample_env.spec.tags.get(

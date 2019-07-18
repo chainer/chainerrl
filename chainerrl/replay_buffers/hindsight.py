@@ -24,7 +24,7 @@ class HindsightReplayBuffer(EpisodicReplayBuffer):
     Hindsight Buffer.
 
     Args:
-        reward_function: (state, action, goal) -> reward
+        reward_function: achieved_goal, desired goal to reward
         capacity (int): Capacity of the replay buffer
         future_k (int): number of future goals to sample per true sample
     """
@@ -46,8 +46,7 @@ class HindsightReplayBuffer(EpisodicReplayBuffer):
         transition['state']['desired_goal'] = new_goal
         transition['next_state']['desired_goal'] = new_goal
         transition['reward'] = self.reward_function(
-                                            transition['state'],
-                                            transition['action'],
+                                            transition['next_state']['achieved_goal'],
                                             new_goal)
         return transition
 
