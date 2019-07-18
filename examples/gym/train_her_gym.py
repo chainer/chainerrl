@@ -23,7 +23,7 @@ from chainerrl import explorers
 from chainerrl import misc
 from chainerrl import policy
 from chainerrl import q_functions
-from chainerrl import replay_buffer
+from chainerrl import replay_buffers
 import os 
 
 
@@ -191,7 +191,7 @@ def main():
     opt_a.add_hook(chainer.optimizer.GradientClipping(1.0), 'hook_a')
     opt_c.add_hook(chainer.optimizer.GradientClipping(1.0), 'hook_c')
 
-    rbuf = replay_buffer.HindsightReplayBuffer(reward_function,
+    rbuf = replay_buffers.HindsightReplayBuffer(reward_function,
         10 ** 6,
         future_k=4)
 
