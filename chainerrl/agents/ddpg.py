@@ -418,7 +418,6 @@ class DDPG(AttributeSavingMixin, BatchAgent):
             Sequence of ~object: Actions.
         """
 
-
         if (self.burnin_action_func is not None
                 and self.actor_optimizer.t == 0):
             batch_action = [self.burnin_action_func()
@@ -433,8 +432,8 @@ class DDPG(AttributeSavingMixin, BatchAgent):
         if self.obs_normalizer:
             self.obs_normalizer.experience(
                     self.batch_states(batch_obs,
-                        self.xp,
-                        self.phi))
+                                      self.xp,
+                                      self.phi))
         self.batch_last_obs = list(batch_obs)
         self.batch_last_action = list(batch_action)
 

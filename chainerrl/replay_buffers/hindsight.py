@@ -6,11 +6,11 @@ from builtins import *  # NOQA
 from future import standard_library
 standard_library.install_aliases()  # NOQA
 
-import collections
 import copy
 
 import numpy as np
 
+from chainerrl import replay_buffer
 from chainerrl.replay_buffers.episodic import EpisodicReplayBuffer  # NOQA
 
 
@@ -24,7 +24,7 @@ class HindsightReplayBuffer(EpisodicReplayBuffer):
     Hindsight Buffer.
 
     Args:
-        reward_function: Takes in a state, action, and goal and returns a reward
+        reward_function: (state, action, goal) -> reward
         capacity (int): Capacity of the replay buffer
         future_k (int): number of future goals to sample per true sample
     """
@@ -38,6 +38,19 @@ class HindsightReplayBuffer(EpisodicReplayBuffer):
         # true goal
         self.future_prob = 1.0 - 1.0/(float(future_k) + 1)
 
+    def _replace_goal(self, transition, future_transition):
+        transition = copy.deepcopy(transition)
+        future_state = future_transition['next_state']
+        assert future_state['achieved_goal'] is not None
+        new_goal = future_state['achieved_goal']
+        transition['state']['desired_goal'] = new_goal
+        transition['next_state']['desired_goal'] = new_goal
+        transition['reward'] = self.reward_function(
+                                            transition['state'],
+                                            transition['action'],
+                                            new_goal)
+        return transition
+
     def sample(self, n):
         assert len(self.memory) >= n
         # Select n episodes
@@ -47,34 +60,27 @@ class HindsightReplayBuffer(EpisodicReplayBuffer):
         timesteps = np.array(
             [np.random.randint(episode_lens[i]) for i in range(n)])
         # Select episodes for which we use a future goal instead of true
-        her_indexes = set(
-            np.where(np.random.uniform(size=n) < self.future_prob)[0])
+
+        do_replace = np.random.uniform(size=n) < self.future_prob
         # Randomly select offsets of future goals
         future_offset = np.random.uniform(size=n) * (episode_lens - timesteps)
         future_offset = future_offset.astype(int)
         future_times = timesteps + future_offset
         batch = []
         # Go through episodes
-        for index in range(n):
-            transition = episodes[index][timesteps[index]]
-            # If we are supposed to sample future goals, replace goals
-            if index in her_indexes:
-                transition = copy.deepcopy(transition)
-                future_state = episodes[index][future_times[index]]['next_state']
-                if future_state['achieved_goal'] is not None:
-                    new_goal = future_state['achieved_goal']
-                    transition['state']['desired_goal'] = new_goal
-                    transition['next_state']['desired_goal'] = new_goal
-                    transition['reward'] = self.reward_function(
-                                                        transition['state'],
-                                                        transition['action'],
-                                                        new_goal)
+        for episode, timestep, future_timestep, replace in zip(
+                episodes, timesteps, future_times, do_replace):
+            transition = episode[timestep]
+            if replace:
+                future_transition = episode[future_timestep]
+                transition = self._replace_goal(transition, future_transition)
             batch.append([transition])
         return batch
 
     def sample_episodes(self, n_episodes, max_len=None):
         episodes = self.episodic_memory.sample_with_replacement(n_episodes)
         if max_len is not None:
-            return [random_subseq(ep, max_len) for ep in episodes]
+            return [replay_buffer.random_subseq(ep, max_len)
+                    for ep in episodes]
         else:
             return episodes
