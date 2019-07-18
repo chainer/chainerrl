@@ -17,6 +17,7 @@ from chainerrl import q_function  # NOQA
 from chainerrl import q_functions  # NOQA
 from chainerrl import recurrent  # NOQA
 from chainerrl import replay_buffer  # NOQA
+from chainerrl import replay_buffers  # NOQA
 from chainerrl import v_function  # NOQA
 from chainerrl import v_functions  # NOQA
 from chainerrl import wrappers  # NOQA
@@ -47,6 +48,14 @@ q_function.FCLSTMStateQFunction = q_functions.FCLSTMStateQFunction
 q_function.FCQuadraticStateQFunction = q_functions.FCQuadraticStateQFunction
 q_function.FCBNQuadraticStateQFunction = \
     q_functions.FCBNQuadraticStateQFunction
+
+replay_buffer.ReplayBuffer = replay_buffers.ReplayBuffer
+replay_buffer.PriorityWeightError = replay_buffers.PriorityWeightError
+replay_buffer.PrioritizedReplayBuffer = \
+    replay_buffers.PrioritizedReplayBuffer
+replay_buffer.EpisodicReplayBuffer = replay_buffers.EpisodicReplayBuffer
+replay_buffer.PrioritizedEpisodicReplayBuffer = \
+    replay_buffers.PrioritizedEpisodicReplayBuffer
 
 v_function.SingleModelVFunction = v_functions.SingleModelVFunction
 v_function.FCVFunction = v_functions.FCVFunction

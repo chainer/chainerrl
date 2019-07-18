@@ -48,6 +48,27 @@ python train_ppo.py --gpu -1 --seed [0-19] --env [env]
 | Walker2d-v2    |      2994+/-113 |            N/A |
 | Swimmer-v2     |         111+/-4 |            N/A |
 
+
+### Training times
+These training times were obtained by running `train_ppo.py` on a single CPU and no GPU.
+
+
+| Game        | ChainerRL Time           |
+| ------------- |:-------------:|
+| HalfCheetah | 2.054 hours |
+| Hopper | 2.057 hours |
+| Swimmer | 2.051 hours |
+| Walker2d | 2.065 hours |
+
+
+| Statistic        |            |            |
+| ------------- |:-------------:|:-------------:|
+| Mean time (in hours) across all domains        |  2.057 |
+| Fastest Domain |  Swimmer | 2.051 |
+| Slowest Domain |  Walker2d | 2.065 |
+
+
+
 ### Learning Curves
 
 The shaded region represents a standard deviation of the average evaluation over 20 trials.
