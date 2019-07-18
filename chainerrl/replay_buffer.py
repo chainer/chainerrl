@@ -191,7 +191,7 @@ def batch_recurrent_experiences(
 
     Args:
         experiences: list of episodes. Each episode is a list
-            containing between 1 and n dicts containing.
+            containing between 1 and n dicts, each containing:
               - state (object): State
               - action (object): Action
               - reward (float): Reward
