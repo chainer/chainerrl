@@ -112,6 +112,8 @@ def main():
                                        outdir=args.outdir,
                                        max_episode_len=None)
 
+    env.close()
+
 
 if __name__ == '__main__':
     main()
