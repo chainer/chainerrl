@@ -11,24 +11,24 @@ Policy interfaces
 Policy implementations
 ======================
 
-.. autoclass:: chainerrl.policy.ContinuousDeterministicPolicy
+.. autoclass:: chainerrl.policies.ContinuousDeterministicPolicy
 
-.. autoclass:: chainerrl.policy.FCDeterministicPolicy
+.. autoclass:: chainerrl.policies.FCDeterministicPolicy
 
-.. autoclass:: chainerrl.policy.FCBNDeterministicPolicy
+.. autoclass:: chainerrl.policies.FCBNDeterministicPolicy
 
-.. autoclass:: chainerrl.policy.FCLSTMDeterministicPolicy
+.. autoclass:: chainerrl.policies.FCLSTMDeterministicPolicy
 
-.. autoclass:: chainerrl.policy.FCGaussianPolicy
+.. autoclass:: chainerrl.policies.FCGaussianPolicy
 
-.. autoclass:: chainerrl.policy.FCGaussianPolicyWithStateIndependentCovariance
+.. autoclass:: chainerrl.policies.FCGaussianPolicyWithStateIndependentCovariance
 
-.. autoclass:: chainerrl.policy.FCGaussianPolicyWithFixedCovariance
+.. autoclass:: chainerrl.policies.FCGaussianPolicyWithFixedCovariance
 
-.. autoclass:: chainerrl.policy.GaussianHeadWithStateIndependentCovariance
+.. autoclass:: chainerrl.policies.GaussianHeadWithStateIndependentCovariance
 
-.. autoclass:: chainerrl.policy.MellowmaxPolicy
+.. autoclass:: chainerrl.policies.MellowmaxPolicy
 
-.. autoclass:: chainerrl.policy.SoftmaxPolicy
+.. autoclass:: chainerrl.policies.SoftmaxPolicy
 
-.. autoclass:: chainerrl.policy.FCSoftmaxPolicy
+.. autoclass:: chainerrl.policies.FCSoftmaxPolicy
