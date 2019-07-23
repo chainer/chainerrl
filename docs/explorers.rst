@@ -1,15 +1,15 @@
-======
+=========
 Explorers
-======
+=========
 
 Explorer interfaces
-================
+===================
 
 .. autoclass:: chainerrl.explorer.Explorer
    :members:
 
 Explorer implementations
-=====================
+========================
 
 .. autoclass:: chainerrl.explorers.AdditiveGaussian
 
