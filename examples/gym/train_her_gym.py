@@ -116,6 +116,7 @@ def main():
     parser.add_argument('--epsilon', type=float, default=0.05)
     parser.add_argument('--noise-std', type=float, default=0.05)
     parser.add_argument('--clip-threshold', type=float, default=5.0)
+    parser.add_argument('--action-l2-penalty', type=float, default=1.0)
     parser.add_argument('--num-envs', type=int, default=1)
     args = parser.parse_args()
 
@@ -219,6 +220,7 @@ def main():
                  soft_update_tau=args.soft_update_tau,
                  n_times_update=args.n_update_times,
                  gpu=args.gpu,
+                 l2_action_penalty=args.action_l2_penalty,
                  minibatch_size=args.minibatch_size,
                  clip_critic_tgt=(-1.0/(1.0-args.gamma), 0.0))
 

@@ -266,8 +266,7 @@ class DDPG(AttributeSavingMixin, BatchAgent):
         # Since we want to maximize Q, loss is negation of Q
         loss = - F.sum(q) / batch_size
         if self.l2_action_penalty:
-            loss += self.l2_action_penalty \
-                        * F.square(onpolicy_actions) / batch_size
+            loss += self.l2_action_penalty * F.mean(F.square(onpolicy_actions))
 
         # Update stats
         self.average_actor_loss *= self.average_loss_decay
@@ -303,7 +302,7 @@ class DDPG(AttributeSavingMixin, BatchAgent):
             if self.obs_normalizer:
                 batch['state'] = self.obs_normalizer(batch['state'],
                                                      update=False)
-                batch['next_state'] = self.obs_normalizer(batch['state'],
+                batch['next_state'] = self.obs_normalizer(batch['next_state'],
                                                           update=False)
             batches.append(batch)
 
