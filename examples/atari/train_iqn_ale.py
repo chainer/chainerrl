@@ -144,6 +144,7 @@ def main():
     opt.setup(q_func)
 
     if args.prioritized:
+        betasteps = args.steps / args.update_interval
         rbuf = replay_buffer.PrioritizedReplayBuffer(
             10 ** 6, alpha=0.5, beta0=0.4, betasteps=betasteps,
             num_steps=args.num_step_return)
