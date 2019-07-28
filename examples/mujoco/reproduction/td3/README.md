@@ -74,6 +74,29 @@ Although the original paper used v1 versions of MuJoCo envs, we used v2 as v1 ar
 | InvertedPendulum-v2       |          908.70 |            N/A |
 | InvertedDoublePendulum-v2 |         8372.44 |            N/A |
 
+### Training times
+These training times were obtained by running `train_td3.py` on a single CPU and a single GPU.
+
+
+
+| Game        | ChainerRL Time           |
+| ------------- |:-------------:|
+| Ant | 4.11 hours |
+| HalfCheetah | 3.758 hours |
+| Hopper | 4.215 hours |
+| InvertedDoublePendulum | 3.567 hours |
+| InvertedPendulum | 3.62 hours |
+| Reacher | 3.642 hours |
+| Walker2d | 3.632 hours |
+
+| Statistic        |            |            |
+| ------------- |:-------------:|:-------------:|
+| Mean time (in hours) across all domains        |  3.792 |
+| Fastest Domain |  InvertedDoublePendulum | 3.567 |
+| Slowest Domain |  Hopper | 4.215 |
+
+
+
 ### Learning Curves
 
 The shaded region represents a standard deviation of the average evaluation over 10 trials.

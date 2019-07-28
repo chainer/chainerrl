@@ -365,7 +365,7 @@ class AsyncEvaluator(object):
     """Object that is responsible for evaluating asynchronous multiple agents.
 
     Args:
-        n_steps (int): umber of timesteps used in each evaluation.
+        n_steps (int): Number of timesteps used in each evaluation.
         n_episodes (int): Number of episodes used in each evaluation.
         eval_interval (int): Interval of evaluations in steps.
         outdir (str): Path to a directory to save things.

@@ -30,7 +30,7 @@ def conjugate_gradient(A_product_func, b, tol=1e-10, max_iter=10):
     x = xp.zeros_like(b)
     r0 = b - A_product_func(x)
     p = r0
-    for i in range(max_iter):
+    for _ in range(max_iter):
         a = xp.dot(r0, r0) / xp.dot(A_product_func(p), p)
         x = x + p * a
         r1 = r0 - A_product_func(p) * a
