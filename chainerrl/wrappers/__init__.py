@@ -9,4 +9,6 @@ from chainerrl.wrappers.render import Render  # NOQA
 
 from chainerrl.wrappers.scale_reward import ScaleReward  # NOQA
 
+from chainerrl.wrappers.trex_reward import TREXReward  # NOQA
+
 from chainerrl.wrappers.vector_frame_stack import VectorFrameStack  # NOQA
