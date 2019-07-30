@@ -85,8 +85,7 @@ def main():
         # Cast observations to float32 because our model uses float32
         env = chainerrl.wrappers.CastObservationToFloat32(env)
         if args.monitor:
-            env = chainerrl.wrappers.ContinuingTimeLimitMonitor(
-                env, args.outdir)
+            env = chainerrl.wrappers.Monitor(env, args.outdir)
         if not test:
             # Scale rewards (and thus returns) to a reasonable range so that
             # training is easier
@@ -182,7 +181,6 @@ This example only supports gym.spaces.Box or gym.spaces.Discrete action spaces."
         print('n_runs: {} mean: {} median: {} stdev {}'.format(
             args.eval_n_runs, eval_stats['mean'], eval_stats['median'],
             eval_stats['stdev']))
-        env.close()
     else:
         # Linearly decay the learning rate to zero
         def lr_setter(env, agent, value):
@@ -210,8 +208,6 @@ This example only supports gym.spaces.Box or gym.spaces.Discrete action spaces."
                 lr_decay_hook,
             ],
         )
-        env.close()
-        eval_env.close()
 
 
 if __name__ == '__main__':

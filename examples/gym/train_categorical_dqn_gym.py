@@ -80,8 +80,7 @@ def main():
         # Cast observations to float32 because our model uses float32
         env = chainerrl.wrappers.CastObservationToFloat32(env)
         if args.monitor:
-            env = chainerrl.wrappers.ContinuingTimeLimitMonitor(
-                env, args.outdir)
+            env = chainerrl.wrappers.Monitor(env, args.outdir)
         if not test:
             # Scale rewards (and thus returns) to a reasonable range so that
             # training is easier
@@ -161,7 +160,6 @@ def main():
         print('n_runs: {} mean: {} median: {} stdev {}'.format(
             args.eval_n_runs, eval_stats['mean'], eval_stats['median'],
             eval_stats['stdev']))
-        eval_env.close()
     else:
         experiments.train_agent_with_evaluation(
             agent=agent,
@@ -173,8 +171,6 @@ def main():
             outdir=args.outdir,
             eval_env=eval_env,
             train_max_episode_len=timestep_limit)
-        env.close()
-        eval_env.close()
 
 
 if __name__ == '__main__':

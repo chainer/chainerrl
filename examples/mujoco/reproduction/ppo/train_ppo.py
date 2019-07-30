@@ -91,8 +91,7 @@ def main():
         # Cast observations to float32 because our model uses float32
         env = chainerrl.wrappers.CastObservationToFloat32(env)
         if args.monitor:
-            env = chainerrl.wrappers.ContinuingTimeLimitMonitor(
-                env, args.outdir)
+            env = chainerrl.wrappers.Monitor(env, args.outdir)
         if args.render:
             env = chainerrl.wrappers.Render(env)
         return env
@@ -180,7 +179,6 @@ def main():
         print('n_runs: {} mean: {} median: {} stdev {}'.format(
             args.eval_n_runs, eval_stats['mean'], eval_stats['median'],
             eval_stats['stdev']))
-        env.close()
     else:
         env = make_batch_env(False)
         eval_env = make_batch_env(True)
@@ -197,8 +195,6 @@ def main():
             max_episode_len=timestep_limit,
             save_best_so_far_agent=False,
         )
-        env.close()
-        eval_env.close()
 
 
 if __name__ == '__main__':

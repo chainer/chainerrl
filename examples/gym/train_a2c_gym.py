@@ -142,8 +142,7 @@ def main():
         # Cast observations to float32 because our model uses float32
         env = chainerrl.wrappers.CastObservationToFloat32(env)
         if args.monitor and process_idx == 0:
-            env = chainerrl.wrappers.ContinuingTimeLimitMonitor(
-                env, args.outdir)
+            env = chainerrl.wrappers.Monitor(env, args.outdir)
         # Scale rewards observed by agents
         if not test:
             misc.env_modifiers.make_reward_filtered(
@@ -199,7 +198,6 @@ def main():
         print('n_runs: {} mean: {} median: {} stdev {}'.format(
             args.eval_n_runs, eval_stats['mean'], eval_stats['median'],
             eval_stats['stdev']))
-        env.close()
     else:
         env = make_batch_env(test=False)
         eval_env = make_batch_env(test=True)
@@ -214,9 +212,6 @@ def main():
             eval_interval=args.eval_interval,
             outdir=args.outdir,
         )
-        env.close()
-        eval_env.close()
-    sample_env.close()
 
 
 if __name__ == '__main__':

@@ -114,7 +114,7 @@ def main():
             clip_rewards=not test)
         env.seed(int(env_seed))
         if args.monitor:
-            env = chainerrl.wrappers.ContinuingTimeLimitMonitor(
+            env = chainerrl.wrappers.Monitor(
                 env, args.outdir,
                 mode='evaluation' if test else 'training')
         if args.render:
@@ -161,7 +161,6 @@ def main():
         print('n_runs: {} mean: {} median: {} stdev: {}'.format(
             args.eval_n_runs, eval_stats['mean'], eval_stats['median'],
             eval_stats['stdev']))
-        env.close()
     else:
         env = make_batch_env(test=False)
         eval_env = make_batch_env(test=True)
@@ -177,8 +176,6 @@ def main():
             save_best_so_far_agent=False,
             log_interval=1000,
         )
-        env.close()
-        eval_env.close()
 
 
 if __name__ == '__main__':

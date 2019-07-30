@@ -90,7 +90,7 @@ def main():
             # Randomize actions like epsilon-greedy in evaluation as well
             env = chainerrl.wrappers.RandomizeAction(env, 0.05)
         if args.monitor:
-            env = chainerrl.wrappers.ContinuingTimeLimitMonitor(
+            env = chainerrl.wrappers.Monitor(
                 env, args.outdir,
                 mode='evaluation' if test else 'training')
         if args.render:
@@ -143,7 +143,6 @@ def main():
         print('n_runs: {} mean: {} median: {} stdev {}'.format(
             args.eval_n_runs, eval_stats['mean'], eval_stats['median'],
             eval_stats['stdev']))
-        env.close()
     else:
         # Linearly decay the learning rate to zero
         def lr_setter(env, agent, value):

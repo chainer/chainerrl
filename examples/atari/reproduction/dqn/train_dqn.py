@@ -80,7 +80,7 @@ def main():
             # Randomize actions like epsilon-greedy in evaluation as well
             env = chainerrl.wrappers.RandomizeAction(env, 0.05)
         if args.monitor:
-            env = chainerrl.wrappers.ContinuingTimeLimitMonitor(
+            env = chainerrl.wrappers.Monitor(
                 env, args.outdir,
                 mode='evaluation' if test else 'training')
         if args.render:
@@ -141,7 +141,6 @@ def main():
             eval_stats['mean'],
             eval_stats['median'],
             eval_stats['stdev']))
-        eval_env.close()
     else:
         experiments.train_agent_with_evaluation(
             agent=agent, env=env, steps=args.steps,
@@ -172,9 +171,6 @@ def main():
         print("The results of the best scoring network:")
         for stat in stats:
             print(str(stat) + ":" + str(stats[stat]))
-
-        env.close()
-        eval_env.close()
 
 
 if __name__ == '__main__':

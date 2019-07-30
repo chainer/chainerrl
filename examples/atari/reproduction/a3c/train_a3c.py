@@ -131,7 +131,7 @@ def main():
             clip_rewards=not test)
         env.seed(int(env_seed))
         if args.monitor:
-            env = chainerrl.wrappers.ContinuingTimeLimitMonitor(
+            env = chainerrl.wrappers.Monitor(
                 env, args.outdir,
                 mode='evaluation' if test else 'training')
         if args.render:
@@ -148,7 +148,6 @@ def main():
         print('n_runs: {} mean: {} median: {} stdev: {}'.format(
             args.eval_n_runs, eval_stats['mean'], eval_stats['median'],
             eval_stats['stdev']))
-        env.close()
     else:
 
         # Linearly decay the learning rate to zero

@@ -64,7 +64,7 @@ def main():
         # Randomize actions like epsilon-greedy
         env = chainerrl.wrappers.RandomizeAction(env, 0.01)
         if args.monitor:
-            env = chainerrl.wrappers.ContinuingTimeLimitMonitor(
+            env = chainerrl.wrappers.Monitor(
                 env, args.outdir,
                 mode='evaluation')
         if args.render:
@@ -111,8 +111,6 @@ def main():
                                        episodes=None,
                                        outdir=args.outdir,
                                        max_episode_len=None)
-
-    env.close()
 
 
 if __name__ == '__main__':

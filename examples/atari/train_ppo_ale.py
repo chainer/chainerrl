@@ -114,7 +114,7 @@ def main():
         )
         env.seed(env_seed)
         if args.monitor:
-            env = chainerrl.wrappers.ContinuingTimeLimitMonitor(
+            env = chainerrl.wrappers.Monitor(
                 env, args.outdir,
                 mode='evaluation' if test else 'training')
         if args.render:
@@ -241,8 +241,6 @@ def main():
             save_best_so_far_agent=False,
             step_hooks=step_hooks,
         )
-        env.close()
-        eval_env.close()
 
 
 if __name__ == '__main__':
