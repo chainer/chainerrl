@@ -40,7 +40,7 @@ class Monitor(_GymMonitor):
         self.stats_recorder = _StatsRecorder(
             directory,
             '{}.episode_batch.{}'.format(self.file_prefix, self.file_infix),
-            autoreset=False, env_id=env_id, logger=None)
+            autoreset=False, env_id=env_id)
         return ret
 
 
