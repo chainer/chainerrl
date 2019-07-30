@@ -218,12 +218,10 @@ def main():
                 eval_interval=args.eval_interval,
                 max_episode_len=timestep_limit)
         else:
-            env = make_env(0, test=False)
-            eval_env = make_env(0, test=True)
             experiments.train_agent_with_evaluation(
                 agent=agent,
-                env=env,
-                eval_env=eval_env,
+                env=make_env(0, test=False),
+                eval_env=make_env(0, test=True),
                 outdir=args.outdir,
                 steps=args.steps,
                 eval_n_steps=None,

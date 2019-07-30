@@ -189,12 +189,10 @@ This example only supports gym.spaces.Box or gym.spaces.Discrete action spaces."
         lr_decay_hook = experiments.LinearInterpolationHook(
             args.steps, args.lr, 0, lr_setter)
 
-        env = make_batch_env(False)
-        eval_env = make_batch_env(True)
         experiments.train_agent_batch_with_evaluation(
             agent=agent,
-            env=env,
-            eval_env=eval_env,
+            env=make_batch_env(False),
+            eval_env=make_batch_env(True),
             outdir=args.outdir,
             steps=args.steps,
             eval_n_steps=None,

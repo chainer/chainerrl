@@ -197,12 +197,10 @@ def main():
         clip_eps_decay_hook = experiments.LinearInterpolationHook(
             args.steps, 0.2, 0, clip_eps_setter)
 
-        env = make_env(False)
-        eval_env = make_env(True)
         experiments.train_agent_with_evaluation(
             agent=agent,
-            env=env,
-            eval_env=eval_env,
+            env=make_env(False),
+            eval_env=make_env(True),
             outdir=args.outdir,
             steps=args.steps,
             eval_n_steps=None,

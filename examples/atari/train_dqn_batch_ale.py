@@ -222,9 +222,8 @@ def main():
         agent.load(args.load)
 
     if args.demo:
-        env = make_batch_env(test=True)
         eval_stats = experiments.eval_performance(
-            env=env,
+            env=make_batch_env(test=True),
             agent=agent,
             n_steps=None,
             n_episodes=args.eval_n_runs)
@@ -232,12 +231,10 @@ def main():
             args.eval_n_runs, eval_stats['mean'], eval_stats['median'],
             eval_stats['stdev']))
     else:
-        env = make_batch_env(test=False)
-        eval_env = make_batch_env(test=True)
         experiments.train_agent_batch_with_evaluation(
             agent=agent,
-            env=env,
-            eval_env=eval_env,
+            env=make_batch_env(test=False),
+            eval_env=make_batch_env(test=True),
             steps=args.steps,
             eval_n_steps=None,
             eval_n_episodes=args.eval_n_runs,

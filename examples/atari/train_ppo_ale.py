@@ -206,9 +206,8 @@ def main():
         agent.load(args.load)
 
     if args.demo:
-        env = make_batch_env(test=True)
         eval_stats = experiments.eval_performance(
-            env=env,
+            env=make_batch_env(test=True),
             agent=agent,
             n_steps=None,
             n_episodes=args.eval_n_runs)
@@ -226,12 +225,10 @@ def main():
             experiments.LinearInterpolationHook(
                 args.steps, args.lr, 0, lr_setter))
 
-        env = make_batch_env(False)
-        eval_env = make_batch_env(True)
         experiments.train_agent_batch_with_evaluation(
             agent=agent,
-            env=env,
-            eval_env=eval_env,
+            env=make_batch_env(False),
+            eval_env=make_batch_env(True),
             outdir=args.outdir,
             steps=args.steps,
             eval_n_steps=None,

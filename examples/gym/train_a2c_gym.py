@@ -199,12 +199,10 @@ def main():
             args.eval_n_runs, eval_stats['mean'], eval_stats['median'],
             eval_stats['stdev']))
     else:
-        env = make_batch_env(test=False)
-        eval_env = make_batch_env(test=True)
         experiments.train_agent_batch_with_evaluation(
             agent=agent,
-            env=env,
-            eval_env=eval_env,
+            env=make_batch_env(test=False),
+            eval_env=make_batch_env(test=True),
             steps=args.steps,
             log_interval=args.log_interval,
             eval_n_steps=None,

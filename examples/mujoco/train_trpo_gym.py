@@ -193,11 +193,10 @@ TRPO only supports gym.spaces.Box or gym.spaces.Discrete action spaces.""")  # N
             args.eval_n_runs, eval_stats['mean'], eval_stats['median'],
             eval_stats['stdev']))
     else:
-        eval_env = make_env(test=True)
         chainerrl.experiments.train_agent_with_evaluation(
             agent=agent,
             env=env,
-            eval_env=eval_env,
+            eval_env=make_env(test=True),
             outdir=args.outdir,
             steps=args.steps,
             eval_n_steps=None,
