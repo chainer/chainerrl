@@ -13,7 +13,7 @@ class SARSA(dqn.DQN):
     """Off-policy SARSA.
 
     This agent learns the Q-function of a behavior policy defined via the
-    given explorer, not the optimal policy.
+    given explorer, instead of learning the Q-function of the optimal policy.
     """
 
     def _compute_target_values(self, exp_batch):
