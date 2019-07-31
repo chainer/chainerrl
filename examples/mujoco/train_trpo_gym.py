@@ -20,7 +20,6 @@ import chainer
 from chainer import functions as F
 import gym
 import gym.spaces
-import gym.wrappers
 import numpy as np
 
 import chainerrl
@@ -75,7 +74,7 @@ def main():
         # Cast observations to float32 because our model uses float32
         env = chainerrl.wrappers.CastObservationToFloat32(env)
         if args.monitor:
-            env = gym.wrappers.Monitor(env, args.outdir)
+            env = chainerrl.wrappers.Monitor(env, args.outdir)
         if args.render:
             env = chainerrl.wrappers.Render(env)
         return env
@@ -187,7 +186,6 @@ TRPO only supports gym.spaces.Box or gym.spaces.Discrete action spaces.""")  # N
             args.eval_n_runs, eval_stats['mean'], eval_stats['median'],
             eval_stats['stdev']))
     else:
-
         chainerrl.experiments.train_agent_with_evaluation(
             agent=agent,
             env=env,

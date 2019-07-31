@@ -27,7 +27,7 @@ class TestReplayBuffer(unittest.TestCase):
 
         # Add one and sample one
         correct_item = collections.deque([], maxlen=num_steps)
-        for i in range(num_steps):
+        for _ in range(num_steps):
             trans1 = dict(state=0, action=1, reward=2, next_state=3,
                           next_action=4, is_state_terminal=False)
             correct_item.append(trans1)
@@ -61,7 +61,7 @@ class TestReplayBuffer(unittest.TestCase):
         self.assertEqual(len(rbuf), 0)
 
         # Add one and sample one
-        for i in range(num_steps):
+        for _ in range(num_steps):
             trans1 = dict(state=0, action=1, reward=2, next_state=3,
                           next_action=4, is_state_terminal=False)
             rbuf.append(**trans1)
@@ -101,7 +101,7 @@ class TestReplayBuffer(unittest.TestCase):
         self.assertEqual(len(rbuf), 0)
 
         # Add one and sample one
-        for i in range(num_steps - 1):
+        for _ in range(num_steps - 1):
             trans1 = dict(state=0, action=1, reward=2, next_state=3,
                           next_action=4, is_state_terminal=False)
             rbuf.append(**trans1)
@@ -496,7 +496,7 @@ class TestReplayBufferWithEnvID(unittest.TestCase):
             assert False
 
         # 2 transitions for env_id=0
-        for i in range(2):
+        for _ in range(2):
             trans1 = dict(state=0, action=1, reward=2, next_state=3,
                           next_action=4, is_state_terminal=False)
             rbuf.append(env_id=0, **trans1)
@@ -506,7 +506,7 @@ class TestReplayBufferWithEnvID(unittest.TestCase):
                           next_action=4, is_state_terminal=(i == 3))
             rbuf.append(env_id=1, **trans1)
         # 9 transitions for env_id=2
-        for i in range(9):
+        for _ in range(9):
             trans1 = dict(state=0, action=1, reward=2, next_state=3,
                           next_action=4, is_state_terminal=False)
             rbuf.append(env_id=2, **trans1)
@@ -544,7 +544,7 @@ class TestEpisodicReplayBufferWithEnvID(unittest.TestCase):
             assert False
 
         # 2 transitions for env_id=0
-        for i in range(2):
+        for _ in range(2):
             trans1 = dict(state=0, action=1, reward=2, next_state=3,
                           next_action=4, is_state_terminal=False)
             rbuf.append(env_id=0, **trans1)
@@ -554,7 +554,7 @@ class TestEpisodicReplayBufferWithEnvID(unittest.TestCase):
                           next_action=4, is_state_terminal=(i == 3))
             rbuf.append(env_id=1, **trans1)
         # 9 transitions for env_id=2
-        for i in range(9):
+        for _ in range(9):
             trans1 = dict(state=0, action=1, reward=2, next_state=3,
                           next_action=4, is_state_terminal=False)
             rbuf.append(env_id=2, **trans1)

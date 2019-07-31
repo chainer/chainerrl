@@ -6,7 +6,6 @@ import chainer
 from chainer import functions as F
 from chainer import links as L
 from chainer import optimizers
-import gym
 import numpy as np
 
 import chainerrl
@@ -147,7 +146,7 @@ def main():
             env = chainerrl.wrappers.RandomizeAction(env, args.eval_epsilon)
         env.seed(env_seed)
         if args.monitor:
-            env = gym.wrappers.Monitor(
+            env = chainerrl.wrappers.Monitor(
                 env, args.outdir,
                 mode='evaluation' if test else 'training')
         if args.render:

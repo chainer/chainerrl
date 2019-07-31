@@ -14,8 +14,6 @@ import os
 import chainer
 from chainer import functions as F
 from chainer import links as L
-import gym
-import gym.wrappers
 import numpy as np
 
 import chainerrl
@@ -109,7 +107,7 @@ def main():
         )
         env.seed(env_seed)
         if args.monitor:
-            env = gym.wrappers.Monitor(
+            env = chainerrl.wrappers.Monitor(
                 env, args.outdir,
                 mode='evaluation' if test else 'training')
         if args.render:

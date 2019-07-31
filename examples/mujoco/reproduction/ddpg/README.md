@@ -69,6 +69,28 @@ Reported scores are taken from the "AHE" row of Table 2 of [Addressing Function 
 | InvertedPendulum-v2       |          784.79 |            N/A |
 | InvertedDoublePendulum-v2 |         7385.12 |            N/A |
 
+### Training times
+
+These training times were obtained by running `train_ddpg.py` on a single CPU and a single GPU.
+
+
+| Game        | ChainerRL Time           |
+| ------------- |:-------------:|
+| Ant | 3.812 hours |
+| HalfCheetah | 4.743 hours |
+| Hopper | 4.006 hours |
+| InvertedDoublePendulum | 4.079 hours |
+| InvertedPendulum | 3.994 hours |
+| Reacher | 3.225 hours |
+| Walker2d | 4.396 hours |
+
+
+| Statistic        |            |            |
+| ------------- |:-------------:|:-------------:|
+| Mean time (in hours) across all domains        |  4.036 |
+| Fastest Domain |  Reacher | 3.225 |
+| Slowest Domain |  HalfCheetah | 4.743 |
+
 ### Learning Curves
 
 The shaded region represents a standard deviation of the average evaluation over 10 trials.

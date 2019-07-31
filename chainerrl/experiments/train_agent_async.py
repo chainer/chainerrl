@@ -11,7 +11,7 @@ def train_loop(process_idx, env, agent, steps, outdir, counter,
                episodes_counter, training_done,
                max_episode_len=None, evaluator=None, eval_env=None,
                successful_score=None, logger=None,
-               global_step_hooks=[]):
+               global_step_hooks=()):
 
     logger = logger or logging.getLogger(__name__)
 
@@ -132,7 +132,7 @@ def train_agent_async(outdir, processes, make_env,
                       successful_score=None,
                       agent=None,
                       make_agent=None,
-                      global_step_hooks=[],
+                      global_step_hooks=(),
                       save_best_so_far_agent=True,
                       logger=None,
                       ):
@@ -156,7 +156,7 @@ def train_agent_async(outdir, processes, make_env,
             or equal to this value if not None
         agent (Agent): Agent to train.
         make_agent (callable): (process_idx) -> Agent
-        global_step_hooks (list): List of callable objects that accepts
+        global_step_hooks (Sequence): Sequence of callable objects that accepts
             (env, agent, step) as arguments. They are called every global
             step. See chainerrl.experiments.hooks.
         save_best_so_far_agent (bool): If set to True, after each evaluation,

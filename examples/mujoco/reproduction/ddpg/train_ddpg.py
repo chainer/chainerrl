@@ -77,7 +77,7 @@ def main():
 
     def make_env(test):
         env = gym.make(args.env)
-        # Unwrap TimiLimit wrapper
+        # Unwrap TimeLimit wrapper
         assert isinstance(env, gym.wrappers.TimeLimit)
         env = env.env
         # Use different random seeds for train and test envs
@@ -86,7 +86,7 @@ def main():
         # Cast observations to float32 because our model uses float32
         env = chainerrl.wrappers.CastObservationToFloat32(env)
         if args.monitor:
-            env = gym.wrappers.Monitor(env, args.outdir)
+            env = chainerrl.wrappers.Monitor(env, args.outdir)
         if args.render and not test:
             env = chainerrl.wrappers.Render(env)
         return env

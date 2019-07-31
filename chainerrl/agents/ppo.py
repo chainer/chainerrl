@@ -550,7 +550,7 @@ class PPO(agent.AttributeSavingMixin, agent.BatchAgent):
             mean_advs = None
             std_advs = None
 
-        for epoch in range(self.epochs):
+        for _ in range(self.epochs):
             random.shuffle(dataset)
             for minibatch in _yield_subset_of_sequences_with_fixed_number_of_items(  # NOQA
                     dataset, self.minibatch_size):

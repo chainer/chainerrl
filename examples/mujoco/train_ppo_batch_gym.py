@@ -14,7 +14,6 @@ from chainer import functions as F
 from chainer import links as L
 import gym
 import gym.spaces
-import gym.wrappers
 import numpy as np
 
 import chainerrl
@@ -79,7 +78,7 @@ def main():
         # Cast observations to float32 because our model uses float32
         env = chainerrl.wrappers.CastObservationToFloat32(env)
         if args.monitor:
-            env = gym.wrappers.Monitor(env, args.outdir)
+            env = chainerrl.wrappers.Monitor(env, args.outdir)
         if not test:
             # Scale rewards (and thus returns) to a reasonable range so that
             # training is easier
