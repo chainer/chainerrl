@@ -67,6 +67,28 @@ class CosineBasisLinear(chainer.Chain):
         return out
 
 
+def _evaluate_psi_x_with_quantile_thresholds(psi_x, phi, f, taus):
+    assert psi_x.ndim == 2
+    batch_size, hidden_size = psi_x.shape
+    assert taus.ndim == 2
+    assert taus.shape[0] == batch_size
+    n_taus = taus.shape[1]
+    phi_taus = phi(taus)
+    assert phi_taus.ndim == 3
+    assert phi_taus.shape == (batch_size, n_taus, hidden_size)
+    psi_x_b = F.broadcast_to(
+        F.expand_dims(psi_x, axis=1), phi_taus.shape)
+    h = psi_x_b * phi_taus
+    h = F.reshape(h, (-1, hidden_size))
+    assert h.shape == (batch_size * n_taus, hidden_size)
+    h = f(h)
+    assert h.ndim == 2
+    assert h.shape[0] == batch_size * n_taus
+    n_actions = h.shape[-1]
+    h = F.reshape(h, (batch_size, n_taus, n_actions))
+    return QuantileDiscreteActionValue(h)
+
+
 class ImplicitQuantileQFunction(chainer.Chain):
     """Implicit quantile network-based Q-function.
 
@@ -102,26 +124,10 @@ class ImplicitQuantileQFunction(chainer.Chain):
         psi_x = self.psi(x)
         assert psi_x.ndim == 2
         assert psi_x.shape[0] == batch_size
-        hidden_size = psi_x.shape[1]
 
         def evaluate_with_quantile_thresholds(taus):
-            assert taus.ndim == 2
-            assert taus.shape[0] == batch_size
-            n_taus = taus.shape[1]
-            phi_taus = self.phi(taus)
-            assert phi_taus.ndim == 3
-            assert phi_taus.shape == (batch_size, n_taus, hidden_size)
-            psi_x_b = F.broadcast_to(
-                F.expand_dims(psi_x, axis=1), phi_taus.shape)
-            h = psi_x_b * phi_taus
-            h = F.reshape(h, (-1, hidden_size))
-            assert h.shape == (batch_size * n_taus, hidden_size)
-            h = self.f(h)
-            assert h.ndim == 2
-            assert h.shape[0] == batch_size * n_taus
-            n_actions = h.shape[-1]
-            h = F.reshape(h, (batch_size, n_taus, n_actions))
-            return QuantileDiscreteActionValue(h)
+            return _evaluate_psi_x_with_quantile_thresholds(
+                psi_x, self.phi, self.f, taus)
 
         return evaluate_with_quantile_thresholds
 
@@ -163,26 +169,10 @@ class StatelessRecurrentImplicitQuantileQFunction(
         psi_x, recurrent_state = self.psi.n_step_forward(
             x, recurrent_state, output_mode='concat')
         assert psi_x.ndim == 2
-        batch_size, hidden_size = psi_x.shape
 
         def evaluate_with_quantile_thresholds(taus):
-            assert taus.ndim == 2
-            assert taus.shape[0] == batch_size
-            n_taus = taus.shape[1]
-            phi_taus = self.phi(taus)
-            assert phi_taus.ndim == 3
-            assert phi_taus.shape == (batch_size, n_taus, hidden_size)
-            psi_x_b = F.broadcast_to(
-                F.expand_dims(psi_x, axis=1), phi_taus.shape)
-            h = psi_x_b * phi_taus
-            h = F.reshape(h, (-1, hidden_size))
-            assert h.shape == (batch_size * n_taus, hidden_size)
-            h = self.f(h)
-            assert h.ndim == 2
-            assert h.shape[0] == batch_size * n_taus
-            n_actions = h.shape[-1]
-            h = F.reshape(h, (batch_size, n_taus, n_actions))
-            return QuantileDiscreteActionValue(h)
+            return _evaluate_psi_x_with_quantile_thresholds(
+                psi_x, self.phi, self.f, taus)
 
         return evaluate_with_quantile_thresholds, (recurrent_state,)
 
