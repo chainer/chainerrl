@@ -6,10 +6,39 @@ from builtins import *  # NOQA
 from future import standard_library
 standard_library.install_aliases()  # NOQA
 
+import chainer
+import chainer.functions as F
+import chainer.links as L
 import gym
+import numpy as np
+
+from chainerrl.misc.batch_states import batch_states
 
 
-class TREXReward(gym.RewardWrapper):
+class TREXNet(chainer.ChainList):
+    """TREX's architecture: https://arxiv.org/abs/1904.06387"""
+
+
+    def __init__(self):
+        layers = [
+            L.Convolution2D(4, 16, 7, stride=3),
+            L.Convolution2D(16, 16, 5, stride=2),
+            L.Convolution2D(16, 16, 3, stride=1),
+            L.Convolution2D(16, 16, 3, stride=1),
+            L.Linear(784, 64),
+            L.Linear(64, 1)
+        ]
+
+        super(TREXNet, self).__init__(*layers)
+
+    def __call__(self, trajectory):
+        h = trajectory
+        for layer in self:
+            h = F.leaky_relu(layer(h))
+        return h
+
+
+class TREXReward(gym.Wrapper):
     """Implements Trajectory-ranked Reward EXtrapolation (TREX):
 
     https://arxiv.org/abs/1904.06387
@@ -17,22 +46,30 @@ class TREXReward(gym.RewardWrapper):
     Args:
         env: Env to wrap.
         demos: A list of ranked demonstrations
+        network: A reward network
 
     Attributes:
         demos: A list of demonstrations
+        trex_network: Reward network
+
     """
 
-    def __init__(self, env, demos):
+    def __init__(self, env, demos, network=TREXNet()):
         super().__init__(env)
         self.demos = demos
-        self.original_reward = None
+        self.trex_network = network
+        self.prev_reward = None
         self._train()
 
-    def reward(self, reward):
-        self.original_reward = reward
-        # trex_reward = self.trex_network(reward)
-        trex_reward = reward
-        return trex_reward
+    def step(self, action):
+        observation, reward, done, info = self.env.step(action)
+        obs = batch_states([observation], self.trex_network.xp, self._phi)
+        with chainer.no_backprop_mode():
+            trex_reward = self.trex_network(obs)
+        return observation, reward, done, info
 
     def _train(self):
         pass
+
+    def _phi(self, x):
+        return np.asarray(x, dtype=np.float32) / 255

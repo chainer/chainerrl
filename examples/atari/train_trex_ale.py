@@ -1,13 +1,3 @@
-"""An example of training TREX against OpenAI Gym Atari Envs.
-
-This script is an example of training a PPO agent on Atari envs.
-
-To train PPO for 10M timesteps on Breakout, run:
-    python train_trex_ale.py
-
-To train PPO using a recurrent model on a flickering Atari env, run:
-    python train_ppo_gym.py --recurrent -flicker --no-frame-stack
-"""
 from __future__ import print_function
 from __future__ import division
 from __future__ import unicode_literals
@@ -18,51 +8,39 @@ standard_library.install_aliases()  # NOQA
 import argparse
 import os
 
-import chainer
-from chainer import functions as F
 from chainer import links as L
+from chainer import optimizers
 import gym
 import gym.wrappers
 import numpy as np
 
 import chainerrl
-from chainerrl.agents import PPO
+from chainerrl.action_value import DiscreteActionValue
+from chainerrl import agents
 from chainerrl import experiments
+from chainerrl import explorers
+from chainerrl import links
 from chainerrl import misc
-from chainerrl.wrappers import atari_wrappers
-from chainerrl.wrappers import trex_reward
+from chainerrl import replay_buffer
 
+from chainerrl.wrappers import atari_wrappers
+import json
+
+import trex_env
 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--env', type=str, default='BreakoutNoFrameskip-v4',
-                        help='Gym Env ID.')
-    parser.add_argument('--gpu', type=int, default=0,
-                        help='GPU device ID. Set to -1 to use CPUs only.')
-    parser.add_argument('--num-envs', type=int, default=8,
-                        help='Number of env instances run in parallel.')
-    parser.add_argument('--seed', type=int, default=0,
-                        help='Random seed [0, 2 ** 32)')
+                        help='OpenAI Atari domain to perform algorithm on.')
     parser.add_argument('--outdir', type=str, default='results',
                         help='Directory path to save output files.'
                              ' If it does not exist, it will be created.')
-    parser.add_argument('--steps', type=int, default=10 ** 7,
-                        help='Total time steps for training.')
-    parser.add_argument('--max-frames', type=int,
-                        default=30 * 60 * 60,  # 30 minutes with 60 fps
-                        help='Maximum number of frames for each episode.')
-    parser.add_argument('--lr', type=float, default=2.5e-4,
-                        help='Learning rate.')
-    parser.add_argument('--eval-interval', type=int, default=100000,
-                        help='Interval (in timesteps) between evaluation'
-                             ' phases.')
-    parser.add_argument('--eval-n-runs', type=int, default=10,
-                        help='Number of episodes ran in an evaluation phase.')
-    parser.add_argument('--demo', action='store_true', default=False,
-                        help='Run demo episodes, not training.')
-    parser.add_argument('--load', type=str, default='',
-                        help='Directory path to load a saved agent data from'
-                             ' if it is a non-empty string.')
+    parser.add_argument('--seed', type=int, default=0,
+                        help='Random seed [0, 2 ** 31)')
+    parser.add_argument('--gpu', type=int, default=0,
+                        help='GPU to use, set to -1 if no GPU.')
+    parser.add_argument('--demo', action='store_true', default=False)
+    parser.add_argument('--load', type=str, default=None)
     parser.add_argument('--logging-level', type=int, default=20,
                         help='Logging level. 10:DEBUG, 20:INFO etc.')
     parser.add_argument('--render', action='store_true', default=False,
@@ -70,23 +48,15 @@ def main():
     parser.add_argument('--monitor', action='store_true', default=False,
                         help='Monitor env. Videos and additional information'
                              ' are saved as output files.')
-    parser.add_argument('--update-interval', type=int, default=128 * 8,
-                        help='Interval (in timesteps) between PPO iterations.')
-    parser.add_argument('--batchsize', type=int, default=32 * 8,
-                        help='Size of minibatch (in timesteps).')
-    parser.add_argument('--epochs', type=int, default=4,
-                        help='Number of epochs used for each PPO iteration.')
-    parser.add_argument('--log-interval', type=int, default=10000,
-                        help='Interval (in timesteps) of printing logs.')
-    parser.add_argument('--recurrent', action='store_true', default=False,
-                        help='Use a recurrent model. See the code for the'
-                             ' model definition.')
-    parser.add_argument('--flicker', action='store_true', default=False,
-                        help='Use so-called flickering Atari, where each'
-                             ' screen is blacked out with probability 0.5.')
-    parser.add_argument('--no-frame-stack', action='store_true', default=False,
-                        help='Disable frame stacking so that the agent can'
-                             ' only see the current screen.')
+    parser.add_argument('--steps', type=int, default=5 * 10 ** 7,
+                        help='Total number of timesteps to train the agent.')
+    parser.add_argument('--replay-start-size', type=int, default=5 * 10 ** 4,
+                        help='Minimum replay buffer size before ' +
+                        'performing gradient updates.')
+    parser.add_argument('--eval-n-steps', type=int, default=125000)
+    parser.add_argument('--eval-interval', type=int, default=250000)
+    parser.add_argument('--n-best-episodes', type=int, default=200)
+    parser.add_argument('--regularization', type=float, default=1.0)
     args = parser.parse_args()
 
     import logging
@@ -95,33 +65,37 @@ def main():
     # Set a random seed used in ChainerRL.
     misc.set_random_seed(args.seed, gpus=(args.gpu,))
 
-    # Set different random seeds for different subprocesses.
-    # If seed=0 and processes=4, subprocess seeds are [0, 1, 2, 3].
-    # If seed=1 and processes=4, subprocess seeds are [4, 5, 6, 7].
-    process_seeds = np.arange(args.num_envs) + args.seed * args.num_envs
-    assert process_seeds.max() < 2 ** 32
+    # Set different random seeds for train and test envs.
+    train_seed = args.seed
+    test_seed = 2 ** 31 - 1 - args.seed
 
     args.outdir = experiments.prepare_output_dir(args, args.outdir)
     print('Output files are saved in {}'.format(args.outdir))
 
+    env_networks = {
+        "BeamRiderNoFrameskip-v4" : "reward_wrapper/beamrider_timepref.params",
+        "BreakoutNoFrameskip-v4" : "reward_wrapper/breakout_timepref.params",
+        "EnduroNoFrameskip-v4" : "reward_wrapper/enduro_timepref.params",
+        "HeroNoFrameskip-v4" : "reward_wrapper/hero_timepref.params",
+        "PongNoFrameskip-v4" : "reward_wrapper/pong_timepref.params",
+        "QbertNoFrameskip-v4": "reward_wrapper/qbert_timepref.params",
+        "SeaquestNoFrameskip-v4" : "reward_wrapper/seaquest_timepref.params",
+        "SpaceInvadersNoFrameskip-v4": "reward_wrapper/spaceinvaders_timepref.params"
+    }
 
-    # TREX setup
-    reward_net = 
-
-    def make_env(idx, test):
+    def make_env(test):
         # Use different random seeds for train and test envs
-        process_seed = int(process_seeds[idx])
-        env_seed = 2 ** 32 - 1 - process_seed if test else process_seed
+        env_seed = test_seed if test else train_seed
         env = atari_wrappers.wrap_deepmind(
-            atari_wrappers.make_atari(args.env, max_frames=args.max_frames),
+            atari_wrappers.make_atari(args.env, max_frames=None),
             episode_life=not test,
-            clip_rewards=not test,
-            flicker=args.flicker,
-            frame_stack=not args.no_frame_stack,
-        )
+            clip_rewards=not test)
+        env.seed(int(env_seed))
         if test:
-            env = trex_reward.TREXReward(env=env, demos=[])
-        env.seed(env_seed)
+            # Randomize actions like epsilon-greedy in evaluation as well
+            env = chainerrl.wrappers.RandomizeAction(env, 0.05)
+        else:
+            env = trex_env.TREXShapedRewardEnv(env, 0.99, args.regularization, env_networks[args.env])
         if args.monitor:
             env = gym.wrappers.Monitor(
                 env, args.outdir,
@@ -130,123 +104,90 @@ def main():
             env = chainerrl.wrappers.Render(env)
         return env
 
-    def make_batch_env(test):
-        return chainerrl.envs.MultiprocessVectorEnv(
-            [(lambda: make_env(idx, test))
-             for idx, env in enumerate(range(args.num_envs))])
+    env = make_env(test=False)
+    eval_env = make_env(test=True)
 
-    sample_env = make_env(0, test=False)
-    print('Observation space', sample_env.observation_space)
-    print('Action space', sample_env.action_space)
-    n_actions = sample_env.action_space.n
-
-    winit_last = chainer.initializers.LeCunNormal(1e-2)
-    if args.recurrent:
-        model = chainerrl.links.StatelessRecurrentSequential(
-            L.Convolution2D(None, 32, 8, stride=4),
-            F.relu,
-            L.Convolution2D(None, 64, 4, stride=2),
-            F.relu,
-            L.Convolution2D(None, 64, 3, stride=1),
-            F.relu,
-            L.Linear(None, 512),
-            F.relu,
-            L.NStepGRU(1, 512, 512, 0),
-            chainerrl.links.Branched(
-                chainer.Sequential(
-                    L.Linear(None, n_actions, initialW=winit_last),
-                    chainerrl.distribution.SoftmaxDistribution,
-                ),
-                L.Linear(None, 1),
-            )
-        )
-    else:
-        model = chainer.Sequential(
-            L.Convolution2D(None, 32, 8, stride=4),
-            F.relu,
-            L.Convolution2D(None, 64, 4, stride=2),
-            F.relu,
-            L.Convolution2D(None, 64, 3, stride=1),
-            F.relu,
-            L.Linear(None, 512),
-            F.relu,
-            chainerrl.links.Branched(
-                chainer.Sequential(
-                    L.Linear(None, n_actions, initialW=winit_last),
-                    chainerrl.distribution.SoftmaxDistribution,
-                ),
-                L.Linear(None, 1),
-            )
-        )
+    n_actions = env.action_space.n
+    q_func = links.Sequence(
+        links.NatureDQNHead(),
+        L.Linear(512, n_actions),
+        DiscreteActionValue)
 
     # Draw the computational graph and save it in the output directory.
-    fake_obss = np.zeros(
-        sample_env.observation_space.shape, dtype=np.float32)[None]
-    if args.recurrent:
-        fake_out, _ = model(fake_obss, None)
-    else:
-        fake_out = model(fake_obss)
     chainerrl.misc.draw_computational_graph(
-        [fake_out], os.path.join(args.outdir, 'model'))
+        [q_func(np.zeros((4, 84, 84), dtype=np.float32)[None])],
+        os.path.join(args.outdir, 'model'))
 
-    opt = chainer.optimizers.Adam(alpha=args.lr, eps=1e-5)
-    opt.setup(model)
-    opt.add_hook(chainer.optimizer.GradientClipping(0.5))
+    # Use the same hyperparameters as the Nature paper
+    opt = optimizers.RMSpropGraves(
+        lr=2.5e-4, alpha=0.95, momentum=0.0, eps=1e-2)
+
+    opt.setup(q_func)
+
+    rbuf = replay_buffer.ReplayBuffer(10 ** 6)
+
+    explorer = explorers.LinearDecayEpsilonGreedy(
+        start_epsilon=1.0, end_epsilon=0.1,
+        decay_steps=10 ** 6,
+        random_action_func=lambda: np.random.randint(n_actions))
 
     def phi(x):
         # Feature extractor
         return np.asarray(x, dtype=np.float32) / 255
 
-    agent = PPO(
-        model,
-        opt,
-        gpu=args.gpu,
-        phi=phi,
-        update_interval=args.update_interval,
-        minibatch_size=args.batchsize,
-        epochs=args.epochs,
-        clip_eps=0.1,
-        clip_eps_vf=None,
-        standardize_advantages=True,
-        entropy_coef=1e-2,
-        recurrent=args.recurrent,
-    )
+    Agent = agents.DQN
+    agent = Agent(q_func, opt, rbuf, gpu=args.gpu, gamma=0.99,
+                  explorer=explorer, replay_start_size=args.replay_start_size,
+                  target_update_interval=10 ** 4,
+                  clip_delta=True,
+                  update_interval=4,
+                  batch_accumulator='sum',
+                  phi=phi)
+
     if args.load:
         agent.load(args.load)
 
     if args.demo:
         eval_stats = experiments.eval_performance(
-            env=make_batch_env(test=True),
+            env=eval_env,
             agent=agent,
-            n_steps=None,
-            n_episodes=args.eval_n_runs)
-        print('n_runs: {} mean: {} median: {} stdev: {}'.format(
-            args.eval_n_runs, eval_stats['mean'], eval_stats['median'],
+            n_steps=args.eval_n_steps,
+            n_episodes=None)
+        print('n_episodes: {} mean: {} median: {} stdev {}'.format(
+            eval_stats['episodes'],
+            eval_stats['mean'],
+            eval_stats['median'],
             eval_stats['stdev']))
     else:
-        step_hooks = []
-
-        # Linearly decay the learning rate to zero
-        def lr_setter(env, agent, value):
-            agent.optimizer.alpha = value
-
-        step_hooks.append(
-            experiments.LinearInterpolationHook(
-                args.steps, args.lr, 0, lr_setter))
-
-        experiments.train_agent_batch_with_evaluation(
-            agent=agent,
-            env=make_batch_env(False),
-            eval_env=make_batch_env(True),
-            outdir=args.outdir,
-            steps=args.steps,
-            eval_n_steps=None,
-            eval_n_episodes=args.eval_n_runs,
+        experiments.train_agent_with_evaluation(
+            agent=agent, env=env, steps=args.steps,
+            eval_n_steps=args.eval_n_steps,
+            eval_n_episodes=None,
             eval_interval=args.eval_interval,
-            log_interval=args.log_interval,
-            save_best_so_far_agent=False,
-            step_hooks=step_hooks,
+            outdir=args.outdir,
+            save_best_so_far_agent=True,
+            eval_env=eval_env,
         )
+
+        dir_of_best_network = os.path.join(args.outdir, "best")
+        agent.load(dir_of_best_network)
+
+        # run 30 evaluation episodes, each capped at 5 mins of play
+        stats = experiments.evaluator.eval_performance(
+            env=eval_env,
+            agent=agent,
+            n_steps=None,
+            n_episodes=args.n_best_episodes,
+            max_episode_len=4500,
+            logger=None)
+        with open(os.path.join(args.outdir, 'bestscores.json'), 'w') as f:
+            # temporary hack to handle python 2/3 support issues.
+            # json dumps does not support non-string literal dict keys
+            json_stats = json.dumps(stats)
+            print(str(json_stats), file=f)
+        print("The results of the best scoring network:")
+        for stat in stats:
+            print(str(stat) + ":" + str(stats[stat]))
 
 
 if __name__ == '__main__':
