@@ -504,7 +504,7 @@ class DQN(agent.AttributeSavingMixin, agent.BatchAgent):
                         self.model.get_recurrent_state_at(
                             self.train_recurrent_states,
                             i, unwrap_variable=True)
-                self.replay_buffer.append(**transition, env_id=i)
+                self.replay_buffer.append(env_id=i, **transition)
                 if batch_reset[i] or batch_done[i]:
                     self.batch_last_obs[i] = None
                     self.batch_last_action[i] = None
