@@ -1,9 +1,9 @@
-"""An example of training PPO against OpenAI Gym Atari Envs.
+"""An example of training TREX against OpenAI Gym Atari Envs.
 
 This script is an example of training a PPO agent on Atari envs.
 
 To train PPO for 10M timesteps on Breakout, run:
-    python train_ppo_gym.py
+    python train_trex_ale.py
 
 To train PPO using a recurrent model on a flickering Atari env, run:
     python train_ppo_gym.py --recurrent -flicker --no-frame-stack
@@ -103,6 +103,10 @@ def main():
 
     args.outdir = experiments.prepare_output_dir(args, args.outdir)
     print('Output files are saved in {}'.format(args.outdir))
+
+
+    # TREX setup
+    reward_net = 
 
     def make_env(idx, test):
         # Use different random seeds for train and test envs
