@@ -1,15 +1,15 @@
-======
+==============
 Replay Buffers
-======
+==============
 
 ReplayBuffer interfaces
-================
+=======================
 
 .. autoclass:: chainerrl.replay_buffer.ReplayBuffer
    :members:
 
 ReplayBuffer implementations
-=====================
+============================
 
 .. autoclass:: chainerrl.replay_buffer.EpisodicReplayBuffer
 
