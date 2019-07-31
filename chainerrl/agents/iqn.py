@@ -137,7 +137,8 @@ class StatelessRecurrentImplicitQuantileQFunction(
     """Recurrent implicit quantile network-based Q-function.
 
     Args:
-        psi (chainer.Link): Link that implements `StatelessRecurrent`.
+        psi (chainer.Link): Link that implements
+            `chainerrl.links.StatelessRecurrent`.
             (batch_size, obs_size) -> (batch_size, hidden_size).
         phi (chainer.Link): Callable link
             (batch_size, n_taus) -> (batch_size, n_taus, hidden_size).
