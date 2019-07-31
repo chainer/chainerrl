@@ -12,7 +12,7 @@ from chainerrl.agents import dqn
 class SARSA(dqn.DQN):
     """Off-policy SARSA.
 
-    This agent learns the Q-function of a behaviour policy defined via the
+    This agent learns the Q-function of a behavior policy defined via the
     given explorer, not the optimal policy.
     """
 
