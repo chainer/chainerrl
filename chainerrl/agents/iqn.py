@@ -345,24 +345,16 @@ class IQN(dqn.DQN):
             # mean over (batch_size, N_prime), then sum over N
             return F.sum(F.mean(eltwise_loss, axis=(0, 2)))
 
-    def _evaluate_model_and_update_train_recurrent_states(self, batch_obs):
+    def _evaluate_model_and_update_recurrent_states(self, batch_obs, test):
         batch_xs = self.batch_states(batch_obs, self.xp, self.phi)
         if self.recurrent:
-            self.train_prev_recurrent_states = self.train_recurrent_states
-            tau2av, self.train_recurrent_states = self.model(
-                batch_xs, self.train_recurrent_states)
-        else:
-            tau2av = self.model(batch_xs)
-        taus_tilde = self.xp.random.uniform(
-            0, 1,
-            size=(len(batch_obs), self.quantile_thresholds_K)).astype('f')
-        return tau2av(taus_tilde)
-
-    def _evaluate_model_and_update_test_recurrent_states(self, batch_obs):
-        batch_xs = self.batch_states(batch_obs, self.xp, self.phi)
-        if self.recurrent:
-            tau2av, self.test_recurrent_states = self.model(
-                batch_xs, self.test_recurrent_states)
+            if test:
+                tau2av, self.test_recurrent_states = self.model(
+                    batch_xs, self.test_recurrent_states)
+            else:
+                self.train_prev_recurrent_states = self.train_recurrent_states
+                tau2av, self.train_recurrent_states = self.model(
+                    batch_xs, self.train_recurrent_states)
         else:
             tau2av = self.model(batch_xs)
         taus_tilde = self.xp.random.uniform(

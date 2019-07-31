@@ -369,7 +369,8 @@ class DQN(agent.AttributeSavingMixin, agent.BatchAgent):
     def act(self, obs):
         with chainer.using_config('train', False), chainer.no_backprop_mode():
             action_value =\
-                self._evaluate_model_and_update_test_recurrent_states([obs])
+                self._evaluate_model_and_update_recurrent_states(
+                    [obs], test=True)
             q = float(action_value.max.array)
             action = cuda.to_cpu(action_value.greedy_actions.array)[0]
 
@@ -414,7 +415,8 @@ class DQN(agent.AttributeSavingMixin, agent.BatchAgent):
         # Choose an action
         with chainer.using_config('train', False), chainer.no_backprop_mode():
             action_value =\
-                self._evaluate_model_and_update_train_recurrent_states([obs])
+                self._evaluate_model_and_update_recurrent_states(
+                    [obs], test=False)
             q = float(action_value.max.array)
             greedy_action = cuda.to_cpu(action_value.greedy_actions.array)[0]
         action = self.explorer.select_action(
@@ -433,29 +435,24 @@ class DQN(agent.AttributeSavingMixin, agent.BatchAgent):
 
         return self.last_action
 
-    def _evaluate_model_and_update_train_recurrent_states(self, batch_obs):
+    def _evaluate_model_and_update_recurrent_states(self, batch_obs, test):
         batch_xs = self.batch_states(batch_obs, self.xp, self.phi)
         if self.recurrent:
-            self.train_prev_recurrent_states = self.train_recurrent_states
-            batch_av, self.train_recurrent_states = self.model(
-                batch_xs, self.train_recurrent_states)
-        else:
-            batch_av = self.model(batch_xs)
-        return batch_av
-
-    def _evaluate_model_and_update_test_recurrent_states(self, batch_obs):
-        batch_xs = self.batch_states(batch_obs, self.xp, self.phi)
-        if self.recurrent:
-            batch_av, self.test_recurrent_states = self.model(
-                batch_xs, self.test_recurrent_states)
+            if test:
+                batch_av, self.test_recurrent_states = self.model(
+                    batch_xs, self.test_recurrent_states)
+            else:
+                self.train_prev_recurrent_states = self.train_recurrent_states
+                batch_av, self.train_recurrent_states = self.model(
+                    batch_xs, self.train_recurrent_states)
         else:
             batch_av = self.model(batch_xs)
         return batch_av
 
     def batch_act_and_train(self, batch_obs):
         with chainer.using_config('train', False), chainer.no_backprop_mode():
-            batch_av = self._evaluate_model_and_update_train_recurrent_states(
-                batch_obs)
+            batch_av = self._evaluate_model_and_update_recurrent_states(
+                batch_obs, test=False)
             batch_maxq = batch_av.max.array
             batch_argmax = cuda.to_cpu(batch_av.greedy_actions.array)
         batch_action = [
@@ -475,8 +472,8 @@ class DQN(agent.AttributeSavingMixin, agent.BatchAgent):
 
     def batch_act(self, batch_obs):
         with chainer.using_config('train', False), chainer.no_backprop_mode():
-            batch_av = self._evaluate_model_and_update_test_recurrent_states(
-                batch_obs)
+            batch_av = self._evaluate_model_and_update_recurrent_states(
+                batch_obs, test=True)
             batch_argmax = cuda.to_cpu(batch_av.greedy_actions.array)
             return batch_argmax
 
