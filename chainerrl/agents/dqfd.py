@@ -53,7 +53,7 @@ class PrioritizedDemoReplayBuffer(PrioritizedReplayBuffer):
     """Replay buffer used in DQfD.
 
     Differences from a normal PrioritizedReplayBuffer
-      Stores both both persistent demonstration data and normal self-play data
+      Stores both persistent demonstration data and normal self-play data
       Stores both 1-step and n-step versions of every transition
 
     Args:
@@ -228,8 +228,8 @@ class DemoReplayUpdater(object):
             (1) two lists of transition dicts (if episodic_update=False)
             (2) two lists of transition dicts (if episodic_update=True)
         batchsize (int): Minibatch size
-        update_interval (int): Model update interval in step
-        n_times_update (int): Number of repetition of update
+        update_interval (int): Model update interval in steps
+        n_times_update (int): Number of repetitions of updates
         episodic_update (bool): Use full episodes for update if set True
         episodic_update_len (int or None): Subsequences of this length are used
             for update if set int and episodic_update=True
