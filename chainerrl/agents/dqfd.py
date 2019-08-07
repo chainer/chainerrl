@@ -56,7 +56,7 @@ class PrioritizedDemoReplayBuffer(PrioritizedReplayBuffer):
     """Replay buffer used in DQfD.
 
     Differences from a normal PrioritizedReplayBuffer
-      Stores both both persistent demonstration data and normal self-play data
+      Stores both persistent demonstration data and normal self-play data
       Stores both 1-step and n-step versions of every transition
 
     Args:
