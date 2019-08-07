@@ -230,7 +230,7 @@ class DemoReplayUpdater(object):
             (1) two lists of transition dicts (if episodic_update=False)
             (2) two lists of transition dicts (if episodic_update=True)
         batchsize (int): Minibatch size
-        update_interval (int): Model update interval in step
+        update_interval (int): Model update interval in steps
         n_times_update (int): Number of repetition of update
         episodic_update (bool): Use full episodes for update if set True
         episodic_update_len (int or None): Subsequences of this length are used
