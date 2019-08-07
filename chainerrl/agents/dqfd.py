@@ -157,6 +157,7 @@ class PrioritizedDemoReplayBuffer(PrioritizedReplayBuffer):
 
         sampled_agent, sampled_demo = self.sample_from_memory(
             nsample_agent, nsample_demo)
+        self.replay_buffer.update_beta()
 
         return sampled_agent, sampled_demo
 
@@ -285,12 +286,6 @@ class DemoReplayUpdater(object):
                     trans_agent, trans_demo = self.replay_buffer.sample(
                         self.batchsize)
                     self.update_func(trans_agent, trans_demo)
-                    # Update beta only during RL
-                    self.replay_buffer.update_beta()
-
-    def update_from_demonstrations(self):
-        """Called during pre-train steps. Only update with demonstrations
-        """
 
 
 def batch_experiences(experiences, xp, phi, gamma, batch_states=batch_states):
