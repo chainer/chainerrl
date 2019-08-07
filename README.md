@@ -47,46 +47,49 @@ For more information, you can refer to [ChainerRL's documentation](http://chaine
 | ACER | ✓ | ✓ | ✓ | ✓ |
 | NSQ (N-step Q-learning) | ✓ | ✓ (NAF) | ✓ | ✓ |
 | PCL (Path Consistency Learning) | ✓ | ✓ | ✓ | ✓ |
-| PPO  | ✓ | ✓ | x | x |
+| PPO  | ✓ | ✓ | ✓ | x |
 | TRPO | ✓ | ✓ | x | x |
 | TD3 | x | ✓ | x | x |
 
 Following algorithms have been implemented in ChainerRL:
-- A3C (Asynchronous Advantage Actor-Critic)
-- ACER (Actor-Critic with Experience Replay)
-- Asynchronous N-step Q-learning
-- Rainbow
-- Categorical DQN
-- IQN
-- DQN (including Double DQN, Persistent Advantage Learning (PAL), Double PAL, Dynamic Policy Programming (DPP))
-- DDPG (Deep Deterministic Policy Gradients) (including SVG(0))
-- PGT (Policy Gradient Theorem)
-- PCL (Path Consistency Learning)
-- PPO (Proximal Policy Optimization)
-- TRPO (Trust Region Policy Optimization)
-- TD3 (Twin Delayed Deep Deterministic policy gradient algorithm)
+- [A2C (Synchronous variant of A3C)](https://openai.com/blog/baselines-acktr-a2c/)
+  - examples: [[atari (batched)]](examples/atari/train_a2c_ale.py) [[general gym (batched)]](examples/gym/train_a2c_gym.py)
+- [A3C (Asynchronous Advantage Actor-Critic)](https://arxiv.org/abs/1602.01783)
+  - examples: [[atari reproduction]](examples/atari/reproduction/a3c) [[atari]](examples/atari/train_a3c_ale.py) [[general gym]](examples/gym/train_a3c_gym.py)
+- [ACER (Actor-Critic with Experience Replay)](https://arxiv.org/abs/1611.01224)
+  - examples: [[atari]](examples/atari/train_acer_ale.py) [[general gym]](examples/gym/train_acer_gym.py)
+- [Asynchronous N-step Q-learning](https://arxiv.org/abs/1602.01783)
+  - examples: [[atari]](examples/atari/train_nsq_ale.py)
+- [Categorical DQN](https://arxiv.org/abs/1707.06887)
+  - examples: [[atari]](examples/atari/train_categorical_dqn_ale.py) [[general gym]](examples/gym/train_categorical_dqn_gym.py)
+- [DQN (Deep Q-Network)](https://storage.googleapis.com/deepmind-media/dqn/DQNNaturePaper.pdf) (including [Double DQN](https://arxiv.org/abs/1509.06461), [Persistent Advantage Learning (PAL)](https://arxiv.org/abs/1512.04860), Double PAL, [Dynamic Policy Programming (DPP)](http://www.jmlr.org/papers/volume13/azar12a/azar12a.pdf))
+  - examples: [[atari reproduction]](examples/atari/reproduction/dqn) [[atari]](examples/atari/train_dqn_ale.py) [[atari (batched)]](examples/atari/train_dqn_batch_ale.py) [[general gym]](examples/gym/train_dqn_gym.py)
+- [DDPG (Deep Deterministic Policy Gradients)](https://arxiv.org/abs/1509.02971) (including [SVG(0)](https://arxiv.org/abs/1510.09142))
+  - examples: [[mujoco reproduction]](examples/mujoco/reproduction/ddpg) [[mujoco]](examples/mujoco/train_ddpg_gym.py) [[mujoco (batched)]](examples/mujoco/train_ddpg_batch_gym.py)
+- [IQN (Implicit Quantile Networks)](https://arxiv.org/abs/1806.06923)
+  - examples: [[atari reproduction]](examples/atari/reproduction/iqn) [[general gym]](examples/gym/train_iqn_gym.py)
+- [PCL (Path Consistency Learning)](https://arxiv.org/abs/1702.08892)
+  - examples: [[general gym]](examples/gym/train_pcl_gym.py)
+- [PPO (Proximal Policy Optimization)](https://arxiv.org/abs/1707.06347)
+  - examples: [[mujoco reproduction]](examples/mujoco/reproduction/ppo) [[atari]](examples/atari/train_ppo_ale.py) [[mujoco]](examples/mujoco/train_ppo_gym.py) [[mujoco (batched)]](examples/mujoco/train_ppo_batch_gym.py)
+- [Rainbow](https://arxiv.org/abs/1710.02298)
+  - examples: [[atari reproduction]](examples/atari/reproduction/rainbow)
+- [REINFORCE](http://www-anw.cs.umass.edu/~barto/courses/cs687/williams92simple.pdf)
+  - examples: [[general gym]](examples/gym/train_reinforce_gym.py)
+- [TRPO (Trust Region Policy Optimization)](https://arxiv.org/abs/1502.05477) with [GAE (Generalized Advantage Estimation)](https://arxiv.org/abs/1506.02438)
+  - examples: [[mujoco]](examples/mujoco/train_trpo_gym.py)
+- [TD3 (Twin Delayed Deep Deterministic policy gradient algorithm)](https://arxiv.org/abs/1802.09477)
+  - examples: [[mujoco reproduction]](examples/mujoco/reproduction/td3)
 
-Q-function based algorithms such as DQN can utilize a Normalized Advantage Function (NAF) to tackle continuous-action problems as well as DQN-like discrete output networks.
-
-## Paper Implementations
-The following papers have been implemented in ChainerRL:
-- [Playing Atari with Deep Reinforcement Learning](https://www.cs.toronto.edu/~vmnih/docs/dqn.pdf)
-- [Human-level control through Deep Reinforcement Learning](https://storage.googleapis.com/deepmind-media/dqn/DQNNaturePaper.pdf)
-- [Deep Reinforcement Learning with Double Q-learning](https://arxiv.org/abs/1509.06461)
+Following useful techniques have been also implemented in ChainerRL:
+- [NoisyNet](https://arxiv.org/abs/1706.10295)
+  - examples: [[Rainbow]](examples/atari/reproduction/rainbow) [[DQN/DoubleDQN/PAL]](examples/atari/train_dqn_ale.py)
 - [Prioritized Experience Replay](https://arxiv.org/abs/1511.05952)
-- [Dueling Network Architectures for Deep Reinforcement Learning](https://arxiv.org/abs/1511.06581)
-- [Asynchronous Methods for Deep Reinforcement Learning](https://arxiv.org/abs/1602.01783)
-- [A Distributional Perspective on Reinforcement Learning](https://arxiv.org/abs/1707.06887)
-- [Implicit Quantile Networks for Distributional Reinforcement Learning](https://arxiv.org/abs/1806.06923)
-- [Rainbow: Combining Improvements in Deep Reinforcement Learning](https://arxiv.org/abs/1710.02298)
-- [Increasing the Action Gap: New Operators for Reinforcement Learning](https://arxiv.org/abs/1512.04860)
-- [Noisy Networks for Exploration](https://arxiv.org/abs/1706.10295)
-- [Continuous control with deep reinforcement learning](https://arxiv.org/abs/1509.02971)
-- [Proximal Policy Optimization Algorithms](https://arxiv.org/abs/1707.06347)
-- [Trust Region Policy Optimization](https://arxiv.org/abs/1502.05477)
-- [Sample Efficient Actor-Critic with Experience Replay](https://arxiv.org/abs/1611.01224)
-- [Bridging the Gap Between Value and Policy Based Reinforcement Learning](https://arxiv.org/abs/1702.08892)
-- [Addressing Function Approximation Error in Actor-Critic Methods](https://arxiv.org/abs/1802.09477)
+  - examples: [[Rainbow]](examples/atari/reproduction/rainbow) [[DQN/DoubleDQN/PAL]](examples/atari/train_dqn_ale.py)
+- [Dueling Network](https://arxiv.org/abs/1511.06581)
+  - examples: [[Rainbow]](examples/atari/reproduction/rainbow) [[DQN/DoubleDQN/PAL]](examples/atari/train_dqn_ale.py)
+- [Normalized Advantage Function](https://arxiv.org/abs/1603.00748)
+  - examples: [[DQN]](examples/gym/train_dqn_gym.py) (for continuous-action envs only)
 
 
 ## Visualization
