@@ -601,47 +601,6 @@ class DQfD(DoubleDQN):
             batch_accumulator=self.batch_accumulator)
         return loss_nstep, loss_1step
 
-    def act_and_train(self, obs, reward):
-
-        with chainer.using_config('train', False), chainer.no_backprop_mode():
-            action_value = self.model(
-                self.batch_states([obs], self.xp, self.phi))
-            q = float(action_value.max.array)
-            greedy_action = cuda.to_cpu(action_value.greedy_actions.array)[0]
-
-        # Update stats
-        self.average_q *= self.average_q_decay
-        self.average_q += (1 - self.average_q_decay) * q
-
-        self.logger.debug('t:%s q:%s action_value:%s', self.t, q, action_value)
-
-        action = self.explorer.select_action(
-            self.t, lambda: greedy_action, action_value=action_value)
-        self.t += 1
-
-        # Update the target network
-        if self.t % self.target_update_interval == 0:
-            self.sync_target_network()
-
-        if self.last_state is not None:
-            assert self.last_action is not None
-            # Add a transition to the replay buffer
-            self.replay_buffer.append(
-                state=self.last_state,
-                action=self.last_action,
-                reward=reward,
-                next_state=obs,
-                next_action=action,
-                is_state_terminal=False)
-
-        self.last_state = obs
-        self.last_action = action
-
-        self.replay_updater.update_if_necessary(self.t)
-        self.logger.debug('t:%s r:%s a:%s', self.t, reward, action)
-
-        return self.last_action
-
     def get_statistics(self):
         return [
             ('average_q', self.average_q),
@@ -653,27 +612,3 @@ class DQfD(DoubleDQN):
             ('average_agent_td_error', self.average_agent_td_error),
             ('average_demo_td_error', self.average_demo_td_error)
         ]
-
-    def batch_observe_and_train(self, batch_obs, batch_reward,
-                                batch_done, batch_reset):
-        for i in range(len(batch_obs)):
-            self.t += 1
-            # Update the target network
-            if self.t % self.target_update_interval == 0:
-                self.sync_target_network()
-            if self.batch_last_obs[i] is not None:
-                assert self.batch_last_action[i] is not None
-                # Add a transition to the replay buffer
-                self.replay_buffer.append(
-                    state=self.batch_last_obs[i],
-                    action=self.batch_last_action[i],
-                    reward=batch_reward[i],
-                    next_state=batch_obs[i],
-                    next_action=None,
-                    is_state_terminal=batch_done[i],
-                    env_id=i,
-                )
-                if batch_reset[i] or batch_done[i]:
-                    self.batch_last_obs[i] = None
-                    self.replay_buffer.stop_current_episode(env_id=i)
-            self.replay_updater.update_if_necessary(self.t)
