@@ -2,8 +2,11 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
-
 from builtins import *  # NOQA
+from future import standard_library
+standard_library.install_aliases()  # NOQA
+
+import numpy as np
 from logging import getLogger
 
 import chainer
@@ -11,14 +14,9 @@ from chainer import cuda
 import chainer.functions as F
 
 from chainerrl.agents import DoubleDQN
-
 from chainerrl.misc.batch_states import batch_states
 from chainerrl.replay_buffer import PrioritizedBuffer, PrioritizedReplayBuffer
 
-from future import standard_library
-standard_library.install_aliases()  # NOQA
-
-import numpy as np
 
 
 def compute_weighted_value_loss(y, t, weights,

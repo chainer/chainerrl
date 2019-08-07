@@ -83,7 +83,7 @@ def main():
                         'performing gradient updates.')
     parser.add_argument('--eval-n-steps', type=int, default=125000)
     parser.add_argument('--eval-interval', type=int, default=250000)
-    parser.add_argument('--n-best-episodes', type=int, default=30)
+    parser.add_argument('--n-best-episodes', type=int, default=200)
     parser.add_argument('--target-update-interval',
                         type=int, default=10 ** 4,
                         help='Frequency (in timesteps) at which ' +
