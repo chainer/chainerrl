@@ -15,8 +15,7 @@ import chainer.functions as F
 
 from chainerrl.agents import DoubleDQN
 from chainerrl.misc.batch_states import batch_states
-from chainerrl.replay_buffer import PrioritizedBuffer, PrioritizedReplayBuffer
-
+from chainerrl.replay_buffers.prioritized import PrioritizedBuffer, PrioritizedReplayBuffer
 
 
 def compute_weighted_value_loss(y, t, weights,
@@ -249,47 +248,49 @@ class DemoReplayUpdater(object):
         self.replay_start_size = replay_start_size
         self.update_interval = update_interval
 
-    def update_if_necessary(self, iteration):
+    def update_if_necessary(self, iteration, pretraining=False):
         """Called during normal self-play
         """
-        if len(self.replay_buffer) < self.replay_start_size:
-            return
-
-        if (self.episodic_update and (
-                self.replay_buffer.n_episodes < self.batchsize)):
-            return
-
-        if iteration % self.update_interval != 0:
-            return
-
-        for _ in range(self.n_times_update):
+        if pretraining:
             if self.episodic_update:
-                raise NotImplementedError()
-                # episodes_agent = self.replay_buffer_agent.sample_episodes(
-                # self.batchsize, self.episodic_update_len)
-                # episodes_demo = self.replay_buffer_demo.sample_episodes(
-                # self.batch_size, self.episodic_update_len)
-                # epissodes_agent, episodes_demo = self.replay_buffer.sample(
-                #                                    self.batch_size, )
-                # self.update_func(episodes_agent, episodes_demo)
+                episodes_demo = self.replay_buffer.sample_episodes(
+                    self.batchsize, self.episodic_update_len)
+                self.update_func([], episodes_demo)
             else:
-                trans_agent, trans_demo = self.replay_buffer.sample(
-                    self.batchsize)
-                self.update_func(trans_agent, trans_demo)
-                # Update beta only during RL
-                self.replay_buffer.update_beta()
+                trans_demo = self.replay_buffer.sample(
+                    self.batchsize, demo_only=True)
+                self.update_func([], trans_demo)
+        else:
+            if len(self.replay_buffer) < self.replay_start_size:
+                return
+
+            if (self.episodic_update and (
+                    self.replay_buffer.n_episodes < self.batchsize)):
+                return
+
+            if iteration % self.update_interval != 0:
+                return
+
+            for _ in range(self.n_times_update):
+                if self.episodic_update:
+                    # raise NotImplementedError()
+                    episodes_agent = self.replay_buffer_agent.sample_episodes(
+                        self.batchsize, self.episodic_update_len)
+                    episodes_demo = self.replay_buffer_demo.sample_episodes(
+                        self.batch_size, self.episodic_update_len)
+                    epissodes_agent, episodes_demo = self.replay_buffer.sample(
+                        self.batch_size, )
+                    self.update_func(episodes_agent, episodes_demo)
+                else:
+                    trans_agent, trans_demo = self.replay_buffer.sample(
+                        self.batchsize)
+                    self.update_func(trans_agent, trans_demo)
+                    # Update beta only during RL
+                    self.replay_buffer.update_beta()
 
     def update_from_demonstrations(self):
         """Called during pre-train steps. Only update with demonstrations
         """
-        if self.episodic_update:
-            episodes_demo = self.replay_buffer.sample_episodes(
-                self.batchsize, self.episodic_update_len)
-            self.update_func([], episodes_demo)
-        else:
-            trans_demo = self.replay_buffer.sample(
-                self.batchsize, demo_only=True)
-            self.update_func([], trans_demo)
 
 
 def batch_experiences(experiences, xp, phi, gamma, batch_states=batch_states):
@@ -342,10 +343,6 @@ def batch_experiences(experiences, xp, phi, gamma, batch_states=batch_states):
 class DQfD(DoubleDQN):
     """Deep-Q Learning from Demonstrations
     See: https://arxiv.org/abs/1704.03732.
-
-    TODO:
-        * Test batch observe & train.
-        * Test episodic update
 
     DQN Args:
         q_function (StateQFunction): Q-function
@@ -439,7 +436,6 @@ class DQfD(DoubleDQN):
             chainer.optimizer_hooks.WeightDecay(loss_coeff_l2))
 
         # Overwrite DQN's replay updater.
-        # TODO: Is there a better way to do this?
         self.replay_updater = DemoReplayUpdater(
             replay_buffer=self.replay_buffer,
             update_func=self.update,
@@ -457,7 +453,8 @@ class DQfD(DoubleDQN):
         """
         logger = getLogger(__name__)
         for tpre in range(self.n_pretrain_steps):
-            self.replay_updater.update_from_demonstrations()
+            self.replay_updater.update_if_necessary(
+                iteration=-1, pretraining=True)
             if tpre % self.target_update_interval == 0:
                 logger.info('PRETRAIN-step:%s statistics:%s',
                             tpre, self.get_statistics())
