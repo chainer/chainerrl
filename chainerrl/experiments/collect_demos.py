@@ -18,7 +18,7 @@ def collect_demonstrations(agent,
                            outdir,
                            max_episode_len=None,
                            logger=None):
-    """Collects demonstrations from an agent and writes to a file.
+    """Collects demonstrations from an agent and writes them to a file.
 
     Args:
         agent: Agent from which demonstrations are collected.
