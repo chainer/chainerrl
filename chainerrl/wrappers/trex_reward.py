@@ -70,6 +70,9 @@ class TREXReward(gym.Wrapper):
 
     def _train(self):
         #TODOs: sample and align by time
+        # subsample 6000 trajectory pairs between 50 and 100 observations long. 
+        # We optimized the reward functions using Adam with a learning rate of 5e-5 for 30,000 steps.
+        # enduro exception 
         pass
 
     def _phi(self, x):
