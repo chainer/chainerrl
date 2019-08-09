@@ -13,7 +13,6 @@ import os
 import chainer
 import chainer.functions as F
 import chainer.links as L
-import gym
 import numpy as np
 
 import chainerrl
@@ -90,7 +89,7 @@ def main():
             # Randomize actions like epsilon-greedy in evaluation as well
             env = chainerrl.wrappers.RandomizeAction(env, args.eval_epsilon)
         if args.monitor:
-            env = gym.wrappers.Monitor(
+            env = chainerrl.wrappers.Monitor(
                 env, args.outdir,
                 mode='evaluation' if test else 'training')
         if args.render:
