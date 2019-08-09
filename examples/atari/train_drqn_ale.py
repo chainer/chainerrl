@@ -1,5 +1,8 @@
 """An example of training a Deep Recurrent Q-Network (DRQN).
 
+DRQN is a DQN with a recurrent Q-network, described in
+https://arxiv.org/abs/1507.06527.
+
 To train DRQN for 50M timesteps on Breakout, run:
     python train_drqn_ale.py --recurrent
 
