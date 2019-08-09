@@ -13,7 +13,6 @@ os.environ['OMP_NUM_THREADS'] = '1'  # NOQA
 
 import chainer
 import gym
-import gym.wrappers
 import numpy as np
 
 import chainerrl
@@ -132,7 +131,7 @@ def main():
             clip_rewards=not test)
         env.seed(int(env_seed))
         if args.monitor:
-            env = gym.wrappers.Monitor(
+            env = chainerrl.wrappers.Monitor(
                 env, args.outdir,
                 mode='evaluation' if test else 'training')
         if args.render:
