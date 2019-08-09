@@ -41,7 +41,7 @@ class TREXNet(chainer.ChainList):
 class TREXReward(gym.Wrapper):
     """Implements Trajectory-ranked Reward EXtrapolation (TREX):
 
-    https://arxiv.org/abs/1904.06387
+    https://arxiv.org/abs/1904.06387.
 
     Args:
         env: Env to wrap.
@@ -69,6 +69,7 @@ class TREXReward(gym.Wrapper):
         return observation, reward, done, info
 
     def _train(self):
+        #TODOs: sample and align by time
         pass
 
     def _phi(self, x):
