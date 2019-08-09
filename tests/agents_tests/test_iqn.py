@@ -63,7 +63,6 @@ class TestIQNOnDiscretePOABC(
                 L.Linear(obs_size, hidden_size),
                 F.relu,
                 L.NStepRNNTanh(1, hidden_size, hidden_size, 0),
-                # L.NStepGRU(1, hidden_size, hidden_size, 0),
             ),
             phi=chainerrl.links.Sequence(
                 chainerrl.agents.iqn.CosineBasisLinear(32, hidden_size),
