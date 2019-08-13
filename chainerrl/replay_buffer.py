@@ -10,6 +10,7 @@ standard_library.install_aliases()  # NOQA
 from abc import ABCMeta
 from abc import abstractmethod
 from abc import abstractproperty
+import itertools
 
 import numpy as np
 
@@ -181,6 +182,55 @@ def batch_experiences(experiences, xp, phi, gamma, batch_states=batch_states):
     if all(elem[-1]['next_action'] is not None for elem in experiences):
         batch_exp['next_action'] = xp.asarray(
             [elem[-1]['next_action'] for elem in experiences])
+    return batch_exp
+
+
+def batch_recurrent_experiences(
+        experiences, model, xp, phi, gamma, batch_states=batch_states):
+    """Batch experiences for recurrent model updates.
+
+    Args:
+        experiences: list of episodes. Each episode is a list
+            containing between 1 and n dicts, each containing:
+              - state (object): State
+              - action (object): Action
+              - reward (float): Reward
+              - is_state_terminal (bool): True iff next state is terminal
+              - next_state (object): Next state
+        model (chainer.Link): Model that implements StatelessRecurrent.
+        xp : Numpy compatible matrix library: e.g. Numpy or CuPy.
+        phi : Preprocessing function
+        gamma: discount factor
+        batch_states: function that converts a list to a batch
+    Returns:
+        dict of batched transitions
+    """
+    flat_transitions = list(itertools.chain.from_iterable(experiences))
+    batch_exp = {
+        'state': [batch_states(
+            [transition['state'] for transition in ep], xp, phi)
+            for ep in experiences],
+        'action': xp.array(
+            [transition['action'] for transition in flat_transitions]),
+        'reward': xp.array(
+            [transition['reward'] for transition in flat_transitions],
+            dtype=np.float32),
+        'next_state': [batch_states(
+            [transition['next_state'] for transition in ep], xp, phi)
+            for ep in experiences],
+        'is_state_terminal': xp.array(
+            [transition['is_state_terminal']
+             for transition in flat_transitions],
+            dtype=np.float32),
+        'discount': xp.full(len(flat_transitions), gamma, dtype=np.float32),
+        'recurrent_state': model.concatenate_recurrent_states(
+            [ep[0]['recurrent_state'] for ep in experiences]),
+        'next_recurrent_state': model.concatenate_recurrent_states(
+            [ep[0]['next_recurrent_state'] for ep in experiences]),
+    }
+    if all(elem[-1]['next_action'] is not None for elem in experiences):
+        batch_exp['next_action'] = xp.asarray(
+            [transition['next_action'] for transition in flat_transitions])
     return batch_exp
 
 

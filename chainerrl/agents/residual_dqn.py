@@ -5,7 +5,6 @@ from __future__ import absolute_import
 from builtins import *  # NOQA
 from future import standard_library
 standard_library.install_aliases()  # NOQA
-import chainer.functions as F
 
 from chainerrl.agents.dqn import DQN
 from chainerrl.functions import scale_grad
@@ -24,8 +23,13 @@ class ResidualDQN(DQN):
     def _compute_target_values(self, exp_batch):
 
         batch_next_state = exp_batch['next_state']
+        if self.recurrent:
+            target_next_qout, _ = self.model.n_step_forward(
+                batch_next_state, exp_batch['next_recurrent_state'],
+                output_mode='concat')
+        else:
+            target_next_qout = self.model(batch_next_state)
 
-        target_next_qout = self.q_function(batch_next_state)
         next_q_max = target_next_qout.max
 
         batch_rewards = exp_batch['reward']
@@ -38,18 +42,20 @@ class ResidualDQN(DQN):
     def _compute_y_and_t(self, exp_batch):
 
         batch_state = exp_batch['state']
-        batch_size = len(batch_state)
 
         # Compute Q-values for current states
-        qout = self.q_function(batch_state)
+        if self.recurrent:
+            qout, _ = self.model.n_step_forward(
+                batch_state, exp_batch['recurrent_state'],
+                output_mode='concat')
+        else:
+            qout = self.model(batch_state)
 
         batch_actions = exp_batch['action']
-        batch_q = F.reshape(qout.evaluate_actions(
-            batch_actions), (batch_size, 1))
+        batch_q = qout.evaluate_actions(batch_actions)[..., None]
 
         # Target values must also backprop gradients
-        batch_q_target = F.reshape(
-            self._compute_target_values(exp_batch), (batch_size, 1))
+        batch_q_target = self._compute_target_values(exp_batch)[..., None]
 
         return batch_q, scale_grad.scale_grad(batch_q_target, self.grad_scale)
 
@@ -57,6 +63,3 @@ class ResidualDQN(DQN):
     def saved_attributes(self):
         # ResidualDQN doesn't use target models
         return ('model', 'optimizer')
-
-    def input_initial_batch_to_target_model(self, batch):
-        pass

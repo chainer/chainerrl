@@ -18,7 +18,6 @@ import argparse
 import chainer
 from chainer import functions as F
 import gym
-import gym.wrappers
 
 import chainerrl
 from chainerrl.agents import a3c
@@ -128,7 +127,7 @@ def main():
         # Cast observations to float32 because our model uses float32
         env = chainerrl.wrappers.CastObservationToFloat32(env)
         if args.monitor:
-            env = gym.wrappers.Monitor(env, args.outdir)
+            env = chainerrl.wrappers.Monitor(env, args.outdir)
         if not test:
             # Scale rewards (and thus returns) to a reasonable range so that
             # training is easier
