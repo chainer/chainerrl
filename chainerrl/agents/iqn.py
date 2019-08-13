@@ -12,6 +12,7 @@ import chainer.links as L
 
 from chainerrl.action_value import QuantileDiscreteActionValue
 from chainerrl.agents import dqn
+from chainerrl.links import StatelessRecurrentChainList
 
 
 def cosine_basis_functions(x, n_basis_functions=64):
@@ -64,6 +65,28 @@ class CosineBasisLinear(chainer.Chain):
         return out
 
 
+def _evaluate_psi_x_with_quantile_thresholds(psi_x, phi, f, taus):
+    assert psi_x.ndim == 2
+    batch_size, hidden_size = psi_x.shape
+    assert taus.ndim == 2
+    assert taus.shape[0] == batch_size
+    n_taus = taus.shape[1]
+    phi_taus = phi(taus)
+    assert phi_taus.ndim == 3
+    assert phi_taus.shape == (batch_size, n_taus, hidden_size)
+    psi_x_b = F.broadcast_to(
+        F.expand_dims(psi_x, axis=1), phi_taus.shape)
+    h = psi_x_b * phi_taus
+    h = F.reshape(h, (-1, hidden_size))
+    assert h.shape == (batch_size * n_taus, hidden_size)
+    h = f(h)
+    assert h.ndim == 2
+    assert h.shape[0] == batch_size * n_taus
+    n_actions = h.shape[-1]
+    h = F.reshape(h, (batch_size, n_taus, n_actions))
+    return QuantileDiscreteActionValue(h)
+
+
 class ImplicitQuantileQFunction(chainer.Chain):
     """Implicit quantile network-based Q-function.
 
@@ -99,28 +122,58 @@ class ImplicitQuantileQFunction(chainer.Chain):
         psi_x = self.psi(x)
         assert psi_x.ndim == 2
         assert psi_x.shape[0] == batch_size
-        hidden_size = psi_x.shape[1]
 
         def evaluate_with_quantile_thresholds(taus):
-            assert taus.ndim == 2
-            assert taus.shape[0] == batch_size
-            n_taus = taus.shape[1]
-            phi_taus = self.phi(taus)
-            assert phi_taus.ndim == 3
-            assert phi_taus.shape == (batch_size, n_taus, hidden_size)
-            psi_x_b = F.broadcast_to(
-                F.expand_dims(psi_x, axis=1), phi_taus.shape)
-            h = psi_x_b * phi_taus
-            h = F.reshape(h, (-1, hidden_size))
-            assert h.shape == (batch_size * n_taus, hidden_size)
-            h = self.f(h)
-            assert h.ndim == 2
-            assert h.shape[0] == batch_size * n_taus
-            n_actions = h.shape[-1]
-            h = F.reshape(h, (batch_size, n_taus, n_actions))
-            return QuantileDiscreteActionValue(h)
+            return _evaluate_psi_x_with_quantile_thresholds(
+                psi_x, self.phi, self.f, taus)
 
         return evaluate_with_quantile_thresholds
+
+
+class StatelessRecurrentImplicitQuantileQFunction(
+        StatelessRecurrentChainList):
+    """Recurrent implicit quantile network-based Q-function.
+
+    Args:
+        psi (chainer.Link): Link that implements
+            `chainerrl.links.StatelessRecurrent`.
+            (batch_size, obs_size) -> (batch_size, hidden_size).
+        phi (chainer.Link): Callable link
+            (batch_size, n_taus) -> (batch_size, n_taus, hidden_size).
+        f (chainer.Link): Callable link
+            (batch_size * n_taus, hidden_size)
+            -> (batch_size * n_taus, n_actions).
+
+    Returns:
+        ImplicitQuantileDiscreteActionValue: Action values.
+    """
+
+    def __init__(self, psi, phi, f):
+        super().__init__(psi, phi, f)
+        self.psi = psi
+        self.phi = phi
+        self.f = f
+
+    def n_step_forward(self, x, recurrent_state, output_mode):
+        """Evaluate given observations.
+
+        Args:
+            x (ndarray): Batch of observations.
+        Returns:
+            callable: (batch_size, taus) -> (batch_size, taus, n_actions)
+        """
+        assert output_mode == 'concat'
+        if recurrent_state is not None:
+            recurrent_state, = recurrent_state
+        psi_x, recurrent_state = self.psi.n_step_forward(
+            x, recurrent_state, output_mode='concat')
+        assert psi_x.ndim == 2
+
+        def evaluate_with_quantile_thresholds(taus):
+            return _evaluate_psi_x_with_quantile_thresholds(
+                psi_x, self.phi, self.f, taus)
+
+        return evaluate_with_quantile_thresholds, (recurrent_state,)
 
 
 def _unwrap_variable(x):
@@ -248,7 +301,14 @@ class IQN(dqn.DQN):
         taus_tilde = self.xp.random.uniform(
             0, 1, size=(batch_size, self.quantile_thresholds_K)).astype('f')
 
-        target_next_tau2av = self.target_model(batch_next_state)
+        if self.recurrent:
+            target_next_tau2av, _ = self.target_model.n_step_forward(
+                batch_next_state,
+                exp_batch['next_recurrent_state'],
+                output_mode='concat',
+            )
+        else:
+            target_next_tau2av = self.target_model(batch_next_state)
         greedy_actions = target_next_tau2av(taus_tilde).greedy_actions
         taus_prime = self.xp.random.uniform(
             0, 1,
@@ -286,7 +346,14 @@ class IQN(dqn.DQN):
         batch_state = exp_batch['state']
 
         # (batch_size, n_actions, n_atoms)
-        tau2av = self.model(batch_state)
+        if self.recurrent:
+            tau2av, _ = self.model.n_step_forward(
+                batch_state,
+                exp_batch['recurrent_state'],
+                output_mode='concat',
+            )
+        else:
+            tau2av = self.model(batch_state)
         taus = self.xp.random.uniform(
             0, 1, size=(batch_size, self.quantile_thresholds_N)).astype('f')
         av = tau2av(taus)
@@ -321,86 +388,19 @@ class IQN(dqn.DQN):
                 eltwise_loss, batch_accumulator=self.batch_accumulator)
 
 
-    def _compute_action_value(self, batch_obs):
-        with chainer.using_config('train', False), chainer.no_backprop_mode():
-            taus_tilde = self.xp.random.uniform(
-                0, 1,
-                size=(len(batch_obs), self.quantile_thresholds_K)).astype('f')
-            tau2av = self.model(
-                self.batch_states(batch_obs, self.xp, self.phi))
-            return tau2av(taus_tilde)
-
-    def act_and_train(self, obs, reward):
-        action_value = self._compute_action_value([obs])
-        greedy_action = cuda.to_cpu(action_value.greedy_actions.array)[0]
-        q = float(action_value.max.array)
-
-        # Update stats
-        self.average_q *= self.average_q_decay
-        self.average_q += (1 - self.average_q_decay) * q
-
-        self.logger.debug('t:%s q:%s action_value:%s', self.t, q, action_value)
-
-        action = self.explorer.select_action(
-            self.t, lambda: greedy_action, action_value=action_value)
-        self.t += 1
-
-        # Update the target network
-        if self.t % self.target_update_interval == 0:
-            self.sync_target_network()
-
-        if self.last_state is not None:
-            assert self.last_action is not None
-            # Add a transition to the replay buffer
-            self.replay_buffer.append(
-                state=self.last_state,
-                action=self.last_action,
-                reward=reward,
-                next_state=obs,
-                next_action=action,
-                is_state_terminal=False)
-
-        self.last_state = obs
-        self.last_action = action
-
-        self.replay_updater.update_if_necessary(self.t)
-
-        self.logger.debug('t:%s r:%s a:%s', self.t, reward, action)
-
-        return self.last_action
-
-    def act(self, obs):
-        action_value = self._compute_action_value([obs])
-        action = cuda.to_cpu(action_value.greedy_actions.array)[0]
-        q = float(action_value.max.array)
-
-        # Update stats
-        self.average_q *= self.average_q_decay
-        self.average_q += (1 - self.average_q_decay) * q
-
-        self.logger.debug('t:%s q:%s action_value:%s', self.t, q, action_value)
-        return action
-
-    def batch_act_and_train(self, batch_obs):
-        batch_av = self._compute_action_value(batch_obs)
-        batch_maxq = batch_av.max.array
-        batch_argmax = cuda.to_cpu(batch_av.greedy_actions.array)
-        batch_action = [
-            self.explorer.select_action(
-                self.t, lambda: batch_argmax[i],
-                action_value=batch_av[i:i + 1],
-            )
-            for i in range(len(batch_obs))]
-        self.batch_last_obs = list(batch_obs)
-        self.batch_last_action = list(batch_action)
-
-        # Update stats
-        self.average_q *= self.average_q_decay
-        self.average_q += (1 - self.average_q_decay) * float(batch_maxq.mean())
-
-        return batch_action
-
-    def batch_act(self, batch_obs):
-        batch_av = self._compute_action_value(batch_obs)
-        batch_argmax = cuda.to_cpu(batch_av.greedy_actions.array)
-        return batch_argmax
+    def _evaluate_model_and_update_recurrent_states(self, batch_obs, test):
+        batch_xs = self.batch_states(batch_obs, self.xp, self.phi)
+        if self.recurrent:
+            if test:
+                tau2av, self.test_recurrent_states = self.model(
+                    batch_xs, self.test_recurrent_states)
+            else:
+                self.train_prev_recurrent_states = self.train_recurrent_states
+                tau2av, self.train_recurrent_states = self.model(
+                    batch_xs, self.train_recurrent_states)
+        else:
+            tau2av = self.model(batch_xs)
+        taus_tilde = self.xp.random.uniform(
+            0, 1,
+            size=(len(batch_obs), self.quantile_thresholds_K)).astype('f')
+        return tau2av(taus_tilde)

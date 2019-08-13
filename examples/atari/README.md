@@ -6,6 +6,7 @@
 - `train_categorical_dqn_ale.py`: CategoricalDQN
 - `train_dqn_ale.py`: DQN, DoubleDQN or PAL
 - `train_dqn_batch_ale.py`: DQN, DoubleDQN or PAL on batched env
+- `train_drqn_ale.py`: DRQN (DQN with a recurrent model)
 - `train_nsq_ale.py`: NSQ (n-step Q-learning)
 - `train_ppo_ale.py`: PPO
 
@@ -23,6 +24,7 @@ python train_acer_ale.py n_processes [options]
 python train_categorical_dqn_ale.py [options]
 python train_dqn_ale.py [options]
 python train_dqn_batch_ale.py [options]
+python train_drqn_ale.py [options]
 python train_nsq_ale.py n_processes [options]
 python train_ppo_ale.py [options]
 ```
