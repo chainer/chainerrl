@@ -6,6 +6,7 @@ from future import standard_library
 from builtins import *  # NOQA
 standard_library.install_aliases()  # NOQA
 
+import chainer
 import chainer.functions as F
 import chainer.links as L
 from chainer import testing
@@ -46,6 +47,7 @@ class TestDoubleIQNOnDiscreteABC(
             quantile_thresholds_N=self.quantile_thresholds_N,
             quantile_thresholds_N_prime=self.quantile_thresholds_N_prime,
         )
+
 
 class TestDoubleIQNOnDiscretePOABC(
         _TestBatchTrainingMixin, base._TestDQNOnDiscretePOABC):
