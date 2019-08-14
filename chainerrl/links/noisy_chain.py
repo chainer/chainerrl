@@ -50,5 +50,14 @@ def _map_links(func, link):
                 children[i].name = str(i)
 
                 if isinstance(link, Sequence):
-                    # assumes i-th layer corresponds with i-th child
-                    link.layers[i] = new_child
+                    _replace_unique_item(link.layers, child, new_child)
+                # Check chainer.Sequential if it exists.
+                sequential_class = getattr(chainer, 'Sequential', ())
+                if isinstance(link, sequential_class):
+                    _replace_unique_item(link._layers, child, new_child)
+
+
+def _replace_unique_item(xs, old, new):
+    indices = [i for i, x in enumerate(xs) if x is old]
+    assert len(indices) == 1
+    xs[indices[0]] = new

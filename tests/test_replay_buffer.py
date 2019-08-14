@@ -35,7 +35,7 @@ class TestReplayBuffer(unittest.TestCase):
 
         # Add one and sample one
         correct_item = collections.deque([], maxlen=num_steps)
-        for i in range(num_steps):
+        for _ in range(num_steps):
             trans1 = dict(state=0, action=1, reward=2, next_state=3,
                           next_action=4, is_state_terminal=False)
             correct_item.append(trans1)
@@ -69,7 +69,7 @@ class TestReplayBuffer(unittest.TestCase):
         self.assertEqual(len(rbuf), 0)
 
         # Add one and sample one
-        for i in range(num_steps):
+        for _ in range(num_steps):
             trans1 = dict(state=0, action=1, reward=2, next_state=3,
                           next_action=4, is_state_terminal=False)
             rbuf.append(**trans1)
@@ -109,7 +109,7 @@ class TestReplayBuffer(unittest.TestCase):
         self.assertEqual(len(rbuf), 0)
 
         # Add one and sample one
-        for i in range(num_steps - 1):
+        for _ in range(num_steps - 1):
             trans1 = dict(state=0, action=1, reward=2, next_state=3,
                           next_action=4, is_state_terminal=False)
             rbuf.append(**trans1)
@@ -249,9 +249,10 @@ class TestEpisodicReplayBuffer(unittest.TestCase):
         s5 = rbuf.sample(5)
         self.assertEqual(len(s5), 5)
         for t in s5:
-            n = t['state']
+            assert len(t) == 1
+            n = t[0]['state']
             self.assertIn(n, range(5))
-            self.assertEqual(t, transs[n])
+            self.assertEqual(t[0], transs[n])
 
         # And sampled episodes are exactly what I added!
         s2e = rbuf.sample_episodes(2)
@@ -485,6 +486,101 @@ class TestPrioritizedEpisodicReplayBuffer(unittest.TestCase):
                 for t0, t1 in zip(ep, ep[1:]):
                     self.assertEqual(t0['next_state'], t1['state'])
                     self.assertEqual(t0['next_action'], t1['action'])
+
+
+@testing.parameterize(*testing.product({
+    'replay_buffer_type': ['ReplayBuffer', 'PrioritizedReplayBuffer'],
+}))
+class TestReplayBufferWithEnvID(unittest.TestCase):
+
+    def test(self):
+        n = 5
+        if self.replay_buffer_type == 'ReplayBuffer':
+            rbuf = replay_buffer.ReplayBuffer(capacity=None, num_steps=n)
+        elif self.replay_buffer_type == 'PrioritizedReplayBuffer':
+            rbuf = replay_buffer.PrioritizedReplayBuffer(
+                capacity=None, num_steps=n)
+        else:
+            assert False
+
+        # 2 transitions for env_id=0
+        for _ in range(2):
+            trans1 = dict(state=0, action=1, reward=2, next_state=3,
+                          next_action=4, is_state_terminal=False)
+            rbuf.append(env_id=0, **trans1)
+        # 4 transitions for env_id=1 with a terminal state
+        for i in range(4):
+            trans1 = dict(state=0, action=1, reward=2, next_state=3,
+                          next_action=4, is_state_terminal=(i == 3))
+            rbuf.append(env_id=1, **trans1)
+        # 9 transitions for env_id=2
+        for _ in range(9):
+            trans1 = dict(state=0, action=1, reward=2, next_state=3,
+                          next_action=4, is_state_terminal=False)
+            rbuf.append(env_id=2, **trans1)
+
+        # It should have:
+        #   - 4 transitions from env_id=1
+        #   - 5 transitions from env_id=2
+        self.assertEqual(len(rbuf), 9)
+
+        # env_id=0 episode ends
+        rbuf.stop_current_episode(env_id=0)
+
+        # Now it should have 9 + 2 = 11 transitions
+        self.assertEqual(len(rbuf), 11)
+
+        # env_id=2 episode ends
+        rbuf.stop_current_episode(env_id=2)
+
+        # Finally it should have 9 + 2 + 4 = 15 transitions
+        self.assertEqual(len(rbuf), 15)
+
+
+@testing.parameterize(*testing.product({
+    'replay_buffer_type': ['EpisodicReplayBuffer',
+                           'PrioritizedEpisodicReplayBuffer'],
+}))
+class TestEpisodicReplayBufferWithEnvID(unittest.TestCase):
+
+    def test(self):
+        if self.replay_buffer_type == 'EpisodicReplayBuffer':
+            rbuf = replay_buffer.EpisodicReplayBuffer(capacity=None)
+        elif self.replay_buffer_type == 'PrioritizedEpisodicReplayBuffer':
+            rbuf = replay_buffer.PrioritizedEpisodicReplayBuffer(capacity=None)
+        else:
+            assert False
+
+        # 2 transitions for env_id=0
+        for _ in range(2):
+            trans1 = dict(state=0, action=1, reward=2, next_state=3,
+                          next_action=4, is_state_terminal=False)
+            rbuf.append(env_id=0, **trans1)
+        # 4 transitions for env_id=1 with a terminal state
+        for i in range(4):
+            trans1 = dict(state=0, action=1, reward=2, next_state=3,
+                          next_action=4, is_state_terminal=(i == 3))
+            rbuf.append(env_id=1, **trans1)
+        # 9 transitions for env_id=2
+        for _ in range(9):
+            trans1 = dict(state=0, action=1, reward=2, next_state=3,
+                          next_action=4, is_state_terminal=False)
+            rbuf.append(env_id=2, **trans1)
+
+        # It should have 4 transitions from env_id=1
+        self.assertEqual(len(rbuf), 4)
+
+        # env_id=0 episode ends
+        rbuf.stop_current_episode(env_id=0)
+
+        # Now it should have 4 + 2 = 6 transitions
+        self.assertEqual(len(rbuf), 6)
+
+        # env_id=2 episode ends
+        rbuf.stop_current_episode(env_id=2)
+
+        # Finally it should have 4 + 2 + 9 = 15 transitions
+        self.assertEqual(len(rbuf), 15)
 
 
 class TestReplayBufferFail(unittest.TestCase):

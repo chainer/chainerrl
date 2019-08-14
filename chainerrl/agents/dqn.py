@@ -16,9 +16,8 @@ import chainer.functions as F
 from chainerrl import agent
 from chainerrl.misc.batch_states import batch_states
 from chainerrl.misc.copy_param import synchronize_parameters
-from chainerrl.recurrent import Recurrent
-from chainerrl.recurrent import state_reset
 from chainerrl.replay_buffer import batch_experiences
+from chainerrl.replay_buffer import batch_recurrent_experiences
 from chainerrl.replay_buffer import ReplayUpdater
 
 
@@ -81,6 +80,29 @@ def compute_weighted_value_loss(y, t, weights,
     return loss
 
 
+def _batch_reset_recurrent_states_when_episodes_end(
+        model, batch_done, batch_reset, recurrent_states):
+    """Reset recurrent states when episodes end.
+
+    Args:
+        model (chainer.Link): Model that implements `StatelessRecurrent`.
+        batch_done (array-like of bool): True iff episodes are terminal.
+        batch_reset (array-like of bool): True iff episodes will be reset.
+        recurrent_states (object): Recurrent state.
+
+    Returns:
+        object: New recurrent states.
+    """
+    indices_that_ended = [
+        i for i, (done, reset)
+        in enumerate(zip(batch_done, batch_reset)) if done or reset]
+    if indices_that_ended:
+        return model.mask_recurrent_state_at(
+            recurrent_states, indices_that_ended)
+    else:
+        return recurrent_states
+
+
 class DQN(agent.AttributeSavingMixin, agent.BatchAgent):
     """Deep Q-Network algorithm.
 
@@ -106,12 +128,14 @@ class DQN(agent.AttributeSavingMixin, agent.BatchAgent):
         average_loss_decay (float): Decay rate of average loss, only used for
             recording statistics
         batch_accumulator (str): 'mean' or 'sum'
-        episodic_update (bool): Use full episodes for update if set True
         episodic_update_len (int or None): Subsequences of this length are used
             for update if set int and episodic_update=True
         logger (Logger): Logger used
         batch_states (callable): method which makes a batch of observations.
             default is `chainerrl.misc.batch_states.batch_states`
+        recurrent (bool): If set to True, `model` is assumed to implement
+            `chainerrl.links.StatelessRecurrent` and is updated in a recurrent
+            manner.
     """
 
     saved_attributes = ('model', 'target_model', 'optimizer')
@@ -125,10 +149,12 @@ class DQN(agent.AttributeSavingMixin, agent.BatchAgent):
                  soft_update_tau=1e-2,
                  n_times_update=1, average_q_decay=0.999,
                  average_loss_decay=0.99,
-                 batch_accumulator='mean', episodic_update=False,
+                 batch_accumulator='mean',
                  episodic_update_len=None,
                  logger=getLogger(__name__),
-                 batch_states=batch_states):
+                 batch_states=batch_states,
+                 recurrent=False,
+                 ):
         self.model = q_function
         self.q_function = q_function  # For backward compatibility
 
@@ -151,7 +177,8 @@ class DQN(agent.AttributeSavingMixin, agent.BatchAgent):
         assert batch_accumulator in ('mean', 'sum')
         self.logger = logger
         self.batch_states = batch_states
-        if episodic_update:
+        self.recurrent = recurrent
+        if self.recurrent:
             update_func = self.update_from_episodes
         else:
             update_func = self.update
@@ -159,7 +186,7 @@ class DQN(agent.AttributeSavingMixin, agent.BatchAgent):
             replay_buffer=replay_buffer,
             update_func=update_func,
             batchsize=minibatch_size,
-            episodic_update=episodic_update,
+            episodic_update=recurrent,
             episodic_update_len=episodic_update_len,
             n_times_update=n_times_update,
             replay_start_size=replay_start_size,
@@ -177,6 +204,11 @@ class DQN(agent.AttributeSavingMixin, agent.BatchAgent):
         self.average_q_decay = average_q_decay
         self.average_loss = 0
         self.average_loss_decay = average_loss_decay
+
+        # Recurrent states of the model
+        self.train_recurrent_states = None
+        self.train_prev_recurrent_states = None
+        self.test_recurrent_states = None
 
         # Error checking
         if (self.replay_buffer.capacity is not None and
@@ -246,73 +278,31 @@ class DQN(agent.AttributeSavingMixin, agent.BatchAgent):
         loss.backward()
         self.optimizer.update()
 
-    def input_initial_batch_to_target_model(self, batch):
-        self.target_model(batch['state'])
-
     def update_from_episodes(self, episodes, errors_out=None):
-        has_weights = isinstance(episodes, tuple)
-        if has_weights:
-            episodes, weights = episodes
-            if errors_out is None:
-                errors_out = []
-        if errors_out is None:
-            errors_out_step = None
-        else:
-            del errors_out[:]
-            for _ in episodes:
-                errors_out.append(0.0)
-            errors_out_step = []
-
-        with state_reset(self.model), state_reset(self.target_model):
-            loss = 0
-            tmp = list(reversed(sorted(
-                enumerate(episodes), key=lambda x: len(x[1]))))
-            sorted_episodes = [elem[1] for elem in tmp]
-            indices = [elem[0] for elem in tmp]  # argsort
-            max_epi_len = len(sorted_episodes[0])
-            for i in range(max_epi_len):
-                transitions = []
-                weights_step = []
-                for ep, index in zip(sorted_episodes, indices):
-                    if len(ep) <= i:
-                        break
-                    transitions.append([ep[i]])
-                    if has_weights:
-                        weights_step.append(weights[index])
-                batch = batch_experiences(
-                    transitions,
-                    xp=self.xp,
-                    phi=self.phi,
-                    gamma=self.gamma,
-                    batch_states=self.batch_states)
-                assert len(batch['state']) == len(transitions)
-                if i == 0:
-                    self.input_initial_batch_to_target_model(batch)
-                if has_weights:
-                    batch['weights'] = self.xp.asarray(
-                        weights_step, dtype=self.xp.float32)
-                loss += self._compute_loss(batch,
-                                           errors_out=errors_out_step)
-                if errors_out is not None:
-                    for err, index in zip(errors_out_step, indices):
-                        errors_out[index] += err
-            loss /= max_epi_len
-
-            # Update stats
-            self.average_loss *= self.average_loss_decay
-            self.average_loss += \
-                (1 - self.average_loss_decay) * float(loss.array)
-
-            self.model.cleargrads()
-            loss.backward()
-            self.optimizer.update()
-        if has_weights:
-            self.replay_buffer.update_errors(errors_out)
+        assert errors_out is None,\
+            "Recurrent DQN does not support PrioritizedBuffer"
+        exp_batch = batch_recurrent_experiences(
+            episodes,
+            model=self.model,
+            xp=self.xp,
+            phi=self.phi, gamma=self.gamma,
+            batch_states=self.batch_states,
+        )
+        loss = self._compute_loss(exp_batch, errors_out=None)
+        # Update stats
+        self.average_loss *= self.average_loss_decay
+        self.average_loss += (1 - self.average_loss_decay) * float(loss.array)
+        self.optimizer.update(lambda: loss)
 
     def _compute_target_values(self, exp_batch):
         batch_next_state = exp_batch['next_state']
 
-        target_next_qout = self.target_model(batch_next_state)
+        if self.recurrent:
+            target_next_qout, _ = self.target_model.n_step_forward(
+                batch_next_state, exp_batch['next_recurrent_state'],
+                output_mode='concat')
+        else:
+            target_next_qout = self.target_model(batch_next_state)
         next_q_max = target_next_qout.max
 
         batch_rewards = exp_batch['reward']
@@ -327,7 +317,14 @@ class DQN(agent.AttributeSavingMixin, agent.BatchAgent):
         # Compute Q-values for current states
         batch_state = exp_batch['state']
 
-        qout = self.model(batch_state)
+        if self.recurrent:
+            qout, _ = self.model.n_step_forward(
+                batch_state,
+                exp_batch['recurrent_state'],
+                output_mode='concat',
+            )
+        else:
+            qout = self.model(batch_state)
 
         batch_actions = exp_batch['action']
         batch_q = F.reshape(qout.evaluate_actions(
@@ -371,8 +368,9 @@ class DQN(agent.AttributeSavingMixin, agent.BatchAgent):
 
     def act(self, obs):
         with chainer.using_config('train', False), chainer.no_backprop_mode():
-            action_value = self.model(
-                self.batch_states([obs], self.xp, self.phi))
+            action_value =\
+                self._evaluate_model_and_update_recurrent_states(
+                    [obs], test=True)
             q = float(action_value.max.array)
             action = cuda.to_cpu(action_value.greedy_actions.array)[0]
 
@@ -385,50 +383,76 @@ class DQN(agent.AttributeSavingMixin, agent.BatchAgent):
 
     def act_and_train(self, obs, reward):
 
-        with chainer.using_config('train', False), chainer.no_backprop_mode():
-            action_value = self.model(
-                self.batch_states([obs], self.xp, self.phi))
-            q = float(action_value.max.array)
-            greedy_action = cuda.to_cpu(action_value.greedy_actions.array)[0]
-
-        # Update stats
-        self.average_q *= self.average_q_decay
-        self.average_q += (1 - self.average_q_decay) * q
-
-        self.logger.debug('t:%s q:%s action_value:%s', self.t, q, action_value)
-
-        action = self.explorer.select_action(
-            self.t, lambda: greedy_action, action_value=action_value)
-        self.t += 1
+        # Observe the consequences
+        if self.last_state is not None:
+            assert self.last_action is not None
+            # Add a transition to the replay buffer
+            transition = {
+                'state': self.last_state,
+                'action': self.last_action,
+                'reward': reward,
+                'next_state': obs,
+                'is_state_terminal': False,
+            }
+            if self.recurrent:
+                transition['recurrent_state'] =\
+                    self.model.get_recurrent_state_at(
+                        self.train_prev_recurrent_states,
+                        0, unwrap_variable=True)
+                self.train_prev_recurrent_states = None
+                transition['next_recurrent_state'] =\
+                    self.model.get_recurrent_state_at(
+                        self.train_recurrent_states, 0, unwrap_variable=True)
+            self.replay_buffer.append(**transition)
 
         # Update the target network
         if self.t % self.target_update_interval == 0:
             self.sync_target_network()
 
-        if self.last_state is not None:
-            assert self.last_action is not None
-            # Add a transition to the replay buffer
-            self.replay_buffer.append(
-                state=self.last_state,
-                action=self.last_action,
-                reward=reward,
-                next_state=obs,
-                next_action=action,
-                is_state_terminal=False)
+        # Update the model
+        self.replay_updater.update_if_necessary(self.t)
 
+        # Choose an action
+        with chainer.using_config('train', False), chainer.no_backprop_mode():
+            action_value =\
+                self._evaluate_model_and_update_recurrent_states(
+                    [obs], test=False)
+            q = float(action_value.max.array)
+            greedy_action = cuda.to_cpu(action_value.greedy_actions.array)[0]
+        action = self.explorer.select_action(
+            self.t, lambda: greedy_action, action_value=action_value)
+
+        # Update stats
+        self.average_q *= self.average_q_decay
+        self.average_q += (1 - self.average_q_decay) * q
+
+        self.t += 1
         self.last_state = obs
         self.last_action = action
 
-        self.replay_updater.update_if_necessary(self.t)
-
+        self.logger.debug('t:%s q:%s action_value:%s', self.t, q, action_value)
         self.logger.debug('t:%s r:%s a:%s', self.t, reward, action)
 
         return self.last_action
 
+    def _evaluate_model_and_update_recurrent_states(self, batch_obs, test):
+        batch_xs = self.batch_states(batch_obs, self.xp, self.phi)
+        if self.recurrent:
+            if test:
+                batch_av, self.test_recurrent_states = self.model(
+                    batch_xs, self.test_recurrent_states)
+            else:
+                self.train_prev_recurrent_states = self.train_recurrent_states
+                batch_av, self.train_recurrent_states = self.model(
+                    batch_xs, self.train_recurrent_states)
+        else:
+            batch_av = self.model(batch_xs)
+        return batch_av
+
     def batch_act_and_train(self, batch_obs):
         with chainer.using_config('train', False), chainer.no_backprop_mode():
-            batch_xs = self.batch_states(batch_obs, self.xp, self.phi)
-            batch_av = self.model(batch_xs)
+            batch_av = self._evaluate_model_and_update_recurrent_states(
+                batch_obs, test=False)
             batch_maxq = batch_av.max.array
             batch_argmax = cuda.to_cpu(batch_av.greedy_actions.array)
         batch_action = [
@@ -448,8 +472,8 @@ class DQN(agent.AttributeSavingMixin, agent.BatchAgent):
 
     def batch_act(self, batch_obs):
         with chainer.using_config('train', False), chainer.no_backprop_mode():
-            batch_xs = self.batch_states(batch_obs, self.xp, self.phi)
-            batch_av = self.model(batch_xs)
+            batch_av = self._evaluate_model_and_update_recurrent_states(
+                batch_obs, test=True)
             batch_argmax = cuda.to_cpu(batch_av.greedy_actions.array)
             return batch_argmax
 
@@ -463,21 +487,52 @@ class DQN(agent.AttributeSavingMixin, agent.BatchAgent):
             if self.batch_last_obs[i] is not None:
                 assert self.batch_last_action[i] is not None
                 # Add a transition to the replay buffer
-                self.replay_buffer.append(
-                    state=self.batch_last_obs[i],
-                    action=self.batch_last_action[i],
-                    reward=batch_reward[i],
-                    next_state=batch_obs[i],
-                    next_action=None,
-                    is_state_terminal=batch_done[i],
-                )
+                transition = {
+                    'state': self.batch_last_obs[i],
+                    'action': self.batch_last_action[i],
+                    'reward': batch_reward[i],
+                    'next_state': batch_obs[i],
+                    'next_action': None,
+                    'is_state_terminal': batch_done[i],
+                }
+                if self.recurrent:
+                    transition['recurrent_state'] =\
+                        self.model.get_recurrent_state_at(
+                            self.train_prev_recurrent_states,
+                            i, unwrap_variable=True)
+                    transition['next_recurrent_state'] =\
+                        self.model.get_recurrent_state_at(
+                            self.train_recurrent_states,
+                            i, unwrap_variable=True)
+                self.replay_buffer.append(env_id=i, **transition)
                 if batch_reset[i] or batch_done[i]:
                     self.batch_last_obs[i] = None
+                    self.batch_last_action[i] = None
+                    self.replay_buffer.stop_current_episode(env_id=i)
             self.replay_updater.update_if_necessary(self.t)
+
+        if self.recurrent:
+            # Reset recurrent states when episodes end
+            self.train_prev_recurrent_states = None
+            self.train_recurrent_states =\
+                _batch_reset_recurrent_states_when_episodes_end(
+                    model=self.model,
+                    batch_done=batch_done,
+                    batch_reset=batch_reset,
+                    recurrent_states=self.train_recurrent_states,
+                )
 
     def batch_observe(self, batch_obs, batch_reward,
                       batch_done, batch_reset):
-        pass
+        if self.recurrent:
+            # Reset recurrent states when episodes end
+            self.test_recurrent_states =\
+                _batch_reset_recurrent_states_when_episodes_end(
+                    model=self.model,
+                    batch_done=batch_done,
+                    batch_reset=batch_reset,
+                    recurrent_states=self.test_recurrent_states,
+                )
 
     def stop_episode_and_train(self, state, reward, done=False):
         """Observe a terminal state and a reward.
@@ -489,22 +544,33 @@ class DQN(agent.AttributeSavingMixin, agent.BatchAgent):
         assert self.last_action is not None
 
         # Add a transition to the replay buffer
-        self.replay_buffer.append(
-            state=self.last_state,
-            action=self.last_action,
-            reward=reward,
-            next_state=state,
-            next_action=self.last_action,
-            is_state_terminal=done)
+        transition = {
+            'state': self.last_state,
+            'action': self.last_action,
+            'reward': reward,
+            'next_state': state,
+            'next_action': self.last_action,
+            'is_state_terminal': done,
+        }
+        if self.recurrent:
+            transition['recurrent_state'] =\
+                self.model.get_recurrent_state_at(
+                    self.train_prev_recurrent_states, 0, unwrap_variable=True)
+            self.train_prev_recurrent_states = None
+            transition['next_recurrent_state'] =\
+                self.model.get_recurrent_state_at(
+                    self.train_recurrent_states, 0, unwrap_variable=True)
+        self.replay_buffer.append(**transition)
 
-        self.stop_episode()
-
-    def stop_episode(self):
         self.last_state = None
         self.last_action = None
-        if isinstance(self.model, Recurrent):
-            self.model.reset_state()
+        if self.recurrent:
+            self.train_recurrent_states = None
         self.replay_buffer.stop_current_episode()
+
+    def stop_episode(self):
+        if self.recurrent:
+            self.test_recurrent_states = None
 
     def get_statistics(self):
         return [

@@ -230,6 +230,7 @@ def eval_performance(env, agent, n_steps, n_episodes, max_episode_len=None,
     Args:
         env (Environment): Environment used for evaluation
         agent (Agent): Agent to evaluate.
+        n_steps (int): Number of timesteps to evaluate for.
         n_episodes (int): Number of evaluation episodes.
         max_episode_len (int or None): If specified, episodes longer than this
             value will be truncated.
@@ -364,7 +365,7 @@ class AsyncEvaluator(object):
     """Object that is responsible for evaluating asynchronous multiple agents.
 
     Args:
-        n_steps (int): umber of timesteps used in each evaluation.
+        n_steps (int): Number of timesteps used in each evaluation.
         n_episodes (int): Number of episodes used in each evaluation.
         eval_interval (int): Interval of evaluations in steps.
         outdir (str): Path to a directory to save things.

@@ -30,7 +30,12 @@ class AbstractDPP(with_metaclass(ABCMeta, DQN)):
 
         batch_next_state = exp_batch['next_state']
 
-        target_next_qout = self.target_q_function(batch_next_state)
+        if self.recurrent:
+            target_next_qout, _ = self.target_model.n_step_forward(
+                batch_next_state, exp_batch['next_recurrent_state'],
+                output_mode='concat')
+        else:
+            target_next_qout = self.target_model(batch_next_state)
         next_q_expect = self._l_operator(target_next_qout)
 
         batch_rewards = exp_batch['reward']
@@ -44,7 +49,12 @@ class AbstractDPP(with_metaclass(ABCMeta, DQN)):
         batch_state = exp_batch['state']
         batch_size = len(exp_batch['reward'])
 
-        qout = self.q_function(batch_state)
+        if self.recurrent:
+            qout, _ = self.model.n_step_forward(
+                batch_state, exp_batch['recurrent_state'],
+                output_mode='concat')
+        else:
+            qout = self.model(batch_state)
 
         batch_actions = exp_batch['action']
         # Q(s_t,a_t)
@@ -53,7 +63,12 @@ class AbstractDPP(with_metaclass(ABCMeta, DQN)):
 
         with chainer.no_backprop_mode():
             # Compute target values
-            target_qout = self.target_q_function(batch_state)
+            if self.recurrent:
+                target_qout, _ = self.target_model.n_step_forward(
+                    batch_state, exp_batch['recurrent_state'],
+                    output_mode='concat')
+            else:
+                target_qout = self.target_model(batch_state)
 
             # Q'(s_t,a_t)
             target_q = F.reshape(target_qout.evaluate_actions(

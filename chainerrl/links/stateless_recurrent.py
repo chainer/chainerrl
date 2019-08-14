@@ -13,9 +13,6 @@ import chainer.links as L
 import numpy as np
 
 
-import chainerrl
-
-
 def split_one_step_batch_input(xs):
     """Split one-step batch input.
 
@@ -165,8 +162,6 @@ def split_batched_sequences(xs, sections):
     """
     if isinstance(xs, tuple):
         return list(zip(*[split_batched_sequences(x, sections) for x in xs]))
-    elif isinstance(xs, chainerrl.distribution.Distribution):
-        return list(xs.split(sections))
     else:
         return list(F.split_axis(xs, sections, axis=0))
 
@@ -325,7 +320,7 @@ def concatenate_recurrent_states(link, split_recurrent_states):
         xp = link.xp
         hs = []
         cs = []
-        for i, srs in enumerate(split_recurrent_states):
+        for srs in split_recurrent_states:
             if srs is None:
                 h = xp.zeros((n_layers, 1, out_size), dtype=np.float32)
                 c = xp.zeros((n_layers, 1, out_size), dtype=np.float32)
@@ -347,7 +342,7 @@ def concatenate_recurrent_states(link, split_recurrent_states):
         out_size = link.out_size
         xp = link.xp
         hs = []
-        for i, srs in enumerate(split_recurrent_states):
+        for srs in split_recurrent_states:
             if srs is None:
                 h = xp.zeros((n_layers, 1, out_size), dtype=np.float32)
             else:
@@ -379,9 +374,13 @@ class StatelessRecurrentChainList(StatelessRecurrent, chainer.ChainList):
 
     @cached_property
     def recurrent_children(self):
-        """Return recurrent child links."""
-        return [child for child in self.children()
-                if is_recurrent_link(child)]
+        """Return recurrent child links.
+
+        Returns:
+            tuple: Tuple of `chainer.Link`s that are recurrent.
+        """
+        return tuple(child for child in self.children()
+                     if is_recurrent_link(child))
 
     def mask_recurrent_state_at(self, recurrent_states, indices):
         return mask_recurrent_states_of_links_at(

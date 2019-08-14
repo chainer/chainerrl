@@ -12,7 +12,6 @@ from chainer import links as L
 from chainer import testing
 import numpy as np
 
-from chainerrl.distribution import SoftmaxDistribution
 from chainerrl.links import stateless_recurrent
 
 
@@ -102,26 +101,6 @@ class TestSplitBatchedSequences(unittest.TestCase):
         np.testing.assert_allclose(split[1][1].array, seqs_x1[1])
         np.testing.assert_allclose(split[2][0].array, seqs_x0[2])
         np.testing.assert_allclose(split[2][1].array, seqs_x1[2])
-
-    def test_distribution_input(self):
-        # Input: an 4+1+3=8-length distribution
-        # Expected output: a list of 3 distributions (4-, 1-, and 3-length)
-        in_size = 2
-        seqs_x = [
-            np.random.uniform(-1, 1, size=(4, in_size)).astype(np.float32),
-            np.random.uniform(-1, 1, size=(1, in_size)).astype(np.float32),
-            np.random.uniform(-1, 1, size=(3, in_size)).astype(np.float32),
-        ]
-        batched_seqs = np.concatenate(seqs_x, axis=0)
-        self.assertEqual(batched_seqs.shape, (8, in_size))
-        sections = [4, 5]
-        split = stateless_recurrent.split_batched_sequences(
-            SoftmaxDistribution(batched_seqs), sections)
-        self.assertEqual(len(split), 3)
-        self.assertIsInstance(split[0], SoftmaxDistribution)
-        np.testing.assert_allclose(split[0].logits.array, seqs_x[0])
-        np.testing.assert_allclose(split[1].logits.array, seqs_x[1])
-        np.testing.assert_allclose(split[2].logits.array, seqs_x[2])
 
 
 class TestConcatenateSequences(unittest.TestCase):

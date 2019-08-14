@@ -184,7 +184,7 @@ class FCQuadraticStateQFunction(
             hidden_layers = []
             assert n_hidden_layers >= 1
             hidden_layers.append(L.Linear(n_input_channels, n_hidden_channels))
-            for i in range(n_hidden_layers - 1):
+            for _ in range(n_hidden_layers - 1):
                 hidden_layers.append(
                     L.Linear(n_hidden_channels, n_hidden_channels))
             self.hidden_layers = chainer.ChainList(*hidden_layers)

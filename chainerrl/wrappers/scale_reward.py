@@ -26,6 +26,6 @@ class ScaleReward(gym.RewardWrapper):
         self.scale = scale
         self.original_reward = None
 
-    def _reward(self, reward):
+    def reward(self, reward):
         self.original_reward = reward
         return self.scale * reward
