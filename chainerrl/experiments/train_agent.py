@@ -29,7 +29,7 @@ def ask_and_save_agent_replay_buffer(agent, t, outdir, suffix=''):
 
 def train_agent(agent, env, steps, outdir, max_episode_len=None,
                 step_offset=0, evaluator=None, successful_score=None,
-                step_hooks=[], logger=None):
+                step_hooks=(), logger=None):
 
     logger = logger or logging.getLogger(__name__)
 
@@ -102,7 +102,7 @@ def train_agent_with_evaluation(agent,
                                 eval_max_episode_len=None,
                                 eval_env=None,
                                 successful_score=None,
-                                step_hooks=[],
+                                step_hooks=(),
                                 save_best_so_far_agent=True,
                                 logger=None,
                                 ):
@@ -123,7 +123,7 @@ def train_agent_with_evaluation(agent,
         eval_env: Environment used for evaluation.
         successful_score (float): Finish training if the mean score is greater
             than or equal to this value if not None
-        step_hooks (list): List of callable objects that accepts
+        step_hooks (Sequence): Sequence of callable objects that accepts
             (env, agent, step) as arguments. They are called every step.
             See chainerrl.experiments.hooks.
         save_best_so_far_agent (bool): If set to True, after each evaluation

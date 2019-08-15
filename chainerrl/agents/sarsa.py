@@ -10,31 +10,32 @@ from chainerrl.agents import dqn
 
 
 class SARSA(dqn.DQN):
-    """SARSA.
+    """Off-policy SARSA.
 
-    Unlike DQN, this agent uses actions that have been actually taken to
-    compute target Q values, thus is an on-policy algorithm.
+    This agent learns the Q-function of a behavior policy defined via the
+    given explorer, instead of learning the Q-function of the optimal policy.
     """
 
     def _compute_target_values(self, exp_batch):
 
         batch_next_state = exp_batch['next_state']
-        batch_next_action = exp_batch['next_action']
 
-        next_target_action_value = self.target_q_function(
-            batch_next_state)
-        next_q = next_target_action_value.evaluate_actions(
-            batch_next_action)
-
+        if self.recurrent:
+            target_next_qout, _ = self.target_model.n_step_forward(
+                batch_next_state, exp_batch['next_recurrent_state'],
+                output_mode='concat')
+        else:
+            target_next_qout = self.target_model(batch_next_state)
+        # Choose an action using the behavior policy
+        batch_next_action = self.xp.array([
+            self.explorer.select_action(
+                self.t, lambda: target_next_qout.greedy_actions.array[i],
+                action_value=target_next_qout[i:i + 1],
+            )
+            for i in range(len(exp_batch['action']))])
+        next_q = target_next_qout.evaluate_actions(batch_next_action)
         batch_rewards = exp_batch['reward']
         batch_terminal = exp_batch['is_state_terminal']
         discount = exp_batch['discount']
 
         return batch_rewards + discount * (1.0 - batch_terminal) * next_q
-
-    def batch_act_and_train(self, batch_obs):
-        raise NotImplementedError('SARSA does not support batch training')
-
-    def batch_observe_and_train(self, batch_obs, batch_reward,
-                                batch_done, batch_reset):
-        raise NotImplementedError('SARSA does not support batch training')

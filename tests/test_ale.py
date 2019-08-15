@@ -76,7 +76,7 @@ class TestALE(unittest.TestCase):
 
     def test_reward(self):
         env = ale.ALE('pong')
-        for episode in range(3):
+        for _ in range(3):
             total_r = 0
             while not env.is_terminal:
                 a = random.randrange(len(env.legal_actions))
