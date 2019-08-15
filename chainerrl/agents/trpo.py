@@ -468,6 +468,11 @@ class TRPO(agent.AttributeSavingMixin, agent.Agent):
             [transition['adv'] for transition in flat_transitions],
             dtype=np.float32)
 
+        if self.standardize_advantages:
+            mean_advs = xp.mean(flat_advs)
+            std_advs = xp.std(flat_advs)
+            flat_advs = (flat_advs - mean_advs) / (std_advs + 1e-8)
+
         with chainer.using_config('train', False),\
                 chainer.no_backprop_mode():
             policy_rs = self.policy.concatenate_recurrent_states(
@@ -475,11 +480,6 @@ class TRPO(agent.AttributeSavingMixin, agent.Agent):
 
         flat_distribs, _ = self.policy.n_step_forward(
             seqs_states, recurrent_state=policy_rs, output_mode='concat')
-
-        if self.standardize_advantages:
-            mean_advs = xp.mean(flat_advs)
-            std_advs = xp.std(flat_advs)
-            flat_advs = (flat_advs - mean_advs) / (std_advs + 1e-8)
 
         log_prob_old = xp.array(
             [transition['log_prob'] for transition in flat_transitions],
