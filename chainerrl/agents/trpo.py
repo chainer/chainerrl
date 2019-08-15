@@ -581,13 +581,6 @@ The gradient contains None. The policy may have unused parameters."
                     seqs_states, recurrent_state=policy_rs,
                     output_mode='concat')
                 return distrib
-
-            flat_transitions = list(itertools.chain.from_iterable(dataset))
-            actions = xp.array(
-                [transition['action'] for transition in flat_transitions])
-            log_prob_old = xp.array(
-                [transition['log_prob'] for transition in flat_transitions],
-                dtype=np.float32)
         else:
             states = self.batch_states(
                 [transition['state'] for transition in dataset], xp, self.phi)
@@ -597,11 +590,13 @@ The gradient contains None. The policy may have unused parameters."
             def evaluate_current_policy():
                 return self.policy(states)
 
-            actions = xp.array(
-                [transition['action'] for transition in dataset])
-            log_prob_old = xp.array(
-                [transition['log_prob'] for transition in dataset],
-                dtype=np.float32)
+        flat_transitions = (list(itertools.chain.from_iterable(dataset))
+                            if self.recurrent else dataset)
+        actions = xp.array(
+            [transition['action'] for transition in flat_transitions])
+        log_prob_old = xp.array(
+            [transition['log_prob'] for transition in flat_transitions],
+            dtype=np.float32)
 
         for i in range(self.line_search_max_backtrack + 1):
             self.logger.info(
