@@ -74,7 +74,7 @@ def main():
     parser.add_argument('--logger-level', type=int, default=logging.INFO,
                         help='Level of the root logger.')
     parser.add_argument('--policy-output-scale', type=float, default=1.,
-                        help='Weight initialization scale of polity output.')
+                        help='Weight initialization scale of policy output.')
     parser.add_argument('--debug', action='store_true',
                         help='Debug mode.')
     args = parser.parse_args()
