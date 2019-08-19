@@ -27,6 +27,7 @@ from chainerrl.q_functions import DuelingDQN
 from chainerrl import replay_buffer
 
 from chainerrl.wrappers import atari_wrappers
+from chainerrl.wrappers import score_mask_atari
 from chainerrl.wrappers.trex_reward import TREXNet
 from chainerrl.wrappers.trex_reward import TREXReward
 
@@ -80,7 +81,8 @@ def parse_agent(agent):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--env', type=str, default='BreakoutNoFrameskip-v4',
+    parser.add_argument('--env', type=str, default='SpaceInvadersNoFrameskip-v4',
+                        choices=['SpaceInvadersNoFrameskip-v4'],
                         help='OpenAI Atari domain to perform algorithm on.')
     parser.add_argument('--outdir', type=str, default='results',
                         help='Directory path to save output files.'
@@ -137,6 +139,8 @@ def main():
                         help='Learning rate.')
     parser.add_argument('--prioritized', action='store_true', default=False,
                         help='Use prioritized experience replay.')
+    parser.add_argument('--mask-render', action='store_true', default=False,
+                        help='Mask when you render.')
     args = parser.parse_args()
 
     import logging
@@ -156,7 +160,8 @@ def main():
         # Use different random seeds for train and test envs
         env_seed = test_seed if test else train_seed
         env = atari_wrappers.wrap_deepmind(
-            atari_wrappers.make_atari(args.env, max_frames=args.max_frames),
+            score_mask_atari.make_atari(args.env, max_frames=args.max_frames,
+                                        mask_render=args.mask_render),
             episode_life=not test,
             clip_rewards=not test)
         env.seed(int(env_seed))
