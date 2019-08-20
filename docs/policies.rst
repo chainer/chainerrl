@@ -8,6 +8,8 @@ Policy interfaces
 .. autoclass:: chainerrl.policy.Policy
    :members:
 
+   .. automethod:: __call__
+
 Policy implementations
 ======================
 
