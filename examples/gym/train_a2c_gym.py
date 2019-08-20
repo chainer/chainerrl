@@ -19,7 +19,6 @@ import functools
 import chainer
 from chainer import functions as F
 import gym
-import gym.wrappers
 import numpy as np
 
 import chainerrl
@@ -143,7 +142,7 @@ def main():
         # Cast observations to float32 because our model uses float32
         env = chainerrl.wrappers.CastObservationToFloat32(env)
         if args.monitor and process_idx == 0:
-            env = gym.wrappers.Monitor(env, args.outdir)
+            env = chainerrl.wrappers.Monitor(env, args.outdir)
         # Scale rewards observed by agents
         if not test:
             misc.env_modifiers.make_reward_filtered(
@@ -211,7 +210,6 @@ def main():
             eval_interval=args.eval_interval,
             outdir=args.outdir,
         )
-    sample_env.close()
 
 
 if __name__ == '__main__':
