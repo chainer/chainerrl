@@ -133,6 +133,9 @@ def main():
                         help='Learning rate.')
     parser.add_argument('--prioritized', action='store_true', default=False,
                         help='Use prioritized experience replay.')
+    parser.add_argument('--checkpoint-frequency', type=int,
+                        default=None,
+                        help='Frequency with which to checkpoint networks')
     args = parser.parse_args()
 
     import logging
@@ -234,6 +237,7 @@ def main():
         experiments.train_agent_with_evaluation(
             agent=agent, env=env, steps=args.steps,
             eval_n_steps=None,
+            checkpoint_freq=args.checkpoint_frequency,
             eval_n_episodes=args.eval_n_runs,
             eval_interval=args.eval_interval,
             outdir=args.outdir,
