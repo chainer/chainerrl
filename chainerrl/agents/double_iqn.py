@@ -12,11 +12,7 @@ from chainerrl.agents import iqn
 
 
 class DoubleIQN(iqn.IQN):
-    """Double IQN. Using the primary Q-network's greedy/max action
-
-    to compute the target value rather than use the target network's
-    max action.
-    """
+    """Double IQN - Use primary network for target computation."""
 
     def _compute_target_values(self, exp_batch):
         """Compute a batch of target return distributions.
