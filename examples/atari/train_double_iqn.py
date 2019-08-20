@@ -54,7 +54,7 @@ def main():
     parser.add_argument('--agent', type=str, default='IQN',
                         choices=['IQN', 'DoubleIQN'])
     parser.add_argument('--prioritized', action='store_true', default=False,
-                        help='Whether or not to use a prioritized replay buffer')
+                        help='Flag to use a prioritized replay buffer')
     parser.add_argument('--num-step-return', type=int, default=1)
     parser.add_argument('--eval-interval', type=int, default=250000)
     parser.add_argument('--eval-n-steps', type=int, default=125000)
@@ -149,8 +149,9 @@ def main():
             10 ** 6, alpha=0.5, beta0=0.4, betasteps=betasteps,
             num_steps=args.num_step_return)
     else:
-        rbuf = replay_buffer.ReplayBuffer(10 ** 6,
-            num_steps=args.num_step_return)
+        rbuf = replay_buffer.ReplayBuffer(
+                    10 ** 6,
+                    num_steps=args.num_step_return)
 
     explorer = explorers.LinearDecayEpsilonGreedy(
         1.0, args.final_epsilon,

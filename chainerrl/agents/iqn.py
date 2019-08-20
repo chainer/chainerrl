@@ -220,6 +220,7 @@ def compute_eltwise_huber_quantile_loss(y, t, taus, huber_loss_threshold=1.0):
     eltwise_loss = abs(taus - I_delta) * eltwise_huber_loss
     return eltwise_loss
 
+
 def compute_value_loss(eltwise_loss, batch_accumulator='mean'):
     """Compute a loss for value prediction problem.
 
@@ -234,7 +235,7 @@ def compute_value_loss(eltwise_loss, batch_accumulator='mean'):
 
     if batch_accumulator == 'sum':
         # mean over N_prime, then sum over (batch_size, N)
-        loss =  F.sum(F.mean(eltwise_loss, axis=2))
+        loss = F.sum(F.mean(eltwise_loss, axis=2))
     else:
         # mean over (batch_size, N_prime), then sum over N
         loss = F.sum(F.mean(eltwise_loss, axis=(0, 2)))
@@ -257,7 +258,7 @@ def compute_weighted_value_loss(eltwise_loss, batch_size, weights,
     # eltwise_loss is (batchsize, n , n') array of losses
     # weights is an array of shape (batch_size)
     # apply weights per example in batch
-    loss_sum =  F.matmul(F.sum(F.mean(eltwise_loss, axis=2), axis=1), weights)
+    loss_sum = F.matmul(F.sum(F.mean(eltwise_loss, axis=2), axis=1), weights)
     if batch_accumulator == 'mean':
         loss = loss_sum / batch_size
     elif batch_accumulator == 'sum':
@@ -288,7 +289,7 @@ class IQN(dqn.DQN):
         self.quantile_thresholds_N_prime = kwargs.pop(
             'quantile_thresholds_N_prime', 64)
         self.quantile_thresholds_K = kwargs.pop('quantile_thresholds_K', 32)
-        super().__init__(*args, **kwargs)   
+        super().__init__(*args, **kwargs)
 
     def _compute_target_values(self, exp_batch):
         """Compute a batch of target return distributions.
@@ -329,8 +330,8 @@ class IQN(dqn.DQN):
         batch_discount = F.broadcast_to(
             batch_discount[..., None], target_next_maxz.shape)
 
-        return (batch_rewards
-                + batch_discount * (1.0 - batch_terminal) * target_next_maxz)
+        return (batch_rewards +
+                batch_discount * (1.0 - batch_terminal) * target_next_maxz)
 
     def _compute_y_and_taus(self, exp_batch):
         """Compute a batch of predicted return distributions.
@@ -386,7 +387,6 @@ class IQN(dqn.DQN):
         else:
             return compute_value_loss(
                 eltwise_loss, batch_accumulator=self.batch_accumulator)
-
 
     def _evaluate_model_and_update_recurrent_states(self, batch_obs, test):
         batch_xs = self.batch_states(batch_obs, self.xp, self.phi)
