@@ -162,6 +162,7 @@ class TD3(AttributeSavingMixin, BatchAgent):
         self.q2_record = collections.deque(maxlen=1000)
         self.q_func1_loss_record = collections.deque(maxlen=100)
         self.q_func2_loss_record = collections.deque(maxlen=100)
+        self.policy_loss_record = collections.deque(maxlen=100)
 
     def sync_target_network(self):
         """Synchronize target network with current network."""
@@ -230,6 +231,7 @@ class TD3(AttributeSavingMixin, BatchAgent):
         # Since we want to maximize Q, loss is negation of Q
         loss = - F.mean(q)
 
+        self.policy_loss_record.append(float(loss.array))
         self.policy_optimizer.update(lambda: loss)
 
     def update(self, experiences, errors_out=None):
@@ -369,6 +371,7 @@ class TD3(AttributeSavingMixin, BatchAgent):
             ('average_q2', _mean_or_nan(self.q2_record)),
             ('average_q_func1_loss', _mean_or_nan(self.q_func1_loss_record)),
             ('average_q_func2_loss', _mean_or_nan(self.q_func2_loss_record)),
+            ('average_policy_loss', _mean_or_nan(self.policy_loss_record)),
             ('policy_n_updates', self.policy_optimizer.t),
             ('q_func_n_updates', self.q_func1_optimizer.t),
         ]
