@@ -12,7 +12,13 @@ from chainerrl.agents import iqn
 
 
 class DoubleIQN(iqn.IQN):
-    """Double IQN - Use primary network for target computation."""
+    """IQN with DoubleDQN-like target computation.
+
+    For computing targets, rather than have the target network
+    output the Q-value of its highest-valued action, the
+    target network outputs the Q-value of the primary network's 
+    highest valued action.
+    """
 
     def _compute_target_values(self, exp_batch):
         """Compute a batch of target return distributions.
