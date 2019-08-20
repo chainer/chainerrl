@@ -5,16 +5,19 @@ from __future__ import absolute_import
 from future import standard_library
 standard_library.install_aliases()  # NOQA
 
+import chainer
 import chainer.functions as F
 
 from chainerrl.agents import iqn
 
 
 class DoubleIQN(iqn.IQN):
-    """Double IQN. Using the primary Q-network's greedy/max action
+    """IQN with DoubleDQN-like target computation.
 
-    to compute the target value rather than use the target network's
-    max action.
+    For computing targets, rather than have the target network
+    output the Q-value of its highest-valued action, the
+    target network outputs the Q-value of the primary network's 
+    highest valued action.
     """
 
     def _compute_target_values(self, exp_batch):
@@ -29,13 +32,27 @@ class DoubleIQN(iqn.IQN):
         batch_size = len(exp_batch['reward'])
         taus_tilde = self.xp.random.uniform(
             0, 1, size=(batch_size, self.quantile_thresholds_K)).astype('f')
-
-        next_tau2av = self.model(batch_next_state)
+        with chainer.using_config('train', False):
+            if self.recurrent:
+                next_tau2av, _ = self.model.n_step_forward(
+                    batch_next_state,
+                    exp_batch['next_recurrent_state'],
+                    output_mode='concat',
+                )
+            else:
+                next_tau2av = self.model(batch_next_state)
         greedy_actions = next_tau2av(taus_tilde).greedy_actions
         taus_prime = self.xp.random.uniform(
             0, 1,
             size=(batch_size, self.quantile_thresholds_N_prime)).astype('f')
-        target_next_tau2av = self.target_model(batch_next_state)
+        if self.recurrent:
+            target_next_tau2av, _ = self.target_model.n_step_forward(
+                batch_next_state,
+                exp_batch['next_recurrent_state'],
+                output_mode='concat',
+            )
+        else:
+            target_next_tau2av = self.target_model(batch_next_state)
         target_next_maxz = target_next_tau2av(
             taus_prime).evaluate_actions_as_quantiles(greedy_actions)
 
