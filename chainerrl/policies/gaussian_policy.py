@@ -31,8 +31,10 @@ class FCGaussianPolicy(chainer.ChainList, Policy):
         Let y as the output of the mean layer.
         If bound_mean=False:
             mean = y (if bound_mean=False)
+
         If bound_mean=True:
             mean = min_action + tanh(y) * (max_action - min_action) / 2
+
     The variance of the Gaussian is computed as follows:
         Let y as the output of the variance layer.
         variance = softplus(y) + min_var
@@ -77,7 +79,7 @@ class FCGaussianPolicy(chainer.ChainList, Policy):
         if n_hidden_layers > 0:
             self.hidden_layers.append(
                 L.Linear(n_input_channels, n_hidden_channels))
-            for i in range(n_hidden_layers - 1):
+            for _ in range(n_hidden_layers - 1):
                 self.hidden_layers.append(
                     L.Linear(n_hidden_channels, n_hidden_channels))
             self.mean_layer = L.Linear(n_hidden_channels, action_size,

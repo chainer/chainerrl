@@ -9,5 +9,8 @@ API Reference
    agents
    distributions
    experiments
+   explorers
    links
+   policies
    recurrent
+   replay_buffers
