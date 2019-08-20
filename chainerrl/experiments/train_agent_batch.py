@@ -96,7 +96,8 @@ def train_agent_batch(agent, env, steps, outdir,
                 t += 1
                 if checkpoint_freq:
                     if t % checkpoint_freq == 0:
-                        save_agent(agent, t, outdir, logger, suffix='_checkpoint')
+                        save_agent(agent, t, outdir, logger,
+                                   suffix='_checkpoint')
 
                 for hook in step_hooks:
                     hook(env, agent, t)
