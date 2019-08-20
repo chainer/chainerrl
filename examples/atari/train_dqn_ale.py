@@ -237,7 +237,7 @@ def main():
         experiments.train_agent_with_evaluation(
             agent=agent, env=env, steps=args.steps,
             eval_n_steps=None,
-            checkpoint_freq=args.checkpoint_freq,
+            checkpoint_freq=args.checkpoint_frequency,
             eval_n_episodes=args.eval_n_runs,
             eval_interval=args.eval_interval,
             outdir=args.outdir,
