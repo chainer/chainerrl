@@ -16,7 +16,7 @@ class DoubleIQN(iqn.IQN):
 
     For computing targets, rather than have the target network
     output the Q-value of its highest-valued action, the
-    target network outputs the Q-value of the primary network's 
+    target network outputs the Q-value of the primary network's
     highest valued action.
     """
 
