@@ -45,7 +45,7 @@ class TREXReward(gym.Wrapper):
 
     Args:
         env: Env to wrap.
-        demos: A list of ranked demonstrations
+        demos (RankedDemoDataset): A list of ranked demonstrations
         network: A reward network
 
     Attributes:
@@ -54,9 +54,9 @@ class TREXReward(gym.Wrapper):
 
     """
 
-    def __init__(self, env, demos, network=TREXNet()):
+    def __init__(self, env, ranked_demos, network=TREXNet()):
         super().__init__(env)
-        self.demos = demos
+        self.ranked_demos = ranked_demos
         self.trex_network = network
         self.prev_reward = None
         self._train()

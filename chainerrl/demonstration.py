@@ -23,7 +23,7 @@ def extract_episodes(dataset):
 
     episodes = []
     current_episode = []
-    for i in len(dataset):
+    for i in range(len(dataset)):
         obs, a, r, new_obs, done, info = dataset[i]
         current_episode.append((obs, a, r, new_obs, done, info))
         if done:
@@ -82,14 +82,39 @@ class EpisodicDemoDataset(DemoDataset):
         """
 
         assert trajectory_length > 0
-        episodes = 
+        # TODO: Sample from the episodes
         dataset_size = len(self.dataset)
         indices = np.random.randint(dataset_size, size=n, dtype='l')
         return self.dataset[indices]
 
 
+class RankedDemoDataset():
+    """A dataset of episodes ranked by performance quality
 
-class RankedDemonstrationDataset(DemonstrationDataset):
+    Args:
+        episodes: a list of lists of transitions. I.e. a list of episodes.
+    """
 
-    def __init__(self):
-        pass
+    def __init__(self, ranked_episodes):
+        self.episodes = ranked_episodes
+        self.length = sum([len(episode) for episode in self.episodes])
+        self.weights = [float(len(self.episodes[i])) / float(len(self))
+                        for i in range(len(self.episodes))]
+        np.testing.assert_almost_equal(np.sum(self.weights), 1.0) 
+
+    def __len__(self):
+        return self.length
+
+    def sample(self, n, trajectory_length=1):
+        """Samples subtrajectories from episodes
+
+        Args:
+            n (int): number of samples
+            trajectory_length (int): length of sampled trajectories
+        Returns:
+            list of n lists of trajectory_length transitions.
+        """
+
+        assert trajectory_length > 0
+        # TODO: Sample from the episodes
+        return self.episodes[0][1]

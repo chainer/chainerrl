@@ -172,7 +172,20 @@ def main():
             # Randomize actions like epsilon-greedy in evaluation as well
             env = chainerrl.wrappers.RandomizeAction(env, args.eval_epsilon)
         else:
-            env = TREXReward(env=env, demos=[], network=TREXNet())
+            dataset = chainer.datasets.open_pickle_dataset(args.dataset_path)
+            episodes = demonstration.extract_episodes(dataset)
+            # Sort episodes by ground truth ranking
+            # episodes contain transitions of (obs, a, r, new_obs, done, info)
+            ranked_episodes = sorted(episodes,
+                                     key=lambda ep:sum([ep[i][2] for i in range(len(ep))]))
+            episode_rewards = [sum([episode[i][2] \
+                               for i in range(len(episode))]) \
+                               for episode in ranked_episodes]
+            demo_dataset = demonstration.RankedDemoDataset(ranked_episodes)
+            assert sorted(episode_rewards) == episode_rewards
+            env = TREXReward(env=env,
+                             ranked_demos=demo_dataset,
+                             network=TREXNet())
         if args.monitor:
             env = gym.wrappers.Monitor(
                 env, args.outdir,
