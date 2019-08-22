@@ -1,6 +1,7 @@
 from chainerrl import action_value  # NOQA
 from chainerrl import agent  # NOQA
 from chainerrl import agents  # NOQA
+from chainerrl import demonstration  # NOQA
 from chainerrl import distribution  # NOQA
 from chainerrl import env  # NOQA
 from chainerrl import envs  # NOQA

@@ -19,6 +19,7 @@ import numpy as np
 import chainerrl
 from chainerrl.action_value import DiscreteActionValue
 from chainerrl import agents
+from chainerrl import demonstration
 from chainerrl import experiments
 from chainerrl import explorers
 from chainerrl import links
@@ -84,6 +85,8 @@ def main():
     parser.add_argument('--env', type=str, default='SpaceInvadersNoFrameskip-v4',
                         choices=['SpaceInvadersNoFrameskip-v4'],
                         help='OpenAI Atari domain to perform algorithm on.')
+    parser.add_argument('--dataset-path', type=str, required=True,
+                        help='Path of pickle file to dataset.')
     parser.add_argument('--outdir', type=str, default='results',
                         help='Directory path to save output files.'
                              ' If it does not exist, it will be created.')
