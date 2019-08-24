@@ -54,10 +54,16 @@ main() {
       --hint="/chainerrl/.pfnci/hint.pbtxt"
   )
 
+  # Because ffmpeg of official repository causes segmentation fault,
+  # we use jonathonf/ffmpeg-3
+  apt-get update -q
+  apt-get install -qy --no-install-recommends software-properties-common
+  add-apt-repository ppa:jonathonf/ffmpeg-3
+
   apt-get update -q
   apt-get install -qy --no-install-recommends \
       "${PYTHON}-dev" "${PYTHON}-pip" "${PYTHON}-setuptools" \
-      zlib1g-dev make cmake g++ git
+      zlib1g-dev make cmake g++ git ffmpeg freeglut3-dev xvfb
 
   if [ "${CHAINER}" != '' ]; then
     "${PYTHON}" -m pip install "chainer==${CHAINER}"
@@ -77,8 +83,10 @@ main() {
   git config --global user.email "you@example.com"
   git config --global user.name "Your Name"
 
+  # Xvfb's default screen is 1280x1024x8, which seems to cause a problem.
+  # https://bugzilla.redhat.com/show_bug.cgi?id=904851
   OMP_NUM_THREADS=1 PYTHONHASHSEED=0 \
-      xpytest "${xpytest_args[@]}" '/chainerrl/tests/**/test_*.py'
+      xvfb-run --server-args="-screen 0 1280x800x24" xpytest "${xpytest_args[@]}" '/chainerrl/tests/**/test_*.py'
 }
 
 main
