@@ -15,6 +15,20 @@ configs {
   }
 }
 
+configs {
+  key: "chainerrl.py3.gpu.slow"
+  value {
+    requirement {
+      cpu: 10
+      memory: 30
+      gpu: 1
+    }
+    environment_variables { key: "GPU" value: "1" }
+    environment_variables { key: "SLOW" value: "1" }
+    command: "bash .pfnci/script.sh py3.gpu"
+  }
+}
+
 # ChainerRL CPU-only unit tests.
 # URL: https://ci.preferred.jp/chainerrl.py3.cpu/
 configs {
