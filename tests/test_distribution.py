@@ -191,10 +191,11 @@ class TestMellowmaxDistribution(unittest.TestCase):
 class TestGaussianDistribution(unittest.TestCase):
 
     def setUp(self):
-        self.mean = np.random.rand(
-            self.batch_size, self.ndim).astype(np.float32)
-        self.var = np.random.rand(
-            self.batch_size, self.ndim).astype(np.float32)
+        self.mean = np.random.normal(
+            size=(self.batch_size, self.ndim)).astype(np.float32)
+        self.var = np.random.uniform(
+            low=0.5, high=2.0, size=(self.batch_size, self.ndim)).astype(
+            np.float32)
         self.distrib = distribution.GaussianDistribution(self.mean, self.var)
 
     def test_sample(self):
