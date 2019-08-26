@@ -216,6 +216,14 @@ class TestTRPO(unittest.TestCase):
     def _test_abc(self, steps=100000,
                   require_success=True, gpu=-1, load_model=False):
 
+        if self.recurrent and gpu >= 0:
+            self.skipTest(
+                'NStepLSTM does not support double backprop with GPU.')
+        if self.recurrent and chainer.__version__ == '7.0.0b3':
+            self.skipTest(
+                'chainer==7.0.0b3 has a bug in double backrop of LSTM.'
+                ' See https://github.com/chainer/chainer/pull/8037')
+
         env, _ = self.make_env_and_successful_return(test=False)
         test_env, successful_return = self.make_env_and_successful_return(
             test=True)
@@ -263,6 +271,14 @@ class TestTRPO(unittest.TestCase):
     def _test_abc_batch(
             self, steps=100000,
             require_success=True, gpu=-1, load_model=False, num_envs=4):
+
+        if self.recurrent and gpu >= 0:
+            self.skipTest(
+                'NStepLSTM does not support double backprop with GPU.')
+        if self.recurrent and chainer.__version__ == '7.0.0b3':
+            self.skipTest(
+                'chainer==7.0.0b3 has a bug in double backrop of LSTM.'
+                ' See https://github.com/chainer/chainer/pull/8037')
 
         env, _ = self.make_vec_env_and_successful_return(
             test=False, num_envs=num_envs)
