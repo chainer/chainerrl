@@ -105,7 +105,7 @@ class DDPG(AttributeSavingMixin, BatchAgent):
         self.model = model
 
         if gpu is not None and gpu >= 0:
-            cuda.get_device(gpu).use()
+            cuda.get_device_from_id(gpu).use()
             self.model.to_gpu(device=gpu)
 
         self.xp = self.model.xp
