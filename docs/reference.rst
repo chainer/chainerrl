@@ -11,5 +11,6 @@ API Reference
    experiments
    explorers
    links
+   policies
    recurrent
    replay_buffers
