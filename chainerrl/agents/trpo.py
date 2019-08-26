@@ -195,6 +195,7 @@ class TRPO(agent.AttributeSavingMixin, agent.Agent):
 
         self.policy = policy
         self.vf = vf
+        assert policy.xp is vf.xp, 'policy and vf must be on the same device'
         if recurrent:
             self.model = chainerrl.links.StatelessRecurrentBranched(policy, vf)
         else:
