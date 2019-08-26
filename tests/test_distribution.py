@@ -21,7 +21,7 @@ class TestSampleDiscreteActions(unittest.TestCase):
 
     def _test(self, gpu):
         if gpu >= 0:
-            chainer.cuda.get_device(gpu).use()
+            chainer.cuda.get_device_from_id(gpu).use()
             xp = chainer.cuda.cupy
         else:
             xp = np
