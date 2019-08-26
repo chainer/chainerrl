@@ -200,6 +200,12 @@ class TRPO(agent.AttributeSavingMixin, agent.Agent):
             self.model = chainerrl.links.StatelessRecurrentBranched(policy, vf)
         else:
             self.model = chainerrl.links.Branched(policy, vf)
+        if policy.xp is not np:
+            if hasattr(policy, 'device'):
+                # Link.device is available only from chainer v6
+                self.model.to_device(policy.device)
+            else:
+                self.model.to_gpu(device=policy._device_id)
         self.vf_optimizer = vf_optimizer
         self.obs_normalizer = obs_normalizer
         self.gamma = gamma
