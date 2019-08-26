@@ -150,7 +150,7 @@ def main():
         )
 
     if not args.train_async and args.gpu >= 0:
-        chainer.cuda.get_device(args.gpu).use()
+        chainer.cuda.get_device_from_id(args.gpu).use()
         model.to_gpu(args.gpu)
 
     if args.train_async:

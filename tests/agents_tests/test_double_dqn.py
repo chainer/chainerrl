@@ -23,11 +23,12 @@ class TestDoubleDQNOnContinuousABC(
             replay_start_size=100, target_update_interval=100)
 
 
-# Batch training with recurrent models is currently not supported
-class TestDoubleDQNOnDiscretePOABC(basetest_dqn_like._TestDQNOnDiscretePOABC):
+class TestDoubleDQNOnDiscretePOABC(
+        _TestBatchTrainingMixin,
+        basetest_dqn_like._TestDQNOnDiscretePOABC):
 
     def make_dqn_agent(self, env, q_func, opt, explorer, rbuf, gpu):
         return DoubleDQN(
             q_func, opt, rbuf, gpu=gpu, gamma=0.9, explorer=explorer,
             replay_start_size=100, target_update_interval=100,
-            episodic_update=True)
+            recurrent=True)

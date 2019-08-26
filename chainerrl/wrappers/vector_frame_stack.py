@@ -3,8 +3,8 @@ from collections import deque
 from gym import spaces
 import numpy as np
 
-from chainerrl.wrappers.atari_wrappers import LazyFrames
 from chainerrl.env import VectorEnv
+from chainerrl.wrappers.atari_wrappers import LazyFrames
 
 
 class VectorEnvWrapper(VectorEnv):

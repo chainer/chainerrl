@@ -122,7 +122,12 @@ class CategoricalDQN(dqn.DQN):
         """Compute a batch of target return distributions."""
 
         batch_next_state = exp_batch['next_state']
-        target_next_qout = self.target_model(batch_next_state)
+        if self.recurrent:
+            target_next_qout, _ = self.target_model.n_step_forward(
+                batch_next_state, exp_batch['next_recurrent_state'],
+                output_mode='concat')
+        else:
+            target_next_qout = self.target_model(batch_next_state)
 
         batch_rewards = exp_batch['reward']
         batch_terminal = exp_batch['is_state_terminal']
@@ -151,7 +156,12 @@ class CategoricalDQN(dqn.DQN):
         batch_state = exp_batch['state']
 
         # (batch_size, n_actions, n_atoms)
-        qout = self.model(batch_state)
+        if self.recurrent:
+            qout, _ = self.model.n_step_forward(
+                batch_state, exp_batch['recurrent_state'],
+                output_mode='concat')
+        else:
+            qout = self.model(batch_state)
         n_atoms = qout.z_values.size
 
         batch_actions = exp_batch['action']

@@ -2,7 +2,6 @@ import chainer
 from chainer import functions as F
 
 from chainerrl.agents import pal
-from chainerrl.recurrent import state_kept
 
 
 class DoublePAL(pal.PAL):
@@ -12,7 +11,12 @@ class DoublePAL(pal.PAL):
         batch_state = exp_batch['state']
         batch_size = len(exp_batch['reward'])
 
-        qout = self.q_function(batch_state)
+        if self.recurrent:
+            qout, _ = self.model.n_step_forward(
+                batch_state, exp_batch['recurrent_state'],
+                output_mode='concat')
+        else:
+            qout = self.model(batch_state)
 
         batch_actions = exp_batch['action']
         batch_q = qout.evaluate_actions(batch_actions)
@@ -20,16 +24,22 @@ class DoublePAL(pal.PAL):
         # Compute target values
 
         with chainer.no_backprop_mode():
-            target_qout = self.target_q_function(batch_state)
-
             batch_next_state = exp_batch['next_state']
+            if self.recurrent:
+                next_qout, _ = self.model.n_step_forward(
+                    batch_next_state, exp_batch['next_recurrent_state'],
+                    output_mode='concat')
+                target_qout, _ = self.target_model.n_step_forward(
+                    batch_state, exp_batch['recurrent_state'],
+                    output_mode='concat')
+                target_next_qout, _ = self.target_model.n_step_forward(
+                    batch_next_state, exp_batch['next_recurrent_state'],
+                    output_mode='concat')
+            else:
+                next_qout = self.model(batch_next_state)
+                target_qout = self.target_model(batch_state)
+                target_next_qout = self.target_model(batch_next_state)
 
-            with state_kept(self.q_function):
-                next_qout = self.q_function(batch_next_state)
-
-            with state_kept(self.target_q_function):
-                target_next_qout = self.target_q_function(
-                    batch_next_state)
             next_q_max = F.reshape(target_next_qout.evaluate_actions(
                 next_qout.greedy_actions), (batch_size,))
 

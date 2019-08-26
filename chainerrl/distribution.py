@@ -7,6 +7,7 @@ import chainer
 from chainer import functions as F
 import numpy as np
 
+from chainerrl.functions import arctanh
 from chainerrl.functions import mellowmax
 
 
@@ -114,6 +115,19 @@ class Distribution(object, metaclass=ABCMeta):
             tuple of chainer.Variable
         """
         raise NotImplementedError()
+
+    def sample_with_log_prob(self):
+        """Do `sample` and `log_prob` at the same time.
+
+        This can be more efficient than calling `sample` and `log_prob`
+        separately.
+
+        Returns:
+            chainer.Variable: Samples.
+            chainer.Variable: Log probability of the samples.
+        """
+        y = self.samples()
+        return y, self.log_prob(y)
 
 
 class CategoricalDistribution(Distribution):
@@ -250,6 +264,14 @@ def clip_actions(actions, min_action, max_action):
     return F.maximum(F.minimum(actions, max_actions), min_actions)
 
 
+def _eltwise_gaussian_log_likelihood(x, mean, var, ln_var):
+    # log N(x|mean,var)
+    #   = -0.5log(2pi) - 0.5log(var) - (x - mean)**2 / (2*var)
+    return -0.5 * np.log(2 * np.pi) - \
+        0.5 * ln_var - \
+        ((x - mean) ** 2) / (2 * var)
+
+
 class GaussianDistribution(Distribution):
     """Gaussian distribution."""
 
@@ -273,12 +295,9 @@ class GaussianDistribution(Distribution):
         return F.exp(self.log_prob(x))
 
     def log_prob(self, x):
-        # log N(x|mean,var)
-        #   = -0.5log(2pi) - 0.5log(var) - (x - mean)**2 / (2*var)
-        log_probs = -0.5 * np.log(2 * np.pi) - \
-            0.5 * self.ln_var - \
-            ((x - self.mean) ** 2) / (2 * self.var)
-        return F.sum(log_probs, axis=1)
+        eltwise_log_prob = _eltwise_gaussian_log_likelihood(
+            x, self.mean, self.var, self.ln_var)
+        return F.sum(eltwise_log_prob, axis=1)
 
     @cached_property
     def entropy(self):
@@ -305,6 +324,81 @@ class GaussianDistribution(Distribution):
 
     def __getitem__(self, i):
         return GaussianDistribution(self.mean[i], self.var[i])
+
+
+def _tanh_forward_log_det_jacobian(x):
+    """Compute log|det(dy/dx)| except summation where y=tanh(x)."""
+    # For the derivation of this formula, see:
+    # https://github.com/tensorflow/probability/blob/master/tensorflow_probability/python/bijectors/tanh.py  # NOQA
+    return 2. * (np.log(2.) - x - F.softplus(-2. * x))
+
+
+class SquashedGaussianDistribution(Distribution):
+    """Gaussian distribution squashed by tanh.
+
+    This type of distribution was used in https://arxiv.org/abs/1812.05905.
+    """
+
+    def __init__(self, mean, var):
+        self.mean = _wrap_by_variable(mean)
+        self.var = _wrap_by_variable(var)
+        self.ln_var = F.log(var)
+
+    @property
+    def params(self):
+        return (self.mean, self.var)
+
+    @cached_property
+    def most_probable(self):
+        return F.tanh(self.mean)
+
+    def sample_with_log_prob(self):
+        x = F.gaussian(self.mean, self.ln_var)
+        normal_log_prob = _eltwise_gaussian_log_likelihood(
+            x, self.mean, self.var, self.ln_var)
+        log_probs = normal_log_prob - _tanh_forward_log_det_jacobian(x)
+        y = F.tanh(x)
+        return y, F.sum(log_probs, axis=1)
+
+    def sample(self):
+        # Caution: If you would like to apply `log_prob` later, use
+        # `sample_with_log_prob` instead for stability, especially when
+        # tanh(x) can be close to -1 or 1.
+        y = F.tanh(F.gaussian(self.mean, self.ln_var))
+        return y
+
+    def prob(self, x):
+        return F.exp(self.log_prob(x))
+
+    def log_prob(self, x):
+        # Caution: If you would like to apply this to samples from the same
+        # distribution, use `sample_with_log_prob` instead for stability,
+        # especially when tanh(x) can be close to -1 or 1.
+        raw_action = arctanh(x)
+        normal_log_prob = _eltwise_gaussian_log_likelihood(
+            raw_action, self.mean, self.var, self.ln_var)
+        log_probs = normal_log_prob - _tanh_forward_log_det_jacobian(
+            raw_action)
+        return F.sum(log_probs, axis=1)
+
+    @cached_property
+    def entropy(self):
+        raise NotImplementedError
+
+    def copy(self):
+        return SquashedGaussianDistribution(
+            _unwrap_variable(self.mean).copy(),
+            _unwrap_variable(self.var).copy())
+
+    def kl(self, q):
+        raise NotImplementedError
+
+    def __repr__(self):
+        return 'SquashedGaussianDistribution mean:{} ln_var:{}'.format(  # NOQA
+            self.mean.array, self.ln_var.array)
+
+    def __getitem__(self, i):
+        return SquashedGaussianDistribution(self.mean[i], self.var[i])
 
 
 class ContinuousDeterministicDistribution(Distribution):

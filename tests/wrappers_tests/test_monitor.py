@@ -1,7 +1,7 @@
-import unittest
-import tempfile
-import shutil
 import os
+import shutil
+import tempfile
+import unittest
 
 from chainer import testing
 import gym
@@ -42,7 +42,7 @@ class TestMonitor(unittest.TestCase):
                 if done or info.get('needs_reset', False) or t == steps:
                     if episode_idx + 1 == self.n_episodes or t == steps:
                         break
-                    _ = env.reset()
+                    env.reset()
                     episode_idx += 1
                     episode_len = 0
             # `env.close()` is called when `env` is gabage-collected

@@ -149,7 +149,7 @@ TRPO only supports gym.spaces.Box or gym.spaces.Discrete action spaces.""")  # N
 
     # Draw the computational graph and save it in the output directory.
     fake_obs = chainer.Variable(
-        policy.xp.zeros_like(obs_space.low, dtype=np.float32)[None],
+        policy.xp.zeros(obs_space.low.shape, dtype=np.float32)[None],
         name='observation')
     chainerrl.misc.draw_computational_graph(
         [policy(fake_obs)], os.path.join(args.outdir, 'policy'))

@@ -108,7 +108,7 @@ class TestREINFORCE(unittest.TestCase):
                 )
 
         if gpu >= 0:
-            chainer.cuda.get_device(gpu).use()
+            chainer.cuda.get_device_from_id(gpu).use()
             model.to_gpu()
 
         opt = optimizers.Adam()

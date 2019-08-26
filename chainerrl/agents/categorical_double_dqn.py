@@ -2,7 +2,6 @@ import chainer
 
 from chainerrl.agents import categorical_dqn
 from chainerrl.agents.categorical_dqn import _apply_categorical_projection
-from chainerrl.recurrent import state_kept
 
 
 class CategoricalDoubleDQN(categorical_dqn.CategoricalDQN):
@@ -17,10 +16,17 @@ class CategoricalDoubleDQN(categorical_dqn.CategoricalDQN):
         batch_rewards = exp_batch['reward']
         batch_terminal = exp_batch['is_state_terminal']
 
-        with chainer.using_config('train', False), state_kept(self.q_function):
-            next_qout = self.q_function(batch_next_state)
-
-        target_next_qout = self.target_q_function(batch_next_state)
+        with chainer.using_config('train', False):
+            if self.recurrent:
+                target_next_qout, _ = self.target_model.n_step_forward(
+                    batch_next_state, exp_batch['next_recurrent_state'],
+                    output_mode='concat')
+                next_qout, _ = self.model.n_step_forward(
+                    batch_next_state, exp_batch['next_recurrent_state'],
+                    output_mode='concat')
+            else:
+                target_next_qout = self.target_model(batch_next_state)
+                next_qout = self.model(batch_next_state)
 
         next_q_max = target_next_qout.evaluate_actions(
             next_qout.greedy_actions)
