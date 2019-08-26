@@ -89,7 +89,8 @@ main() {
   # Xvfb's default screen is 1280x1024x8, which seems to cause a problem.
   # https://bugzilla.redhat.com/show_bug.cgi?id=904851
   OMP_NUM_THREADS=1 PYTHONHASHSEED=0 \
-      xvfb-run --server-args="-screen 0 1280x800x24" xpytest "${xpytest_args[@]}" '/chainerrl/tests/**/test_*.py'
+      xvfb-run --server-args="-screen 0 1280x800x24" \
+      xpytest "${xpytest_args[@]}" '/chainerrl/tests/**/test_*.py'
 }
 
 main
