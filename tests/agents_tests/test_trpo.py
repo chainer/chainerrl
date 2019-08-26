@@ -22,8 +22,8 @@ from chainerrl.agents import trpo
 from chainerrl.envs.abc import ABC
 from chainerrl.experiments.evaluator import batch_run_evaluation_episodes
 from chainerrl.experiments.evaluator import run_evaluation_episodes
-from chainerrl.experiments import train_agent_with_evaluation
 from chainerrl.experiments import train_agent_batch_with_evaluation
+from chainerrl.experiments import train_agent_with_evaluation
 from chainerrl.links import StatelessRecurrentSequential
 from chainerrl import policies
 
