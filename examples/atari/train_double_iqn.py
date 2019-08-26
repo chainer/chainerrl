@@ -150,7 +150,7 @@ def main():
             num_steps=args.num_step_return)
     else:
         rbuf = replay_buffer.ReplayBuffer(
-                    10 ** 6,
+            10 ** 6,
                     num_steps=args.num_step_return)
 
     explorer = explorers.LinearDecayEpsilonGreedy(
