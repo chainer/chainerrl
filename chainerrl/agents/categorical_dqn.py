@@ -51,8 +51,7 @@ def _apply_categorical_projection(y, y_probs, z):
     assert u.shape == (batch_size, n_atoms)
 
     if cuda.available and xp is cuda.cupy:
-        import cupyx
-        scatter_add = cupyx.scatter_add
+        scatter_add = cuda.cupyx.scatter_add
     else:
         scatter_add = np.add.at
 
