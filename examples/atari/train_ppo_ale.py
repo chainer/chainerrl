@@ -86,7 +86,7 @@ def main():
                              ' only see the current screen.')
     parser.add_argument('--checkpoint-frequency', type=int,
                         default=None,
-                        help='Frequency with which to checkpoint networks')
+                        help='Frequency at which agents are stored.')
     args = parser.parse_args()
 
     import logging
