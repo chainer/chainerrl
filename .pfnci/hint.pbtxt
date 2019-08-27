@@ -22,6 +22,14 @@ rules { name: "agents_tests/test_ppo.py" xdist: 4 deadline: 240 }
 rules { name: "agents_tests/test_pal.py" xdist: 4 deadline: 240 }
 rules { name: "agents_tests/test_trpo.py" xdist: 4 deadline: 240 }
 
+rules { name: "agents_tests/test_a3c.py" xdist: 4 deadline: 240 }
+rules { name: "agents_tests/test_agents.py" xdist: 4 deadline: 240 }
+rules { name: "agents_tests/test_pcl.py" xdist: 4 deadline: 240 }
+rules { name: "agents_tests/test_residual_dqn.py" xdist: 4 deadline: 240 }
+rules { name: "agents_tests/test_soft_actor_critic.py" xdist: 4 deadline: 240 }
+rules { name: "agents_tests/test_td3.py" xdist: 4 deadline: 240 }
+rules { name: "misc_tests/test_random.py" xdist: 4 deadline: 240 }
+
 # Slow tests take 10+ seconds.
 rules { name: "agents_tests/test_acer.py" }
 rules { name: "agents_tests/test_ale.py" }

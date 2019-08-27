@@ -32,6 +32,21 @@ configs {
   }
 }
 
+configs {
+  key: "chainerrl.py3.cpu.slow"
+  value {
+    requirement {
+      cpu: 10
+      memory: 30
+    }
+    time_limit {
+      seconds: 1800
+    }
+    environment_variables { key: "SLOW" value: "1" }
+    command: "bash .pfnci/script.sh py3.cpu"
+  }
+}
+
 # ChainerRL CPU-only unit tests.
 # URL: https://ci.preferred.jp/chainerrl.py3.cpu/
 configs {
