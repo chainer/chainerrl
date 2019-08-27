@@ -21,7 +21,7 @@ class TestSampleDiscreteActions(unittest.TestCase):
 
     def _test(self, gpu):
         if gpu >= 0:
-            chainer.cuda.get_device(gpu).use()
+            chainer.cuda.get_device_from_id(gpu).use()
             xp = chainer.cuda.cupy
         else:
             xp = np
@@ -191,10 +191,11 @@ class TestMellowmaxDistribution(unittest.TestCase):
 class TestGaussianDistribution(unittest.TestCase):
 
     def setUp(self):
-        self.mean = np.random.rand(
-            self.batch_size, self.ndim).astype(np.float32)
-        self.var = np.random.rand(
-            self.batch_size, self.ndim).astype(np.float32)
+        self.mean = np.random.normal(
+            size=(self.batch_size, self.ndim)).astype(np.float32)
+        self.var = np.random.uniform(
+            low=0.5, high=2.0, size=(self.batch_size, self.ndim)).astype(
+            np.float32)
         self.distrib = distribution.GaussianDistribution(self.mean, self.var)
 
     def test_sample(self):
@@ -265,6 +266,62 @@ class TestGaussianDistribution(unittest.TestCase):
         self.assertIsNot(self.distrib, another)
         self.assertIsNot(self.distrib.mean, another.mean)
         self.assertIsNot(self.distrib.var, another.var)
+
+
+def _assert_array_in_range(array, low, high):
+    assert isinstance(array, np.ndarray)
+    assert low < high
+    np.testing.assert_array_less(np.full_like(array, low), array)
+    np.testing.assert_array_less(array, np.full_like(array, high))
+
+
+@testing.parameterize(*testing.product({
+    'batch_size': [1, 3],
+    'ndim': [1, 2],
+}))
+class TestSquashedGaussianDistribution(unittest.TestCase):
+
+    def setUp(self):
+        self.mean = np.random.rand(
+            self.batch_size, self.ndim).astype(np.float32)
+        self.var = np.random.rand(
+            self.batch_size, self.ndim).astype(np.float32)
+        self.distrib = distribution.SquashedGaussianDistribution(
+            self.mean, self.var)
+
+    def test_sample(self):
+        sample = self.distrib.sample()
+        self.assertTrue(isinstance(sample, chainer.Variable))
+        self.assertEqual(sample.shape, (self.batch_size, self.ndim))
+        _assert_array_in_range(sample.array, low=-1, high=1)
+
+    def test_most_probable(self):
+        most_probable = self.distrib.most_probable
+        self.assertTrue(isinstance(most_probable, chainer.Variable))
+        self.assertEqual(most_probable.shape, (self.batch_size, self.ndim))
+        np.testing.assert_allclose(
+            most_probable.array, np.tanh(self.mean), rtol=1e-5)
+        _assert_array_in_range(most_probable.array, low=-1, high=1)
+
+    def test_entropy(self):
+        with self.assertRaises(NotImplementedError):
+            self.distrib.entropy
+
+    def test_kl(self):
+        with self.assertRaises(NotImplementedError):
+            self.distrib.kl(self.distrib)
+
+    def test_copy(self):
+        another = self.distrib.copy()
+        assert isinstance(another, distribution.SquashedGaussianDistribution)
+        self.assertIsNot(self.distrib, another)
+        self.assertIsNot(self.distrib.mean, another.mean)
+        np.testing.assert_allclose(self.mean, another.mean.array)
+        self.assertIsNot(self.distrib.var, another.var)
+        np.testing.assert_allclose(self.var, another.var.array)
+
+    def test_repr(self):
+        assert 'SquashedGaussianDistribution' in str(self.distrib)
 
 
 @testing.parameterize(*testing.product({

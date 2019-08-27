@@ -48,8 +48,9 @@ For more information, you can refer to [ChainerRL's documentation](http://chaine
 | NSQ (N-step Q-learning) | ✓ | ✓ (NAF) | ✓ | ✓ |
 | PCL (Path Consistency Learning) | ✓ | ✓ | ✓ | ✓ |
 | PPO  | ✓ | ✓ | ✓ | x |
-| TRPO | ✓ | ✓ | x | x |
+| TRPO | ✓ | ✓ | ✓ | x |
 | TD3 | x | ✓ | x | x |
+| SAC | x | ✓ | x | x |
 
 Following algorithms have been implemented in ChainerRL:
 - [A2C (Synchronous variant of A3C)](https://openai.com/blog/baselines-acktr-a2c/)
@@ -76,6 +77,8 @@ Following algorithms have been implemented in ChainerRL:
   - examples: [[atari reproduction]](examples/atari/reproduction/rainbow)
 - [REINFORCE](http://www-anw.cs.umass.edu/~barto/courses/cs687/williams92simple.pdf)
   - examples: [[general gym]](examples/gym/train_reinforce_gym.py)
+- [SAC (Soft Actor-Critic)](https://arxiv.org/abs/1812.05905)
+  - examples: [[mujoco reproduction]](examples/mujoco/reproduction/soft_actor_critic)
 - [TRPO (Trust Region Policy Optimization)](https://arxiv.org/abs/1502.05477) with [GAE (Generalized Advantage Estimation)](https://arxiv.org/abs/1506.02438)
   - examples: [[mujoco]](examples/mujoco/train_trpo_gym.py)
 - [TD3 (Twin Delayed Deep Deterministic policy gradient algorithm)](https://arxiv.org/abs/1802.09477)

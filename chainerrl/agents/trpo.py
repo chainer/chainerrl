@@ -195,10 +195,17 @@ class TRPO(agent.AttributeSavingMixin, agent.Agent):
 
         self.policy = policy
         self.vf = vf
+        assert policy.xp is vf.xp, 'policy and vf must be on the same device'
         if recurrent:
             self.model = chainerrl.links.StatelessRecurrentBranched(policy, vf)
         else:
             self.model = chainerrl.links.Branched(policy, vf)
+        if policy.xp is not np:
+            if hasattr(policy, 'device'):
+                # Link.device is available only from chainer v6
+                self.model.to_device(policy.device)
+            else:
+                self.model.to_gpu(device=policy._device_id)
         self.vf_optimizer = vf_optimizer
         self.obs_normalizer = obs_normalizer
         self.gamma = gamma
@@ -468,6 +475,11 @@ class TRPO(agent.AttributeSavingMixin, agent.Agent):
             [transition['adv'] for transition in flat_transitions],
             dtype=np.float32)
 
+        if self.standardize_advantages:
+            mean_advs = xp.mean(flat_advs)
+            std_advs = xp.std(flat_advs)
+            flat_advs = (flat_advs - mean_advs) / (std_advs + 1e-8)
+
         with chainer.using_config('train', False),\
                 chainer.no_backprop_mode():
             policy_rs = self.policy.concatenate_recurrent_states(
@@ -475,11 +487,6 @@ class TRPO(agent.AttributeSavingMixin, agent.Agent):
 
         flat_distribs, _ = self.policy.n_step_forward(
             seqs_states, recurrent_state=policy_rs, output_mode='concat')
-
-        if self.standardize_advantages:
-            mean_advs = xp.mean(flat_advs)
-            std_advs = xp.std(flat_advs)
-            flat_advs = (flat_advs - mean_advs) / (std_advs + 1e-8)
 
         log_prob_old = xp.array(
             [transition['log_prob'] for transition in flat_transitions],
@@ -581,13 +588,6 @@ The gradient contains None. The policy may have unused parameters."
                     seqs_states, recurrent_state=policy_rs,
                     output_mode='concat')
                 return distrib
-
-            flat_transitions = list(itertools.chain.from_iterable(dataset))
-            actions = xp.array(
-                [transition['action'] for transition in flat_transitions])
-            log_prob_old = xp.array(
-                [transition['log_prob'] for transition in flat_transitions],
-                dtype=np.float32)
         else:
             states = self.batch_states(
                 [transition['state'] for transition in dataset], xp, self.phi)
@@ -597,11 +597,13 @@ The gradient contains None. The policy may have unused parameters."
             def evaluate_current_policy():
                 return self.policy(states)
 
-            actions = xp.array(
-                [transition['action'] for transition in dataset])
-            log_prob_old = xp.array(
-                [transition['log_prob'] for transition in dataset],
-                dtype=np.float32)
+        flat_transitions = (list(itertools.chain.from_iterable(dataset))
+                            if self.recurrent else dataset)
+        actions = xp.array(
+            [transition['action'] for transition in flat_transitions])
+        log_prob_old = xp.array(
+            [transition['log_prob'] for transition in flat_transitions],
+            dtype=np.float32)
 
         for i in range(self.line_search_max_backtrack + 1):
             self.logger.info(
