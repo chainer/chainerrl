@@ -48,7 +48,7 @@ For more information, you can refer to [ChainerRL's documentation](http://chaine
 | NSQ (N-step Q-learning) | ✓ | ✓ (NAF) | ✓ | ✓ |
 | PCL (Path Consistency Learning) | ✓ | ✓ | ✓ | ✓ |
 | PPO  | ✓ | ✓ | ✓ | x |
-| TRPO | ✓ | ✓ | x | x |
+| TRPO | ✓ | ✓ | ✓ | x |
 | TD3 | x | ✓ | x | x |
 | SAC | x | ✓ | x | x |
 
