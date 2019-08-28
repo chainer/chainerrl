@@ -101,6 +101,7 @@ class TestSoftmaxDistribution(unittest.TestCase):
                                            batch_log_p.array)
 
     def test_sample_with_log_prob(self):
+        # sample n times, then in expection you'll see every number once
         for i in range(self.n):
             y, log_prob = self.distrib.sample_with_log_prob()
             log_p = self.distrib.log_prob(y)
@@ -171,6 +172,7 @@ class TestMellowmaxDistribution(unittest.TestCase):
                                            batch_log_p.array)
 
     def test_sample_with_log_prob(self):
+        # sample n times, then in expection you'll see every number once
         for i in range(self.n):
             y, log_prob = self.distrib.sample_with_log_prob()
             log_p = self.distrib.log_prob(y)
