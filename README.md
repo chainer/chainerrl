@@ -45,7 +45,7 @@ For more information, you can refer to [ChainerRL's documentation](http://chaine
 | DDPG | x | ✓ | ✓ | ✓ | x |
 | A3C  | ✓ | ✓ | ✓ | ✓ (A2C) | ✓ |
 | ACER | ✓ | ✓ | ✓ | x | ✓ |
-| NSQ (N-step Q-learning) | ✓ | ✓ (NAF) | ✓ | ✓ | ✓ |
+| NSQ (N-step Q-learning) | ✓ | ✓ (NAF) | ✓ | x | ✓ |
 | PCL (Path Consistency Learning) | ✓ | ✓ | ✓ | x | ✓ |
 | PPO  | ✓ | ✓ | ✓ | ✓ | x |
 | TRPO | ✓ | ✓ | ✓ | ✓ | x |
