@@ -100,6 +100,13 @@ class TestSoftmaxDistribution(unittest.TestCase):
             np.testing.assert_almost_equal(np.log(batch_p.array),
                                            batch_log_p.array)
 
+    def test_sample_with_log_prob(self):
+        # sample n times, then in expection you'll see every number once
+        for i in range(self.n):
+            y, log_prob = self.distrib.sample_with_log_prob()
+            log_p = self.distrib.log_prob(y)
+            np.testing.assert_almost_equal(log_p.array, log_prob.array)
+
     def test_entropy(self):
         self.distrib.entropy
         # TODO(fujita)
@@ -163,6 +170,13 @@ class TestMellowmaxDistribution(unittest.TestCase):
             batch_log_p = self.distrib.log_prob(indices)
             np.testing.assert_almost_equal(np.log(batch_p.array),
                                            batch_log_p.array)
+
+    def test_sample_with_log_prob(self):
+        # sample n times, then in expection you'll see every number once
+        for i in range(self.n):
+            y, log_prob = self.distrib.sample_with_log_prob()
+            log_p = self.distrib.log_prob(y)
+            np.testing.assert_almost_equal(log_p.array, log_prob.array)
 
     def test_entropy(self):
         self.distrib.entropy
@@ -233,6 +247,12 @@ class TestGaussianDistribution(unittest.TestCase):
                 sample_log_prob.array[b],
                 np.log(desired_pdf), rtol=1e-4)
 
+    def test_sample_with_log_prob(self):
+        for i in range(10):
+            y, log_prob = self.distrib.sample_with_log_prob()
+            log_p = self.distrib.log_prob(y)
+            np.testing.assert_almost_equal(log_p.array, log_prob.array)
+
     def test_entropy(self):
         entropy = self.distrib.entropy
         for b in range(self.batch_size):
@@ -302,6 +322,13 @@ class TestSquashedGaussianDistribution(unittest.TestCase):
         np.testing.assert_allclose(
             most_probable.array, np.tanh(self.mean), rtol=1e-5)
         _assert_array_in_range(most_probable.array, low=-1, high=1)
+
+    def test_sample_with_log_prob(self):
+        for i in range(10):
+            y, log_prob = self.distrib.sample_with_log_prob()
+            log_p = self.distrib.log_prob(y)
+            np.testing.assert_almost_equal(
+                log_p.array, log_prob.array, decimal=5)
 
     def test_entropy(self):
         with self.assertRaises(NotImplementedError):
