@@ -117,10 +117,11 @@ Our evaluation protocol is designed to mirror the evaluation protocol of the ori
 
 Time statistics...
 
-| Training time (in days) across all domains        |            |
+| Training time (in days) across all domains | |
 | ------------- |:-------------:|
-| Mean        |  13.2241181406 |
-| Fastest Domain |11.6815262606 (Phoenix)|
-| Slowest Domain | 16.8376358549 (Berzerk)|
+| Mean        |  13.224 |
+| Fastest Domain |11.682 (Phoenix)|
+| Slowest Domain | 16.838 (Berzerk)|
+
 
 
