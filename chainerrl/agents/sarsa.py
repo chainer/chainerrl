@@ -6,6 +6,8 @@ from builtins import *  # NOQA
 from future import standard_library
 standard_library.install_aliases()  # NOQA
 
+import chainer
+
 from chainerrl.agents import dqn
 
 
@@ -27,9 +29,11 @@ class SARSA(dqn.DQN):
         else:
             target_next_qout = self.target_model(batch_next_state)
         # Choose an action using the behavior policy
+        next_greedy_actions = chainer.cuda.to_cpu(
+            target_next_qout.greedy_actions.array)
         batch_next_action = self.xp.array([
             self.explorer.select_action(
-                self.t, lambda: target_next_qout.greedy_actions.array[i],
+                self.t, lambda: next_greedy_actions[i],
                 action_value=target_next_qout[i:i + 1],
             )
             for i in range(len(exp_batch['action']))])
