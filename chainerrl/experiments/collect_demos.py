@@ -59,7 +59,7 @@ def collect_demonstrations(agent,
             # o_t, a_t, r__{t+1}, o_{t+1}
             dataset.write((obs, a, r, new_obs, done, info))
             obs = new_obs
-            reset = (done or episode_len == max_episode_len
+            reset = (done or episode_len == max_episode_len \
                      or info.get('needs_reset', False))
             timestep += 1
             episode_len += 1
