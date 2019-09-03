@@ -89,7 +89,9 @@ class TREXReward(gym.Wrapper):
         return observation, trex_reward, done, info
 
     def _train(self):
-
+        # construct a dataset of 6000 pairs from the ranked demos
+        # be sure to sample them appropriately (i.e. using start times), and random lengths
+        # TODO: Check how original paper handles the length being too long for episode. (if at all
         for _ in range(self.steps):
             pass
         # use the mask
@@ -97,6 +99,7 @@ class TREXReward(gym.Wrapper):
         # subsample 6000 trajectory pairs between 50 and 100 observations long. 
         # We optimized the reward functions using Adam with a learning rate of 5e-5 for 30,000 steps.
         # enduro exception 
+        # at the end save the network
 
     def _phi(self, x):
         return np.asarray(x, dtype=np.float32) / 255
