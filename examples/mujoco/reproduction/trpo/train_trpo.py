@@ -148,6 +148,7 @@ def main():
         vf_optimizer=vf_opt,
         obs_normalizer=obs_normalizer,
         update_interval=args.trpo_update_interval,
+        max_kl=0.01,
         conjugate_gradient_max_iter=20,
         conjugate_gradient_damping=1e-1,
         gamma=0.995,
