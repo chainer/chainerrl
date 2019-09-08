@@ -28,10 +28,10 @@ These results reflect ChainerRL  `v0.6.0`. The ChainerRL score currently consist
 | Results Summary ||
 | ------------- |:-------------:|
 | Number of seeds | 2 |
-| Number of common domains | 54 |
+| Number of common domains | 55 |
 | Number of domains where paper scores higher | 25 |
 | Number of domains where ChainerRL scores higher | 27 |
-| Number of ties between paper and ChainerRL | 2 |
+| Number of ties between paper and ChainerRL | 3 |
 
 
 | Game        | ChainerRL Score           | Original Reported Scores |
@@ -73,8 +73,7 @@ These results reflect ChainerRL  `v0.6.0`. The ChainerRL score currently consist
 | MsPacman | 5786.5| **6349**|
 | NameThisGame | **23151.3**| 22682|
 | Phoenix | **145318.8**| 56599|
-| Pitfall | 0.0| N/A|
-| Pitfall! | N/A| 0.0|
+| Pitfall | 0.0| 0.0|
 | Pong | **21.0**| **21.0**|
 | Pooyan | 28041.5| N/A|
 | PrivateEye | **289.9**| 200|
