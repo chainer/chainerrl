@@ -29,8 +29,8 @@ These results reflect ChainerRL  `v0.6.0`. The ChainerRL score currently consist
 | Results Summary ||
 | ------------- |:-------------:|
 | Number of seeds | 1 |
-| Number of common domains | 52 |
-| Number of domains where paper scores higher | 25 |
+| Number of common domains | 54 |
+| Number of domains where paper scores higher | 27 |
 | Number of domains where ChainerRL scores higher | 24 |
 | Number of ties between paper and ChainerRL | 3 | 
 
@@ -66,8 +66,7 @@ These results reflect ChainerRL  `v0.6.0`. The ChainerRL score currently consist
 | Gravitar | 228.0| **379**|
 | Hero | **36892.5**| 30791|
 | IceHockey | -4.6| **-2**|
-| JamesBond | N/A| 509.0|
-| Jamesbond | 370.1| N/A|
+| Jamesbond | 370.1| 509.0|
 | JourneyEscape | -871.2| N/A|
 | Kangaroo | 115.8| **1166**|
 | Krull | **10601.4**| 9422|
@@ -76,8 +75,7 @@ These results reflect ChainerRL  `v0.6.0`. The ChainerRL score currently consist
 | MsPacman | **2498.0**| 2436|
 | NameThisGame | 6597.0| **7168**|
 | Phoenix | **42654.5**| 9476|
-| Pitfall | -10.8| N/A|
-| Pitfall! | N/A| 0.0|
+| Pitfall | -10.8| 0.0|
 | Pong | **20.9**| 7|
 | Pooyan | 4067.9| N/A|
 | PrivateEye | 376.1| **3781**|
