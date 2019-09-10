@@ -27,8 +27,8 @@ These results reflect ChainerRL  `v0.7.0`.
 | Results Summary ||
 | ------------- |:-------------:|
 | Number of seeds | 1 |
-| Number of common domains | 51 |
-| Number of domains where paper scores higher | 21 |
+| Number of common domains | 52 |
+| Number of domains where paper scores higher | 22 |
 | Number of domains where ChainerRL scores higher | 29 |
 | Number of ties between paper and ChainerRL | 1 |
 
@@ -73,8 +73,7 @@ These results reflect ChainerRL  `v0.7.0`.
 | MsPacman | **6015.4**| 5380.4|
 | NameThisGame | 13092.1| **13136.0**|
 | Phoenix | **223676.3**| 108528.6|
-| Pitfall | -3.5| N/A|
-| Pitfall! | N/A| 0.0|
+| Pitfall | -3.5| 0.0|
 | Pong | **21.0**| 20.9|
 | Pooyan | 7946.6| N/A|
 | PrivateEye | 100.0| **4234.0**|
