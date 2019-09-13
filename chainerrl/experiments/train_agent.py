@@ -81,7 +81,7 @@ def train_agent(agent, env, steps, outdir, checkpoint_freq=None,
                 obs = env.reset()
                 r = 0
             if checkpoint_freq and t % checkpoint_freq == 0:
-                    save_agent(agent, t, outdir, logger, suffix='_checkpoint')
+                save_agent(agent, t, outdir, logger, suffix='_checkpoint')
 
     except (Exception, KeyboardInterrupt):
         # Save the current model before being killed
