@@ -12,6 +12,7 @@ import chainer.functions as F
 import chainer.links as L
 import gym
 import numpy as np
+impoty random
 
 from chainerrl.misc.batch_states import batch_states
 
@@ -53,6 +54,8 @@ class TREXReward(gym.Wrapper):
         ranked_demos (RankedDemoDataset): A list of ranked demonstrations
         steps: number of gradient steps
         sub_traj_len: a tuple containing (min, max) traj length to sample
+        traj_batch_size: num trajectory pairs to use per update
+        opt: optimizer
         network: A reward network to train
 
     Attributes:
@@ -64,15 +67,18 @@ class TREXReward(gym.Wrapper):
     def __init__(self, env,
                  ranked_demos,
                  steps=30000,
-                 num_sub_trajs=6000,
+                 num_sub_trajs=12800,
                  sub_traj_len=(50,100),
-                 optimizer=optimizers.Adam(),
-                 network=TREXNet()):
+                 traj_batch_size=16,
+                 opt=optimizers.Adam(alpha=0.00005),
+                 sample_live=True,
+                 network=TREXNet(),
+                 save_network=False):
         super().__init__(env)
         self.ranked_demos = ranked_demos
         self.steps = steps
         self.trex_network = network
-        self.opt = optimizer
+        self.opt = opt
         self.opt.setup(self.trex_network)
         self.training_observations = []
         self.training_labels = []
@@ -81,6 +87,8 @@ class TREXReward(gym.Wrapper):
         self.min_sub_traj_len = sub_traj_len[0]
         self.max_sub_traj_len = sub_traj_len[1]
         self.num_sub_trajs = num_sub_trajs
+        self.sample_live = sample_live
+        self.save_network = save_network
         self._train()
 
     def step(self, action):
@@ -90,48 +98,80 @@ class TREXReward(gym.Wrapper):
             trex_reward = self.trex_network(obs)
         return observation, trex_reward, done, info
 
+    def create_example(self):
+        '''Creates a training example.'''
 
-    def create_training_dataset(self):
-        training_trajs = []
-        training_labels = []
         ranked_trajs = self.ranked_demos.episodes
         indices = range(len(ranked_trajs))
-        for _ in range(self.num_sub_trajs):
-            traj_indices = np.random.choice(indices, size=2, replace=False)
-            i = traj_indices[0]
-            j = traj_indices[1]
-            min_ep_len = min(len(ranked_trajs[i]), len(ranked_trajs[j]))
-            sub_traj_len = np.random.randint(self.min_sub_traj_len,
-                                             self.max_sub_traj_len)
-            traj_1 = ranked_trajs[i]
-            traj_2 = ranked_trajs[j]
-            if i < j:
-                i_start = np.random.randint(min_ep_len - sub_traj_len + 1)
-                j_start = np.random.randint(i_start, len(traj_2) - sub_traj_len + 1)
-            else:
-                j_start = np.random.randint(min_ep_len - sub_traj_len + 1)
-                i_start = np.random.randint(j_start, len(traj_1) - sub_traj_len + 1)
-            sub_traj_i = subseq(traj_1, sub_traj_len, start=i_start)
-            sub_traj_j = subseq(traj_2, sub_traj_len, start=j_start)
-            # if trajectory i is better than trajectory j
-            if i > j:
-                label = 0
-            else:
-                label = 1
-            training_trajs.append((sub_traj_i, sub_traj_j))
-            training_labels.append(label)
-        return training_trajs, training_labels
+        traj_indices = np.random.choice(indices, size=2, replace=False)
+        i = traj_indices[0]
+        j = traj_indices[1]
+        min_ep_len = min(len(ranked_trajs[i]), len(ranked_trajs[j]))
+        sub_traj_len = np.random.randint(self.min_sub_traj_len,
+                                         self.max_sub_traj_len)
+        traj_1 = ranked_trajs[i]
+        traj_2 = ranked_trajs[j]
+        if i < j:
+            i_start = np.random.randint(min_ep_len - sub_traj_len + 1)
+            j_start = np.random.randint(i_start, len(traj_2) - sub_traj_len + 1)
+        else:
+            j_start = np.random.randint(min_ep_len - sub_traj_len + 1)
+            i_start = np.random.randint(j_start, len(traj_1) - sub_traj_len + 1)
+        sub_traj_i = subseq(traj_1, sub_traj_len, start=i_start)
+        sub_traj_j = subseq(traj_2, sub_traj_len, start=j_start)
+        # if trajectory i is better than trajectory j
+        if i > j:
+            label = 0
+        else:
+            label = 1
+        return sub_traj_i, sub_traj_j, label
 
+    def create_training_dataset(self):
+        self.examples = []
+        self.index = 0
+        for _ in range(self.num_sub_trajs):
+            self.examples.append(self.create_example())
+
+
+    def get_training_batch(self):
+        if not self.sample_live:
+            if not self.examples
+                self.create_training_dataset()
+            if self.index + self.traj_batch_size > len(self.examples):
+                self.index = 0
+                random.shuffle(self.examples)
+            return self.examples[self.index:self.index + self.traj_batch_size]
+        else:
+            batch = [self.create_example() for _ in range(self.traj_batch_size)]
+        return batch
+
+    def _compute_loss(self, batch):
+        pass
+
+    def _apply_masks(self):
+        for i in range(len(self.ranked_demos.episodes)):
+            episode = self.ranked_demos.episodes[i]
+            for j in range(len(episode))
+                frame = self.ranked_demos.episodes[i][j][0]
+                self.ranked_demos.episodes[i][j][0] = self.mask(frame)
+        self._compute_loss(self, batch)
 
     def _train(self):
-        training_trajs, training_labels = self.create_training_dataset()
+        # mask the whole dataset
+        self._apply_masks()
         for _ in range(self.steps):
+            # get batch of traj pairs
+            batch = self.get_training_batch()
+            # do updates
+            loss = self._compute_loss()
+            self.trex_reward.cleargrads()
+            loss.backward()
+            self.opt.update()
+
+        if self.save_network:
             pass
-        # use the mask
-        #TODOs: sample and align by time
-        # subsample 6000 trajectory pairs between 50 and 100 observations long. 
-        # We optimized the reward functions using Adam with a learning rate of 5e-5 for 30,000 steps.
-        # enduro exception 
+
+
         # at the end save the network
 
     def _phi(self, x):

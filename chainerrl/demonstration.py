@@ -56,38 +56,6 @@ class DemoDataset():
         return self.dataset[indices]
 
 
-class EpisodicDemoDataset(DemoDataset):
-    """A basic demonstration dataset of several episodes
-
-    Args:
-        demos_pickle: pickle filename of demonstrations 
-            (e.g. output of chainerrl.collect_demos.collect_demonstrations)
-    """
-
-    def __init__(self, demos_pickle):
-        DemoDataset.__init__(self, demos_pickle)
-        self.episodes = extract_episodes(self.dataset)
-        self.weights = [float(len(self.episodes[i])) / float(len(self.dataset))
-                        for i in range(len(self.episodes))]
-        np.testing.assert_almost_equal(np.sum(self.weights), 1.0) 
-
-    def sample(self, n, trajectory_length=1):
-        """Samples subtrajectories from episodes
-
-        Args:
-            n (int): number of samples
-            trajectory_length (int): length of sampled trajectories
-        Returns:
-            list of n lists of trajectory_length transitions.
-        """
-
-        assert trajectory_length > 0
-        # TODO: Sample from the episodes
-        dataset_size = len(self.dataset)
-        indices = np.random.randint(dataset_size, size=n, dtype='l')
-        return self.dataset[indices]
-
-
 class RankedDemoDataset():
     """A dataset of episodes ranked by performance quality
 
@@ -104,17 +72,3 @@ class RankedDemoDataset():
 
     def __len__(self):
         return self.length
-
-    def sample(self, n, trajectory_length=1):
-        """Samples subtrajectories from episodes
-
-        Args:
-            n (int): number of samples
-            trajectory_length (int): length of sampled trajectories
-        Returns:
-            list of n lists of trajectory_length transitions.
-        """
-
-        assert trajectory_length > 0
-        # TODO: Sample from the episodes
-        return self.episodes[0][1]
