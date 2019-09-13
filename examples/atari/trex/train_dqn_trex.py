@@ -9,6 +9,7 @@ import argparse
 import os
 
 import chainer
+from chainer import cuda
 from chainer import functions as F
 from chainer import links as L
 from chainer import optimizers
@@ -177,15 +178,16 @@ def main():
             # Sort episodes by ground truth ranking
             # episodes contain transitions of (obs, a, r, new_obs, done, info)
             ranked_episodes = sorted(episodes,
-                                     key=lambda ep:sum([ep[i][2] for i in range(len(ep))]))
-            episode_rewards = [sum([episode[i][2] \
+                                     key=lambda ep:sum([ep[i]['reward'] for i in range(len(ep))]))
+            episode_rewards = [sum([episode[i]['reward']  \
                                for i in range(len(episode))]) \
                                for episode in ranked_episodes]
             demo_dataset = demonstration.RankedDemoDataset(ranked_episodes)
             assert sorted(episode_rewards) == episode_rewards
             env = TREXReward(env=env,
                              ranked_demos=demo_dataset,
-                             network=TREXNet())
+                             network=TREXNet(),
+                             gpu=args.gpu)
         if args.monitor:
             env = gym.wrappers.Monitor(
                 env, args.outdir,

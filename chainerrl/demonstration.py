@@ -25,7 +25,13 @@ def extract_episodes(dataset):
     current_episode = []
     for i in range(len(dataset)):
         obs, a, r, new_obs, done, info = dataset[i]
-        current_episode.append((obs, a, r, new_obs, done, info))
+        current_episode.append(
+            {"obs" : obs,
+            "action" : a,
+            "reward" : r,
+            "new_obs" : new_obs,
+            "done" : done,
+            "info" : info})
         if done:
             episodes.append(current_episode)
             current_episode = []
@@ -60,7 +66,7 @@ class RankedDemoDataset():
     """A dataset of episodes ranked by performance quality
 
     Args:
-        episodes: a list of lists of transitions. I.e. a list of episodes.
+        episodes: a list of lists of transition_dicts.
     """
 
     def __init__(self, ranked_episodes):

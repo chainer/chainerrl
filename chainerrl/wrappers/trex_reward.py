@@ -12,7 +12,7 @@ import chainer.functions as F
 import chainer.links as L
 import gym
 import numpy as np
-impoty random
+import random
 
 from chainerrl.misc.batch_states import batch_states
 
@@ -73,6 +73,7 @@ class TREXReward(gym.Wrapper):
                  opt=optimizers.Adam(alpha=0.00005),
                  sample_live=True,
                  network=TREXNet(),
+                 gpu=None,
                  save_network=False):
         super().__init__(env)
         self.ranked_demos = ranked_demos
@@ -84,11 +85,15 @@ class TREXReward(gym.Wrapper):
         self.training_labels = []
         self.prev_reward = None
         self.mask = env.mask
+        self.traj_batch_size = traj_batch_size
         self.min_sub_traj_len = sub_traj_len[0]
         self.max_sub_traj_len = sub_traj_len[1]
         self.num_sub_trajs = num_sub_trajs
         self.sample_live = sample_live
-        self.save_network = save_network
+        self.save_network = save_network        
+        if gpu is not None and gpu >= 0:
+            cuda.get_device(gpu).use()
+            self.trex_reward.to_gpu(device=gpu)
         self._train()
 
     def step(self, action):
@@ -135,7 +140,7 @@ class TREXReward(gym.Wrapper):
 
     def get_training_batch(self):
         if not self.sample_live:
-            if not self.examples
+            if not self.examples:
                 self.create_training_dataset()
             if self.index + self.traj_batch_size > len(self.examples):
                 self.index = 0
@@ -145,16 +150,33 @@ class TREXReward(gym.Wrapper):
             batch = [self.create_example() for _ in range(self.traj_batch_size)]
         return batch
 
+
     def _compute_loss(self, batch):
-        pass
+        xp = self.trex_network.xp
+        preprocessed = {
+            'i' : [batch_states([transition["obs"] for transition in example[0]], xp, self._phi)
+                               for example in batch],
+            'j' : [batch_states([transition["obs"] for transition in example[1]], xp, self._phi)
+                                           for example in batch],
+            'label' : xp.array([example[2] for example in batch])
+        }
+        rewards_i = [F.sum(self.trex_network(preprocessed['i'][i])) for i in range(len(preprocessed['i']))]
+        rewards_j = [F.sum(self.trex_network(preprocessed['j'][i])) for i in range(len(preprocessed['j']))]
+        rewards_i = F.expand_dims(F.stack(rewards_i), 1)
+        rewards_j = F.expand_dims(F.stack(rewards_j), 1)
+        predictions = F.concat((rewards_i, rewards_j))
+        mean_loss = F.mean(F.softmax_cross_entropy(predictions,
+                                                   preprocessed['label']))
+        return mean_loss
 
     def _apply_masks(self):
+        #TODO: Support lazy frames
         for i in range(len(self.ranked_demos.episodes)):
             episode = self.ranked_demos.episodes[i]
-            for j in range(len(episode))
-                frame = self.ranked_demos.episodes[i][j][0]
-                self.ranked_demos.episodes[i][j][0] = self.mask(frame)
-        self._compute_loss(self, batch)
+            for j in range(len(episode)):
+                frame = self.ranked_demos.episodes[i][j]["obs"]
+                xp = self.trex_network.xp
+                self.ranked_demos.episodes[i][j]["obs"] = self.mask(xp.array(frame))
 
     def _train(self):
         # mask the whole dataset
@@ -163,14 +185,12 @@ class TREXReward(gym.Wrapper):
             # get batch of traj pairs
             batch = self.get_training_batch()
             # do updates
-            loss = self._compute_loss()
-            self.trex_reward.cleargrads()
+            loss = self._compute_loss(batch)
+            self.trex_network.cleargrads()
             loss.backward()
             self.opt.update()
-
         if self.save_network:
             pass
-
 
         # at the end save the network
 
