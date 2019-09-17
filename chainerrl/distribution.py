@@ -135,7 +135,7 @@ class Distribution(with_metaclass(ABCMeta, object)):
             chainer.Variable: Samples.
             chainer.Variable: Log probability of the samples.
         """
-        y = self.samples()
+        y = self.sample()
         return y, self.log_prob(y)
 
 
