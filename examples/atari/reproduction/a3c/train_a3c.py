@@ -22,8 +22,8 @@ from chainerrl import links
 from chainerrl import misc
 from chainerrl.optimizers.nonbias_weight_decay import NonbiasWeightDecay
 from chainerrl.optimizers import rmsprop_async
-from chainerrl import policy
-from chainerrl import v_function
+from chainerrl import policies
+from chainerrl import v_functions
 
 from chainerrl.wrappers import atari_wrappers
 
@@ -32,9 +32,9 @@ class A3CFF(chainer.ChainList, a3c.A3CModel):
 
     def __init__(self, n_actions):
         self.head = links.NIPSDQNHead()
-        self.pi = policy.FCSoftmaxPolicy(
+        self.pi = policies.FCSoftmaxPolicy(
             self.head.n_output_channels, n_actions)
-        self.v = v_function.FCVFunction(self.head.n_output_channels)
+        self.v = v_functions.FCVFunction(self.head.n_output_channels)
         super().__init__(self.head, self.pi, self.v)
 
     def pi_and_v(self, state):

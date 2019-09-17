@@ -235,6 +235,11 @@ class IQN(dqn.DQN):
             to sample from the return distribution at the next state.
         quantile_thresholds_K (int): Number of quantile thresholds used to
             compute greedy actions.
+        act_deterministically (bool): IQN's action selection is by default
+            stochastic as it samples quantile thresholds every time it acts,
+            even for evaluation. If this option is set to True, it uses
+            equally spaced quantile thresholds instead of randomly sampled ones
+            for evaluation, making its action selection deterministic.
 
     For other arguments, see chainerrl.agents.DQN.
     """
@@ -246,6 +251,7 @@ class IQN(dqn.DQN):
         self.quantile_thresholds_N_prime = kwargs.pop(
             'quantile_thresholds_N_prime', 64)
         self.quantile_thresholds_K = kwargs.pop('quantile_thresholds_K', 32)
+        self.act_deterministically = kwargs.pop('act_deterministically', False)
         super().__init__(*args, **kwargs)
 
     def _compute_target_values(self, exp_batch):
@@ -357,7 +363,16 @@ class IQN(dqn.DQN):
                     batch_xs, self.train_recurrent_states)
         else:
             tau2av = self.model(batch_xs)
-        taus_tilde = self.xp.random.uniform(
-            0, 1,
-            size=(len(batch_obs), self.quantile_thresholds_K)).astype('f')
+        if test and self.act_deterministically:
+            # Instead of uniform sampling, use a deterministic sequence of
+            # equally spaced numbers from 0 to 1 as quantile thresholds.
+            taus_tilde = self.xp.broadcast_to(
+                self.xp.linspace(
+                    0, 1, num=self.quantile_thresholds_K, dtype=np.float32),
+                (len(batch_obs), self.quantile_thresholds_K),
+            )
+        else:
+            taus_tilde = self.xp.random.uniform(
+                0, 1,
+                size=(len(batch_obs), self.quantile_thresholds_K)).astype('f')
         return tau2av(taus_tilde)
