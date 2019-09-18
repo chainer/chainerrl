@@ -160,7 +160,7 @@ class FCQuadraticStateQFunction(
         chainer.Chain, StateQFunction):
     """Fully-connected state-input continuous Q-function.
 
-    See: http://arxiv.org/abs/1603.00748
+    See: https://arxiv.org/abs/1603.00748
 
     Args:
         n_input_channels: number of input channels
@@ -224,7 +224,7 @@ class FCQuadraticStateQFunction(
 class FCBNQuadraticStateQFunction(chainer.Chain, StateQFunction):
     """Fully-connected + BN state-input continuous Q-function.
 
-    See: http://arxiv.org/abs/1603.00748
+    See: https://arxiv.org/abs/1603.00748
 
     Args:
         n_input_channels: number of input channels
