@@ -13,14 +13,27 @@ from future.utils import with_metaclass
 
 
 class StateQFunction(with_metaclass(ABCMeta, object)):
+    """Abstract Q-function with state input."""
 
     @abstractmethod
     def __call__(self, x):
+        """Evaluates Q-function
+
+        Returns:
+            An instance of ActionValue that allows to calculate the Q-values
+            for state x and every possible action
+        """
         raise NotImplementedError()
 
 
 class StateActionQFunction(with_metaclass(ABCMeta, object)):
+    """Abstract Q-function with state and action input."""
 
     @abstractmethod
     def __call__(self, x, a):
+        """Evaluates Q-function
+
+        Returns:
+            Q-value for state x and action a
+        """
         raise NotImplementedError()
