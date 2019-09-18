@@ -89,7 +89,6 @@ def cached_download(url):
     except OSError:
         if not os.path.exists(cache_root):
             raise
-    set_trace()
     lock_path = os.path.join(cache_root, '_dl_lock')
     urlhash = hashlib.md5(url.encode('utf-8')).hexdigest()
     cache_path = os.path.join(cache_root, urlhash)
@@ -113,10 +112,9 @@ def cached_download(url):
     finally:
         shutil.rmtree(temp_root)
 
-    set_trace()
     return cache_path
 
-def download_and_store_model(url, env, model_type):
+def download_and_store_model(alg, url, env, model_type):
     """Downloads a model file and puts it under model directory.
     It downloads a file from the URL and puts it under model directory.
     For exmaple, if :obj:`url` is `http://example.com/subdir/model.npz`,
@@ -138,23 +136,32 @@ def download_and_store_model(url, env, model_type):
             get_dataset_directory(os.path.join('pfnet', 'chainerrl', '.lock')),
             'models.lock')):
         root = get_dataset_directory(
-            os.path.join('pfnet', 'chainerrl', 'models'))
-        url_path = os.path.join(url, env,
-                                model_type_to_path[model_type],
-                                PRETRAINED_MODELS["DQN"][0])
-        basename = os.path.basename(url_path)
-        path = os.path.join(root, basename)
-        print(path)
-        if not os.path.exists(path):
-            cache_path = cached_download(url_path)
-            os.rename(cache_path, path)
+            os.path.join('pfnet', 'chainerrl', 'models', alg, env, model_type_to_path[model_type]))
+        url_basepath = os.path.join(url, env,
+                                model_type_to_path[model_type])
+        url_paths = []
+        for file in PRETRAINED_MODELS["DQN"]:
+            # url_paths.append(os.path.join(url_basepath,
+            #                     file))
+            path = os.path.join(root, file)
+            if not os.path.exists(path):
+                cache_path = cached_download(os.path.join(url_basepath,
+                                             file))
+                os.rename(cache_path, path)
+        return root
+        # basename = os.path.basename(url_path)
+        # path = os.path.join(root, basename)
+        # print(path)
+        # if not os.path.exists(path):
+        #     cache_path = cached_download(url_path)
+            # os.rename(cache_path, path)
         return path
 
-def download_model(algorithm, env, model_type="best"):
+def download_model(alg, env, model_type="best"):
     assert model_type in ("best", "final")
-    assert algorithm in ["DQN"]
+    assert alg in ["DQN"]
     env = env.replace("NoFrameskip-v4", "")
-    model_path = download_and_store_model(url, env, model_type)
+    model_path = download_and_store_model(alg, url, env, model_type)
     set_trace()
 
 def main():
