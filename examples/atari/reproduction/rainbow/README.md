@@ -34,8 +34,6 @@ These results reflect ChainerRL  `v0.7.0`.
 | Number of ties between paper and ChainerRL | 1 | 
 
 
-
-Comparison against original reported results...
 | Game        | ChainerRL Score           | Original Reported Scores |
 | ------------- |:-------------:|:-------------:|
 | AirRaid | 7637.9| N/A|
@@ -99,6 +97,7 @@ Comparison against original reported results...
 | WizardOfWor | **22872.0**| 17862.5|
 | YarsRevenge | **111187.8**| 102557.0|
 | Zaxxon | 21884.0| **22209.5**|
+
 
 
 
