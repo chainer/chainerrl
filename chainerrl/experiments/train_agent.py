@@ -27,9 +27,9 @@ def ask_and_save_agent_replay_buffer(agent, t, outdir, suffix=''):
         save_agent_replay_buffer(agent, t, outdir, suffix=suffix)
 
 
-def train_agent(agent, env, steps, outdir, max_episode_len=None,
-                step_offset=0, evaluator=None, successful_score=None,
-                step_hooks=(), logger=None):
+def train_agent(agent, env, steps, outdir, checkpoint_freq=None,
+                max_episode_len=None, step_offset=0, evaluator=None,
+                successful_score=None, step_hooks=(), logger=None):
 
     logger = logger or logging.getLogger(__name__)
 
@@ -80,6 +80,8 @@ def train_agent(agent, env, steps, outdir, max_episode_len=None,
                 episode_len = 0
                 obs = env.reset()
                 r = 0
+            if checkpoint_freq and t % checkpoint_freq == 0:
+                save_agent(agent, t, outdir, logger, suffix='_checkpoint')
 
     except (Exception, KeyboardInterrupt):
         # Save the current model before being killed
@@ -97,6 +99,7 @@ def train_agent_with_evaluation(agent,
                                 eval_n_episodes,
                                 eval_interval,
                                 outdir,
+                                checkpoint_freq=None,
                                 train_max_episode_len=None,
                                 step_offset=0,
                                 eval_max_episode_len=None,
@@ -116,6 +119,7 @@ def train_agent_with_evaluation(agent,
         eval_n_episodes (int): Number of episodes at each evaluation phase.
         eval_interval (int): Interval of evaluation.
         outdir (str): Path to the directory to output data.
+        checkpoint_freq (int): frequency at which agents are stored.
         train_max_episode_len (int): Maximum episode length during training.
         step_offset (int): Time step from which training starts.
         eval_max_episode_len (int or None): Maximum episode length of
@@ -155,6 +159,7 @@ def train_agent_with_evaluation(agent,
 
     train_agent(
         agent, env, steps, outdir,
+        checkpoint_freq=checkpoint_freq,
         max_episode_len=train_max_episode_len,
         step_offset=step_offset,
         evaluator=evaluator,
