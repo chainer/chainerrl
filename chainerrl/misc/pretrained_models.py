@@ -40,8 +40,17 @@ PRETRAINED_MODELS = {
             "optimizer.npz"],
     "Rainbow": ["model.npz", "target_model.npz",
             "optimizer.npz"],
-    "A3C": ["model.npz"  "optimizer.npz"]
-}
+    "A3C": ["model.npz"  "optimizer.npz"],
+    "DDPG": ["actor_optimizer.npz", "critic_optimizer.npz", 
+              "model.npz", "target_model.npz"],
+    "TRPO": ["obs_normalizer.npz", "policy.npz",
+             "vf.npz", "vf_optimizer.npz"],
+    "PPO": ["model.npz", "obs_normalizer.npz", "optimizer.npz"],
+    "TD3": ["policy.npz", "q_func1.npz", "q_func2.npz", "target_policy.npz",
+            "target_q_func2.npz", "policy_optimizer.npz",
+            "q_func1_optimizer.npz", "q_func2_optimizer.npz",
+            "target_q_func1.npz"],
+    }
 
 MODEL_TYPES = {
     "DQN": {"best": "best",
@@ -51,6 +60,10 @@ MODEL_TYPES = {
     "Rainbow": {"best": "best",
                 "final": "5000000_finish"},
     "A3C": {"final": "8000000_finish"},
+    "DDPG": {"best": "best", "final":"1000000_finish"},
+    "TRPO": {"best": "best", "final": "2000000_finish"},
+    "PPO": {"final": "2000000_finish"},
+    "TD3": {"best": "best", "final": "1000000_finish"},
 }
 
 url = "https://chainer-assets.preferred.jp/chainerrl/"
