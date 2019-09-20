@@ -1,6 +1,4 @@
-'''
-This file is forked from ChainerCV.
-'''
+
 from __future__ import print_function
 from __future__ import division
 from __future__ import unicode_literals
@@ -40,132 +38,7 @@ import json
 from pdb import set_trace
 
 
-PRETRAINED_MODELS = {"DQN": ["model.npz","target_model.npz", "optimizer.npz"],
-}
-url = "https://chainer-assets.preferred.jp/chainerrl/"
-
-
-def _reporthook(count, block_size, total_size):
-    global start_time
-    if count == 0:
-        start_time = time.time()
-        print('  %   Total    Recv       Speed  Time left')
-        return
-    duration = time.time() - start_time
-    progress_size = count * block_size
-    try:
-        speed = progress_size / duration
-    except ZeroDivisionError:
-        speed = float('inf')
-    percent = progress_size / total_size * 100
-    eta = int((total_size - progress_size) / speed)
-    sys.stdout.write(
-        '\r{:3.0f} {:4.0f}MiB {:4.0f}MiB {:6.0f}KiB/s {:4d}:{:02d}:{:02d}'
-        .format(
-            percent, total_size / (1 << 20), progress_size / (1 << 20),
-            speed / (1 << 10), eta // 60 // 60, (eta // 60) % 60, eta % 60))
-    sys.stdout.flush()
-
-
-def cached_download(url):
-    """Downloads a file and caches it.
-    This is different from the original
-    :func:`~chainer.dataset.cached_download` in that the download
-    progress is reported. Note that this progress report can be disabled
-    by setting the environment variable `CHAINERCV_DOWNLOAD_REPORT` to `'OFF'`.
-    It downloads a file from the URL if there is no corresponding cache. After
-    the download, this function stores a cache to the directory under the
-    dataset root (see :func:`set_dataset_root`). If there is already a cache
-    for the given URL, it just returns the path to the cache without
-    downloading the same file.
-    Args:
-        url (string): URL to download from.
-    Returns:
-        string: Path to the downloaded file.
-    """
-    cache_root = os.path.join(get_dataset_root(), '_dl_cache')
-    try:
-        os.makedirs(cache_root)
-    except OSError:
-        if not os.path.exists(cache_root):
-            raise
-    lock_path = os.path.join(cache_root, '_dl_lock')
-    urlhash = hashlib.md5(url.encode('utf-8')).hexdigest()
-    cache_path = os.path.join(cache_root, urlhash)
-
-    with filelock.FileLock(lock_path):
-        if os.path.exists(cache_path):
-            return cache_path
-
-    temp_root = tempfile.mkdtemp(dir=cache_root)
-    try:
-        temp_path = os.path.join(temp_root, 'dl')
-        if strtobool(os.getenv('CHAINERRL_DOWNLOAD_REPORT', 'ON')):
-            print('Downloading ...')
-            print('From: {:s}'.format(url))
-            print('To: {:s}'.format(cache_path))
-            request.urlretrieve(url, temp_path, _reporthook)
-        else:
-            request.urlretrieve(url, temp_path)
-        with filelock.FileLock(lock_path):
-            shutil.move(temp_path, cache_path)
-    finally:
-        shutil.rmtree(temp_root)
-
-    return cache_path
-
-def download_and_store_model(alg, url, env, model_type):
-    """Downloads a model file and puts it under model directory.
-    It downloads a file from the URL and puts it under model directory.
-    For exmaple, if :obj:`url` is `http://example.com/subdir/model.npz`,
-    the pretrained weights file will be saved to
-    `$CHAINER_DATASET_ROOT/pfnet/chainercv/models/model.npz`.
-    If there is already a file at the destination path,
-    it just returns the path without downloading the same file.
-    Args:
-        url (string): URL to download from.
-    Returns:
-        string: Path to the downloaded file.
-    """
-    # To support ChainerMN, the target directory should be locked.
-    model_type_to_path = {
-    "best" : "best",
-    "final" : "5000000_finish"
-    }
-    with filelock.FileLock(os.path.join(
-            get_dataset_directory(os.path.join('pfnet', 'chainerrl', '.lock')),
-            'models.lock')):
-        root = get_dataset_directory(
-            os.path.join('pfnet', 'chainerrl', 'models', alg, env, model_type_to_path[model_type]))
-        url_basepath = os.path.join(url, env,
-                                model_type_to_path[model_type])
-        url_paths = []
-        for file in PRETRAINED_MODELS["DQN"]:
-            # url_paths.append(os.path.join(url_basepath,
-            #                     file))
-            path = os.path.join(root, file)
-            if not os.path.exists(path):
-                cache_path = cached_download(os.path.join(url_basepath,
-                                             file))
-                os.rename(cache_path, path)
-        return root
-        # basename = os.path.basename(url_path)
-        # path = os.path.join(root, basename)
-        # print(path)
-        # if not os.path.exists(path):
-        #     cache_path = cached_download(url_path)
-            # os.rename(cache_path, path)
-        return path
-
-def download_model(alg, env, model_type="best"):
-    assert model_type in ("best", "final")
-    assert alg in ["DQN"]
-    env = env.replace("NoFrameskip-v4", "")
-    model_path = download_and_store_model(alg, url, env, model_type)
-    set_trace()
-
 def main():
-    download_model("DQN", "ChopperCommandNoFrameskip-v4")
     parser = argparse.ArgumentParser()
     parser.add_argument('--env', type=str, default='ChopperCommandNoFrameskip-v4',
                         help='OpenAI Atari domain to perform algorithm on.')
@@ -176,8 +49,6 @@ def main():
                         help='Random seed [0, 2 ** 31)')
     parser.add_argument('--gpu', type=int, default=0,
                         help='GPU to use, set to -1 if no GPU.')
-    parser.add_argument('--demo', action='store_true', default=False)
-    parser.add_argument('--load', type=str, default=None)
     parser.add_argument('--logging-level', type=int, default=20,
                         help='Logging level. 10:DEBUG, 20:INFO etc.')
     parser.add_argument('--render', action='store_true', default=False,
@@ -267,50 +138,19 @@ def main():
                   batch_accumulator='sum',
                   phi=phi)
 
-    if args.load:
-        agent.load(args.load)
+    model_path = misc.download_model("DQN", args.env, model_type="best")
+    agent.load(model_path)
 
-    if args.demo:
-        eval_stats = experiments.eval_performance(
-            env=eval_env,
-            agent=agent,
-            n_steps=args.eval_n_steps,
-            n_episodes=None)
-        print('n_episodes: {} mean: {} median: {} stdev {}'.format(
-            eval_stats['episodes'],
-            eval_stats['mean'],
-            eval_stats['median'],
-            eval_stats['stdev']))
-    else:
-        experiments.train_agent_with_evaluation(
-            agent=agent, env=env, steps=args.steps,
-            eval_n_steps=args.eval_n_steps,
-            eval_n_episodes=None,
-            eval_interval=args.eval_interval,
-            outdir=args.outdir,
-            save_best_so_far_agent=True,
-            eval_env=eval_env,
-        )
-
-        dir_of_best_network = os.path.join(args.outdir, "best")
-        agent.load(dir_of_best_network)
-
-        # run 30 evaluation episodes, each capped at 5 mins of play
-        stats = experiments.evaluator.eval_performance(
-            env=eval_env,
-            agent=agent,
-            n_steps=None,
-            n_episodes=args.n_best_episodes,
-            max_episode_len=4500,
-            logger=None)
-        with open(os.path.join(args.outdir, 'bestscores.json'), 'w') as f:
-            # temporary hack to handle python 2/3 support issues.
-            # json dumps does not support non-string literal dict keys
-            json_stats = json.dumps(stats)
-            print(str(json_stats), file=f)
-        print("The results of the best scoring network:")
-        for stat in stats:
-            print(str(stat) + ":" + str(stats[stat]))
+    eval_stats = experiments.eval_performance(
+        env=eval_env,
+        agent=agent,
+        n_steps=args.eval_n_steps,
+        n_episodes=None)
+    print('n_episodes: {} mean: {} median: {} stdev {}'.format(
+        eval_stats['episodes'],
+        eval_stats['mean'],
+        eval_stats['median'],
+        eval_stats['stdev']))
 
 
 if __name__ == '__main__':
