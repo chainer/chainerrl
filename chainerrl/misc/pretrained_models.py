@@ -36,10 +36,21 @@ from pdb import set_trace
 PRETRAINED_MODELS = {
     "DQN": ["model.npz", "target_model.npz",
             "optimizer.npz"],
+    "IQN": ["model.npz", "target_model.npz",
+            "optimizer.npz"],
+    "Rainbow": ["model.npz", "target_model.npz",
+            "optimizer.npz"],
+    "A3C": ["model.npz"  "optimizer.npz"]
 }
 
-MODEL_TYPES = {"DQN": {"best": "best",
-                       "final": "5000000_finish"},
+MODEL_TYPES = {
+    "DQN": {"best": "best",
+            "final": "5000000_finish"},
+    "IQN": {"best": "best",
+            "final": "5000000_finish"},
+    "Rainbow": {"best": "best",
+                "final": "5000000_finish"},
+    "A3C": {"final": "8000000_finish"},
 }
 
 url = "https://chainer-assets.preferred.jp/chainerrl/"
@@ -117,7 +128,7 @@ def cached_download(url):
 def download_and_store_model(alg, url, env, model_type):
     """Downloads a model file and puts it under model directory.
     It downloads a file from the URL and puts it under model directory.
-    For exmaple, if :obj:`url` is `http://example.com/subdir/model.npz`,
+    For example, if :obj:`url` is `http://example.com/subdir/model.npz`,
     the pretrained weights file will be saved to
     `$CHAINER_DATASET_ROOT/pfnet/chainercv/models/model.npz`.
     If there is already a file at the destination path,
@@ -128,15 +139,13 @@ def download_and_store_model(alg, url, env, model_type):
         string: Path to the downloaded file.
     """
 
-    assert model_type in MODEL_TYPES[alg], \
-        "Model type \"" + model_type + "\" is not supported."
     with filelock.FileLock(os.path.join(
             get_dataset_directory(os.path.join('pfnet', 'chainerrl', '.lock')),
             'models.lock')):
         model_dir = MODEL_TYPES[alg][model_type]
         root = get_dataset_directory(
             os.path.join('pfnet', 'chainerrl', 'models', alg, env, model_dir))
-        url_basepath = os.path.join(url, env,model_dir)
+        url_basepath = os.path.join(url, alg, env,model_dir)
         url_paths = []
         for file in PRETRAINED_MODELS[alg]:
             # url_paths.append(os.path.join(url_basepath,
@@ -147,13 +156,7 @@ def download_and_store_model(alg, url, env, model_type):
                                              file))
                 os.rename(cache_path, path)
         return root
-        # basename = os.path.basename(url_path)
-        # path = os.path.join(root, basename)
-        # print(path)
-        # if not os.path.exists(path):
-        #     cache_path = cached_download(url_path)
-            # os.rename(cache_path, path)
-        return path
+
 
 def download_model(alg, env, model_type="best"):
     assert alg in PRETRAINED_MODELS, \

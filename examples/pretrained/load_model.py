@@ -40,7 +40,7 @@ from pdb import set_trace
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--env', type=str, default='ChopperCommandNoFrameskip-v4',
+    parser.add_argument('--env', type=str, default='BreakoutNoFrameskip-v4',
                         help='OpenAI Atari domain to perform algorithm on.')
     parser.add_argument('--outdir', type=str, default='results',
                         help='Directory path to save output files.'
