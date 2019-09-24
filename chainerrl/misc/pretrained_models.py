@@ -30,8 +30,6 @@ from chainer import optimizers
 import chainerrl
 from chainerrl import misc
 
-from pdb import set_trace
-
 
 PRETRAINED_MODELS = {
     "DQN": ["model.npz", "target_model.npz",
