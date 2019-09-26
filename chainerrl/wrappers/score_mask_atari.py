@@ -23,6 +23,10 @@ class AtariMask():
     def __init__(self, env):
         if "SpaceInvadersNoFrameskip" in env.spec.id:
             self.mask = self.mask_space_invaders
+        elif "PongNoFrameskip" in env.spec.id:
+            self.mask = self.mask_pong
+        elif "BreakoutNoFrameskip" in env.spec.id:
+            self.mask = self.mask_breakout
         else:
             assert False, "Not a supported env"
             self.mask = lambda x: x
@@ -35,6 +39,16 @@ class AtariMask():
         # mask out score
         # TODO: check whether spaceship comes
         mask_obs[0:20] = 0
+        return mask_obs
+
+    def mask_pong(self, obs):
+        mask_obs = obs
+        mask_obs[0:21] = 0
+        return mask_obs
+
+    def mask_breakout(self, obs):
+        mask_obs = obs
+        mask_obs[0:15] = 0
         return mask_obs
 
 class ScoreMaskEnv(gym.Wrapper):

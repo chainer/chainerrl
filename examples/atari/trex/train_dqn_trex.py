@@ -84,7 +84,9 @@ def parse_agent(agent):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--env', type=str, default='SpaceInvadersNoFrameskip-v4',
-                        choices=['SpaceInvadersNoFrameskip-v4'],
+                        choices=['SpaceInvadersNoFrameskip-v4',
+                                 'PongNoFrameskip-v4',
+                                 'BreakoutNoFrameskip-v4'],
                         help='OpenAI Atari domain to perform algorithm on.')
     parser.add_argument('--dataset-path', type=str, required=True,
                         help='Path of pickle file to dataset.')
@@ -145,6 +147,8 @@ def main():
                         help='Use prioritized experience replay.')
     parser.add_argument('--mask-render', action='store_true', default=False,
                         help='Mask when you render.')
+    parser.add_argument('--trex-steps', type=int, default=30000,
+                        help='Number of TREX updates.')
     args = parser.parse_args()
 
     import logging
@@ -186,6 +190,7 @@ def main():
             assert sorted(episode_rewards) == episode_rewards
             env = TREXReward(env=env,
                              ranked_demos=demo_dataset,
+                             steps=args.trex_steps,
                              network=TREXNet(),
                              gpu=args.gpu)
         if args.monitor:
