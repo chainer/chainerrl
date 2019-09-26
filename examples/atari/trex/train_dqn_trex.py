@@ -86,7 +86,12 @@ def main():
     parser.add_argument('--env', type=str, default='SpaceInvadersNoFrameskip-v4',
                         choices=['SpaceInvadersNoFrameskip-v4',
                                  'PongNoFrameskip-v4',
-                                 'BreakoutNoFrameskip-v4'],
+                                 'BreakoutNoFrameskip-v4',
+                                 'BeamRiderNoFrameskip-v4',
+                                 'HeroNoFrameskip-v4',
+                                 'QbertNoFrameskip-v4',
+                                 'SeaquestNoFrameskip-v4',
+                                 'EnduroNoFrameskip-v4'],
                         help='OpenAI Atari domain to perform algorithm on.')
     parser.add_argument('--dataset-path', type=str, required=True,
                         help='Path of pickle file to dataset.')
