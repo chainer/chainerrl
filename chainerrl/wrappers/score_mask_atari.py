@@ -27,6 +27,10 @@ class AtariMask():
             self.mask = self.mask_pong
         elif "BreakoutNoFrameskip" in env.spec.id:
             self.mask = self.mask_breakout
+        elif "EnduroNoFrameskip" in env.spec.id:
+            self.mask = self.mask_enduro
+        elif "SeaquestNoFrameskip" in env.spec.id:
+            self.mask = self.mask_seaquest
         else:
             assert False, "Not a supported env"
             self.mask = lambda x: x
@@ -49,6 +53,16 @@ class AtariMask():
     def mask_breakout(self, obs):
         mask_obs = obs
         mask_obs[0:15] = 0
+        return mask_obs
+
+    def mask_enduro(self, obs):
+        mask_obs = obs
+        mask_obs[200:] = 0
+        return mask_obs
+
+    def mask_seaquest(self, obs):
+        mask_obs = obs
+        mask_obs[0:17] = 0
         return mask_obs
 
 class ScoreMaskEnv(gym.Wrapper):

@@ -100,7 +100,8 @@ class TREXReward(gym.Wrapper):
         observation, reward, done, info = self.env.step(action)
         obs = batch_states([observation], self.trex_network.xp, self._phi)
         with chainer.no_backprop_mode():
-            trex_reward = self.trex_network(obs)
+            trex_reward = F.sigmoid(self.trex_network(obs))
+        info["true_reward"] = reward
         return observation, trex_reward, done, info
 
     def create_example(self):
