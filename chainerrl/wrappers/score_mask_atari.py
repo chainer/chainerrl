@@ -31,6 +31,12 @@ class AtariMask():
             self.mask = self.mask_enduro
         elif "SeaquestNoFrameskip" in env.spec.id:
             self.mask = self.mask_seaquest
+        elif "QbertNoFrameskips" in env.spec.id:
+            self.mask = self.mask_qbert
+        elif "BeamRiderNoFrameskip" in env.spec.id:
+            self.mask = self.mask_beam_rider
+        elif "HeroNoFrameskip" in env.spec.id:
+            self.mask = self.mask_hero
         else:
             assert False, "Not a supported env"
             self.mask = lambda x: x
@@ -57,13 +63,29 @@ class AtariMask():
 
     def mask_enduro(self, obs):
         mask_obs = obs
-        mask_obs[200:] = 0
+        mask_obs[178:] = 0
         return mask_obs
 
     def mask_seaquest(self, obs):
         mask_obs = obs
         mask_obs[0:17] = 0
         return mask_obs
+
+    def mask_qbert(self, obs):
+        mask_obs = obs
+        mask_obs[0:13] = 0
+        return mask_obs
+
+    def mask_beam_rider(self, obs):
+        mask_obs = obs
+        mask_obs[0:18] = 0
+        return mask_obs
+
+    def mask_hero(self, obs):
+        mask_obs = obs
+        mask_obs[179:] = 0
+        return mask_obs
+
 
 class ScoreMaskEnv(gym.Wrapper):
     def __init__(self, env, mask_render):
