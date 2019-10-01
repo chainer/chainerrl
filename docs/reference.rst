@@ -12,5 +12,6 @@ API Reference
    explorers
    links
    policies
+   q_functions
    recurrent
    replay_buffers
