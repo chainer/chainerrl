@@ -33,6 +33,10 @@ def main():
                         help='Random seed [0, 2 ** 31)')
     parser.add_argument('--gpu', type=int, default=0)
     parser.add_argument('--demo', action='store_true', default=False)
+    parser.add_argument('--load-pretrained', action='store_true',
+                        default=False)
+    parser.add_argument('--pretrained-type', type=str, default="best",
+                        choices=['best', 'final'])
     parser.add_argument('--load', type=str, default=None)
     parser.add_argument('--use-sdl', action='store_true', default=False)
     parser.add_argument('--eval-epsilon', type=float, default=0.0)
@@ -133,8 +137,15 @@ def main():
         phi=phi,
     )
 
-    if args.load:
-        agent.load(args.load)
+
+    if args.load or args.load_pretrained:
+        # either loapdt_ or load_pretrained must be false
+        assert not args.load or not args.load_pretrained
+        if args.load:
+            agent.load(args.load)
+        else:
+            agent.load(misc.download_model("Rainbow", args.env,
+                                           model_type=args.pretrained_type))
 
     if args.demo:
         eval_stats = experiments.eval_performance(

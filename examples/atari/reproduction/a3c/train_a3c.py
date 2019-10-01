@@ -64,6 +64,8 @@ def main():
     parser.add_argument('--eval-n-steps', type=int, default=125000)
     parser.add_argument('--weight-decay', type=float, default=0.0)
     parser.add_argument('--demo', action='store_true', default=False)
+    parser.add_argument('--load-pretrained', action='store_true',
+                        default=False)
     parser.add_argument('--load', type=str, default='')
     parser.add_argument('--logging-level', type=int, default=20,
                         help='Logging level. 10:DEBUG, 20:INFO etc.')
@@ -118,8 +120,15 @@ def main():
     agent = a3c.A3C(model, opt, t_max=args.t_max, gamma=0.99,
                     beta=args.beta, phi=phi)
 
-    if args.load:
-        agent.load(args.load)
+
+    if args.load or args.load_pretrained:
+        # either loapdt_ or load_pretrained must be false
+        assert not args.load or not args.load_pretrained
+        if args.load:
+            agent.load(args.load)
+        else:
+            agent.load(misc.download_model("A3C", args.env,
+                                           model_type="final"))
 
     def make_env(process_idx, test):
         # Use different random seeds for train and test envs

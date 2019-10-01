@@ -51,6 +51,8 @@ def main():
                         help='Render env states in a GUI window.')
     parser.add_argument('--demo', action='store_true',
                         help='Just run evaluation, not training.')
+    parser.add_argument('--load-pretrained', action='store_true',
+                        default=False)
     parser.add_argument('--load', type=str, default='',
                         help='Directory to load agent from.')
     parser.add_argument('--logger-level', type=int, default=logging.INFO,
@@ -165,8 +167,14 @@ def main():
         lambd=0.97,
     )
 
-    if args.load:
-        agent.load(args.load)
+    if args.load or args.load_pretrained:
+        # either loapdt_ or load_pretrained must be false
+        assert not args.load or not args.load_pretrained
+        if args.load:
+            agent.load(args.load)
+        else:
+            agent.load(misc.download_model("PPO", args.env,
+                                           model_type="final"))
 
     if args.demo:
         env = make_batch_env(True)

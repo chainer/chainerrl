@@ -48,6 +48,11 @@ PRETRAINED_MODELS = {
             "target_q_func2.npz", "policy_optimizer.npz",
             "q_func1_optimizer.npz", "q_func2_optimizer.npz",
             "target_q_func1.npz"],
+    "SAC": ["policy.npz", "q_func1.npz", "q_func2.npz", "target_q_func1.npz",
+            "temperature_holder.npz", "policy_optimizer.npz",
+            "q_func1_optimizer.npz",  "q_func2_optimizer.npz", 
+            "target_q_func2.npz",  "temperature_optimizer.npz"]
+
     }
 
 MODEL_TYPES = {
@@ -62,6 +67,7 @@ MODEL_TYPES = {
     "TRPO": {"best": "best", "final": "2000000_finish"},
     "PPO": {"final": "2000000_finish"},
     "TD3": {"best": "best", "final": "1000000_finish"},
+    "SAC": {"best": "best", "final": "NA"}
 }
 
 url = "https://chainer-assets.preferred.jp/chainerrl/"
@@ -153,14 +159,16 @@ def download_and_store_model(alg, url, env, model_type):
     with filelock.FileLock(os.path.join(
             get_dataset_directory(os.path.join('pfnet', 'chainerrl', '.lock')),
             'models.lock')):
-        model_dir = MODEL_TYPES[alg][model_type]
+        if alg != "SAC" or model_type == "best":
+            model_dir = MODEL_TYPES[alg][model_type]
+        else:
+            assert model_type == "final"
         root = get_dataset_directory(
             os.path.join('pfnet', 'chainerrl', 'models', alg, env, model_dir))
         url_basepath = os.path.join(url, alg, env,model_dir)
         url_paths = []
         for file in PRETRAINED_MODELS[alg]:
-            # url_paths.append(os.path.join(url_basepath,
-            #                     file))
+
             path = os.path.join(root, file)
             if not os.path.exists(path):
                 cache_path = cached_download(os.path.join(url_basepath,

@@ -33,6 +33,10 @@ def main():
                         help='Random seed [0, 2 ** 31)')
     parser.add_argument('--gpu', type=int, default=0)
     parser.add_argument('--demo', action='store_true', default=False)
+    parser.add_argument('--load-pretrained', action='store_true',
+                        default=False)
+    parser.add_argument('--pretrained-type', type=str, default="best",
+                        choices=['best', 'final'])
     parser.add_argument('--load', type=str, default=None)
     parser.add_argument('--final-exploration-frames',
                         type=int, default=10 ** 6)
@@ -155,8 +159,14 @@ def main():
         quantile_thresholds_K=args.quantile_thresholds_K,
     )
 
-    if args.load:
-        agent.load(args.load)
+    if args.load or args.load_pretrained:
+        # either loapdt_ or load_pretrained must be false
+        assert not args.load or not args.load_pretrained
+        if args.load:
+            agent.load(args.load)
+        else:
+            agent.load(misc.download_model("IQN", args.env,
+                                           model_type=args.pretrained_type))
 
     if args.demo:
         eval_stats = experiments.eval_performance(
