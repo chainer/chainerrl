@@ -153,9 +153,9 @@ def main():
             env=env,
             agent=agent,
             n_steps=None,
-            n_episodes=args.eval_n_runs)
-        print('n_runs: {} mean: {} median: {} stdev: {}'.format(
-            args.eval_n_runs, eval_stats['mean'], eval_stats['median'],
+            n_episodes=args.eval_n_steps)
+        print('n_steps: {} mean: {} median: {} stdev: {}'.format(
+            args.eval_n_steps, eval_stats['mean'], eval_stats['median'],
             eval_stats['stdev']))
     else:
 

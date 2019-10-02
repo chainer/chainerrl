@@ -20,6 +20,7 @@ import shutil
 import tempfile
 import time
 import sys
+import zipfile
 from six.moves.urllib import request
 
 from chainer.dataset.download import get_dataset_directory
@@ -31,43 +32,16 @@ import chainerrl
 from chainerrl import misc
 
 
-PRETRAINED_MODELS = {
-    "DQN": ["model.npz", "target_model.npz",
-            "optimizer.npz"],
-    "IQN": ["model.npz", "target_model.npz",
-            "optimizer.npz"],
-    "Rainbow": ["model.npz", "target_model.npz",
-            "optimizer.npz"],
-    "A3C": ["model.npz"  "optimizer.npz"],
-    "DDPG": ["actor_optimizer.npz", "critic_optimizer.npz", 
-              "model.npz", "target_model.npz"],
-    "TRPO": ["obs_normalizer.npz", "policy.npz",
-             "vf.npz", "vf_optimizer.npz"],
-    "PPO": ["model.npz", "obs_normalizer.npz", "optimizer.npz"],
-    "TD3": ["policy.npz", "q_func1.npz", "q_func2.npz", "target_policy.npz",
-            "target_q_func2.npz", "policy_optimizer.npz",
-            "q_func1_optimizer.npz", "q_func2_optimizer.npz",
-            "target_q_func1.npz"],
-    "SAC": ["policy.npz", "q_func1.npz", "q_func2.npz", "target_q_func1.npz",
-            "temperature_holder.npz", "policy_optimizer.npz",
-            "q_func1_optimizer.npz",  "q_func2_optimizer.npz", 
-            "target_q_func2.npz",  "temperature_optimizer.npz"]
-
-    }
-
-MODEL_TYPES = {
-    "DQN": {"best": "best",
-            "final": "5000000_finish"},
-    "IQN": {"best": "best",
-            "final": "5000000_finish"},
-    "Rainbow": {"best": "best",
-                "final": "5000000_finish"},
-    "A3C": {"final": "8000000_finish"},
-    "DDPG": {"best": "best", "final":"1000000_finish"},
-    "TRPO": {"best": "best", "final": "2000000_finish"},
-    "PPO": {"final": "2000000_finish"},
-    "TD3": {"best": "best", "final": "1000000_finish"},
-    "SAC": {"best": "best", "final": "NA"}
+MODELS = {
+    "DQN": ["best", "final"],
+    "IQN": ["best", "final"],
+    "Rainbow": ["best", "final"],
+    "A3C": ["final"],
+    "DDPG": ["best", "final"],
+    "TRPO": ["best", "final"],
+    "PPO": ["final"],
+    "TD3": ["best", "final"],
+    "SAC": ["best", "final"]
 }
 
 url = "https://chainer-assets.preferred.jp/chainerrl/"
@@ -159,28 +133,25 @@ def download_and_store_model(alg, url, env, model_type):
     with filelock.FileLock(os.path.join(
             get_dataset_directory(os.path.join('pfnet', 'chainerrl', '.lock')),
             'models.lock')):
-        if alg != "SAC" or model_type == "best":
-            model_dir = MODEL_TYPES[alg][model_type]
-        else:
-            assert model_type == "final"
         root = get_dataset_directory(
-            os.path.join('pfnet', 'chainerrl', 'models', alg, env, model_dir))
-        url_basepath = os.path.join(url, alg, env,model_dir)
+            os.path.join('pfnet', 'chainerrl', 'models', alg, env))
+        url_basepath = os.path.join(url, alg, env)
         url_paths = []
-        for file in PRETRAINED_MODELS[alg]:
-
-            path = os.path.join(root, file)
-            if not os.path.exists(path):
-                cache_path = cached_download(os.path.join(url_basepath,
-                                             file))
-                os.rename(cache_path, path)
-        return root
+        file = model_type + ".zip"
+        path = os.path.join(root, file)
+        if not os.path.exists(path):
+            cache_path = cached_download(os.path.join(url_basepath,
+                                         file))
+            os.rename(cache_path, path)
+            with zipfile.ZipFile(path, 'r') as zip_ref:
+                zip_ref.extractall(root)
+        return os.path.join(root, model_type)
 
 
 def download_model(alg, env, model_type="best"):
-    assert alg in PRETRAINED_MODELS, \
+    assert alg in MODELS, \
         "No pretrained models for " + alg +"."
-    assert model_type in MODEL_TYPES[alg], \
+    assert model_type in MODELS[alg], \
         "Model type \"" + model_type + "\" is not supported."
     env = env.replace("NoFrameskip-v4", "")
     model_path = download_and_store_model(alg, url, env, model_type)
