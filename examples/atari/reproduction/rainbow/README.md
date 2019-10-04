@@ -23,7 +23,7 @@ To view the full list of options, either view the code or run the example with t
 
 ## Running our Pretrained models
 
-We have already pretrained models from this script for all the domains list in the [results](#Results). To load a pretrained model:
+We have already pretrained models from this script for all the domains list in the [results](#Results) section. To load a pretrained model:
 
 ```
 python train_rainbow.py --demo --load-pretrained --env BreakoutNoFrameskip-v4 --pretrained-type best --gpu -1

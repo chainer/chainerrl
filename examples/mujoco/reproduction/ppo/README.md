@@ -25,6 +25,20 @@ python train_ppo.py [options]
 
 To view the full list of options, either view the code or run the example with the `--help` option.
 
+## Running our Pretrained models
+
+We have already pretrained models from this script for all the domains list in the [results](#Results) section. To load a pretrained model:
+
+```
+python train_ppo.py --demo --load-pretrained --env HalfCheetah-v2 --gpu -1
+```
+
+### Useful Options
+- `--gpu`. Specifies the GPU. If you do not have a GPU on your machine, run the example with the option `--gpu -1`.
+- `--env`. Specifies the environment. 
+- `--demo`. Runs an evaluation, instead of training the agent.
+- `--load-pretrained` Loads the pretrained model. Both `--load` and `--load-pretrained` cannot be used together.
+
 ## Known differences
 
 - While the original paper initialized weights by normal distribution (https://github.com/Breakend/baselines/blob/50ffe01d254221db75cdb5c2ba0ab51a6da06b0a/baselines/ppo1/mlp_policy.py#L28), we use orthogonal initialization as the latest openai/baselines does (https://github.com/openai/baselines/blob/9b68103b737ac46bc201dfb3121cfa5df2127e53/baselines/a2c/utils.py#L61).
