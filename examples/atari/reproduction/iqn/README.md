@@ -111,11 +111,11 @@ Our evaluation protocol is designed to mirror the evaluation protocol of the ori
 
 ## Training times
 
-| Statistic        |            |            |
-| ------------- |:-------------:|:-------------:|
-| Mean time (in days) across all domains        |  9.20622761441 |
-| Fastest Domain |  YarsRevenge | 8.51702608487 |
-| Slowest Domain |  Freeway | 10.0143018948 |
+| Training time (in days) across all domains  |               |
+| --------------------------------------------|:-------------:|
+| Mean |  9.21 |
+| Min  | 8.52 (YarsRevenge) |
+| Max  | 10.01 (Freeway) |
 
 
 
