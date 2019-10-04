@@ -21,6 +21,22 @@ python train_dqn.py [options]
 
 To view the full list of options, either view the code or run the example with the `--help` option.
 
+
+## Running our Pretrained models
+
+We have already pretrained models from this script for all the domains below. Note that while we may have run multiple seeds, our pretrained model represents a single run from this script, and may not be representative of the [results](##Results).
+
+```
+python train_dqn.py --demo --load-pretrained --env [env] --pretrained-type [type]
+```
+
+### Useful Options
+- `--gpu`. Specifies the GPU. If you do not have a GPU on your machine, run the example with the option `--gpu -1`. E.g. `python train_dqn.py --gpu -1`.
+- `--env`. Specifies the environment. 
+- `--demo`. Runs an evaluation, instead of training the agent.
+- `--load-pretrained` Loads the pretrained model. Both `--load` and `--load-pretrained` cannot be used together.
+- `--pretrained-type`. Either `best` (the best intermediate network during training) or `final` (the final network after training).
+
 ## Results
 These results reflect ChainerRL  `v0.6.0`.
 
