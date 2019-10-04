@@ -21,6 +21,19 @@ python train_a3c.py [options]
 
 To view the full list of options, either view the code or run the example with the `--help` option.
 
+## Running our Pretrained models
+
+We have already pretrained models from this script for all the domains list in the [results](#Results). To load a pretrained model:
+
+```
+python train_a3c.py --demo --load-pretrained --env BreakoutNoFrameskip-v4
+```
+
+### Useful Options
+- `--env`. Specifies the environment. 
+- `--demo`. Runs an evaluation, instead of training the agent.
+- `--load-pretrained` Loads the pretrained model. Both `--load` and `--load-pretrained` cannot be used together.
+
 ## Results
 These results reflect ChainerRL  `v0.6.0`. The ChainerRL score currently consists of a single run. The reported results are compared against the scores from the [Noisy Networks Paper](https://arxiv.org/abs/1706.10295), since the original paper does not report scores for the no-op evaluation protocol.
 

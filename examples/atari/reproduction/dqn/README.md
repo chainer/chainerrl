@@ -24,7 +24,7 @@ To view the full list of options, either view the code or run the example with t
 
 ## Running our Pretrained models
 
-We have already pretrained models from this script for all the domains below. Note that while we may have run multiple seeds, our pretrained model represents a single run from this script, and may not be representative of the [results](#Results). For example,
+We have already pretrained models from this script for all the domains list in the [results](#Results). Note that while we may have run multiple seeds, our pretrained model represents a single run from this script, and may not be representative of the [results](#Results). To load a pretrained model:
 
 ```
 python train_dqn.py --demo --load-pretrained --env BreakoutNoFrameskip-v4 --pretrained-type best --gpu -1
