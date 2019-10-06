@@ -56,6 +56,9 @@ def main():
     parser.add_argument('--checkpoint-frequency', type=int,
                         default=None,
                         help='Frequency with which networks were checkpointed.')
+    parser.add_argument('--total-length', type=int,
+                        default=None,
+                        help='Total length for which networks were checkpointed.')
     args = parser.parse_args()
 
     import logging
@@ -70,7 +73,6 @@ def main():
     def make_env():
         test = True
         # Use different random seeds for train and test envs
-        process_seed = int(process_seeds[idx])
         env = atari_wrappers.wrap_deepmind(
             atari_wrappers.make_atari(args.env, max_frames=args.max_frames),
             episode_life=not test,
@@ -78,7 +80,7 @@ def main():
             flicker=False,
             frame_stack=True,
         )
-        env.seed(env_seed)
+        env.seed(args.seed)
         if args.monitor:
             env = chainerrl.wrappers.Monitor(
                 env, args.outdir,
@@ -127,7 +129,6 @@ def main():
         # Feature extractor
         return np.asarray(x, dtype=np.float32) / 255
 
-
     agent = PPO(
         model,
         opt,
@@ -138,16 +139,22 @@ def main():
         standardize_advantages=True,
         entropy_coef=1e-2,
     )
-
-    agent.load(args.load)
-
-    # saves demos to outdir/demos.pickle
-    experiments.collect_demonstrations(agent=agent,
-                                       env=env,
-                                       steps=None,
-                                       episodes=1,
-                                       outdir=args.outdir,
-                                       max_episode_len=None)
+    checkpoint_freq = args.checkpoint_frequency
+    num = checkpoint_freq
+    while num < args.total_length:
+        checkpoint = os.path.join(args.load, str(num) + "_checkpoint")
+        print(checkpoint)
+        agent.load(os.path.join(args.load, str(num) + "_checkpoint"))
+        num += checkpoint_freq
+        print(num)
+        # outdir = os.path.join(args.outdir, str(num))
+        # # saves demos to outdir/demos.pickle
+        # experiments.collect_demonstrations(agent=agent,
+        #                                    env=env,
+        #                                    steps=None,
+        #                                    episodes=1,
+        #                                    outdir=outdir,
+        #                                    max_episode_len=None)
 
 
 if __name__ == '__main__':
