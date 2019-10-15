@@ -18,7 +18,7 @@ def extract_episodes(dataset):
     Args:
         dataset (chainer Dataset): a dataset consisting of sequential transitions.
     Returns:
-        list of episodes, each of of which is a list of transitions
+        list of episodes, each of which is a list of transitions
     """
 
     episodes = []

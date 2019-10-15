@@ -90,7 +90,8 @@ class TREXReward(gym.Wrapper):
         self.max_sub_traj_len = sub_traj_len[1]
         self.num_sub_trajs = num_sub_trajs
         self.sample_live = sample_live
-        self.save_network = save_network        
+        self.save_network = save_network
+        self.examples = []       
         if gpu is not None and gpu >= 0:
             cuda.get_device(gpu).use()
             self.trex_reward.to_gpu(device=gpu)
@@ -140,17 +141,16 @@ class TREXReward(gym.Wrapper):
 
 
     def get_training_batch(self):
-        if not self.sample_live:
-            if not self.examples:
-                self.create_training_dataset()
-            if self.index + self.traj_batch_size > len(self.examples):
-                self.index = 0
+        if not self.examples:
+            self.create_training_dataset()
+        if self.index + self.traj_batch_size > len(self.examples):
+            self.index = 0
+            if not self.sample_live:
                 random.shuffle(self.examples)
-            return self.examples[self.index:self.index + self.traj_batch_size]
-        else:
-            batch = [self.create_example() for _ in range(self.traj_batch_size)]
+            else:
+                self.create_training_dataset()
+        batch = self.examples[self.index:self.index + self.traj_batch_size]
         return batch
-
 
     def _compute_loss(self, batch):
         xp = self.trex_network.xp
@@ -183,6 +183,7 @@ class TREXReward(gym.Wrapper):
         # mask the whole dataset
         self._apply_masks()
         for _ in range(self.steps):
+            print("performed update...")
             # get batch of traj pairs
             batch = self.get_training_batch()
             # do updates
