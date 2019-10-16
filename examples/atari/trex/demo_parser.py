@@ -60,6 +60,10 @@ class AtariGrandChallengeParser():
                 episode[entry].append(type_dict[entry](data_point))
         assert episode['frame'][0] == 0
 
+        # add screens
+
+        #TODO: Parse apply mask apply Atari stuff
+
         set_trace()
 
 def main():
