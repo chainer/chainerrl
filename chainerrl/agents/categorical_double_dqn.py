@@ -16,16 +16,6 @@ class CategoricalDoubleDQN(categorical_dqn.CategoricalDQN):
 
     """
 
-        # next_q_max: (batch_size, n_atoms)
-        next_q_max = target_next_qout.max_as_distribution.array
-        assert next_q_max.shape == (batch_size, n_atoms), next_q_max.shape
-
-        # Tz: (batch_size, n_atoms)
-        Tz = (batch_rewards[..., None]
-              + (1.0 - batch_terminal[..., None])
-              * self.xp.expand_dims(exp_batch['discount'], 1)
-              * z_values[None])
-        return _apply_categorical_projection(Tz, next_q_max, z_values)
 
     def _compute_target_values(self, exp_batch):
         """Compute a batch of target return distributions."""
