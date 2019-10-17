@@ -42,7 +42,7 @@ class CategoricalDoubleDQN(categorical_dqn.CategoricalDQN):
 
         # next_q_max: (batch_size, n_atoms)
         next_q_max = target_next_qout.evaluate_actions_as_distribution(
-            next_qout.greedy_actions)
+            next_qout.greedy_actions.array).array
         assert next_q_max.shape == (batch_size, n_atoms), next_q_max.shape
 
         # Tz: (batch_size, n_atoms)
