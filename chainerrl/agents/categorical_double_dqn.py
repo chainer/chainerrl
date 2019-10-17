@@ -16,7 +16,6 @@ class CategoricalDoubleDQN(categorical_dqn.CategoricalDQN):
 
     """
 
-
     def _compute_target_values(self, exp_batch):
         """Compute a batch of target return distributions."""
 
