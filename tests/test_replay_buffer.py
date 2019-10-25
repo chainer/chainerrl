@@ -370,7 +370,7 @@ class TestPrioritizedReplayBuffer(unittest.TestCase):
             self.assertEqual(
                 len(set(s[0]['weight'] for s in samples)), len(samples))
             # Now check the maximum weight in a minibatch
-            max_w = max(s[0]['weight'] for s in samples)
+            max_w = max([s[0]['weight'] for s in samples])
             if self.normalize_by_max == 'batch':
                 # Maximum weight in a minibatch must be 1
                 self.assertAlmostEqual(max_w, 1)
