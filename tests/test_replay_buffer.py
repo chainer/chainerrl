@@ -366,6 +366,10 @@ class TestPrioritizedReplayBuffer(unittest.TestCase):
         # Repeatedly check how weights are normalized
         for i in range(100):
             samples = rbuf.sample(i + 1)
+            # All the weights must be unique
+            self.assertEqual(
+                len(set(s[0]['weight'] for s in samples)), len(samples))
+            # Now check the maximum weight in a minibatch
             max_w = max(s[0]['weight'] for s in samples)
             if self.normalize_by_max == 'batch':
                 # Maximum weight in a minibatch must be 1
