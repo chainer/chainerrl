@@ -418,7 +418,8 @@ class IQN(dqn.DQN):
             # equally spaced numbers from 0 to 1 as quantile thresholds.
             taus_tilde = self.xp.broadcast_to(
                 self.xp.linspace(
-                    0, 1, num=self.quantile_thresholds_K, dtype=np.float32),
+                    0, 1, num=self.quantile_thresholds_K,
+                    dtype=self.xp.float32),
                 (len(batch_obs), self.quantile_thresholds_K),
             )
         else:
