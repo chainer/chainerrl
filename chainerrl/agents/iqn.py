@@ -235,6 +235,7 @@ def compute_value_loss(eltwise_loss, batch_accumulator='mean'):
         (Variable) scalar loss
     """
     assert batch_accumulator in ('mean', 'sum')
+    assert len(eltwise_loss.shape) == 3
 
     if batch_accumulator == 'sum':
         # mean over N_prime, then sum over (batch_size, N)
@@ -246,7 +247,7 @@ def compute_value_loss(eltwise_loss, batch_accumulator='mean'):
     return loss
 
 
-def compute_weighted_value_loss(eltwise_loss, batch_size, weights,
+def compute_weighted_value_loss(eltwise_loss, weights,
                                 batch_accumulator='mean'):
     """Compute a loss for value prediction problem.
 
@@ -257,7 +258,9 @@ def compute_weighted_value_loss(eltwise_loss, batch_size, weights,
     Returns:
         (Variable) scalar loss
     """
+    batch_size = eltwise_loss.shape[0]
     assert batch_accumulator in ('mean', 'sum')
+    assert eltwise_loss.ndim == 3
     # eltwise_loss is (batchsize, n , n') array of losses
     # weights is an array of shape (batch_size)
     # apply weights per example in batch
@@ -392,7 +395,7 @@ class IQN(dqn.DQN):
 
         if 'weights' in exp_batch:
             return compute_weighted_value_loss(
-                eltwise_loss, y.shape[0], exp_batch['weights'],
+                eltwise_loss, exp_batch['weights'],
                 batch_accumulator=self.batch_accumulator)
         else:
             return compute_value_loss(
