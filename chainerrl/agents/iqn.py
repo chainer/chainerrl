@@ -235,7 +235,7 @@ def compute_value_loss(eltwise_loss, batch_accumulator='mean'):
         (Variable) scalar loss
     """
     assert batch_accumulator in ('mean', 'sum')
-    assert len(eltwise_loss.shape) == 3
+    assert eltwise_loss.ndim == 3
 
     if batch_accumulator == 'sum':
         # mean over N_prime, then sum over (batch_size, N)
