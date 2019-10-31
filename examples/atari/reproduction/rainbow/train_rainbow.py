@@ -116,7 +116,9 @@ def main():
     betasteps = args.steps / update_interval
     rbuf = replay_buffer.PrioritizedReplayBuffer(
         10 ** 6, alpha=0.5, beta0=0.4, betasteps=betasteps,
-        num_steps=3)
+        num_steps=3,
+        normalize_by_max='memory',
+    )
 
     def phi(x):
         # Feature extractor
