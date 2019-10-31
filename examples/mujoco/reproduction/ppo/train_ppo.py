@@ -168,7 +168,7 @@ def main():
     )
 
     if args.load or args.load_pretrained:
-        # either loapdt_ or load_pretrained must be false
+         # either load_ or load_pretrained must be false
         assert not args.load or not args.load_pretrained
         if args.load:
             agent.load(args.load)
