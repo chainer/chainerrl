@@ -31,7 +31,7 @@ class AtariMask():
             self.mask = self.mask_enduro
         elif "SeaquestNoFrameskip" in env.spec.id:
             self.mask = self.mask_seaquest
-        elif "QbertNoFrameskips" in env.spec.id:
+        elif "QbertNoFrameskip" in env.spec.id:
             self.mask = self.mask_qbert
         elif "BeamRiderNoFrameskip" in env.spec.id:
             self.mask = self.mask_beam_rider

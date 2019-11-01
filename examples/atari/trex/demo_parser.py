@@ -5,6 +5,7 @@ from __future__ import absolute_import
 from builtins import *  # NOQA
 from future import standard_library
 standard_library.install_aliases()  # NOQA
+import collections
 import os
 
 import cv2
@@ -12,7 +13,8 @@ cv2.ocl.setUseOpenCL(False)  # NOQA
 import gym
 import numpy as np
 
-
+from chainerrl.wrappers import atari_wrappers
+from chainerrl.wrappers.score_mask_atari import AtariMask
 from pdb import set_trace
 
 
@@ -39,6 +41,7 @@ class AtariGrandChallengeParser():
                 print("Env is not an Atari env.")
         self.screens_dir = os.path.join(src, "screens", self.game)
         self.trajectories_dir = os.path.join(src, "trajectories", self.game)
+        self.mask = AtariMask(env)
         traj_numbers, traj_scores = zip(*self.get_sorted_traj_indices())
         assert isinstance(traj_numbers, tuple)
         assert isinstance(traj_scores, tuple)
@@ -49,8 +52,12 @@ class AtariGrandChallengeParser():
         assert traj_scores == [sum(traj['reward']) for traj in trajectories]
         screens = [self.parse_screens(traj_num) for traj_num in traj_numbers]
         assert len(screens) == len(trajectories)
+
+        self.trajectories, self.screens = self.preprocess(trajectories, screens)
         # parse screens, apply preprocessing, port to demonstration format
         # Apply masks
+        # TODO: handle action mapping
+        # TODO: implement framestack,  warp/resize frame and grayscale, 
 
     def parse_screens(self, traj_number):
         # add screens
@@ -141,14 +148,95 @@ class AtariGrandChallengeParser():
         elif self.game == "pinball":
             start = 0
             skip = 1
-        elif self.game == "revenge":
-            start = 0
-            skip = 1
 
         demos = non_duplicates[start:num_demos*skip + start:skip]
         assert len(demos) == num_demos
         print("(traj_num, score) pairs: ", demos)
         return demos
+
+    def preprocess(self, trajectories, screens):
+        assert [len(traj['frame']) for traj in trajectories] == [len(ep_screens) for ep_screens in screens]
+        # apply score mask (score_mask_atari.py)
+        new_screens = []
+        new_trajs = []
+        for i in range(len(screens)):
+            episode_screens = screens[i]
+            trajectory = trajectories[i]
+            new_ep_screens = []
+            new_traj = {'frame' : [], 'reward' : [], 'score' : [], 'terminal' : [], 'action' : []}
+            for i in range(len(episode_screens)):
+                new_ep_screens.append(self.mask(episode_screens[i]))
+
+            # Max and skip
+            obs_buffer = np.zeros((2,) + new_ep_screens[0].shape, dtype=np.uint8)
+            tmp_new_screens = []
+            total_reward = 0
+            for i in range(len(new_ep_screens)):
+                total_reward += trajectory['reward'][i]
+                if i % 4 == 0:
+                    obs_buffer[0] = new_ep_screens[i]
+                if i % 4 == 1:
+                    obs_buffer[1] = new_ep_screens[i]
+                if i % 4 == 3:
+                    max_frame = obs_buffer.max(axis=0)
+                    tmp_new_screens.append(max_frame)
+                    new_traj['frame'].append(i / 4)
+                    new_traj['reward'].append(total_reward)
+                    if new_traj['score']:
+                        new_traj['score'].append(new_traj['score'][-1] + total_reward)
+                    else:
+                        new_traj['score'] = [total_reward]
+                    # Note that the observation on the done=True frame
+                    # doesn't matter
+                    #TODO: handle the terminal properly
+                    new_traj['terminal'] = trajectory['terminal']
+                    new_traj['action'] = trajectory['action'][i-3]
+            new_ep_screens = tmp_new_screens
+            #TODO: assert sizes, score matches reward sum
+
+        # total_reward = 0.0
+        # done = None
+        # for i in range(self._skip):
+        #     obs, reward, done, info = self.env.step(action)
+        #     if i == self._skip - 2:
+        #         self._obs_buffer[0] = obs
+        #     if i == self._skip - 1:
+        #         self._obs_buffer[1] = obs
+        #     total_reward += reward
+        #     if done or info.get('needs_reset', False):
+        #         break
+        # # Note that the observation on the done=True frame
+        # # doesn't matter
+        # max_frame = self._obs_buffer.max(axis=0)
+
+        # type_dict = {'frame': int,
+        #              'reward': int,
+        #              'score': int,
+        #              'terminal': bool,
+        #              'action': int}
+
+        # grayscale, resize, and rescale
+        for i in range(len(new_ep_screens)):
+            new_ep_screens[i] = cv2.cvtColor(new_ep_screens[i], cv2.COLOR_RGB2GRAY)
+            new_ep_screens[i] = cv2.resize(new_ep_screens[i], (84, 84),
+                       interpolation=cv2.INTER_AREA)
+            new_ep_screens[i] = np.array(new_ep_screens[i]).astype(np.float32) / 255.0
+
+        # Framestack
+        stacked_frames = collections.deque([], maxlen=4)
+        stack_axis = {'hwc': 2, 'chw': 0}['hwc']
+        tmp_new_screens = []
+        for _ in range(4):
+            stacked_frames.append(new_ep_screens[0])
+        for i in range(len(new_ep_screens)):
+            tmp_new_screens.append(atari_wrappers.LazyFrames(list(stacked_frames),
+                                   stack_axis=stack_axis))
+            stacked_frames.append(new_ep_screens[i])
+        new_ep_screens = tmp_new_screens
+
+        new_screens.append(new_ep_screens)
+        new_trajs.append(new_traj)
+        return new_trajs, new_screens
 
 def main():
     env = "SpaceInvadersNoFrameskip-v4"
