@@ -17,6 +17,8 @@ import gym
 import gym.wrappers
 import numpy as np
 
+import demo_parser
+
 import chainerrl
 from chainerrl.action_value import DiscreteActionValue
 from chainerrl import agents
@@ -93,8 +95,8 @@ def main():
                                  'SeaquestNoFrameskip-v4',
                                  'EnduroNoFrameskip-v4'],
                         help='OpenAI Atari domain to perform algorithm on.')
-    parser.add_argument('--dataset-path', type=str, required=True,
-                        help='Path of pickle file to dataset.')
+    # parser.add_argument('--dataset-path', type=str, required=True,
+    #                     help='Path of pickle file to dataset.')
     parser.add_argument('--outdir', type=str, default='results',
                         help='Directory path to save output files.'
                              ' If it does not exist, it will be created.')
@@ -182,8 +184,11 @@ def main():
             # Randomize actions like epsilon-greedy in evaluation as well
             env = chainerrl.wrappers.RandomizeAction(env, args.eval_epsilon)
         else:
-            dataset = chainer.datasets.open_pickle_dataset(args.dataset_path)
-            episodes = demonstration.extract_episodes(dataset)
+            demo_extractor = demo_parser.AtariGrandChallengeParser("/Users/prabhat/Downloads/atari_v1/",
+                                                                   env)
+            # dataset = chainer.datasets.open_pickle_dataset(args.dataset_path)
+            # episodes = demonstration.extract_episodes(dataset)
+            episodes = demo_extractor.episodes
             # Sort episodes by ground truth ranking
             # episodes contain transitions of (obs, a, r, new_obs, done, info)
             ranked_episodes = sorted(episodes,

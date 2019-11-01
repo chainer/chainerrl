@@ -18,6 +18,14 @@ from chainerrl.wrappers.score_mask_atari import AtariMask
 from pdb import set_trace
 
 
+def str_to_bool(value):
+    if value == 'True':
+         return True
+    elif value == 'False':
+         return False
+    else:
+         raise ValueError("{} is not a bool!".format(value))
+
 class AtariGrandChallengeParser():
     """Parses Atari Grand Challenge data.
 
@@ -37,7 +45,7 @@ class AtariGrandChallengeParser():
                 else:
                     tmp_env = env.env
             except Exception as error:
-                print("Error: " + error)
+                print("Error: " + str(error))
                 print("Env is not an Atari env.")
         self.screens_dir = os.path.join(src, "screens", self.game)
         self.trajectories_dir = os.path.join(src, "trajectories", self.game)
@@ -54,10 +62,29 @@ class AtariGrandChallengeParser():
         assert len(screens) == len(trajectories)
 
         self.trajectories, self.screens = self.preprocess(trajectories, screens)
-        # parse screens, apply preprocessing, port to demonstration format
-        # Apply masks
-        # TODO: handle action mapping
-        # TODO: implement framestack,  warp/resize frame and grayscale, 
+
+        episodes = []
+        for episode, screens in zip(self.trajectories, self.screens):
+            current_episode = []
+            for i in range(len(episode) - 1):
+                obs = screens[i]
+                a = episode['action'][i]
+                r = episode['reward'][i+1]
+                new_obs = screens[i + 1]
+                done = episode['terminal'][i+1]
+                info = {}
+                current_episode.append(
+                    {"obs" : obs,
+                    "action" : a,
+                    "reward" : r,
+                    "new_obs" : new_obs,
+                    "done" : done,
+                    "info" : info})
+                if done:
+                    break
+            episodes.append(current_episode)
+            current_episode = []
+        self.episodes = episodes
 
     def parse_screens(self, traj_number):
         # add screens
@@ -82,8 +109,9 @@ class AtariGrandChallengeParser():
         type_dict = {'frame': int,
                      'reward': int,
                      'score': int,
-                     'terminal': bool,
+                     'terminal': str_to_bool,
                      'action': int}
+
         episode = dict()
         for entry in entries:
             episode[entry] = []
@@ -121,7 +149,6 @@ class AtariGrandChallengeParser():
         sorted_traj_nums = [x for _, x in sorted(zip(traj_scores, traj_nums), key=lambda pair: pair[0])]
         sorted_traj_scores = sorted(traj_scores)
 
-        print("Sorted trajectory scores " + str(sorted_traj_scores))
         print("Max human score", max(sorted_traj_scores))
         print("Min human score", min(sorted_traj_scores))
 
@@ -177,43 +204,26 @@ class AtariGrandChallengeParser():
                     obs_buffer[0] = new_ep_screens[i]
                 if i % 4 == 1:
                     obs_buffer[1] = new_ep_screens[i]
-                if i % 4 == 3:
+                if i % 4 == 3 or trajectory['terminal'][i]:
                     max_frame = obs_buffer.max(axis=0)
                     tmp_new_screens.append(max_frame)
-                    new_traj['frame'].append(i / 4)
+                    new_traj['frame'].append(int(i / 4))
                     new_traj['reward'].append(total_reward)
                     if new_traj['score']:
                         new_traj['score'].append(new_traj['score'][-1] + total_reward)
                     else:
                         new_traj['score'] = [total_reward]
+                    total_reward = 0
                     # Note that the observation on the done=True frame
                     # doesn't matter
-                    #TODO: handle the terminal properly
-                    new_traj['terminal'] = trajectory['terminal']
-                    new_traj['action'] = trajectory['action'][i-3]
+                    new_traj['terminal'].append(trajectory['terminal'][i])
+                    new_traj['action'].append(trajectory['action'][i-3])
+                    if trajectory['terminal'][i]:
+                        break
+            assert len(tmp_new_screens) == len(new_traj['frame'])
+            assert int(len(new_ep_screens)/4) <= len(tmp_new_screens) <= int(len(new_ep_screens)/4) + 1
+            assert new_traj['score'][-1] == trajectory['score'][-1]
             new_ep_screens = tmp_new_screens
-            #TODO: assert sizes, score matches reward sum
-
-        # total_reward = 0.0
-        # done = None
-        # for i in range(self._skip):
-        #     obs, reward, done, info = self.env.step(action)
-        #     if i == self._skip - 2:
-        #         self._obs_buffer[0] = obs
-        #     if i == self._skip - 1:
-        #         self._obs_buffer[1] = obs
-        #     total_reward += reward
-        #     if done or info.get('needs_reset', False):
-        #         break
-        # # Note that the observation on the done=True frame
-        # # doesn't matter
-        # max_frame = self._obs_buffer.max(axis=0)
-
-        # type_dict = {'frame': int,
-        #              'reward': int,
-        #              'score': int,
-        #              'terminal': bool,
-        #              'action': int}
 
         # grayscale, resize, and rescale
         for i in range(len(new_ep_screens)):
