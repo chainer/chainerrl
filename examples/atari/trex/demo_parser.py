@@ -33,20 +33,11 @@ class AtariGrandChallengeParser():
     """
 
     def __init__(self, src, env):
-        # check whether atari env
         tmp_env = env
-        while True:
-            try:
-                if isinstance(tmp_env, gym.envs.atari.atari_env.AtariEnv):
-                    self.game = env.game.replace("_", "")
-                    if self.game == "montezumarevenge":
-                        self.game = "revenge"
-                    break
-                else:
-                    tmp_env = env.env
-            except Exception as error:
-                print("Error: " + str(error))
-                print("Env is not an Atari env.")
+        self.game = env.game.replace("_", "")
+        if self.game == "montezumarevenge":
+            self.game = "revenge"
+
         self.screens_dir = os.path.join(src, "screens", self.game)
         self.trajectories_dir = os.path.join(src, "trajectories", self.game)
         self.mask = AtariMask(env)
