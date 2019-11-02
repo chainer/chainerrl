@@ -15,8 +15,8 @@ import numpy as np
 
 from chainerrl.wrappers import atari_wrappers
 from chainerrl.wrappers.score_mask_atari import AtariMask
-from pdb import set_trace
 
+from pdb import set_trace
 
 def str_to_bool(value):
     if value == 'True':
@@ -57,7 +57,7 @@ class AtariGrandChallengeParser():
         episodes = []
         for episode, screens in zip(self.trajectories, self.screens):
             current_episode = []
-            for i in range(len(episode) - 1):
+            for i in range(len(screens) - 1):
                 obs = screens[i]
                 a = episode['action'][i]
                 r = episode['reward'][i+1]
@@ -182,20 +182,20 @@ class AtariGrandChallengeParser():
             trajectory = trajectories[i]
             new_ep_screens = []
             new_traj = {'frame' : [], 'reward' : [], 'score' : [], 'terminal' : [], 'action' : []}
-            for i in range(len(episode_screens)):
-                new_ep_screens.append(self.mask(episode_screens[i]))
+            for k in range(len(episode_screens)):
+                new_ep_screens.append(self.mask(episode_screens[k]))
 
             # Max and skip
             obs_buffer = np.zeros((2,) + new_ep_screens[0].shape, dtype=np.uint8)
             tmp_new_screens = []
             total_reward = 0
-            for i in range(len(new_ep_screens)):
-                total_reward += trajectory['reward'][i]
-                if i % 4 == 0:
-                    obs_buffer[0] = new_ep_screens[i]
-                if i % 4 == 1:
-                    obs_buffer[1] = new_ep_screens[i]
-                if i % 4 == 3 or trajectory['terminal'][i]:
+            for j in range(len(new_ep_screens)):
+                total_reward += trajectory['reward'][j]
+                if j % 4 == 0:
+                    obs_buffer[0] = new_ep_screens[j]
+                if j % 4 == 1:
+                    obs_buffer[1] = new_ep_screens[j]
+                if j % 4 == 3 or trajectory['terminal'][j]:
                     max_frame = obs_buffer.max(axis=0)
                     tmp_new_screens.append(max_frame)
                     new_traj['frame'].append(int(i / 4))
@@ -207,36 +207,36 @@ class AtariGrandChallengeParser():
                     total_reward = 0
                     # Note that the observation on the done=True frame
                     # doesn't matter
-                    new_traj['terminal'].append(trajectory['terminal'][i])
-                    new_traj['action'].append(trajectory['action'][i-3])
-                    if trajectory['terminal'][i]:
+                    new_traj['terminal'].append(trajectory['terminal'][j])
+                    new_traj['action'].append(trajectory['action'][j-3])
+                    if trajectory['terminal'][j]:
                         break
             assert len(tmp_new_screens) == len(new_traj['frame'])
             assert int(len(new_ep_screens)/4) <= len(tmp_new_screens) <= int(len(new_ep_screens)/4) + 1
             assert new_traj['score'][-1] == trajectory['score'][-1]
             new_ep_screens = tmp_new_screens
 
-        # grayscale, resize, and rescale
-        for i in range(len(new_ep_screens)):
-            new_ep_screens[i] = cv2.cvtColor(new_ep_screens[i], cv2.COLOR_RGB2GRAY)
-            new_ep_screens[i] = cv2.resize(new_ep_screens[i], (84, 84),
-                       interpolation=cv2.INTER_AREA)
-            new_ep_screens[i] = np.array(new_ep_screens[i]).astype(np.float32) / 255.0
+            # grayscale, resize, and rescale
+            for l in range(len(new_ep_screens)):
+                new_ep_screens[l] = cv2.cvtColor(new_ep_screens[l], cv2.COLOR_RGB2GRAY)
+                new_ep_screens[l] = cv2.resize(new_ep_screens[l], (84, 84),
+                           interpolation=cv2.INTER_AREA)
+                new_ep_screens[l] = np.array(new_ep_screens[l]).astype(np.float32) / 255.0
 
-        # Framestack
-        stacked_frames = collections.deque([], maxlen=4)
-        stack_axis = {'hwc': 2, 'chw': 0}['hwc']
-        tmp_new_screens = []
-        for _ in range(4):
-            stacked_frames.append(new_ep_screens[0])
-        for i in range(len(new_ep_screens)):
-            tmp_new_screens.append(atari_wrappers.LazyFrames(list(stacked_frames),
-                                   stack_axis=stack_axis))
-            stacked_frames.append(new_ep_screens[i])
-        new_ep_screens = tmp_new_screens
+            # Framestack
+            stacked_frames = collections.deque([], maxlen=4)
+            stack_axis = {'hwc': 2, 'chw': 0}['hwc']
+            tmp_new_screens = []
+            for _ in range(4):
+                stacked_frames.append(new_ep_screens[0])
+            for m in range(len(new_ep_screens)):
+                tmp_new_screens.append(atari_wrappers.LazyFrames(list(stacked_frames),
+                                       stack_axis=stack_axis))
+                stacked_frames.append(new_ep_screens[m])
+            new_ep_screens = tmp_new_screens
 
-        new_screens.append(new_ep_screens)
-        new_trajs.append(new_traj)
+            new_screens.append(new_ep_screens)
+            new_trajs.append(new_traj)
         return new_trajs, new_screens
 
 def main():

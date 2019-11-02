@@ -35,6 +35,7 @@ from chainerrl.wrappers import score_mask_atari
 from chainerrl.wrappers.trex_reward import TREXNet
 from chainerrl.wrappers.trex_reward import TREXReward
 
+from pdb import set_trace
 
 class SingleSharedBias(chainer.Chain):
     """Single shared bias used in the Double DQN paper.

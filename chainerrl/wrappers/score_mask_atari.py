@@ -1,8 +1,6 @@
 import chainerrl.wrappers
 from chainerrl.wrappers import atari_wrappers
 import gym
-from pdb import set_trace
-
 
 def make_atari(env_id, max_frames=30 * 60 * 60, mask_render=False):
     env = gym.make(env_id)

@@ -109,7 +109,7 @@ class TREXReward(gym.Wrapper):
         '''Creates a training example.'''
 
         ranked_trajs = self.ranked_demos.episodes
-        indices = range(len(ranked_trajs))
+        indices = np.arange(len(ranked_trajs)).tolist()
         traj_indices = np.random.choice(indices, size=2, replace=False)
         i = traj_indices[0]
         j = traj_indices[1]
@@ -181,9 +181,9 @@ class TREXReward(gym.Wrapper):
 
     def _train(self):
         # mask the whole dataset
-        self._apply_masks()
+        # self._apply_masks()
         for _ in range(self.steps):
-            print("performed update...")
+            print("Performed update...")
             # get batch of traj pairs
             batch = self.get_training_batch()
             # do updates
