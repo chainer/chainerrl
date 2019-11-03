@@ -228,11 +228,11 @@ class AtariGrandChallengeParser():
             stack_axis = {'hwc': 2, 'chw': 0}['hwc']
             tmp_new_screens = []
             for _ in range(4):
-                stacked_frames.append(new_ep_screens[0])
+                stacked_frames.append(np.expand_dims(new_ep_screens[0], 0))
             for m in range(len(new_ep_screens)):
                 tmp_new_screens.append(atari_wrappers.LazyFrames(list(stacked_frames),
                                        stack_axis=stack_axis))
-                stacked_frames.append(new_ep_screens[m])
+                stacked_frames.append(np.expand_dims(new_ep_screens[m], 0))
             new_ep_screens = tmp_new_screens
 
             new_screens.append(new_ep_screens)
