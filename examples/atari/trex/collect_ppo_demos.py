@@ -144,7 +144,7 @@ def main():
     outdirs = []
     while num < args.total_length:
         checkpoint = os.path.join(args.load, str(num) + "_checkpoint")
-        agent.load(os.path.join(args.load, str(num) + "_checkpoint"))
+        agent.load(checkpoint)
         num += checkpoint_freq
         outdir = os.path.join(args.outdir, str(num))
         os.makedirs(outdir)
@@ -153,7 +153,7 @@ def main():
         experiments.collect_demonstrations(agent=agent,
                                            env=env,
                                            steps=None,
-                                           episodes=1,
+                                           episodes=5,
                                            outdir=outdir,
                                            max_episode_len=None)
     from chainerrl import demonstration
