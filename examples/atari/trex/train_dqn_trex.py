@@ -96,8 +96,6 @@ def main():
                                  'SeaquestNoFrameskip-v4',
                                  'EnduroNoFrameskip-v4'],
                         help='OpenAI Atari domain to perform algorithm on.')
-    # parser.add_argument('--dataset-path', type=str, required=True,
-    #                     help='Path of pickle file to dataset.')
     parser.add_argument('--outdir', type=str, default='results',
                         help='Directory path to save output files.'
                              ' If it does not exist, it will be created.')
@@ -157,6 +155,8 @@ def main():
                         help='Mask when you render.')
     parser.add_argument('--trex-steps', type=int, default=30000,
                         help='Number of TREX updates.')
+    parser.add_argument('--gc-loc', type=str, required=True,
+                        help='Atari Grand Challenge Data location.')
     args = parser.parse_args()
 
     import logging
@@ -185,10 +185,8 @@ def main():
             # Randomize actions like epsilon-greedy in evaluation as well
             env = chainerrl.wrappers.RandomizeAction(env, args.eval_epsilon)
         else:
-            demo_extractor = demo_parser.AtariGrandChallengeParser("/Users/prabhat/Downloads/atari_v1/",
-                                                                   env)
-            # dataset = chainer.datasets.open_pickle_dataset(args.dataset_path)
-            # episodes = demonstration.extract_episodes(dataset)
+            demo_extractor = demo_parser.AtariGrandChallengeParser(
+                args.gc_loc,env)
             episodes = demo_extractor.episodes
             # Sort episodes by ground truth ranking
             # episodes contain transitions of (obs, a, r, new_obs, done, info)

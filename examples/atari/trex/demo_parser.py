@@ -216,12 +216,11 @@ class AtariGrandChallengeParser():
             assert new_traj['score'][-1] == trajectory['score'][-1]
             new_ep_screens = tmp_new_screens
 
-            # grayscale, resize, and rescale
+            # grayscale, resize
             for l in range(len(new_ep_screens)):
                 new_ep_screens[l] = cv2.cvtColor(new_ep_screens[l], cv2.COLOR_RGB2GRAY)
                 new_ep_screens[l] = cv2.resize(new_ep_screens[l], (84, 84),
                            interpolation=cv2.INTER_AREA)
-                new_ep_screens[l] = np.array(new_ep_screens[l]).astype(np.float32) / 255.0
 
             # Framestack
             stacked_frames = collections.deque([], maxlen=4)
@@ -234,7 +233,7 @@ class AtariGrandChallengeParser():
                                        stack_axis=0))
                 stacked_frames.append(np.expand_dims(new_ep_screens[m], 0))
             new_ep_screens = tmp_new_screens
-
+            
             new_screens.append(new_ep_screens)
             new_trajs.append(new_traj)
         return new_trajs, new_screens

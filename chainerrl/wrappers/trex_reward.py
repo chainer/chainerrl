@@ -16,7 +16,6 @@ import random
 
 from chainerrl.misc.batch_states import batch_states
 
-
 def subseq(seq, subseq_len, start):
     return seq[start: start + subseq_len]
 
@@ -170,18 +169,7 @@ class TREXReward(gym.Wrapper):
                                                    preprocessed['label']))
         return mean_loss
 
-    def _apply_masks(self):
-        #TODO: Support lazy frames
-        for i in range(len(self.ranked_demos.episodes)):
-            episode = self.ranked_demos.episodes[i]
-            for j in range(len(episode)):
-                frame = self.ranked_demos.episodes[i][j]["obs"]
-                xp = self.trex_network.xp
-                self.ranked_demos.episodes[i][j]["obs"] = self.mask(xp.array(frame))
-
     def _train(self):
-        # mask the whole dataset
-        # self._apply_masks()
         for _ in range(self.steps):
             print("Performed update...")
             # get batch of traj pairs
