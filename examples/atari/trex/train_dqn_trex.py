@@ -87,7 +87,7 @@ def main():
     parser.add_argument('--env', type=str, default='SpaceInvadersNoFrameskip-v4',
                         choices=['SpaceInvadersNoFrameskip-v4',
                                  'MontezumaRevengeNoFrameskip-v4',
-                                 'McPacmanNoFrameskip-v4',
+                                 'MsPacmanNoFrameskip-v4',
                                  'QbertNoFrameskip-v4',
                                  'VideoPinballNoFrameskip-v4'
                                  ],

@@ -35,6 +35,8 @@ class AtariGrandChallengeParser():
         self.game = env.game.replace("_", "")
         if self.game == "montezumarevenge":
             self.game = "revenge"
+        elif self.game == "videopinball":
+            self.game = "pinball"
 
         self.screens_dir = os.path.join(src, "screens", self.game)
         self.trajectories_dir = os.path.join(src, "trajectories", self.game)

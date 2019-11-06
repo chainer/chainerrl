@@ -1,6 +1,15 @@
+from __future__ import print_function
+from __future__ import unicode_literals
+from __future__ import division
+from __future__ import absolute_import
+from builtins import *  # NOQA
+from future import standard_library
+standard_library.install_aliases()  # NOQA
+
+import gym
+
 import chainerrl.wrappers
 from chainerrl.wrappers import atari_wrappers
-import gym
 
 def make_atari(env_id, max_frames=30 * 60 * 60, mask_render=False):
     env = gym.make(env_id)
@@ -37,6 +46,10 @@ class AtariMask():
             self.mask = self.mask_hero
         elif "MontezumaRevengeNoFrameskip" in env.spec.id:
             self.mask = self.mask_revenge
+        elif "MsPacmanNoFrameskip" in env.spec.id:
+            self.mask = self.mask_ms_pacman
+        elif "VideoPinballNoFrameskip" in env.spec.id:
+            self.mask = self.mask_pinball
         else:
             assert False, "Not a supported env"
             self.mask = lambda x: x
@@ -91,6 +104,15 @@ class AtariMask():
         mask_obs[0:14] = 0
         return mask_obs
 
+    def mask_ms_pacman(self, obs):
+        mask_obs = obs
+        mask_obs[187:] = 0
+        return mask_obs
+
+    def mask_pinball(self, obs):
+        mask_obs = obs
+        mask_obs[29:39, 64:156] = 0
+        return mask_obs
 
 class ScoreMaskEnv(gym.Wrapper):
     def __init__(self, env, mask_render):
