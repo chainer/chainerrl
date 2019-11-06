@@ -101,6 +101,7 @@ def main():
                         help='GPU to use, set to -1 if no GPU.')
     parser.add_argument('--demo', action='store_true', default=False)
     parser.add_argument('--load', type=str, default=None)
+    parser.add_argument('--load-trex', type=str, default=None)
     parser.add_argument('--final-exploration-frames',
                         type=int, default=10 ** 6,
                         help='Timesteps after which we stop ' +
@@ -193,11 +194,17 @@ def main():
                                for episode in ranked_episodes]
             demo_dataset = demonstration.RankedDemoDataset(ranked_episodes)
             assert sorted(episode_rewards) == episode_rewards
+            network = TREXNet()
+            if args.load_trex:
+                from chainer import serializers
+                serializers.load_npz(args.load_trex, network)
             env = TREXReward(env=env,
                              ranked_demos=demo_dataset,
                              steps=args.trex_steps,
                              network=TREXNet(),
-                             gpu=args.gpu)
+                             gpu=args.gpu,
+                             outdir=args.outdir,
+                             save_network=True)
         if args.monitor:
             env = gym.wrappers.Monitor(
                 env, args.outdir,

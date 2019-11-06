@@ -6,14 +6,17 @@ from builtins import *  # NOQA
 from future import standard_library
 standard_library.install_aliases()  # NOQA
 
+import os
+import random
+
 import chainer
-from chainer import cuda
-from chainer import optimizers
 import chainer.functions as F
 import chainer.links as L
+from chainer import cuda
+from chainer import optimizers
+from chainer import serializers 
 import gym
 import numpy as np
-import random
 
 from chainerrl.misc.batch_states import batch_states
 
@@ -74,6 +77,7 @@ class TREXReward(gym.Wrapper):
                  sample_live=True,
                  network=TREXNet(),
                  gpu=None,
+                 outdir=None,
                  save_network=False):
         super().__init__(env)
         self.ranked_demos = ranked_demos
@@ -89,6 +93,7 @@ class TREXReward(gym.Wrapper):
         self.max_sub_traj_len = sub_traj_len[1]
         self.num_sub_trajs = num_sub_trajs
         self.sample_live = sample_live
+        self.outdir = outdir
         self.save_network = save_network
         self.examples = []       
         if gpu is not None and gpu >= 0:
@@ -180,7 +185,8 @@ class TREXReward(gym.Wrapper):
             loss.backward()
             self.opt.update()
         if self.save_network:
-            pass
+            serializers.save_npz(os.path.join(self.outdir, 'reward_net.model'),
+                                 self.trex_network)
 
         # at the end save the network
 
