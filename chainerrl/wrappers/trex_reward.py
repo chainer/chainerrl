@@ -93,7 +93,7 @@ class TREXReward(gym.Wrapper):
         self.examples = []       
         if gpu is not None and gpu >= 0:
             cuda.get_device(gpu).use()
-            self.trex_reward.to_gpu(device=gpu)
+            self.trex_network.to_gpu(device=gpu)
         self._train()
 
     def step(self, action):
