@@ -31,8 +31,10 @@ class AtariGrandChallengeParser():
     """
 
     def __init__(self, src, env):
-        tmp_env = env
-        self.game = env.game.replace("_", "")
+        self.game = env.spec.id
+        self.game = self.game.replace("NoFrameskip-v4", "")
+        self.game = self.game.replace("_", "")
+        self.game = self.game.lower()
         if self.game == "montezumarevenge":
             self.game = "revenge"
         elif self.game == "videopinball":
