@@ -83,7 +83,6 @@ class TREXReward(gym.Wrapper):
         self.training_observations = []
         self.training_labels = []
         self.prev_reward = None
-        self.mask = env.mask
         self.traj_batch_size = traj_batch_size
         self.min_sub_traj_len = sub_traj_len[0]
         self.max_sub_traj_len = sub_traj_len[1]
