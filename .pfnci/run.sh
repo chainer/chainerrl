@@ -79,8 +79,9 @@ main() {
 
   "${PYTHON}" -m pip install /chainerrl
   # TODO(chainerrl): Prepare test target instead.
+  # pytest does not run with attrs==19.2.0 (https://github.com/pytest-dev/pytest/issues/3280)  # NOQA
   "${PYTHON}" -m pip install \
-      'pytest==4.1.1' 'pytest-xdist==1.26.1' 'mock' \
+      'pytest==4.1.1' 'attrs==19.1.0' 'pytest-xdist==1.26.1' 'mock' \
       'atari_py==0.1.1' 'opencv-python'
 
   git config --global user.email "you@example.com"
