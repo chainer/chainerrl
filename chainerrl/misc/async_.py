@@ -133,6 +133,8 @@ def extract_params_as_shared_arrays(link):
                 typecode, persistent.ravel())
         else:
             assert np.isscalar(persistent)
+            # Wrap by a 1-dim array because multiprocessing.RawArray does not
+            # accept a 0-dim array.
             persistent_as_array = np.asarray([persistent])
             typecode = persistent_as_array.dtype.char
             shared_arrays[persistent_name] = mp.RawArray(
