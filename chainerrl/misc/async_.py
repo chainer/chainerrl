@@ -59,7 +59,7 @@ def _set_persistent_values_recursively(link, persistent_name, shared_array):
                 getattr(link, child_name), remaining, shared_array)
         else:
             _set_persistent_values_recursively(
-                link._children[int(child_name)], remaining, shared_array)
+                link[int(child_name)], remaining, shared_array)
 
 
 def set_shared_params(a, b):
