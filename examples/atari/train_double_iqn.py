@@ -53,6 +53,9 @@ def main():
                         type=int, default=10 ** 4)
     parser.add_argument('--agent', type=str, default='IQN',
                         choices=['IQN', 'DoubleIQN'])
+    parser.add_argument('--prioritized', action='store_true', default=False,
+                        help='Flag to use a prioritized replay buffer')
+    parser.add_argument('--num-step-return', type=int, default=1)
     parser.add_argument('--eval-interval', type=int, default=250000)
     parser.add_argument('--eval-n-steps', type=int, default=125000)
     parser.add_argument('--update-interval', type=int, default=4)
@@ -140,7 +143,15 @@ def main():
     opt = chainer.optimizers.Adam(5e-5, eps=1e-2 / args.batch_size)
     opt.setup(q_func)
 
-    rbuf = replay_buffer.ReplayBuffer(10 ** 6)
+    if args.prioritized:
+        betasteps = args.steps / args.update_interval
+        rbuf = replay_buffer.PrioritizedReplayBuffer(
+            10 ** 6, alpha=0.5, beta0=0.4, betasteps=betasteps,
+            num_steps=args.num_step_return)
+    else:
+        rbuf = replay_buffer.ReplayBuffer(
+            10 ** 6,
+            num_steps=args.num_step_return)
 
     explorer = explorers.LinearDecayEpsilonGreedy(
         1.0, args.final_epsilon,

@@ -1,15 +1,7 @@
-"""An example of training TRPO against OpenAI Gym Envs.
+"""A training script of TRPO on OpenAI Gym Mujoco environments.
 
-This script is an example of training a TRPO agent against OpenAI Gym envs.
-Both discrete and continuous action spaces are supported.
-
-Chainer v3.1.0 or newer is required.
-
-To solve CartPole-v0, run:
-    python train_trpo_gym.py --env CartPole-v0 --steps 100000
-
-To solve InvertedPendulum-v1, run:
-    python train_trpo_gym.py --env InvertedPendulum-v1 --steps 100000
+This script follows the settings of https://arxiv.org/abs/1709.06560 as much
+as possible.
 """
 from __future__ import division
 from __future__ import print_function
@@ -25,8 +17,10 @@ import os
 
 import chainer
 from chainer import functions as F
+from chainer import links as L
 import gym
 import gym.spaces
+import gym.wrappers
 import numpy as np
 
 import chainerrl
@@ -44,11 +38,11 @@ def main():
     parser.add_argument('--outdir', type=str, default='results',
                         help='Directory path to save output files.'
                              ' If it does not exist, it will be created.')
-    parser.add_argument('--steps', type=int, default=10 ** 6,
+    parser.add_argument('--steps', type=int, default=2 * 10 ** 6,
                         help='Total time steps for training.')
-    parser.add_argument('--eval-interval', type=int, default=10000,
+    parser.add_argument('--eval-interval', type=int, default=100000,
                         help='Interval between evaluation phases in steps.')
-    parser.add_argument('--eval-n-runs', type=int, default=10,
+    parser.add_argument('--eval-n-runs', type=int, default=100,
                         help='Number of episodes ran in an evaluation phase')
     parser.add_argument('--render', action='store_true', default=False,
                         help='Render the env')
@@ -76,12 +70,12 @@ def main():
     def make_env(test):
         env = gym.make(args.env)
         # Use different random seeds for train and test envs
-        env_seed = 2 ** 32 - args.seed if test else args.seed
+        env_seed = 2 ** 32 - 1 - args.seed if test else args.seed
         env.seed(env_seed)
         # Cast observations to float32 because our model uses float32
         env = chainerrl.wrappers.CastObservationToFloat32(env)
         if args.monitor:
-            env = chainerrl.wrappers.Monitor(env, args.outdir)
+            env = gym.wrappers.Monitor(env, args.outdir)
         if args.render:
             env = chainerrl.wrappers.Render(env)
         return env
@@ -94,53 +88,37 @@ def main():
     print('Observation space:', obs_space)
     print('Action space:', action_space)
 
-    if not isinstance(obs_space, gym.spaces.Box):
-        print("""\
-This example only supports gym.spaces.Box observation spaces. To apply it to
-other observation spaces, use a custom phi function that convert an observation
-to numpy.ndarray of numpy.float32.""")  # NOQA
-        return
+    assert isinstance(obs_space, gym.spaces.Box)
 
     # Normalize observations based on their empirical mean and variance
     obs_normalizer = chainerrl.links.EmpiricalNormalization(
-        obs_space.low.size)
+        obs_space.low.size, clip_threshold=5)
 
-    if isinstance(action_space, gym.spaces.Box):
-        # Use a Gaussian policy for continuous action spaces
-        policy = \
-            chainerrl.policies.FCGaussianPolicyWithStateIndependentCovariance(
-                obs_space.low.size,
-                action_space.low.size,
-                n_hidden_channels=64,
-                n_hidden_layers=2,
-                mean_wscale=0.01,
-                nonlinearity=F.tanh,
-                var_type='diagonal',
-                var_func=lambda x: F.exp(2 * x),  # Parameterize log std
-                var_param_init=0,  # log std = 0 => std = 1
-            )
-    elif isinstance(action_space, gym.spaces.Discrete):
-        # Use a Softmax policy for discrete action spaces
-        policy = chainerrl.policies.FCSoftmaxPolicy(
-            obs_space.low.size,
-            action_space.n,
-            n_hidden_channels=64,
-            n_hidden_layers=2,
-            last_wscale=0.01,
-            nonlinearity=F.tanh,
-        )
-    else:
-        print("""\
-TRPO only supports gym.spaces.Box or gym.spaces.Discrete action spaces.""")  # NOQA
-        return
+    # Orthogonal weight initialization is used as OpenAI Baselines does
+    winit = chainerrl.initializers.Orthogonal(1.)
+    winit_last = chainerrl.initializers.Orthogonal(1e-2)
 
-    # Use a value function to reduce variance
-    vf = chainerrl.v_functions.FCVFunction(
-        obs_space.low.size,
-        n_hidden_channels=64,
-        n_hidden_layers=2,
-        last_wscale=0.01,
-        nonlinearity=F.tanh,
+    action_size = action_space.low.size
+    policy = chainer.Sequential(
+        L.Linear(None, 64, initialW=winit),
+        F.tanh,
+        L.Linear(None, 64, initialW=winit),
+        F.tanh,
+        L.Linear(None, action_size, initialW=winit_last),
+        chainerrl.policies.GaussianHeadWithStateIndependentCovariance(
+            action_size=action_size,
+            var_type='diagonal',
+            var_func=lambda x: F.exp(2 * x),  # Parameterize log std
+            var_param_init=0,  # log std = 0 => std = 1
+        ),
+    )
+
+    vf = chainer.Sequential(
+        L.Linear(None, 64, initialW=winit),
+        F.tanh,
+        L.Linear(None, 64, initialW=winit),
+        F.tanh,
+        L.Linear(None, 1, initialW=winit),
     )
 
     if args.gpu >= 0:
@@ -156,7 +134,7 @@ TRPO only supports gym.spaces.Box or gym.spaces.Discrete action spaces.""")  # N
 
     # Draw the computational graph and save it in the output directory.
     fake_obs = chainer.Variable(
-        policy.xp.zeros(obs_space.low.shape, dtype=np.float32)[None],
+        policy.xp.zeros_like(obs_space.low, dtype=np.float32)[None],
         name='observation')
     chainerrl.misc.draw_computational_graph(
         [policy(fake_obs)], os.path.join(args.outdir, 'policy'))
@@ -170,6 +148,7 @@ TRPO only supports gym.spaces.Box or gym.spaces.Discrete action spaces.""")  # N
         vf_optimizer=vf_opt,
         obs_normalizer=obs_normalizer,
         update_interval=args.trpo_update_interval,
+        max_kl=0.01,
         conjugate_gradient_max_iter=20,
         conjugate_gradient_damping=1e-1,
         gamma=0.995,
@@ -193,6 +172,7 @@ TRPO only supports gym.spaces.Box or gym.spaces.Discrete action spaces.""")  # N
             args.eval_n_runs, eval_stats['mean'], eval_stats['median'],
             eval_stats['stdev']))
     else:
+
         chainerrl.experiments.train_agent_with_evaluation(
             agent=agent,
             env=env,
