@@ -35,8 +35,6 @@ from chainerrl.wrappers import score_mask_atari
 from chainerrl.wrappers.trex_reward import TREXNet
 from chainerrl.wrappers.trex_reward import TREXReward
 
-from pdb import set_trace
-
 class SingleSharedBias(chainer.Chain):
     """Single shared bias used in the Double DQN paper.
 
@@ -88,13 +86,11 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--env', type=str, default='SpaceInvadersNoFrameskip-v4',
                         choices=['SpaceInvadersNoFrameskip-v4',
-                                 'PongNoFrameskip-v4',
-                                 'BreakoutNoFrameskip-v4',
-                                 'BeamRiderNoFrameskip-v4',
-                                 'HeroNoFrameskip-v4',
+                                 'MontezumaRevengeNoFrameskip-v4',
+                                 'McPacmanNoFrameskip-v4',
                                  'QbertNoFrameskip-v4',
-                                 'SeaquestNoFrameskip-v4',
-                                 'EnduroNoFrameskip-v4'],
+                                 'VideoPinballNoFrameskip-v4'
+                                 ],
                         help='OpenAI Atari domain to perform algorithm on.')
     parser.add_argument('--outdir', type=str, default='results',
                         help='Directory path to save output files.'
@@ -186,7 +182,7 @@ def main():
             env = chainerrl.wrappers.RandomizeAction(env, args.eval_epsilon)
         else:
             demo_extractor = demo_parser.AtariGrandChallengeParser(
-                args.gc_loc,env)
+                args.gc_loc, env)
             episodes = demo_extractor.episodes
             # Sort episodes by ground truth ranking
             # episodes contain transitions of (obs, a, r, new_obs, done, info)

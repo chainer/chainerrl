@@ -16,8 +16,6 @@ import numpy as np
 from chainerrl.wrappers import atari_wrappers
 from chainerrl.wrappers.score_mask_atari import AtariMask
 
-from pdb import set_trace
-
 def str_to_bool(value):
     if value == 'True':
          return True
