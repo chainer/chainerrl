@@ -66,7 +66,7 @@ class FCStateQFunctionWithDiscreteAction(
 
 class DistributionalSingleModelStateQFunctionWithDiscreteAction(
         chainer.Chain, StateQFunction, RecurrentChainMixin):
-    """distributional Q-function with discrete actions.
+    """Distributional Q-function with discrete actions.
 
     Args:
         model (chainer.Link):
@@ -118,7 +118,7 @@ class DistributionalFCStateQFunctionWithDiscreteAction(
 
 
 class FCLSTMStateQFunction(chainer.Chain, StateQFunction, RecurrentChainMixin):
-    """Fully-connected state-input discrete  Q-function.
+    """Fully-connected + LSTM state-input discrete Q-function.
 
     Args:
         n_dim_obs: number of dimensions of observation space
@@ -151,6 +151,8 @@ class FCLSTMStateQFunction(chainer.Chain, StateQFunction, RecurrentChainMixin):
 class FCQuadraticStateQFunction(
         chainer.Chain, StateQFunction):
     """Fully-connected state-input continuous Q-function.
+
+    See: https://arxiv.org/abs/1603.00748
 
     Args:
         n_input_channels: number of input channels
@@ -212,7 +214,9 @@ class FCQuadraticStateQFunction(
 
 
 class FCBNQuadraticStateQFunction(chainer.Chain, StateQFunction):
-    """Fully-connected state-input continuous Q-function.
+    """Fully-connected + BN state-input continuous Q-function.
+
+    See: https://arxiv.org/abs/1603.00748
 
     Args:
         n_input_channels: number of input channels
@@ -221,6 +225,8 @@ class FCBNQuadraticStateQFunction(chainer.Chain, StateQFunction):
         n_hidden_layers: number of hidden layers
         action_space: action_space
         scale_mu (bool): scale mu by applying tanh if True
+        normalize_input (bool): If set to True, Batch Normalization is applied
+            to the observations
     """
 
     def __init__(self, n_input_channels, n_dim_action, n_hidden_channels,

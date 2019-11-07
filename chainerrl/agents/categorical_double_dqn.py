@@ -28,15 +28,13 @@ class CategoricalDoubleDQN(categorical_dqn.CategoricalDQN):
                 target_next_qout = self.target_model(batch_next_state)
                 next_qout = self.model(batch_next_state)
 
-        next_q_max = target_next_qout.evaluate_actions(
-            next_qout.greedy_actions)
-
         batch_size = batch_rewards.shape[0]
         z_values = target_next_qout.z_values
         n_atoms = z_values.size
 
         # next_q_max: (batch_size, n_atoms)
-        next_q_max = target_next_qout.max_as_distribution.array
+        next_q_max = target_next_qout.evaluate_actions_as_distribution(
+            next_qout.greedy_actions.array).array
         assert next_q_max.shape == (batch_size, n_atoms), next_q_max.shape
 
         # Tz: (batch_size, n_atoms)

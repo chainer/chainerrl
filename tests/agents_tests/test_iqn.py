@@ -41,6 +41,7 @@ class TestIQNOnDiscreteABC(
             replay_start_size=100, target_update_interval=100,
             quantile_thresholds_N=self.quantile_thresholds_N,
             quantile_thresholds_N_prime=self.quantile_thresholds_N_prime,
+            act_deterministically=True,
         )
 
 
@@ -71,6 +72,7 @@ class TestIQNOnDiscretePOABC(
             quantile_thresholds_N=32,
             quantile_thresholds_N_prime=32,
             recurrent=True,
+            act_deterministically=True,
         )
 
 

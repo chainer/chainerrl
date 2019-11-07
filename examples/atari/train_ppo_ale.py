@@ -77,6 +77,9 @@ def main():
     parser.add_argument('--no-frame-stack', action='store_true', default=False,
                         help='Disable frame stacking so that the agent can'
                              ' only see the current screen.')
+    parser.add_argument('--checkpoint-frequency', type=int,
+                        default=None,
+                        help='Frequency at which agents are stored.')
     args = parser.parse_args()
 
     import logging
@@ -226,6 +229,7 @@ def main():
             steps=args.steps,
             eval_n_steps=None,
             eval_n_episodes=args.eval_n_runs,
+            checkpoint_freq=args.checkpoint_frequency,
             eval_interval=args.eval_interval,
             log_interval=args.log_interval,
             save_best_so_far_agent=False,

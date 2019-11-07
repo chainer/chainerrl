@@ -2,7 +2,6 @@ import chainer
 from chainer import cuda
 import chainer.functions as F
 import chainer.links as L
-import numpy as np
 
 from chainerrl.action_value import QuantileDiscreteActionValue
 from chainerrl.agents import dqn
@@ -22,13 +21,14 @@ def cosine_basis_functions(x, n_basis_functions=64):
     xp = chainer.cuda.get_array_module(x)
     # Equation (4) in the IQN paper has an error stating i=0,...,n-1.
     # Actually i=1,...,n is correct (personal communication)
-    i_pi = xp.arange(1, n_basis_functions + 1, dtype=np.float32) * np.pi
+    i_pi = xp.arange(1, n_basis_functions + 1, dtype=xp.float32) * xp.pi
     embedding = xp.cos(x[..., None] * i_pi)
     assert embedding.shape == x.shape + (n_basis_functions,)
     return embedding
 
 
 class CosineBasisLinear(chainer.Chain):
+
     """Linear layer following cosine basis functions.
 
     Args:
@@ -82,6 +82,7 @@ def _evaluate_psi_x_with_quantile_thresholds(psi_x, phi, f, taus):
 
 
 class ImplicitQuantileQFunction(chainer.Chain):
+
     """Implicit quantile network-based Q-function.
 
     Args:
@@ -126,6 +127,7 @@ class ImplicitQuantileQFunction(chainer.Chain):
 
 class StatelessRecurrentImplicitQuantileQFunction(
         StatelessRecurrentChainList):
+
     """Recurrent implicit quantile network-based Q-function.
 
     Args:
@@ -215,7 +217,56 @@ def compute_eltwise_huber_quantile_loss(y, t, taus, huber_loss_threshold=1.0):
     return eltwise_loss
 
 
+def compute_value_loss(eltwise_loss, batch_accumulator='mean'):
+    """Compute a loss for value prediction problem.
+
+    Args:
+        eltwise_loss (Variable): Element-wise loss per example
+        batch_accumulator (str): 'mean' or 'sum'. 'mean' will use the mean of
+            the loss values in a batch. 'sum' will use the sum.
+    Returns:
+        (Variable) scalar loss
+    """
+    assert batch_accumulator in ('mean', 'sum')
+    assert eltwise_loss.ndim == 3
+
+    if batch_accumulator == 'sum':
+        # mean over N_prime, then sum over (batch_size, N)
+        loss = F.sum(F.mean(eltwise_loss, axis=2))
+    else:
+        # mean over (batch_size, N_prime), then sum over N
+        loss = F.sum(F.mean(eltwise_loss, axis=(0, 2)))
+
+    return loss
+
+
+def compute_weighted_value_loss(eltwise_loss, weights,
+                                batch_accumulator='mean'):
+    """Compute a loss for value prediction problem.
+
+    Args:
+        eltwise_loss (Variable): Element-wise loss per example
+        weights (ndarray): Weights for y, t.
+        batch_accumulator (str): 'mean' will divide loss by batchsize
+    Returns:
+        (Variable) scalar loss
+    """
+    batch_size = eltwise_loss.shape[0]
+    assert batch_accumulator in ('mean', 'sum')
+    assert eltwise_loss.ndim == 3
+    # eltwise_loss is (batchsize, n , n') array of losses
+    # weights is an array of shape (batch_size)
+    # apply weights per example in batch
+    loss_sum = F.matmul(F.sum(F.mean(eltwise_loss, axis=2), axis=1), weights)
+    if batch_accumulator == 'mean':
+        loss = loss_sum / batch_size
+    elif batch_accumulator == 'sum':
+        loss = loss_sum
+    return loss
+
+
 class IQN(dqn.DQN):
+
     """Implicit Quantile Networks.
 
     See https://arxiv.org/abs/1806.06923.
@@ -227,6 +278,11 @@ class IQN(dqn.DQN):
             to sample from the return distribution at the next state.
         quantile_thresholds_K (int): Number of quantile thresholds used to
             compute greedy actions.
+        act_deterministically (bool): IQN's action selection is by default
+            stochastic as it samples quantile thresholds every time it acts,
+            even for evaluation. If this option is set to True, it uses
+            equally spaced quantile thresholds instead of randomly sampled ones
+            for evaluation, making its action selection deterministic.
 
     For other arguments, see chainerrl.agents.DQN.
     """
@@ -238,6 +294,7 @@ class IQN(dqn.DQN):
         self.quantile_thresholds_N_prime = kwargs.pop(
             'quantile_thresholds_N_prime', 64)
         self.quantile_thresholds_K = kwargs.pop('quantile_thresholds_K', 32)
+        self.act_deterministically = kwargs.pop('act_deterministically', False)
         super().__init__(*args, **kwargs)
 
     def _compute_target_values(self, exp_batch):
@@ -279,8 +336,8 @@ class IQN(dqn.DQN):
         batch_discount = F.broadcast_to(
             batch_discount[..., None], target_next_maxz.shape)
 
-        return (batch_rewards
-                + batch_discount * (1.0 - batch_terminal) * target_next_maxz)
+        return (batch_rewards +
+                batch_discount * (1.0 - batch_terminal) * target_next_maxz)
 
     def _compute_y_and_taus(self, exp_batch):
         """Compute a batch of predicted return distributions.
@@ -324,18 +381,18 @@ class IQN(dqn.DQN):
             t = self._compute_target_values(exp_batch)
 
         eltwise_loss = compute_eltwise_huber_quantile_loss(y, t, taus)
-
         if errors_out is not None:
             del errors_out[:]
-            delta = F.mean(abs(eltwise_loss), axis=(1, 2))
+            delta = F.mean(eltwise_loss, axis=(1, 2))
             errors_out.extend(cuda.to_cpu(delta.array))
 
-        if self.batch_accumulator == 'sum':
-            # mean over N_prime, then sum over (batch_size, N)
-            return F.sum(F.mean(eltwise_loss, axis=2))
+        if 'weights' in exp_batch:
+            return compute_weighted_value_loss(
+                eltwise_loss, exp_batch['weights'],
+                batch_accumulator=self.batch_accumulator)
         else:
-            # mean over (batch_size, N_prime), then sum over N
-            return F.sum(F.mean(eltwise_loss, axis=(0, 2)))
+            return compute_value_loss(
+                eltwise_loss, batch_accumulator=self.batch_accumulator)
 
     def _evaluate_model_and_update_recurrent_states(self, batch_obs, test):
         batch_xs = self.batch_states(batch_obs, self.xp, self.phi)
@@ -349,7 +406,17 @@ class IQN(dqn.DQN):
                     batch_xs, self.train_recurrent_states)
         else:
             tau2av = self.model(batch_xs)
-        taus_tilde = self.xp.random.uniform(
-            0, 1,
-            size=(len(batch_obs), self.quantile_thresholds_K)).astype('f')
+        if test and self.act_deterministically:
+            # Instead of uniform sampling, use a deterministic sequence of
+            # equally spaced numbers from 0 to 1 as quantile thresholds.
+            taus_tilde = self.xp.broadcast_to(
+                self.xp.linspace(
+                    0, 1, num=self.quantile_thresholds_K,
+                    dtype=self.xp.float32),
+                (len(batch_obs), self.quantile_thresholds_K),
+            )
+        else:
+            taus_tilde = self.xp.random.uniform(
+                0, 1,
+                size=(len(batch_obs), self.quantile_thresholds_K)).astype('f')
         return tau2av(taus_tilde)

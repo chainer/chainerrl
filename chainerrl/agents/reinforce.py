@@ -132,7 +132,7 @@ class REINFORCE(agent.AttributeSavingMixin, agent.Agent):
 
     def accumulate_grad(self):
         if self.n_backward == 0:
-            self.model.zerograds()
+            self.model.cleargrads()
         # Compute losses
         losses = []
         for r_seq, log_prob_seq, ent_seq in zip(self.reward_sequences,
@@ -160,7 +160,7 @@ class REINFORCE(agent.AttributeSavingMixin, agent.Agent):
         assert len(self.log_prob_sequences) == self.batchsize
         assert len(self.entropy_sequences) == self.batchsize
         # Update the model
-        self.model.zerograds()
+        assert self.n_backward == 0
         self.accumulate_grad()
         self.optimizer.update()
         self.n_backward = 0

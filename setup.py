@@ -14,6 +14,7 @@ install_requires = [
 
 test_requires = [
     'pytest',
+    'attrs<19.2.0',  # pytest does not run with attrs==19.2.0 (https://github.com/pytest-dev/pytest/issues/3280)  # NOQA
 ]
 
 if sys.version_info < (3, 2):
