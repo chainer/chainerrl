@@ -6,6 +6,7 @@ from builtins import *  # NOQA
 from future import standard_library
 standard_library.install_aliases()  # NOQA
 
+import functools
 import logging
 import multiprocessing as mp
 import os
@@ -129,6 +130,56 @@ def set_shared_objects(agent, shared_objects):
         setattr(agent, attr, new_value)
 
 
+def _run_func(
+    process_idx,
+    make_env,
+    make_agent,
+    agent,
+    shared_objects,
+    profile,
+    evaluator,
+    **train_loop_kwargs
+):
+    """This function is run by a training loop process.
+
+    To be pickle-able, this is defined as a top-level function.
+    """
+    random_seed.set_random_seed(process_idx)
+
+    env = make_env(process_idx, test=False)
+    if evaluator is None:
+        eval_env = env
+    else:
+        eval_env = make_env(process_idx, test=True)
+    if make_agent is not None:
+        local_agent = make_agent(process_idx)
+        set_shared_objects(local_agent, shared_objects)
+    else:
+        local_agent = agent
+    local_agent.process_idx = process_idx
+
+    def f():
+        train_loop(
+            process_idx=process_idx,
+            agent=local_agent,
+            env=env,
+            eval_env=eval_env,
+            evaluator=evaluator,
+            **train_loop_kwargs,
+        )
+
+    if profile:
+        import cProfile
+        cProfile.runctx('f()', globals(), locals(),
+                        'profile-{}.out'.format(os.getpid()))
+    else:
+        f()
+
+    env.close()
+    if eval_env is not env:
+        eval_env.close()
+
+
 def train_agent_async(outdir, processes, make_env,
                       profile=False,
                       steps=8 * 10 ** 7,
@@ -205,48 +256,24 @@ def train_agent_async(outdir, processes, make_env,
             logger=logger,
         )
 
-    def run_func(process_idx):
-        random_seed.set_random_seed(process_idx)
-
-        env = make_env(process_idx, test=False)
-        if evaluator is None:
-            eval_env = env
-        else:
-            eval_env = make_env(process_idx, test=True)
-        if make_agent is not None:
-            local_agent = make_agent(process_idx)
-            set_shared_objects(local_agent, shared_objects)
-        else:
-            local_agent = agent
-        local_agent.process_idx = process_idx
-
-        def f():
-            train_loop(
-                process_idx=process_idx,
-                counter=counter,
-                episodes_counter=episodes_counter,
-                agent=local_agent,
-                env=env,
-                steps=steps,
-                outdir=outdir,
-                max_episode_len=max_episode_len,
-                evaluator=evaluator,
-                successful_score=successful_score,
-                training_done=training_done,
-                eval_env=eval_env,
-                global_step_hooks=global_step_hooks,
-                logger=logger)
-
-        if profile:
-            import cProfile
-            cProfile.runctx('f()', globals(), locals(),
-                            'profile-{}.out'.format(os.getpid()))
-        else:
-            f()
-
-        env.close()
-        if eval_env is not env:
-            eval_env.close()
+    run_func = functools.partial(
+        _run_func,
+        make_agent=make_agent,
+        agent=agent if make_agent is None else None,
+        make_env=make_env,
+        evaluator=evaluator,
+        shared_objects=shared_objects,
+        profile=profile,
+        steps=steps,
+        outdir=outdir,
+        counter=counter,
+        episodes_counter=episodes_counter,
+        training_done=training_done,
+        max_episode_len=max_episode_len,
+        successful_score=successful_score,
+        logger=logger,
+        global_step_hooks=global_step_hooks,
+    )
 
     async_.run_async(processes, run_func)
 
