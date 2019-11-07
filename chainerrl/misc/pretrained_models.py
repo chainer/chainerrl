@@ -11,7 +11,6 @@ from builtins import *  # NOQA
 from future import standard_library
 standard_library.install_aliases()  # NOQA
 
-import argparse
 from distutils.util import strtobool
 import filelock
 import hashlib
@@ -25,11 +24,6 @@ from six.moves.urllib import request
 
 from chainer.dataset.download import get_dataset_directory
 from chainer.dataset.download import get_dataset_root
-from chainer import links as L
-from chainer import optimizers
-
-import chainerrl
-from chainerrl import misc
 
 
 MODELS = {
@@ -116,6 +110,7 @@ def cached_download(url):
 
     return cache_path
 
+
 def download_and_store_model(alg, url, env, model_type):
     """Downloads a model file and puts it under model directory.
     It downloads a file from the URL and puts it under model directory.
@@ -136,7 +131,6 @@ def download_and_store_model(alg, url, env, model_type):
         root = get_dataset_directory(
             os.path.join('pfnet', 'chainerrl', 'models', alg, env))
         url_basepath = os.path.join(url, alg, env)
-        url_paths = []
         file = model_type + ".zip"
         path = os.path.join(root, file)
         if not os.path.exists(path):
@@ -150,7 +144,7 @@ def download_and_store_model(alg, url, env, model_type):
 
 def download_model(alg, env, model_type="best"):
     assert alg in MODELS, \
-        "No pretrained models for " + alg +"."
+        "No pretrained models for " + alg + "."
     assert model_type in MODELS[alg], \
         "Model type \"" + model_type + "\" is not supported."
     env = env.replace("NoFrameskip-v4", "")
