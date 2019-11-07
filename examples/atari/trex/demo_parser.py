@@ -1,3 +1,7 @@
+"""Portions of this file contains code modified from
+https://github.com/hiwonjoon/ICML2019-TREX, an MIT-licensed project.
+"""
+
 from __future__ import print_function
 from __future__ import division
 from __future__ import unicode_literals
@@ -119,8 +123,6 @@ class AtariGrandChallengeParser():
         return episode
 
     def get_sorted_traj_indices(self):
-        # This function is adapted from https://github.com/hiwonjoon/ICML2019-TREX
-
         # need to pick out a subset of demonstrations based on desired performance
         # first let's sort the demos by performance, we can use the trajectory number to index into the demos so just
         # need to sort indices based on 'score'
