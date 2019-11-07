@@ -135,7 +135,7 @@ def download_and_store_model(alg, url, env, model_type):
         path = os.path.join(root, file)
         if not os.path.exists(path):
             cache_path = cached_download(os.path.join(url_basepath,
-                                         file))
+                                                      file))
             os.rename(cache_path, path)
             with zipfile.ZipFile(path, 'r') as zip_ref:
                 zip_ref.extractall(root)
