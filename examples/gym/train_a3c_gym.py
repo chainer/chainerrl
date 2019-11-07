@@ -112,6 +112,31 @@ def _make_env(process_idx, test, process_seeds, args):
     return env
 
 
+def _make_agent(process_idx, obs_space, action_space, args):
+
+    # Switch policy types accordingly to action space types
+    if args.arch == 'LSTMGaussian':
+        model = A3CLSTMGaussian(obs_space.low.size, action_space.low.size)
+    elif args.arch == 'FFSoftmax':
+        model = A3CFFSoftmax(obs_space.low.size, action_space.n)
+    elif args.arch == 'FFMellowmax':
+        model = A3CFFMellowmax(obs_space.low.size, action_space.n)
+
+    opt = rmsprop_async.RMSpropAsync(
+        lr=args.lr, eps=args.rmsprop_epsilon, alpha=0.99)
+    opt.setup(model)
+    opt.add_hook(chainer.optimizer.GradientClipping(40))
+    if args.weight_decay > 0:
+        opt.add_hook(NonbiasWeightDecay(args.weight_decay))
+
+    agent = a3c.A3C(model, opt, t_max=args.t_max, gamma=0.99,
+                    beta=args.beta)
+    if args.load:
+        agent.load(args.load)
+
+    return agent
+
+
 def main():
     import logging
 
@@ -166,40 +191,29 @@ def main():
     obs_space = sample_env.observation_space
     action_space = sample_env.action_space
 
-    # Switch policy types accordingly to action space types
-    if args.arch == 'LSTMGaussian':
-        model = A3CLSTMGaussian(obs_space.low.size, action_space.low.size)
-    elif args.arch == 'FFSoftmax':
-        model = A3CFFSoftmax(obs_space.low.size, action_space.n)
-    elif args.arch == 'FFMellowmax':
-        model = A3CFFMellowmax(obs_space.low.size, action_space.n)
-
-    opt = rmsprop_async.RMSpropAsync(
-        lr=args.lr, eps=args.rmsprop_epsilon, alpha=0.99)
-    opt.setup(model)
-    opt.add_hook(chainer.optimizer.GradientClipping(40))
-    if args.weight_decay > 0:
-        opt.add_hook(NonbiasWeightDecay(args.weight_decay))
-
-    agent = a3c.A3C(model, opt, t_max=args.t_max, gamma=0.99,
-                    beta=args.beta)
-    if args.load:
-        agent.load(args.load)
+    make_agent = functools.partial(
+        _make_agent,
+        obs_space=obs_space,
+        action_space=action_space,
+        args=args,
+    )
 
     if args.demo:
+        agent = make_agent(0)
         env = make_env(0, True)
         eval_stats = experiments.eval_performance(
             env=env,
             agent=agent,
             n_steps=None,
             n_episodes=args.eval_n_runs,
-            max_episode_len=timestep_limit)
+            max_episode_len=timestep_limit,
+        )
         print('n_runs: {} mean: {} median: {} stdev {}'.format(
             args.eval_n_runs, eval_stats['mean'], eval_stats['median'],
             eval_stats['stdev']))
     else:
         experiments.train_agent_async(
-            agent=agent,
+            make_agent=make_agent,
             outdir=args.outdir,
             processes=args.processes,
             make_env=make_env,
@@ -208,7 +222,8 @@ def main():
             eval_n_steps=None,
             eval_n_episodes=args.eval_n_runs,
             eval_interval=args.eval_interval,
-            max_episode_len=timestep_limit)
+            max_episode_len=timestep_limit,
+        )
 
 
 if __name__ == '__main__':
