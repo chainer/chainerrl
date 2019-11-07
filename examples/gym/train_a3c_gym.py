@@ -17,6 +17,7 @@ from builtins import *  # NOQA
 from future import standard_library
 standard_library.install_aliases()  # NOQA
 import argparse
+import functools
 import os
 
 # This prevents numpy from using multiple threads
@@ -92,6 +93,25 @@ class A3CLSTMGaussian(chainer.ChainList, a3c.A3CModel, RecurrentChainMixin):
         return pout, vout
 
 
+def _make_env(process_idx, test, process_seeds, args):
+    env = gym.make(args.env)
+    # Use different random seeds for train and test envs
+    process_seed = int(process_seeds[process_idx])
+    env_seed = 2 ** 32 - 1 - process_seed if test else process_seed
+    env.seed(env_seed)
+    # Cast observations to float32 because our model uses float32
+    env = chainerrl.wrappers.CastObservationToFloat32(env)
+    if args.monitor and process_idx == 0:
+        env = chainerrl.wrappers.Monitor(env, args.outdir)
+    if not test:
+        # Scale rewards (and thus returns) to a reasonable range so that
+        # training is easier
+        env = chainerrl.wrappers.ScaleReward(env, args.reward_scale_factor)
+    if args.render and process_idx == 0 and not test:
+        env = chainerrl.wrappers.Render(env)
+    return env
+
+
 def main():
     import logging
 
@@ -137,23 +157,8 @@ def main():
 
     args.outdir = experiments.prepare_output_dir(args, args.outdir)
 
-    def make_env(process_idx, test):
-        env = gym.make(args.env)
-        # Use different random seeds for train and test envs
-        process_seed = int(process_seeds[process_idx])
-        env_seed = 2 ** 32 - 1 - process_seed if test else process_seed
-        env.seed(env_seed)
-        # Cast observations to float32 because our model uses float32
-        env = chainerrl.wrappers.CastObservationToFloat32(env)
-        if args.monitor and process_idx == 0:
-            env = chainerrl.wrappers.Monitor(env, args.outdir)
-        if not test:
-            # Scale rewards (and thus returns) to a reasonable range so that
-            # training is easier
-            env = chainerrl.wrappers.ScaleReward(env, args.reward_scale_factor)
-        if args.render and process_idx == 0 and not test:
-            env = chainerrl.wrappers.Render(env)
-        return env
+    make_env = functools.partial(
+        _make_env, process_seeds=process_seeds, args=args)
 
     sample_env = gym.make(args.env)
     timestep_limit = sample_env.spec.tags.get(
