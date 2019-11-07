@@ -66,6 +66,10 @@ def main():
                         help='Render env states in a GUI window.')
     parser.add_argument('--demo', action='store_true',
                         help='Just run evaluation, not training.')
+    parser.add_argument('--load-pretrained', action='store_true',
+                        default=False)
+    parser.add_argument('--pretrained-type', type=str, default="best",
+                        choices=['best', 'final'])
     parser.add_argument('--monitor', action='store_true',
                         help='Wrap env with gym.wrappers.Monitor.')
     parser.add_argument('--log-interval', type=int, default=1000,
@@ -207,8 +211,14 @@ def main():
         temperature_optimizer=chainer.optimizers.Adam(3e-4),
     )
 
-    if len(args.load) > 0:
-        agent.load(args.load)
+    if len(args.load) > 0 or args.load_pretrained:
+        # either loapdt_ or load_pretrained must be false
+        assert not len(args.load) > 0 or not args.load_pretrained
+        if len(args.load) > 0:
+            agent.load(args.load)
+        else:
+            agent.load(misc.download_model("SAC", args.env,
+                                           model_type=args.pretrained_type))
 
     if args.demo:
         eval_stats = experiments.eval_performance(
