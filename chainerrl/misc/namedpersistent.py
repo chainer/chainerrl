@@ -9,6 +9,15 @@ standard_library.install_aliases()  # NOQA
 import chainer
 
 
+def _namedchildren(link):
+    if isinstance(link, chainer.Chain):
+        for name in sorted(link._children):
+            yield name, link.__dict__[name]
+    elif isinstance(link, chainer.ChainList):
+        for idx, child in enumerate(link._children):
+            yield str(idx), child
+
+
 def namedpersistent(link):
     """Return a generator of all (path, persistent) pairs for a given link.
 
@@ -25,13 +34,7 @@ def namedpersistent(link):
     d = link.__dict__
     for name in sorted(link._persistent):
         yield '/' + name, d[name]
-    if isinstance(link, chainer.Chain):
-        for name in sorted(link._children):
-            prefix = '/' + name
-            for path, persistent in namedpersistent(d[name]):
-                yield prefix + path, persistent
-    elif isinstance(link, chainer.ChainList):
-        for idx, link in enumerate(link._children):
-            prefix = '/{}'.format(idx)
-            for path, persistent in namedpersistent(link):
-                yield prefix + path, persistent
+    for name, child in _namedchildren(link):
+        prefix = '/' + name
+        for path, persistent in namedpersistent(child):
+            yield prefix + path, persistent
