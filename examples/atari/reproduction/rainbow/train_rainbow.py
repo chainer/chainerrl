@@ -180,7 +180,7 @@ def main():
             agent=agent,
             n_steps=None,
             n_episodes=args.n_best_episodes,
-            max_episode_len=args.max_frames/4,
+            max_episode_len=args.max_frames / 4,
             logger=None)
         with open(os.path.join(args.outdir, 'bestscores.json'), 'w') as f:
             # temporary hack to handle python 2/3 support issues.
