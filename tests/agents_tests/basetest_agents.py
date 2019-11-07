@@ -48,6 +48,6 @@ class _TestAgentInterface(unittest.TestCase):
         train_agent(
             agent=agent,
             env=self.env,
-            steps=2000,
+            steps=200,
             outdir=tempfile.mkdtemp(),
             max_episode_len=10)
