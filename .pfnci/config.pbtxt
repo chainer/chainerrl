@@ -27,7 +27,7 @@ configs {
       gpu: 1
     }
     time_limit {
-      seconds: 1800
+      seconds: 2400
     }
     environment_variables { key: "GPU" value: "1" }
     environment_variables { key: "SLOW" value: "1" }
@@ -43,7 +43,7 @@ configs {
       memory: 30
     }
     time_limit {
-      seconds: 1800
+      seconds: 2400
     }
     environment_variables { key: "SLOW" value: "1" }
     command: "bash .pfnci/script.sh py3.cpu"
