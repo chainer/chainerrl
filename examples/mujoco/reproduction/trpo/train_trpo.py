@@ -162,12 +162,12 @@ def main():
     )
 
     if args.load or args.load_pretrained:
-         # either load_ or load_pretrained must be false
+        # either load or load_pretrained must be false
         assert not args.load or not args.load_pretrained
         if args.load:
             agent.load(args.load)
         else:
-            agent.load(misc.download_model("TRPO", args.env,
+            agent.load(chainerrl.misc.download_model("TRPO", args.env,
                                            model_type=args.pretrained_type))
 
     if args.demo:
