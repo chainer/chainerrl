@@ -115,6 +115,11 @@ def share_states_as_shared_arrays(optimizer):
     return shared_arrays
 
 
+def set_seed_and_run(process_idx, run_func):
+    random_seed.set_random_seed(np.random.randint(0, 2 ** 32))
+    run_func(process_idx)
+
+
 def run_async(n_process, run_func):
     """Run experiments asynchronously.
 
@@ -124,10 +129,6 @@ def run_async(n_process, run_func):
     """
 
     processes = []
-
-    def set_seed_and_run(process_idx, run_func):
-        random_seed.set_random_seed(np.random.randint(0, 2 ** 32))
-        run_func(process_idx)
 
     for process_idx in range(n_process):
         processes.append(mp.Process(target=set_seed_and_run, args=(
