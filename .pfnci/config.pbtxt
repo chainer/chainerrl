@@ -10,6 +10,9 @@ configs {
       memory: 30
       gpu: 1
     }
+    time_limit {
+      seconds: 1200
+    }
     environment_variables { key: "GPU" value: "1" }
     command: "bash .pfnci/script.sh py3.gpu"
   }
@@ -56,6 +59,9 @@ configs {
       cpu: 10
       memory: 10
     }
+    time_limit {
+      seconds: 1200
+    }
     command: "bash .pfnci/script.sh py3.cpu"
   }
 }
@@ -84,6 +90,9 @@ configs {
     requirement {
       cpu: 10
       memory: 10
+    }
+    time_limit {
+      seconds: 1200
     }
     command: "bash .pfnci/script.sh py3.chainer4"
   }
