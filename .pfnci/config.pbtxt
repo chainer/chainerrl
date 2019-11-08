@@ -35,7 +35,7 @@ configs {
 }
 
 # ChainerRL CPU-only unit tests with python2.
-# TODO(chanerrl): Enable this test target. This test does not work because of
+# TODO(chainerrl): Enable this test target. This test does not work because of
 # https://github.com/chainer/chainerrl/issues/463. This should be resolved by
 # preparing a prebuild Docker image with latest Chainer.
 # URL: https://ci.preferred.jp/chainerrl.py2.cpu/
