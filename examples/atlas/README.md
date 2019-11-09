@@ -11,7 +11,7 @@ This directory contains an example script that trains the Boston Dynamics Robot 
 ## Requirements
 
 - roboschool (https://github.com/openai/roboschool)
-  - You can install from PyPI: `pip install roboschool==1.0.46`
+  - You can install from PyPI: `pip install roboschool`
 
 ## How to run
 
