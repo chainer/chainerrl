@@ -32,7 +32,8 @@ def concat_obs_and_action(obs, action):
 
 
 def make_env(args, seed, test):
-    import roboschool  # NOQA
+    if args.env.startswith('Roboschool'):
+        import roboschool  # NOQA
     env = gym.make(args.env)
     # Unwrap TimiLimit wrapper
     assert isinstance(env, gym.wrappers.TimeLimit)
