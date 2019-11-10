@@ -69,7 +69,7 @@ class StatelessRecurrent(object):
         """
         raise NotImplementedError
 
-    def __call__(self, x, recurrent_state):
+    def __call__(self, x, recurrent_state, *args, **kwargs):
         """One-step batch forward computation.
 
         Args:
@@ -85,6 +85,8 @@ class StatelessRecurrent(object):
             split_one_step_batch_input(x),
             recurrent_state,
             output_mode='concat',
+            *args,
+            **kwargs,
         )
 
     def mask_recurrent_state_at(self, recurrent_state, indices):
