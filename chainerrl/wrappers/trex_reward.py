@@ -105,7 +105,7 @@ class TREXReward(gym.Wrapper):
         observation, reward, done, info = self.env.step(action)
         obs = batch_states([observation], self.trex_network.xp, self._phi)
         with chainer.no_backprop_mode():
-            trex_reward = F.sigmoid(self.trex_network(obs))
+            trex_reward = F.sigmoid(self.trex_network(obs)).item()
         info["true_reward"] = reward
         return observation, trex_reward, done, info
 
@@ -183,7 +183,7 @@ class TREXReward(gym.Wrapper):
             self.trex_network.cleargrads()
             loss.backward()
             self.opt.update()
-            if step % int(self.steps / 100) == 0:
+            if step % int(self.steps / min(self.steps, 100)) == 0:
                 print("Performed update " + str(step) + "/" + str(self.steps))
         print("Finished training TREX network.")
         if self.save_network:
