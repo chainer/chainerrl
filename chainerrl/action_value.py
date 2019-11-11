@@ -209,6 +209,9 @@ class QuantileDiscreteActionValue(DiscreteActionValue):
         assert quantiles.ndim == 3
         self.quantiles = quantiles
         self.weights = weights
+        if weights is not None:
+            assert weights.ndim == 2
+            assert weights.shape == quantiles.shape[:2]
         self.xp = cuda.get_array_module(quantiles.array)
         self.n_actions = quantiles.shape[2]
         self.q_values_formatter = q_values_formatter
