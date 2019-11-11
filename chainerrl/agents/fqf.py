@@ -49,7 +49,7 @@ def _evaluate_psi_x_with_quantile_thresholds(
 def _compute_taus_hat_and_weights(taus):
     batch_size, _ = taus.shape
     xp = chainer.cuda.get_array_module(taus)
-    assert xp.allclose(taus[:, -1], xp.ones(batch_size))
+    _assert_taus(taus)
     # shifted_tau: [0, tau_0, tau_1, ..., tau_{N-2}]
     shifted_tau = xp.concatenate(
         [xp.zeros((batch_size, 1), dtype=taus.dtype), taus[:, :-1]],
@@ -111,6 +111,7 @@ class FQQFunction(chainer.Chain):
             # Make sure errors of the proposal net do not backprop to psi
             taus = F.cumsum(
                 F.softmax(self.proposal_net(psi_x.array), axis=1), axis=1)
+        _assert_taus(taus)
 
         # Quantiles based on tau hat, used to compute Q-values
         taus_hat, weights = _compute_taus_hat_and_weights(
@@ -119,7 +120,9 @@ class FQQFunction(chainer.Chain):
             psi_x, self.phi, self.f, taus_hat, weights=weights)
 
         if with_tau_quantiles:
-            # Quantiles based on tau, used to update the proposal net
+            # Quantiles based on tau, used to update the proposal net.
+            # Since we don't compute Q-values based on tau, we don't need to
+            # specify weights here.
             tau_av = _evaluate_psi_x_with_quantile_thresholds(
                 psi_x, self.phi, self.f, _unwrap_variable(taus))
             return tau_hat_av, taus_hat, tau_av, taus
@@ -178,6 +181,7 @@ class StatelessRecurrentFQQFunction(
             # Make sure errors of the proposal net do not backprop to psi
             taus = F.cumsum(
                 F.softmax(self.proposal_net(psi_x.array), axis=1), axis=1)
+        _assert_taus(taus)
 
         # Quantiles based on tau hat, used to compute Q-values
         taus_hat, weights = _compute_taus_hat_and_weights(
@@ -187,6 +191,8 @@ class StatelessRecurrentFQQFunction(
 
         if with_tau_quantiles:
             # Quantiles based on tau, used to update the proposal net
+            # Since we don't compute Q-values based on tau, we don't need to
+            # specify weights here.
             tau_av = _evaluate_psi_x_with_quantile_thresholds(
                 psi_x, self.phi, self.f, _unwrap_variable(taus))
             return (tau_hat_av, taus_hat, tau_av, taus), (recurrent_state,)
@@ -199,6 +205,31 @@ def _unwrap_variable(x):
         return x.array
     else:
         return x
+
+
+def _assert_taus(taus):
+    xp = chainer.cuda.get_array_module(taus)
+    taus = _unwrap_variable(taus)
+    # all the elements must be less than or equal to 1
+    assert xp.all(taus <= 1 + 1e-6), taus
+    # the last element must be 1
+    assert xp.allclose(taus[:, -1], xp.ones(len(taus))), taus
+
+
+def _restore_probs_from_taus(taus):
+    _assert_taus(taus)
+    taus = _unwrap_variable(taus)
+    xp = chainer.cuda.get_array_module(taus)
+    probs = taus.copy()
+    probs[:, 1:] -= taus[:, :-1]
+    assert xp.allclose(probs.sum(axis=1), xp.ones(len(taus)))
+    return probs
+
+
+def _mean_entropy(probs):
+    assert probs.ndim == 2
+    xp = chainer.cuda.get_array_module(probs)
+    return -float(xp.mean(xp.sum(probs * xp.log(probs + 1e-8), axis=1)))
 
 
 class FQF(dqn.DQN):
@@ -215,7 +246,7 @@ class FQF(dqn.DQN):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.proposal_loss_record = collections.deque(maxlen=100)
+        self.tau_grad_norm_record = collections.deque(maxlen=100)
         self.proposal_entropy_record = collections.deque(maxlen=100)
 
     def _compute_target_values(self, exp_batch, taus):
@@ -304,16 +335,16 @@ class FQF(dqn.DQN):
         tau_grad = (2 * tau_quantiles[:, :-1]
                     - tau_hat_quantiles[:, :-1]
                     - tau_hat_quantiles[:, 1:]).array
+        xp = chainer.cuda.get_array_module(tau_grad)
         proposal_loss = F.mean(F.sum(tau_grad * taus[:, :-1], axis=1))
 
-        self.proposal_loss_record.append(float(proposal_loss.array))
+        # Record norm of \partial W_1 / \partial \tau
+        tau_grad_norm = xp.mean(xp.linalg.norm(tau_grad, axis=1))
+        self.tau_grad_norm_record.append(float(tau_grad_norm))
 
         # Record entropy of proposals
-        xp = self.xp
-        probs = taus.array.copy()
-        probs[:, 1:] -= taus.array[:, :-1]
         self.proposal_entropy_record.append(
-            float(xp.mean(xp.sum(-xp.log(probs + 1e-8), axis=1))))
+            _mean_entropy(_restore_probs_from_taus(taus)))
 
         if errors_out is not None:
             del errors_out[:]
@@ -344,7 +375,7 @@ class FQF(dqn.DQN):
 
     def get_statistics(self):
         return super().get_statistics() + [
-            ('average_proposal_loss', _mean_or_nan(self.proposal_loss_record)),
+            ('average_tau_grad_norm', _mean_or_nan(self.tau_grad_norm_record)),
             ('average_proposal_entropy', _mean_or_nan(
                 self.proposal_entropy_record)),
         ]
