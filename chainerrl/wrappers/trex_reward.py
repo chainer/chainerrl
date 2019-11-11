@@ -175,8 +175,7 @@ class TREXReward(gym.Wrapper):
         return mean_loss
 
     def _train(self):
-        for _ in range(self.steps):
-            print("Performed update...")
+        for step in range(1, self.steps + 1):
             # get batch of traj pairs
             batch = self.get_training_batch()
             # do updates
@@ -184,6 +183,9 @@ class TREXReward(gym.Wrapper):
             self.trex_network.cleargrads()
             loss.backward()
             self.opt.update()
+            if step % int(self.steps / 100) == 0:
+                print("Performed update " + str(step) + "/" + str(self.steps))
+        print("Finished training TREX network.")
         if self.save_network:
             serializers.save_npz(os.path.join(self.outdir, 'reward_net.model'),
                                  self.trex_network)
