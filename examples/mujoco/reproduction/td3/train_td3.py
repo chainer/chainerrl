@@ -185,8 +185,9 @@ def main():
         if len(args.load) > 0:
             agent.load(args.load)
         else:
-            agent.load(misc.download_model("TD3", args.env,
-                                           model_type=args.pretrained_type))
+            agent.load(misc.download_model(
+                        "TD3", args.env,
+                        model_type=args.pretrained_type)[0])
 
     eval_env = make_env(test=True)
     if args.demo:

@@ -169,7 +169,7 @@ def main():
         else:
             agent.load(chainerrl.misc.download_model(
                 "TRPO", args.env,
-                model_type=args.pretrained_type))
+                model_type=args.pretrained_type)[0])
 
     if args.demo:
         env = make_env(test=True)

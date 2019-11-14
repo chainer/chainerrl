@@ -217,8 +217,9 @@ def main():
         if len(args.load) > 0:
             agent.load(args.load)
         else:
-            agent.load(misc.download_model("SAC", args.env,
-                                           model_type=args.pretrained_type))
+            agent.load(misc.download_model(
+                            "SAC", args.env,
+                            model_type=args.pretrained_type)[0])
 
     if args.demo:
         eval_stats = experiments.eval_performance(
