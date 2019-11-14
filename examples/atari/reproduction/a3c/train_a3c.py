@@ -127,7 +127,7 @@ def main():
             agent.load(args.load)
         else:
             agent.load(misc.download_model("A3C", args.env,
-                                           model_type="final"))
+                                           model_type="final")[0])
 
     def make_env(process_idx, test):
         # Use different random seeds for train and test envs

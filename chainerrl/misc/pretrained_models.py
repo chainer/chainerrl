@@ -133,13 +133,14 @@ def download_and_store_model(alg, url, env, model_type):
         url_basepath = os.path.join(url, alg, env)
         file = model_type + ".zip"
         path = os.path.join(root, file)
+        is_cached = os.path.exists(path)
         if not os.path.exists(path):
             cache_path = cached_download(os.path.join(url_basepath,
                                                       file))
             os.rename(cache_path, path)
             with zipfile.ZipFile(path, 'r') as zip_ref:
                 zip_ref.extractall(root)
-        return os.path.join(root, model_type)
+        return os.path.join(root, model_type), is_cached
 
 
 def download_model(alg, env, model_type="best"):
@@ -148,5 +149,5 @@ def download_model(alg, env, model_type="best"):
     assert model_type in MODELS[alg], \
         "Model type \"" + model_type + "\" is not supported."
     env = env.replace("NoFrameskip-v4", "")
-    model_path = download_and_store_model(alg, url, env, model_type)
-    return model_path
+    model_path, is_cached = download_and_store_model(alg, url, env, model_type)
+    return model_path, is_cached

@@ -146,7 +146,7 @@ def main():
             agent.load(args.load)
         else:
             agent.load(misc.download_model("Rainbow", args.env,
-                                           model_type=args.pretrained_type))
+                                           model_type=args.pretrained_type)[0])
 
     if args.demo:
         eval_stats = experiments.eval_performance(
