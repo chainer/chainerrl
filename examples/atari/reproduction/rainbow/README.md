@@ -26,77 +26,79 @@ These results reflect ChainerRL  `v0.7.0`.
 
 | Results Summary ||
 | ------------- |:-------------:|
+| Reporting Protocol | A re-evaluation of the best intermediate agent |
 | Number of seeds | 1 |
-| Number of common domains | 51 |
-| Number of domains where paper scores higher | 21 |
-| Number of domains where ChainerRL scores higher | 29 |
-| Number of ties between paper and ChainerRL | 1 |
+| Number of common domains | 52 |
+| Number of domains where paper scores higher | 20 |
+| Number of domains where ChainerRL scores higher | 30 |
+| Number of ties between paper and ChainerRL | 2 | 
+
 
 
 | Game        | ChainerRL Score           | Original Reported Scores |
 | ------------- |:-------------:|:-------------:|
-| AirRaid | 8447.9| N/A|
-| Alien | **12163.2**| 9491.7|
-| Amidar | 4697.4| **5131.2**|
-| Assault | **18425.9**| 14198.5|
-| Asterix | 298025.0| **428200.3**|
-| Asteroids | **5131.2**| 2712.8|
-| Atlantis | **851950.0**| 826659.5|
-| BankHeist | **1630.5**| 1358.0|
-| BattleZone | **98923.1**| 62010.0|
-| BeamRider | **19279.4**| 16850.2|
-| Berzerk | **3757.2**| 2545.6|
-| Bowling | **45.0**| 30.0|
+| AirRaid | 6500.9| N/A|
+| Alien | 9409.1| **9491.7**|
+| Amidar | 3252.7| **5131.2**|
+| Assault | **15245.5**| 14198.5|
+| Asterix | 353258.5| **428200.3**|
+| Asteroids | **2792.3**| 2712.8|
+| Atlantis | **894708.5**| 826659.5|
+| BankHeist | **1734.8**| 1358.0|
+| BattleZone | **90625.0**| 62010.0|
+| BeamRider | **27959.5**| 16850.2|
+| Berzerk | **26704.2**| 2545.6|
+| Bowling | **67.1**| 30.0|
 | Boxing | **99.8**| 99.6|
-| Breakout | 351.8| **417.5**|
-| Carnival | 4446.0| N/A|
-| Centipede | **8337.6**| 8167.3|
-| ChopperCommand | 9068.4| **16654.0**|
-| CrazyClimber | 163036.0| **168788.5**|
+| Breakout | 340.8| **417.5**|
+| Carnival | 5530.3| N/A|
+| Centipede | 7718.1| **8167.3**|
+| ChopperCommand | **303480.5**| 16654.0|
+| CrazyClimber | 165370.0| **168788.5**|
 | Defender | N/A| 55105.0|
-| DemonAttack | 104041.3| **111185.2**|
-| DoubleDunk | **0.0**| -0.3|
-| Enduro | **2311.3**| 2125.9|
-| FishingDerby | **40.9**| 31.3|
-| Freeway | 33.3| **34.0**|
-| Frostbite | **10497.6**| 9590.5|
-| Gopher | **98084.0**| 70354.6|
-| Gravitar | 1302.5| **1419.3**|
-| Hero | 30907.1| **55887.4**|
-| IceHockey | **2.9**| 1.1|
-| Jamesbond | 21323.2| N/A|
-| JourneyEscape | -185.3| N/A|
-| Kangaroo | **15500.0**| 14637.5|
-| Krull | 6761.6| **8741.5**|
-| KungFuMaster | 39858.3| **52181.0**|
-| MontezumaRevenge | 0.0| **384.0**|
-| MsPacman | **6015.4**| 5380.4|
-| NameThisGame | 13092.1| **13136.0**|
-| Phoenix | **223676.3**| 108528.6|
-| Pitfall | -3.5| N/A|
-| Pitfall! | N/A| 0.0|
-| Pong | **21.0**| 20.9|
-| Pooyan | 7946.6| N/A|
+| DemonAttack | 110028.0| **111185.2**|
+| DoubleDunk | **-0.1**| -0.3|
+| Enduro | **2273.8**| 2125.9|
+| FishingDerby | **45.3**| 31.3|
+| Freeway | 33.7| **34.0**|
+| Frostbite | **10432.3**| 9590.5|
+| Gopher | **76662.9**| 70354.6|
+| Gravitar | **1819.5**| 1419.3|
+| Hero | 12590.5| **55887.4**|
+| IceHockey | **5.1**| 1.1|
+| Jamesbond | 31392.0| N/A|
+| JourneyEscape | 0.0| N/A|
+| Kangaroo | 14462.5| **14637.5**|
+| Krull | 7989.0| **8741.5**|
+| KungFuMaster | 22820.5| **52181.0**|
+| MontezumaRevenge | 4.0| **384.0**|
+| MsPacman | **6153.4**| 5380.4|
+| NameThisGame | **14035.1**| 13136.0|
+| Phoenix | 5169.6| **108528.6**|
+| Pitfall | **0.0**| **0.0**|
+| Pong | **20.9**| **20.9**|
+| Pooyan | 7793.1| N/A|
 | PrivateEye | 100.0| **4234.0**|
-| Qbert | **38605.7**| 33817.5|
-| Riverraid | 22309.8| N/A|
-| RoadRunner | **64002.0**| 62041.0|
-| Robotank | **74.5**| 61.4|
-| Seaquest | 1843.6| **15898.9**|
-| Skiing | **-11093.2**| -12957.8|
-| Solaris | 911.8| **3560.3**|
-| SpaceInvaders | 2812.9| **18789.0**|
-| StarGunner | **202136.4**| 127029.0|
+| Qbert | **42481.1**| 33817.5|
+| Riverraid | 26114.0| N/A|
+| RoadRunner | **64306.0**| 62041.0|
+| Robotank | **74.4**| 61.4|
+| Seaquest | 4286.8| **15898.9**|
+| Skiing | **-9441.0**| -12957.8|
+| Solaris | **7902.2**| 3560.3|
+| SpaceInvaders | 2838.0| **18789.0**|
+| StarGunner | **181192.5**| 127029.0|
 | Surround | N/A| 9.7|
-| Tennis | **0.0**| **0.0**|
-| TimePilot | **23123.8**| 12926.0|
-| Tutankham | **250.7**| 241.0|
-| UpNDown | 27630.0| N/A|
-| Venture | 0.0| **5.5**|
-| VideoPinball | 438907.9| **533936.5**|
-| WizardOfWor | **20770.2**| 17862.5|
-| YarsRevenge | 101023.5| **102557.0**|
-| Zaxxon | 14635.1| **22209.5**|
+| Tennis | -0.1| **0.0**|
+| TimePilot | **25582.0**| 12926.0|
+| Tutankham | **251.9**| 241.0|
+| UpNDown | 284465.6| N/A|
+| Venture | **1499.0**| 5.5|
+| VideoPinball | 492071.8| **533936.5**|
+| WizardOfWor | **19796.5**| 17862.5|
+| YarsRevenge | 80817.2| **102557.0**|
+| Zaxxon | **26827.5**| 22209.5|
+
 
 
 
@@ -119,9 +121,9 @@ Time statistics...
 
 | Training time (in days) across all domains | |
 | ------------- |:-------------:|
-| Mean        |  13.224 |
-| Fastest Domain |11.682 (Phoenix)|
-| Slowest Domain | 16.838 (Berzerk)|
+| Mean        |  12.929 |
+| Fastest Domain |11.931 (Frostbite)|
+| Slowest Domain | 13.974 (UpNDown)|
 
 
 
