@@ -34,7 +34,6 @@ These results reflect ChainerRL  `v0.7.0`.
 | Number of ties between paper and ChainerRL | 2 | 
 
 
-
 | Game        | ChainerRL Score           | Original Reported Scores |
 | ------------- |:-------------:|:-------------:|
 | AirRaid | 6500.9| N/A|

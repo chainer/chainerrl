@@ -328,7 +328,7 @@ class TestSquashedGaussianDistribution(unittest.TestCase):
             y, log_prob = self.distrib.sample_with_log_prob()
             log_p = self.distrib.log_prob(y)
             np.testing.assert_almost_equal(
-                log_p.array, log_prob.array, decimal=5)
+                log_p.array, log_prob.array, decimal=4)
 
     def test_entropy(self):
         with self.assertRaises(NotImplementedError):
