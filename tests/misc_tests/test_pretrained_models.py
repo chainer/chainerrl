@@ -17,7 +17,6 @@ from chainerrl import explorers
 from chainerrl import links
 from chainerrl.action_value import DiscreteActionValue
 from chainerrl.misc import download_model
-from chainerrl.misc import pretrained_models
 from chainerrl import replay_buffer
 
 
@@ -46,15 +45,15 @@ class TestLoadDQN(unittest.TestCase):
             random_action_func=lambda: np.random.randint(4))
 
         agent = agents.DQN(q_func, opt, rbuf, gpu=gpu, gamma=0.99,
-                  explorer=explorer, replay_start_size=4000,
-                  target_update_interval=10 ** 4,
-                  clip_delta=True,
-                  update_interval=4,
-                  batch_accumulator='sum',
-                  phi=lambda x : x)
+                           explorer=explorer, replay_start_size=4000,
+                           target_update_interval=10 ** 4,
+                           clip_delta=True,
+                           update_interval=4,
+                           batch_accumulator='sum',
+                           phi=lambda x: x)
 
         model, exists = download_model("DQN", "BreakoutNoFrameskip-v4",
-                               model_type=self.pretrained_type)
+                                       model_type=self.pretrained_type)
         agent.load(model)
         # TODO: have agent act?
         assert exists
