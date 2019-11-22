@@ -184,8 +184,8 @@ def main():
             agent.load(args.load)
         else:
             agent.load(misc.download_model(
-                        "DDPG", args.env,
-                        model_type=args.pretrained_type)[0])
+                "DDPG", args.env,
+                model_type=args.pretrained_type)[0])
 
     eval_env = make_env(test=True)
     if args.demo:

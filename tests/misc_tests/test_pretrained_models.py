@@ -29,9 +29,9 @@ class TestLoadDQN(unittest.TestCase):
 
     def _test_load_dqn(self, gpu):
         q_func = links.Sequence(
-                    links.NatureDQNHead(),
-                    L.Linear(512, 4),
-                    DiscreteActionValue)
+            links.NatureDQNHead(),
+            L.Linear(512, 4),
+            DiscreteActionValue)
 
         opt = optimizers.RMSpropGraves(
             lr=2.5e-4, alpha=0.95, momentum=0.0, eps=1e-2)
