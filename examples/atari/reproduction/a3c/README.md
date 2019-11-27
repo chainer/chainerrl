@@ -34,82 +34,82 @@ python train_a3c.py --demo --load-pretrained --env BreakoutNoFrameskip-v4
 - `--load-pretrained` Loads the pretrained model. Both `--load` and `--load-pretrained` cannot be used together.
 
 ## Results
-These results reflect ChainerRL  `v0.6.0`. The ChainerRL score currently consists of a single run. The reported results are compared against the scores from the [Noisy Networks Paper](https://arxiv.org/abs/1706.10295), since the original paper does not report scores for the no-op evaluation protocol.
+These results reflect ChainerRL  `v0.7.0`. The reported results are compared against the scores from the [Noisy Networks Paper](https://arxiv.org/abs/1706.10295), since the original paper does not report scores for the no-op evaluation protocol.
 
-**NOTE: These benchmark scores below come from running train_a3c.py and evaluating every 1 million timesteps, as opposed to every 250K timesteps. New benchmark results will come soon.**
 
 | Results Summary ||
 | ------------- |:-------------:|
+| Reporting Protocol | The highest mean intermediate evaluation score |
 | Number of seeds | 1 |
 | Number of common domains | 54 |
-| Number of domains where paper scores higher | 27 |
-| Number of domains where ChainerRL scores higher | 24 |
+| Number of domains where paper scores higher | 25 |
+| Number of domains where ChainerRL scores higher | 26 |
 | Number of ties between paper and ChainerRL | 3 | 
 
 
 | Game        | ChainerRL Score           | Original Reported Scores |
 | ------------- |:-------------:|:-------------:|
-| AirRaid | 4625.9| N/A|
-| Alien | 1397.2| **2027**|
-| Amidar | **1110.8**| 904|
-| Assault | **5821.6**| 2879|
-| Asterix | 6820.7| **6822**|
-| Asteroids | 2428.8| **2544**|
-| Atlantis | **732425.0**| 422700|
-| BankHeist | **1308.9**| 1296|
-| BattleZone | 5421.1| **16411**|
-| BeamRider | 8493.4| **9214**|
-| Berzerk | **1594.2**| 1022|
+| AirRaid | 3767.8| N/A|
+| Alien | 1600.7| **2027**|
+| Amidar | 873.1| **904**|
+| Assault | **4819.8**| 2879|
+| Asterix | **10792.4**| 6822|
+| Asteroids | **2691.2**| 2544|
+| Atlantis | **806650.0**| 422700|
+| BankHeist | **1327.9**| 1296|
+| BattleZone | 4208.8| **16411**|
+| BeamRider | 8946.9| **9214**|
+| Berzerk | **1527.2**| 1022|
 | Bowling | 31.7| **37**|
-| Boxing | **98.1**| 91|
-| Breakout | **533.6**| 496|
-| Carnival | 5132.9| N/A|
-| Centipede | 4849.9| **5350**|
-| ChopperCommand | 4881.0| **5285**|
-| CrazyClimber | 124400.0| **134783**|
+| Boxing | **99.0**| 91|
+| Breakout | **575.9**| 496|
+| Carnival | 5121.9| N/A|
+| Centipede | **5647.5**| 5350|
+| ChopperCommand | **5916.3**| 5285|
+| CrazyClimber | 120583.3| **134783**|
 | Defender | N/A| 52917.0|
-| DemonAttack | **108832.5**| 37085|
+| DemonAttack | **112456.3**| 37085|
 | DoubleDunk | 1.5| **3**|
 | Enduro | **0.0**| **0**|
-| FishingDerby | **36.3**| -7|
+| FishingDerby | **37.7**| -7|
 | Freeway | **0.0**| **0**|
-| Frostbite | **313.6**| 288|
-| Gopher | **8746.5**| 7992|
-| Gravitar | 228.0| **379**|
-| Hero | **36892.5**| 30791|
-| IceHockey | -4.6| **-2**|
-| Jamesbond | 370.1| 509.0|
-| JourneyEscape | -871.2| N/A|
-| Kangaroo | 115.8| **1166**|
-| Krull | **10601.4**| 9422|
-| KungFuMaster | **40970.4**| 37422|
-| MontezumaRevenge | 1.9| **14**|
-| MsPacman | **2498.0**| 2436|
-| NameThisGame | 6597.0| **7168**|
-| Phoenix | **42654.5**| 9476|
-| Pitfall | -10.8| 0.0|
+| Frostbite | **312.6**| 288|
+| Gopher | **10608.9**| 7992|
+| Gravitar | 250.5| **379**|
+| Hero | **36264.3**| 30791|
+| IceHockey | -4.5| **-2**|
+| Jamesbond | 373.7| **509**|
+| JourneyEscape | -1026.5| N/A|
+| Kangaroo | 107.0| **1166**|
+| Krull | 9260.2| **9422**|
+| KungFuMaster | **37750.0**| 37422|
+| MontezumaRevenge | 2.6| **14**|
+| MsPacman | **2851.4**| 2436|
+| NameThisGame | **11301.1**| 7168|
+| Phoenix | **38671.4**| 9476|
+| Pitfall | -2.0| **0**|
 | Pong | **20.9**| 7|
-| Pooyan | 4067.9| N/A|
-| PrivateEye | 376.1| **3781**|
-| Qbert | 15610.6| **18586**|
-| Riverraid | 13223.3| N/A|
-| RoadRunner | 39897.8| **45315**|
-| Robotank | 2.9| **6**|
-| Seaquest | **1786.5**| 1744|
-| Skiing | -16090.5| **-12972**|
-| Solaris | 3157.8| **12380**|
-| SpaceInvaders | **1630.6**| 1034|
-| StarGunner | **57943.2**| 49156|
+| Pooyan | 4328.9| N/A|
+| PrivateEye | 725.3| **3781**|
+| Qbert | **19831.0**| 18586|
+| Riverraid | 13172.8| N/A|
+| RoadRunner | 40348.1| **45315**|
+| Robotank | 3.0| **6**|
+| Seaquest | **1789.5**| 1744|
+| Skiing | -15820.1| **-12972**|
+| Solaris | 3395.6| **12380**|
+| SpaceInvaders | **1739.5**| 1034|
+| StarGunner | **60591.7**| 49156|
 | Surround | N/A| -8.0|
-| Tennis | **-0.3**| -6|
-| TimePilot | 3850.6| **10294**|
-| Tutankham | **331.4**| 213|
-| UpNDown | 17952.0| **89067**|
+| Tennis | -13.1| **-6**|
+| TimePilot | 4077.5| **10294**|
+| Tutankham | **274.5**| 213|
+| UpNDown | 78790.0| **89067**|
 | Venture | **0.0**| **0**|
-| VideoPinball | **407331.2**| 229402|
-| WizardOfWor | 2800.0| **8953**|
-| YarsRevenge | **25175.5**| 21596|
-| Zaxxon | 80.7| **16544**|
+| VideoPinball | **518840.8**| 229402|
+| WizardOfWor | 2488.4| **8953**|
+| YarsRevenge | 14217.7| **21596**|
+| Zaxxon | 86.8| **16544**|
 
 
 ## Evaluation Protocol
@@ -132,10 +132,10 @@ Our evaluation protocol is designed to mirror the evaluation protocol of the ori
 We trained with 17 CPUs and no GPU. However, we used 16 processes (as per the A3C paper).
 
 
-| Statistic        |            |            |
-| ------------- |:-------------:|:-------------:|
-| Mean time (in days) across all domains        |  1.08299383309 |
-| Fastest Domain |  DemonAttack | 0.736027011088 |
-| Slowest Domain |  UpNDown | 1.25626688715 |
+| Training time (in days) across all domains | |
+| ------------- |:-------------:|
+| Mean        |  1.158 |
+| Fastest Domain |1.008 (Asteroids)|
+| Slowest Domain | 1.46 (ChopperCommand)|
 
 				
