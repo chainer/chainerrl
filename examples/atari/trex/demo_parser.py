@@ -34,7 +34,8 @@ class AtariGrandChallengeParser():
     See https://arxiv.org/abs/1705.10998.
     """
 
-    def __init__(self, src, env):
+    def __init__(self, src, env, outdir):
+        self.outdir = outdir
         self.game = env.spec.id
         self.game = self.game.replace("NoFrameskip-v4", "")
         self.game = self.game.replace("_", "")
@@ -144,8 +145,8 @@ class AtariGrandChallengeParser():
         sorted_traj_nums = [x for _, x in sorted(zip(traj_scores, traj_nums), key=lambda pair: pair[0])]
         sorted_traj_scores = sorted(traj_scores)
 
-        print("Max human score", max(sorted_traj_scores))
-        print("Min human score", min(sorted_traj_scores))
+        print("Max dataset score", max(sorted_traj_scores))
+        print("Min dataset score", min(sorted_traj_scores))
 
         seen_scores = set()
         non_duplicates = []
@@ -173,7 +174,16 @@ class AtariGrandChallengeParser():
 
         demos = non_duplicates[start:num_demos*skip + start:skip]
         assert len(demos) == num_demos
-        print("(traj_num, score) pairs: ", demos)
+        scores = [demo[1] for demo in demos]
+        assert sorted(scores) == scores
+        avg_score = sum(scores)/len(scores)
+        max_score = scores[-1]
+        with open(os.path.join(self.outdir, 'misc_info.txt'), 'a') as f:
+            print("(traj_num, score) pairs: ", demos, file=f)
+            print(scores, file=f)
+            print(str(sum(scores)), file=f)
+            print("Average demonstration score", avg_score, file=f)
+            print("Maximum demonstration score", max_score, file=f)
         return demos
 
     def preprocess(self, trajectories, screens):

@@ -5,8 +5,11 @@ from __future__ import absolute_import
 from builtins import *  # NOQA
 from future import standard_library
 standard_library.install_aliases()  # NOQA
+
 import argparse
+import json
 import os
+
 
 import chainer
 from chainer import cuda
@@ -126,11 +129,11 @@ def main():
                         type=int, default=3 * 10 ** 4,
                         help='Frequency (in timesteps) at which ' +
                         'the target network is updated.')
-    parser.add_argument('--eval-interval', type=int, default=10 ** 5,
-                        help='Frequency (in timesteps) of evaluation phase.')
     parser.add_argument('--update-interval', type=int, default=4,
                         help='Frequency (in timesteps) of network updates.')
-    parser.add_argument('--eval-n-runs', type=int, default=10)
+    parser.add_argument('--eval-n-steps', type=int, default=125000)
+    parser.add_argument('--eval-interval', type=int, default=250000)
+    parser.add_argument('--n-best-episodes', type=int, default=200)
     parser.add_argument('--no-clip-delta',
                         dest='clip_delta', action='store_false')
     parser.add_argument('--num-step-return', type=int, default=1)
@@ -183,7 +186,7 @@ def main():
             env = chainerrl.wrappers.RandomizeAction(env, args.eval_epsilon)
         else:
             demo_extractor = demo_parser.AtariGrandChallengeParser(
-                args.gc_loc, env)
+                args.gc_loc, env, args.outdir)
             episodes = demo_extractor.episodes
             # Sort episodes by ground truth ranking
             # episodes contain transitions of (obs, a, r, new_obs, done, info)
@@ -279,13 +282,32 @@ def main():
     else:
         experiments.train_agent_with_evaluation(
             agent=agent, env=env, steps=args.steps,
-            eval_n_steps=None,
-            eval_n_episodes=args.eval_n_runs,
+            eval_n_steps=args.eval_n_steps,
+            eval_n_episodes=None,
             eval_interval=args.eval_interval,
             outdir=args.outdir,
-            save_best_so_far_agent=False,
+            save_best_so_far_agent=True,
             eval_env=eval_env,
         )
+
+        dir_of_best_network = os.path.join(args.outdir, "best")
+        agent.load(dir_of_best_network)
+
+        stats = experiments.evaluator.eval_performance(
+            env=eval_env,
+            agent=agent,
+            n_steps=None,
+            n_episodes=args.n_best_episodes,
+            max_episode_len=args.max_frames/4,
+            logger=None)
+        with open(os.path.join(args.outdir, 'bestscores.json'), 'w') as f:
+            # temporary hack to handle python 2/3 support issues.
+            # json dumps does not support non-string literal dict keys
+            json_stats = json.dumps(stats)
+            print(str(json_stats), file=f)
+        print("The results of the best scoring network:")
+        for stat in stats:
+            print(str(stat) + ":" + str(stats[stat]))
 
 
 if __name__ == '__main__':
