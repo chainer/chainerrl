@@ -12,6 +12,7 @@ from chainerrl.agents import iqn
 
 
 class DoubleIQN(iqn.IQN):
+
     """IQN with DoubleDQN-like target computation.
 
     For computing targets, rather than have the target network

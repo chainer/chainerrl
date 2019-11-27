@@ -29,7 +29,7 @@ def train_agent_batch(agent, env, steps, outdir,
         steps (int): Number of total time steps for training.
         eval_interval (int): Interval of evaluation.
         outdir (str): Path to the directory to output things.
-        checkpoint_freq (int): frequency with which to store networks
+        checkpoint_freq (int): frequency at which agents are stored.
         log_interval (int): Interval of logging.
         max_episode_len (int): Maximum episode length.
         step_offset (int): Time step from which training starts.
@@ -94,9 +94,9 @@ def train_agent_batch(agent, env, steps, outdir,
 
             for _ in range(num_envs):
                 t += 1
-                if checkpoint_freq:
-                    if t % checkpoint_freq == 0:
-                        save_agent(agent, t, outdir, logger, suffix='_checkpoint')
+                if checkpoint_freq and t % checkpoint_freq == 0:
+                    save_agent(agent, t, outdir, logger,
+                               suffix='_checkpoint')
 
                 for hook in step_hooks:
                     hook(env, agent, t)

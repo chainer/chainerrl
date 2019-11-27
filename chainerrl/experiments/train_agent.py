@@ -80,9 +80,8 @@ def train_agent(agent, env, steps, outdir, checkpoint_freq=None,
                 episode_len = 0
                 obs = env.reset()
                 r = 0
-            if checkpoint_freq:
-                if t % checkpoint_freq == 0:
-                    save_agent(agent, t, outdir, logger, suffix='_checkpoint')
+            if checkpoint_freq and t % checkpoint_freq == 0:
+                save_agent(agent, t, outdir, logger, suffix='_checkpoint')
 
     except (Exception, KeyboardInterrupt):
         # Save the current model before being killed
@@ -120,7 +119,7 @@ def train_agent_with_evaluation(agent,
         eval_n_episodes (int): Number of episodes at each evaluation phase.
         eval_interval (int): Interval of evaluation.
         outdir (str): Path to the directory to output data.
-        checkpoint_freq (int): frequency with which to store networks
+        checkpoint_freq (int): frequency at which agents are stored.
         train_max_episode_len (int): Maximum episode length during training.
         step_offset (int): Time step from which training starts.
         eval_max_episode_len (int or None): Maximum episode length of

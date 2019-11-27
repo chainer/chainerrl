@@ -11,6 +11,7 @@ ChainerRL is a deep reinforcement learning library that implements various state
 ![Breakout](assets/breakout.gif)
 ![Humanoid](assets/humanoid.gif)
 ![Grasping](assets/grasping.gif)
+![Atlas](examples/atlas/assets/atlas.gif)
 
 ## Installation
 
@@ -36,21 +37,21 @@ For more information, you can refer to [ChainerRL's documentation](http://chaine
 
 ## Algorithms
 
-| Algorithm | Discrete Action | Continous Action | Recurrent Model | CPU Async Training |
-|:----------|:---------------:|:----------------:|:---------------:|:------------------:|
-| DQN (including DoubleDQN etc.) | ✓ | ✓ (NAF) | ✓ | x |
-| Categorical DQN | ✓ | x | ✓ | x |
-| Rainbow | ✓ | x | ✓ | x |
-| IQN | ✓ | x | ✓ | x |
-| DDPG | x | ✓ | ✓ | x |
-| A3C  | ✓ | ✓ | ✓ | ✓ |
-| ACER | ✓ | ✓ | ✓ | ✓ |
-| NSQ (N-step Q-learning) | ✓ | ✓ (NAF) | ✓ | ✓ |
-| PCL (Path Consistency Learning) | ✓ | ✓ | ✓ | ✓ |
-| PPO  | ✓ | ✓ | ✓ | x |
-| TRPO | ✓ | ✓ | x | x |
-| TD3 | x | ✓ | x | x |
-| SAC | x | ✓ | x | x |
+| Algorithm | Discrete Action | Continous Action | Recurrent Model | Batch Training | CPU Async Training |
+|:----------|:---------------:|:----------------:|:---------------:|:--------------:|:------------------:|
+| DQN (including DoubleDQN etc.) | ✓ | ✓ (NAF) | ✓ | ✓ | x |
+| Categorical DQN | ✓ | x | ✓ | ✓ | x |
+| Rainbow | ✓ | x | ✓ | ✓ | x |
+| IQN | ✓ | x | ✓ | ✓ | x |
+| DDPG | x | ✓ | ✓ | ✓ | x |
+| A3C  | ✓ | ✓ | ✓ | ✓ (A2C) | ✓ |
+| ACER | ✓ | ✓ | ✓ | x | ✓ |
+| NSQ (N-step Q-learning) | ✓ | ✓ (NAF) | ✓ | x | ✓ |
+| PCL (Path Consistency Learning) | ✓ | ✓ | ✓ | x | ✓ |
+| PPO  | ✓ | ✓ | ✓ | ✓ | x |
+| TRPO | ✓ | ✓ | ✓ | ✓ | x |
+| TD3 | x | ✓ | x | ✓ | x |
+| SAC | x | ✓ | x | ✓ | x |
 
 Following algorithms have been implemented in ChainerRL:
 - [A2C (Synchronous variant of A3C)](https://openai.com/blog/baselines-acktr-a2c/)

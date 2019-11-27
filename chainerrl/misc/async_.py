@@ -12,6 +12,7 @@ import warnings
 import chainer
 import numpy as np
 
+import chainerrl
 from chainerrl.misc import random_seed
 
 
@@ -32,19 +33,56 @@ def ensure_initialized_update_rule(param):
         u.init_state(param)
 
 
+def _set_persistent_values_recursively(link, persistent_name, shared_array):
+    if persistent_name.startswith('/'):
+        persistent_name = persistent_name[1:]
+    if hasattr(link, persistent_name):
+        attr_name = persistent_name
+        attr = getattr(link, attr_name)
+        if isinstance(attr, np.ndarray):
+            setattr(link, persistent_name, np.frombuffer(
+                shared_array, dtype=attr.dtype).reshape(attr.shape))
+        else:
+            assert np.isscalar(attr)
+            # We wrap scalars with np.ndarray because
+            # multiprocessing.RawValue cannot be used as a scalar, while
+            # np.ndarray can be.
+            typecode = np.asarray(attr).dtype.char
+            setattr(link, attr_name, np.frombuffer(
+                shared_array, dtype=typecode).reshape(()))
+    else:
+        assert isinstance(link, (chainer.Chain, chainer.ChainList))
+        assert '/' in persistent_name
+        child_name, remaining = persistent_name.split('/', 1)
+        if isinstance(link, chainer.Chain):
+            _set_persistent_values_recursively(
+                getattr(link, child_name), remaining, shared_array)
+        else:
+            _set_persistent_values_recursively(
+                link[int(child_name)], remaining, shared_array)
+
+
 def set_shared_params(a, b):
-    """Set shared params to a link.
+    """Set shared params (and persistent values) to a link.
 
     Args:
       a (chainer.Link): link whose params are to be replaced
       b (dict): dict that consists of (param_name, multiprocessing.Array)
     """
     assert isinstance(a, chainer.Link)
+    remaining_keys = set(b.keys())
     for param_name, param in a.namedparams():
         if param_name in b:
             shared_param = b[param_name]
             param.array = np.frombuffer(
                 shared_param, dtype=param.dtype).reshape(param.shape)
+            remaining_keys.remove(param_name)
+    for persistent_name, _ in chainerrl.misc.namedpersistent(a):
+        if persistent_name in b:
+            _set_persistent_values_recursively(
+                a, persistent_name, b[persistent_name])
+            remaining_keys.remove(persistent_name)
+    assert not remaining_keys
 
 
 def make_params_not_shared(a):
@@ -85,7 +123,22 @@ def extract_params_as_shared_arrays(link):
     assert isinstance(link, chainer.Link)
     shared_arrays = {}
     for param_name, param in link.namedparams():
-        shared_arrays[param_name] = mp.RawArray('f', param.array.ravel())
+        typecode = param.array.dtype.char
+        shared_arrays[param_name] = mp.RawArray(typecode, param.array.ravel())
+
+    for persistent_name, persistent in chainerrl.misc.namedpersistent(link):
+        if isinstance(persistent, np.ndarray):
+            typecode = persistent.dtype.char
+            shared_arrays[persistent_name] = mp.RawArray(
+                typecode, persistent.ravel())
+        else:
+            assert np.isscalar(persistent)
+            # Wrap by a 1-dim array because multiprocessing.RawArray does not
+            # accept a 0-dim array.
+            persistent_as_array = np.asarray([persistent])
+            typecode = persistent_as_array.dtype.char
+            shared_arrays[persistent_name] = mp.RawArray(
+                typecode, persistent_as_array)
     return shared_arrays
 
 
