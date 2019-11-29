@@ -27,7 +27,7 @@ To view the full list of options, either view the code or run the example with t
 
 ## Known differences
 
-- We used version v2 of the environments whereas the original results where reported for version v1, however this doesnt' seem to introduce significant differences: https://github.com/openai/gym/pull/834
+- We used version v2 of the environments whereas the original results were reported for version v1, however this doesnt' seem to introduce significant differences: https://github.com/openai/gym/pull/834
 
 ## Results
 

@@ -28,7 +28,7 @@ To view the full list of options, either view the code or run the example with t
 ## Known differences
 
 - While the original paper initialized weights by normal distribution (https://github.com/Breakend/baselines/blob/50ffe01d254221db75cdb5c2ba0ab51a6da06b0a/baselines/ppo1/mlp_policy.py#L28), we use orthogonal initialization as the latest openai/baselines does (https://github.com/openai/baselines/blob/9b68103b737ac46bc201dfb3121cfa5df2127e53/baselines/a2c/utils.py#L61).
-- We used version v2 of the environments whereas the original results where reported for version v1, however this doesnt' seem to introduce significant differences: https://github.com/openai/gym/pull/834
+- We used version v2 of the environments whereas the original results were reported for version v1, however this doesnt' seem to introduce significant differences: https://github.com/openai/gym/pull/834
 
 ## Results
 
