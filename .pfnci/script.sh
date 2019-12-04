@@ -66,6 +66,14 @@ main() {
     py2.* ) docker_args+=(--env="PYTHON=python");;
   esac
 
+  for ZIP in dqn_models.zip
+  do
+      gsutil cp gs://chainerrl-asia-pfn-public-ci/${ZIP} .
+      mkdir -p ~/.chainer/dataset/pfnet/chainerrl/models
+      unzip ${ZIP} -d ~/.chainer/dataset/pfnet/chainerrl/models/
+      rm ${ZIP}
+  done
+
   run "${docker_args[@]}" "${docker_image}" bash /src/.pfnci/run.sh "${TARGET}"
 }
 
