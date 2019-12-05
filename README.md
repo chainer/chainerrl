@@ -117,7 +117,7 @@ Any kind of contribution to ChainerRL would be highly appreciated! If you are in
 
 ## Citations
 
-If you use ChainerRL for your research, we ask that you cite the following paper:
+To cite ChainerRL in publications:
 
 ```
 @InProceedings{fujita2019chainerrl,
