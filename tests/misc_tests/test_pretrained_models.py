@@ -4,9 +4,11 @@ from __future__ import division
 from __future__ import absolute_import
 from future import standard_library
 standard_library.install_aliases()  # NOQA
+import functools
 import unittest
 
-
+import chainer
+import chainer.functions as F
 from chainer import links as L
 from chainer import optimizers
 from chainer import testing
@@ -37,7 +39,7 @@ class TestLoadDQN(unittest.TestCase):
             lr=2.5e-4, alpha=0.95, momentum=0.0, eps=1e-2)
         opt.setup(q_func)
 
-        rbuf = replay_buffer.ReplayBuffer(10 ** 6)
+        rbuf = replay_buffer.ReplayBuffer(100)
 
         explorer = explorers.LinearDecayEpsilonGreedy(
             start_epsilon=1.0, end_epsilon=0.1,
@@ -45,7 +47,7 @@ class TestLoadDQN(unittest.TestCase):
             random_action_func=lambda: np.random.randint(4))
 
         agent = agents.DQN(q_func, opt, rbuf, gpu=gpu, gamma=0.99,
-                           explorer=explorer, replay_start_size=4000,
+                           explorer=explorer, replay_start_size=50,
                            target_update_interval=10 ** 4,
                            clip_delta=True,
                            update_interval=4,
@@ -55,7 +57,6 @@ class TestLoadDQN(unittest.TestCase):
         model, exists = download_model("DQN", "BreakoutNoFrameskip-v4",
                                        model_type=self.pretrained_type)
         agent.load(model)
-        # TODO: have agent act?
         assert exists
 
     def test_cpu(self):
@@ -64,3 +65,67 @@ class TestLoadDQN(unittest.TestCase):
     @testing.attr.gpu
     def test_gpu(self):
         self._test_load_dqn(gpu=0)
+
+@testing.parameterize(*testing.product(
+    {
+        'pretrained_type': ["best", "final"],
+    }
+))
+class TestLoadIQN(unittest.TestCase):
+
+    def _test_load_iqn(self, gpu):
+        q_func = agents.iqn.ImplicitQuantileQFunction(
+                psi=links.Sequence(
+                    L.Convolution2D(None, 32, 8, stride=4),
+                    F.relu,
+                    L.Convolution2D(None, 64, 4, stride=2),
+                    F.relu,
+                    L.Convolution2D(None, 64, 3, stride=1),
+                    F.relu,
+                    functools.partial(F.reshape, shape=(-1, 3136)),
+                ),
+                phi=links.Sequence(
+                    agents.iqn.CosineBasisLinear(64, 3136),
+                    F.relu,
+                ),
+                f=links.Sequence(
+                    L.Linear(None, 512),
+                    F.relu,
+                    L.Linear(None, 4),
+                ),)
+
+
+        opt = chainer.optimizers.Adam(5e-5, eps=1e-2)
+        opt.setup(q_func)
+
+        rbuf = replay_buffer.ReplayBuffer(100)
+
+        explorer = explorers.LinearDecayEpsilonGreedy(
+            start_epsilon=1.0, end_epsilon=0.1,
+            decay_steps=10 ** 6,
+            random_action_func=lambda: np.random.randint(4))
+
+        agent = agents.IQN(
+            q_func, opt, rbuf, gpu=gpu, gamma=0.99,
+            explorer=explorer, replay_start_size=50,
+            target_update_interval=10 ** 4,
+            update_interval=4,
+            batch_accumulator='mean',
+            phi=lambda x: x,
+            quantile_thresholds_N=64,
+            quantile_thresholds_N_prime=64,
+            quantile_thresholds_K=32,
+        )
+
+        model, exists = download_model("IQN", "BreakoutNoFrameskip-v4",
+                                       model_type=self.pretrained_type)
+        agent.load(model)
+        assert exists
+
+    def test_cpu(self):
+        self._test_load_iqn(gpu=None)
+
+    @testing.attr.gpu
+    def test_gpu(self):
+        self._test_load_iqn(gpu=0)
+
