@@ -84,8 +84,15 @@ main() {
       'pytest==4.1.1' 'attrs==19.1.0' 'pytest-xdist==1.26.1' 'mock' \
       'atari_py==0.1.1' 'opencv-python'
 
-  "${PYTHON}" -m pip install \
-      'gsutil'
+  # apt-get install wget
+  # wget https://storage.googleapis.com/pub/gsutil.tar.gz
+  # tar xfz gsutil.tar.gz -C $HOME
+  # export PATH=${PATH}:$HOME/gsutil
+  # source ~/.bashrc
+  apt-get install curl
+  curl https://sdk.cloud.google.com | bash
+  exec -l $SHELL << EOD
+  gcloud init
 
   git config --global user.email "you@example.com"
   git config --global user.name "Your Name"
@@ -105,3 +112,4 @@ main() {
 }
 
 main
+EOD
