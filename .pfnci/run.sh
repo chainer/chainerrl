@@ -84,9 +84,19 @@ main() {
       'pytest==4.1.1' 'attrs==19.1.0' 'pytest-xdist==1.26.1' 'mock' \
       'atari_py==0.1.1' 'opencv-python'
 
+  "${PYTHON}" -m pip install \
+      'gsutil'
+
   git config --global user.email "you@example.com"
   git config --global user.name "Your Name"
 
+  for ZIP in dqn_models.zip
+  do
+      gsutil cp gs://chainerrl-asia-pfn-public-ci/${ZIP} .
+      mkdir -p ~/.chainer/dataset/pfnet/chainerrl/models
+      unzip ${ZIP} -d ~/.chainer/dataset/pfnet/chainerrl/models/
+      rm ${ZIP}
+  done
   # Xvfb's default screen is 1280x1024x8, which seems to cause a problem.
   # https://bugzilla.redhat.com/show_bug.cgi?id=904851
   OMP_NUM_THREADS=1 PYTHONHASHSEED=0 \
