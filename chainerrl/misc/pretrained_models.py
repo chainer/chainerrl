@@ -114,9 +114,6 @@ def cached_download(url):
 def download_and_store_model(alg, url, env, model_type):
     """Downloads a model file and puts it under model directory.
     It downloads a file from the URL and puts it under model directory.
-    For example, if :obj:`url` is `http://example.com/subdir/model.npz`,
-    the pretrained weights file will be saved to
-    `$CHAINER_DATASET_ROOT/pfnet/chainercv/models/model.npz`.
     If there is already a file at the destination path,
     it just returns the path without downloading the same file.
     Args:
@@ -134,7 +131,7 @@ def download_and_store_model(alg, url, env, model_type):
         file = model_type + ".zip"
         path = os.path.join(root, file)
         is_cached = os.path.exists(path)
-        if not os.path.exists(path):
+        if not is_cached:
             cache_path = cached_download(os.path.join(url_basepath,
                                                       file))
             os.rename(cache_path, path)
