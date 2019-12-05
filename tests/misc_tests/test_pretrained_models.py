@@ -18,6 +18,7 @@ from chainerrl import agents
 from chainerrl import explorers
 from chainerrl import links
 from chainerrl.action_value import DiscreteActionValue
+from chainerrl.q_functions import DistributionalDuelingDQN
 from chainerrl.misc import download_model
 from chainerrl import replay_buffer
 
@@ -129,3 +130,38 @@ class TestLoadIQN(unittest.TestCase):
     def test_gpu(self):
         self._test_load_iqn(gpu=0)
 
+@testing.parameterize(*testing.product(
+    {
+        'pretrained_type': ["best", "final"],
+    }
+))
+class TestLoadRainbow(unittest.TestCase):
+
+    def _test_load_rainbow(self, gpu):
+        q_func = DistributionalDuelingDQN(4, 51, -10, 10)
+        links.to_factorized_noisy(q_func, sigma_scale=0.5)
+        explorer = explorers.Greedy()
+        opt = chainer.optimizers.Adam(6.25e-5, eps=1.5 * 10 ** -4)
+        opt.setup(q_func)
+        rbuf = replay_buffer.ReplayBuffer(100)
+        agent = agents.CategoricalDoubleDQN(
+            q_func, opt, rbuf, gpu=gpu, gamma=0.99,
+            explorer=explorer, minibatch_size=32,
+            replay_start_size=50,
+            target_update_interval=32000,
+            update_interval=4,
+            batch_accumulator='mean',
+            phi=lambda x: x,
+        )
+
+        model, exists = download_model("Rainbow", "BreakoutNoFrameskip-v4",
+                                       model_type=self.pretrained_type)
+        agent.load(model)
+        assert exists
+
+    def test_cpu(self):
+        self._test_load_rainbow(gpu=None)
+
+    @testing.attr.gpu
+    def test_gpu(self):
+        self._test_load_rainbow(gpu=0)

@@ -121,7 +121,6 @@ def download_and_store_model(alg, url, env, model_type):
     Returns:
         string: Path to the downloaded file.
     """
-
     with filelock.FileLock(os.path.join(
             get_dataset_directory(os.path.join('pfnet', 'chainerrl', '.lock')),
             'models.lock')):
