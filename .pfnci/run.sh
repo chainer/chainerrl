@@ -89,10 +89,10 @@ main() {
   # tar xfz gsutil.tar.gz -C $HOME
   # export PATH=${PATH}:$HOME/gsutil
   # source ~/.bashrc
-  apt-get install curl
-  curl https://sdk.cloud.google.com | bash
-  exec -l $SHELL << EOD
-  gcloud init
+  # apt-get install curl
+  # curl https://sdk.cloud.google.com | bash
+  # exec -l $SHELL << EOD
+  # gcloud init
 
   git config --global user.email "you@example.com"
   git config --global user.name "Your Name"
