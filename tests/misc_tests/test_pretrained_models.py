@@ -17,10 +17,13 @@ import numpy as np
 from chainerrl import agents
 from chainerrl import explorers
 from chainerrl import links
+from chainerrl import policies
+from chainerrl.optimizers import rmsprop_async
 from chainerrl.action_value import DiscreteActionValue
 from chainerrl.q_functions import DistributionalDuelingDQN
 from chainerrl.misc import download_model
 from chainerrl import replay_buffer
+from chainerrl import v_functions 
 
 
 @testing.parameterize(*testing.product(
@@ -165,3 +168,46 @@ class TestLoadRainbow(unittest.TestCase):
     @testing.attr.gpu
     def test_gpu(self):
         self._test_load_rainbow(gpu=0)
+
+
+
+class A3CFF(chainer.ChainList, agents.a3c.A3CModel):
+
+    def __init__(self, n_actions):
+        self.head = links.NIPSDQNHead()
+        self.pi = policies.FCSoftmaxPolicy(
+            self.head.n_output_channels, n_actions)
+        self.v = v_functions.FCVFunction(self.head.n_output_channels)
+        super().__init__(self.head, self.pi, self.v)
+
+    def pi_and_v(self, state):
+        out = self.head(state)
+        return self.pi(out), self.v(out)
+
+@testing.parameterize(*testing.product(
+    {
+        'pretrained_type': ["final"],
+    }
+))
+class TestLoadA3C(unittest.TestCase):
+
+    def _test_load_a3c(self, gpu):
+        model = A3CFF(4)
+        opt = rmsprop_async.RMSpropAsync(lr=7e-4,
+                                         eps=1e-1,
+                                        alpha=0.99)
+        opt.setup(model)
+        agent = agents.A3C(model, opt, t_max=5, gamma=0.99,
+                    beta=1e-2, phi=lambda x: x)
+        model, exists = download_model("A3C", "BreakoutNoFrameskip-v4",
+                                       model_type=self.pretrained_type)
+        agent.load(model)
+        assert exists
+
+    def test_cpu(self):
+        self._test_load_a3c(gpu=None)
+
+    @testing.attr.gpu
+    def test_gpu(self):
+        self._test_load_a3c(gpu=0)
+
