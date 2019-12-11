@@ -50,7 +50,16 @@ def copy_grad(target_link, source_link):
     """Copy gradients of a link to another link."""
     target_params = dict(target_link.namedparams())
     for param_name, param in source_link.namedparams():
-        target_params[param_name].grad[...] = param.grad
+        if target_params[param_name].grad is None:
+            if param.grad is None:
+                pass
+            else:
+                target_params[param_name].grad = param.grad.copy()
+        else:
+            if param.grad is None:
+                target_params[param_name].grad = None
+            else:
+                target_params[param_name].grad[...] = param.grad
 
 
 def synchronize_parameters(src, dst, method, tau=None):

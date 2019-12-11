@@ -11,6 +11,7 @@ ChainerRL is a deep reinforcement learning library that implements various state
 ![Breakout](assets/breakout.gif)
 ![Humanoid](assets/humanoid.gif)
 ![Grasping](assets/grasping.gif)
+![Atlas](examples/atlas/assets/atlas.gif)
 
 ## Installation
 

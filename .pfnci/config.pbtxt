@@ -18,6 +18,38 @@ configs {
   }
 }
 
+configs {
+  key: "chainerrl.py3.gpu.slow"
+  value {
+    requirement {
+      cpu: 10
+      memory: 30
+      gpu: 1
+    }
+    time_limit {
+      seconds: 2400
+    }
+    environment_variables { key: "GPU" value: "1" }
+    environment_variables { key: "SLOW" value: "1" }
+    command: "bash .pfnci/script.sh py3.gpu"
+  }
+}
+
+configs {
+  key: "chainerrl.py3.cpu.slow"
+  value {
+    requirement {
+      cpu: 10
+      memory: 30
+    }
+    time_limit {
+      seconds: 2400
+    }
+    environment_variables { key: "SLOW" value: "1" }
+    command: "bash .pfnci/script.sh py3.cpu"
+  }
+}
+
 # ChainerRL CPU-only unit tests.
 # URL: https://ci.preferred.jp/chainerrl.py3.cpu/
 configs {
@@ -35,7 +67,7 @@ configs {
 }
 
 # ChainerRL CPU-only unit tests with python2.
-# TODO(chanerrl): Enable this test target. This test does not work because of
+# TODO(chainerrl): Enable this test target. This test does not work because of
 # https://github.com/chainer/chainerrl/issues/463. This should be resolved by
 # preparing a prebuild Docker image with latest Chainer.
 # URL: https://ci.preferred.jp/chainerrl.py2.cpu/
