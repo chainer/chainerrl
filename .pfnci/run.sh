@@ -25,6 +25,7 @@ TARGET="$1"
 : "${XPYTEST_NUM_THREADS:=$(nproc)}"
 : "${PYTHON=python3}"
 : "${CHAINER=}"
+: "${SLOW:=0}"
 
 # Use multi-process service to prevent GPU flakiness caused by running many
 # processes on a GPU.  Specifically, it seems running more than 16 processes
@@ -39,7 +40,11 @@ fi
 ################################################################################
 
 main() {
-  marker='not slow'
+  if (( !SLOW )); then
+    marker='not slow'
+  else
+    marker='slow'
+  fi
   if (( !GPU )); then
     marker+=' and not gpu'
     bucket=1
