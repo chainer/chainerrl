@@ -7,8 +7,6 @@ from chainer import serializers
 import numpy
 import warnings
 
-from chainerrl.misc.makedirs import makedirs
-
 
 def load_npz_no_strict(filename, obj):
     try:
@@ -104,7 +102,7 @@ class AttributeSavingMixin(object):
         self.__save(dirname, [])
 
     def __save(self, dirname, ancestors):
-        makedirs(dirname, exist_ok=True)
+        os.makedirs(dirname, exist_ok=True)
         ancestors.append(self)
         for attr in self.saved_attributes:
             assert hasattr(self, attr)

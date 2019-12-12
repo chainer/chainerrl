@@ -1,12 +1,12 @@
 from collections import deque
 import logging
+import os
 
 import numpy as np
 
 
 from chainerrl.experiments.evaluator import Evaluator
 from chainerrl.experiments.evaluator import save_agent
-from chainerrl.misc.makedirs import makedirs
 
 
 def train_agent_batch(agent, env, steps, outdir,
@@ -184,7 +184,7 @@ def train_agent_batch_with_evaluation(agent,
 
     logger = logger or logging.getLogger(__name__)
 
-    makedirs(outdir, exist_ok=True)
+    os.makedirs(outdir, exist_ok=True)
 
     if eval_env is None:
         eval_env = env
