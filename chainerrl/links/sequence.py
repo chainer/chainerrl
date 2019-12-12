@@ -1,14 +1,9 @@
+from inspect import Parameter
+from inspect import signature
+
 import chainer
 
 from chainerrl.recurrent import RecurrentChainMixin
-
-try:
-    # For Python 3.5 and later
-    from inspect import Parameter
-    from inspect import signature
-except Exception:
-    from funcsigs import Parameter
-    from funcsigs import signature
 
 
 def accept_variable_arguments(func):
