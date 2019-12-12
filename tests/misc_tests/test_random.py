@@ -96,9 +96,8 @@ class TestSampleNKSpeed(unittest.TestCase):
         # faster than random.sample
         t1 = self.get_timeit("""
 import random
-import six
 def sample_n_k(n, k):
-    return random.sample(six.moves.range(n), k)
+    return random.sample(range(n), k)
 """)
         self.assertLess(t, t1)
 

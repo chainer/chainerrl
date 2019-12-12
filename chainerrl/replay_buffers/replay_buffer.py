@@ -1,5 +1,5 @@
 import collections
-import six.moves.cPickle as pickle
+import pickle
 
 from chainerrl.misc.collections import RandomAccessQueue
 from chainerrl import replay_buffer
