@@ -1,4 +1,3 @@
-# This caused an error in py2 because cupy expect non-unicode str
 from chainer import cuda
 
 
