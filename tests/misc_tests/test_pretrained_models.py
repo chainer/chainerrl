@@ -211,6 +211,79 @@ class TestLoadA3C(unittest.TestCase):
         'pretrained_type': ["best", "final"],
     }
 ))
+class TestLoadDDPG(unittest.TestCase):
+    explorer = explorers.AdditiveGaussian(scale=0.1,
+                                   low=[-1., -1., -1.],
+                                   high=[1., 1., 1.])
+
+    def _test_load_ddpg(self, gpu):
+
+        def concat_obs_and_action(obs, action):
+            return F.concat((obs, action), axis=-1)
+
+        def burnin_action_func():
+            return np.random.uniform(
+                action_space.low, action_space.high).astype(np.float32)
+            action_size = action_space.low.size
+
+        action_size = 3
+        winit = chainer.initializers.LeCunUniform(3 ** -0.5)
+        q_func = chainer.Sequential(
+            concat_obs_and_action,
+            L.Linear(None, 400, initialW=winit),
+            F.relu,
+            L.Linear(None, 300, initialW=winit),
+            F.relu,
+            L.Linear(None, 1, initialW=winit),)
+        policy = chainer.Sequential(
+            L.Linear(None, 400, initialW=winit),
+            F.relu,
+            L.Linear(None, 300, initialW=winit),
+            F.relu,
+            L.Linear(None, action_size, initialW=winit),
+            F.tanh,
+            chainerrl.distribution.ContinuousDeterministicDistribution,)
+        from chainerrl.agents.ddpg import DDPGModel
+        model = DDPGModel(q_func=q_func, policy=policy)
+        opt_a = optimizers.Adam()
+        opt_c = optimizers.Adam()
+        opt_a.setup(model['policy'])
+        opt_c.setup(model['q_function'])
+
+        agent = agents.DDPG(
+            model,
+            opt_a,
+            opt_c,
+            replay_buffer.ReplayBuffer(100),
+            gamma=0.99,
+            explorer=explorer,
+            replay_start_size=1000,
+            target_update_method='soft',
+            target_update_interval=1,
+            update_interval=1,
+            soft_update_tau=5e-3,
+            n_times_update=1,
+            gpu=gpu,
+            minibatch_size=100,
+            burnin_action_func=burnin_action_func)
+
+        model, exists = download_model("DDPG", "Hopper-v2",
+                                       model_type=self.pretrained_type)
+        agent.load(model)
+        assert exists
+
+    def test_cpu(self):
+        self._test_load_ddpg(gpu=None)
+
+    @testing.attr.gpu
+    def test_gpu(self):
+        self._test_load_ddpg(gpu=0)
+
+@testing.parameterize(*testing.product(
+    {
+        'pretrained_type': ["best", "final"],
+    }
+))
 class TestLoadTRPO(unittest.TestCase):
 
     def test_load_trpo(self):
