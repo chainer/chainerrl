@@ -1,5 +1,3 @@
-from builtins import *  # NOQA
-
 
 def ask_yes_no(question):
     while True:

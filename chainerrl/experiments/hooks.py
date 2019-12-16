@@ -1,19 +1,10 @@
-from __future__ import print_function
-from __future__ import division
-from __future__ import unicode_literals
-from __future__ import absolute_import
-from builtins import *  # NOQA
-from future import standard_library
-standard_library.install_aliases()  # NOQA
-
 from abc import ABCMeta
 from abc import abstractmethod
 
-from future.utils import with_metaclass
 import numpy as np
 
 
-class StepHook(with_metaclass(ABCMeta, object)):
+class StepHook(object, metaclass=ABCMeta):
     """Hook function that will be called in training.
 
     This class is for clarifying the interface required for Hook functions.

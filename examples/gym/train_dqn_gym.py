@@ -10,13 +10,6 @@ To solve CartPole-v0, run:
 To solve Pendulum-v0, run:
     python train_dqn_gym.py --env Pendulum-v0
 """
-from __future__ import print_function
-from __future__ import unicode_literals
-from __future__ import division
-from __future__ import absolute_import
-from builtins import *  # NOQA
-from future import standard_library
-standard_library.install_aliases()  # NOQA
 
 import argparse
 import os

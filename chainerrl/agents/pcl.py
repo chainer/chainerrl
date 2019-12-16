@@ -1,11 +1,3 @@
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-from __future__ import absolute_import
-from builtins import *  # NOQA
-from future import standard_library
-standard_library.install_aliases()  # NOQA
-
 import copy
 from logging import getLogger
 
@@ -247,17 +239,17 @@ class PCL(agent.AttributeSavingMixin, agent.AsyncAgent):
             (asfloat(loss) - self.average_loss))
 
         # Compute gradients using thread-specific model
-        self.model.zerograds()
+        self.model.cleargrads()
         F.squeeze(loss).backward()
         if self.train_async:
             # Copy the gradients to the globally shared model
-            self.shared_model.zerograds()
             copy_param.copy_grad(
                 target_link=self.shared_model, source_link=self.model)
             if self.process_idx == 0:
                 xp = self.xp
                 norm = sum(xp.sum(xp.square(param.grad))
-                           for param in self.optimizer.target.params())
+                           for param in self.optimizer.target.params()
+                           if param.grad is not None)
                 self.logger.debug('grad norm:%s', norm)
         self.optimizer.update()
 

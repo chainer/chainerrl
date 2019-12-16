@@ -61,6 +61,7 @@ main() {
       ;;
   esac
   docker_args+=(--env="CHAINER=${chainer_version}")
+  docker_args+=(--env="SLOW=${SLOW:-0}")
 
   case "${TARGET}" in
     py2.* ) docker_args+=(--env="PYTHON=python");;
