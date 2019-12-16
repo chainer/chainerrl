@@ -8,6 +8,7 @@ from chainer import optimizers
 from chainer import testing
 import numpy as np
 
+import chainerrl
 from chainerrl import agents
 from chainerrl import explorers
 from chainerrl import links
@@ -205,6 +206,7 @@ class TestLoadA3C(unittest.TestCase):
     def test_gpu(self):
         self._test_load_a3c(gpu=0)
 
+
 @testing.parameterize(*testing.product(
     {
         'pretrained_type': ["best", "final"],
@@ -212,7 +214,10 @@ class TestLoadA3C(unittest.TestCase):
 ))
 class TestLoadTRPO(unittest.TestCase):
 
-    def _test_load_trpo(self, gpu):
+    def test_load_trpo(self):
+        winit = chainerrl.initializers.Orthogonal(1.)
+        winit_last = chainerrl.initializers.Orthogonal(1e-2)
+        action_size = 3
         policy = chainer.Sequential(
             L.Linear(None, 64, initialW=winit),
             F.tanh,
@@ -237,7 +242,7 @@ class TestLoadTRPO(unittest.TestCase):
         vf_opt = chainer.optimizers.Adam()
         vf_opt.setup(vf)
 
-        agent = chainerrl.agents.TRPO(
+        agent = agents.TRPO(
             policy=policy,
             vf=vf,
             vf_optimizer=vf_opt,
@@ -250,14 +255,72 @@ class TestLoadTRPO(unittest.TestCase):
             vf_epochs=5,
             entropy_coef=0)
 
-        model, exists = download_model("TRPO", "BreakoutNoFrameskip-v4",
+        model, exists = download_model("TRPO", "Hopper-v2",
+                                       model_type=self.pretrained_type)
+        agent.load(model)
+        assert exists
+
+
+@testing.parameterize(*testing.product(
+    {
+        'pretrained_type': ["final"],
+    }
+))
+class TestLoadPPO(unittest.TestCase):
+
+    def _test_load_ppo(self, gpu):
+        winit = chainerrl.initializers.Orthogonal(1.)
+        winit_last = chainerrl.initializers.Orthogonal(1e-2)
+        action_size = 3
+        policy = chainer.Sequential(
+            L.Linear(None, 64, initialW=winit),
+            F.tanh,
+            L.Linear(None, 64, initialW=winit),
+            F.tanh,
+            L.Linear(None, action_size, initialW=winit_last),
+                policies.GaussianHeadWithStateIndependentCovariance(
+                action_size=action_size,
+                var_type='diagonal',
+                var_func=lambda x: F.exp(2 * x),  # Parameterize log std
+                var_param_init=0,  # log std = 0 => std = 1
+            ),
+        )
+
+        vf = chainer.Sequential(
+            L.Linear(None, 64, initialW=winit),
+            F.tanh,
+            L.Linear(None, 64, initialW=winit),
+            F.tanh,
+            L.Linear(None, 1, initialW=winit))
+
+        model = links.Branched(policy, vf)
+
+        opt = chainer.optimizers.Adam(3e-4, eps=1e-5)
+        opt.setup(model)
+
+
+        agent = agents.PPO(
+                           model,
+                           opt,
+                           obs_normalizer=None,
+                           gpu=gpu,
+                           update_interval=2048,
+                           minibatch_size=64,
+                           epochs=10,
+                           clip_eps_vf=None,
+                           entropy_coef=0,
+                           standardize_advantages=True,
+                           gamma=0.995,
+                           lambd=0.97)
+
+        model, exists = download_model("PPO", "Hopper-v2",
                                        model_type=self.pretrained_type)
         agent.load(model)
         assert exists
 
     def test_cpu(self):
-        self._test_load_trpo(gpu=None)
+        self._test_load_ppo(gpu=None)
 
     @testing.attr.gpu
     def test_gpu(self):
-        self._test_load_trpo(gpu=0)
+        self._test_load_ppo(gpu=0)
