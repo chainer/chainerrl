@@ -2,15 +2,6 @@
 https://github.com/chainer/chainercv/blob/master/chainercv/utils/download.py
 """
 
-
-from __future__ import print_function
-from __future__ import division
-from __future__ import unicode_literals
-from __future__ import absolute_import
-from builtins import *  # NOQA
-from future import standard_library
-standard_library.install_aliases()  # NOQA
-
 from distutils.util import strtobool
 import filelock
 import hashlib

@@ -1,9 +1,3 @@
-from __future__ import unicode_literals
-from __future__ import print_function
-from __future__ import division
-from __future__ import absolute_import
-from future import standard_library
-standard_library.install_aliases()  # NOQA
 import functools
 import unittest
 
@@ -211,3 +205,59 @@ class TestLoadA3C(unittest.TestCase):
     def test_gpu(self):
         self._test_load_a3c(gpu=0)
 
+@testing.parameterize(*testing.product(
+    {
+        'pretrained_type': ["best", "final"],
+    }
+))
+class TestLoadTRPO(unittest.TestCase):
+
+    def _test_load_trpo(self, gpu):
+        policy = chainer.Sequential(
+            L.Linear(None, 64, initialW=winit),
+            F.tanh,
+            L.Linear(None, 64, initialW=winit),
+            F.tanh,
+            L.Linear(None, action_size, initialW=winit_last),
+                policies.GaussianHeadWithStateIndependentCovariance(
+                action_size=action_size,
+                var_type='diagonal',
+                var_func=lambda x: F.exp(2 * x),  # Parameterize log std
+                var_param_init=0,  # log std = 0 => std = 1
+            ),
+        )
+
+        vf = chainer.Sequential(
+            L.Linear(None, 64, initialW=winit),
+            F.tanh,
+            L.Linear(None, 64, initialW=winit),
+            F.tanh,
+            L.Linear(None, 1, initialW=winit),
+        )
+        vf_opt = chainer.optimizers.Adam()
+        vf_opt.setup(vf)
+
+        agent = chainerrl.agents.TRPO(
+            policy=policy,
+            vf=vf,
+            vf_optimizer=vf_opt,
+            update_interval=5000,
+            max_kl=0.01,
+            conjugate_gradient_max_iter=20,
+            conjugate_gradient_damping=1e-1,
+            gamma=0.995,
+            lambd=0.97,
+            vf_epochs=5,
+            entropy_coef=0)
+
+        model, exists = download_model("TRPO", "BreakoutNoFrameskip-v4",
+                                       model_type=self.pretrained_type)
+        agent.load(model)
+        assert exists
+
+    def test_cpu(self):
+        self._test_load_trpo(gpu=None)
+
+    @testing.attr.gpu
+    def test_gpu(self):
+        self._test_load_trpo(gpu=0)
