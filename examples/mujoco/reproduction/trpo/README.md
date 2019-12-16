@@ -25,6 +25,10 @@ python train_trpo.py [options]
 
 To view the full list of options, either view the code or run the example with the `--help` option.
 
+## Known differences
+
+- We used version v2 of the environments whereas the original results were reported for version v1, however this doesn't seem to introduce significant differences: https://github.com/openai/gym/pull/834
+
 ## Results
 
 These scores are evaluated by average return +/- standard error of 100 evaluation episodes after 2M training steps.
@@ -32,12 +36,12 @@ These scores are evaluated by average return +/- standard error of 100 evaluatio
 Reported scores are taken from the row Table 1 of [Deep Reinforcement Learning that Matters](https://arxiv.org/abs/1709.06560).
 Here we try to reproduce TRPO (Schulman et al. 2017) of the (64, 64) column, which corresponds to the default settings.
 
-| Environment    | ChainerRL Score | Reported Score |
-| -------------- |:---------------:|:--------------:|
-| HalfCheetah-v2 |  **1474**+/-112 |      205+/-256 |
-| Hopper-v2      |   **3056**+/-44 |      2828+/-70 |
-| Walker2d-v2    |       3073+/-59 |            N/A |
-| Swimmer-v2     |        200+/-25 |            N/A |
+| Environment | ChainerRL Score | Reported Score |
+| ----------- |:---------------:|:--------------:|
+| HalfCheetah |  **1474**+/-112 |      205+/-256 |
+| Hopper      |   **3056**+/-44 |      2828+/-70 |
+| Walker2d    |       3073+/-59 |            N/A |
+| Swimmer     |        200+/-25 |            N/A |
 
 ### Learning Curves
 

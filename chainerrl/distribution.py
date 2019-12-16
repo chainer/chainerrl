@@ -1,11 +1,3 @@
-from __future__ import division
-from __future__ import unicode_literals
-from __future__ import print_function
-from __future__ import absolute_import
-from builtins import *  # NOQA
-from future import standard_library
-standard_library.install_aliases()  # NOQA
-
 from abc import ABCMeta
 from abc import abstractmethod
 from abc import abstractproperty
@@ -13,7 +5,6 @@ from abc import abstractproperty
 from cached_property import cached_property
 import chainer
 from chainer import functions as F
-from future.utils import with_metaclass
 import numpy as np
 
 from chainerrl.functions import arctanh
@@ -48,7 +39,7 @@ def sample_discrete_actions(batch_probs):
         axis=1).astype(np.int32, copy=False)
 
 
-class Distribution(with_metaclass(ABCMeta, object)):
+class Distribution(object, metaclass=ABCMeta):
     """Batch of distributions of data."""
 
     @abstractproperty

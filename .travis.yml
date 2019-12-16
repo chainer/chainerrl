@@ -2,7 +2,6 @@ language: python
 dist: xenial
 cache: pip
 python:
-  - "2.7"
   - "3.6"
 env:
   - CHAINER_VERSION=4
@@ -10,7 +9,7 @@ env:
 services:
   - xvfb
 before_install:
-  - sudo add-apt-repository -y ppa:jonathonf/ffmpeg-4
+  - sudo add-apt-repository -y ppa:cran/ffmpeg-4
   - sudo apt-get update
   - sudo apt install -y freeglut3-dev ffmpeg
 # command to install dependencies

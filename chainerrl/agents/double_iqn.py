@@ -1,10 +1,3 @@
-from __future__ import unicode_literals
-from __future__ import print_function
-from __future__ import division
-from __future__ import absolute_import
-from future import standard_library
-standard_library.install_aliases()  # NOQA
-
 import chainer
 import chainer.functions as F
 
@@ -12,6 +5,7 @@ from chainerrl.agents import iqn
 
 
 class DoubleIQN(iqn.IQN):
+
     """IQN with DoubleDQN-like target computation.
 
     For computing targets, rather than have the target network

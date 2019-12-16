@@ -1,10 +1,3 @@
-from __future__ import print_function
-from __future__ import unicode_literals
-from __future__ import division
-from __future__ import absolute_import
-from future import standard_library
-standard_library.install_aliases()  # NOQA
-
 from chainer import optimizers
 from chainer import testing
 import gym
@@ -39,8 +32,8 @@ def create_deterministic_policy_for_env(env):
     return policies.FCDeterministicPolicy(
         n_input_channels=ndim_obs,
         action_size=env.action_space.low.size,
-        n_hidden_channels=200,
-        n_hidden_layers=2,
+        n_hidden_channels=10,
+        n_hidden_layers=1,
         bound_action=False)
 
 
@@ -51,14 +44,14 @@ def create_state_q_function_for_env(env):
         return q_functions.FCStateQFunctionWithDiscreteAction(
             ndim_obs=ndim_obs,
             n_actions=env.action_space.n,
-            n_hidden_channels=200,
-            n_hidden_layers=2)
+            n_hidden_channels=10,
+            n_hidden_layers=1)
     elif isinstance(env.action_space, gym.spaces.Box):
         return q_functions.FCQuadraticStateQFunction(
             n_input_channels=ndim_obs,
             n_dim_action=env.action_space.low.size,
-            n_hidden_channels=200,
-            n_hidden_layers=2,
+            n_hidden_channels=10,
+            n_hidden_layers=1,
             action_space=env.action_space)
     else:
         raise NotImplementedError()
@@ -71,8 +64,8 @@ def create_state_action_q_function_for_env(env):
     return q_functions.FCSAQFunction(
         n_dim_obs=ndim_obs,
         n_dim_action=env.action_space.low.size,
-        n_hidden_channels=200,
-        n_hidden_layers=2)
+        n_hidden_channels=10,
+        n_hidden_layers=1)
 
 
 def create_v_function_for_env(env):

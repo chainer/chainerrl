@@ -1,16 +1,8 @@
-from __future__ import unicode_literals
-from __future__ import print_function
-from __future__ import division
-from __future__ import absolute_import
-from future import standard_library
-from future.utils import with_metaclass
-standard_library.install_aliases()  # NOQA
-
 from abc import ABCMeta
 from abc import abstractmethod
 
 
-class Env(with_metaclass(ABCMeta, object)):
+class Env(object, metaclass=ABCMeta):
     """RL learning environment.
 
     This serves a minimal interface for RL agents.
@@ -29,7 +21,7 @@ class Env(with_metaclass(ABCMeta, object)):
         raise NotImplementedError()
 
 
-class VectorEnv(with_metaclass(ABCMeta, object)):
+class VectorEnv(object, metaclass=ABCMeta):
     """Parallel RL learning environments."""
 
     @abstractmethod

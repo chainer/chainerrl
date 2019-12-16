@@ -1,22 +1,13 @@
-from __future__ import division
-from __future__ import unicode_literals
-from __future__ import print_function
-from __future__ import absolute_import
-from builtins import *  # NOQA
-from future import standard_library
-standard_library.install_aliases()  # NOQA
-
 from abc import ABCMeta
 from abc import abstractmethod
 
 import chainer
 import chainer.functions as F
-from future.utils import with_metaclass
 
 from chainerrl.agents.dqn import DQN
 
 
-class AbstractDPP(with_metaclass(ABCMeta, DQN)):
+class AbstractDPP(DQN, metaclass=ABCMeta):
     """Dynamic Policy Programming.
 
     See: https://arxiv.org/abs/1004.2027.

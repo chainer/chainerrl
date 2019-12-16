@@ -1,11 +1,3 @@
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-from __future__ import absolute_import
-from builtins import *  # NOQA
-from future import standard_library
-standard_library.install_aliases()  # NOQA
-
 import copy
 from logging import getLogger
 
@@ -501,16 +493,16 @@ class ACER(agent.AttributeSavingMixin, agent.AsyncAgent):
             avg_action_distribs=avg_action_distribs)
 
         # Compute gradients using thread-specific model
-        self.model.zerograds()
+        self.model.cleargrads()
         F.squeeze(total_loss).backward()
         # Copy the gradients to the globally shared model
-        self.shared_model.zerograds()
         copy_param.copy_grad(
             target_link=self.shared_model, source_link=self.model)
         # Update the globally shared model
         if self.process_idx == 0:
             norm = sum(np.sum(np.square(param.grad))
-                       for param in self.optimizer.target.params())
+                       for param in self.optimizer.target.params()
+                       if param.grad is not None)
             self.logger.debug('grad norm:%s', norm)
         self.optimizer.update()
 

@@ -1,11 +1,3 @@
-from __future__ import print_function
-from __future__ import unicode_literals
-from __future__ import division
-from __future__ import absolute_import
-from builtins import *  # NOQA
-from future import standard_library
-standard_library.install_aliases()  # NOQA
-
 import collections
 
 import numpy as np
@@ -65,7 +57,7 @@ class PriorityWeightError(object):
     def weights_from_probabilities(self, probabilities, min_probability):
         if self.normalize_by_max == 'batch':
             # discard global min and compute batch min
-            min_probability = np.min(min_probability)
+            min_probability = np.min(probabilities)
         if self.normalize_by_max:
             weights = [(p / min_probability) ** -self.beta
                        for p in probabilities]

@@ -8,13 +8,6 @@ To train PPO for 10M timesteps on Breakout, run:
 To train PPO using a recurrent model on a flickering Atari env, run:
     python train_ppo_ale.py --recurrent --flicker --no-frame-stack
 """
-from __future__ import print_function
-from __future__ import division
-from __future__ import unicode_literals
-from __future__ import absolute_import
-from builtins import *  # NOQA
-from future import standard_library
-standard_library.install_aliases()  # NOQA
 import argparse
 import os
 
