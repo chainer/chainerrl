@@ -65,7 +65,7 @@ main() {
     # we use jonathonf/ffmpeg-3
     apt-get update -q
     apt-get install -qy --no-install-recommends software-properties-common
-    add-apt-repository ppa:jonathonf/ffmpeg-3
+    add-apt-repository ppa:cran/ffmpeg-3
   fi
 
   apt-get update -q
