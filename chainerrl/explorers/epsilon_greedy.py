@@ -41,7 +41,7 @@ class ConstantEpsilonGreedy(explorer.Explorer):
 
 
 class LinearDecayEpsilonGreedy(explorer.Explorer):
-    """Epsilon-greedy with linearyly decayed epsilon
+    """Epsilon-greedy with linearly decayed epsilon
 
     Args:
       start_epsilon: max value of epsilon
