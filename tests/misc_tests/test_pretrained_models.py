@@ -165,7 +165,6 @@ class TestLoadRainbow(unittest.TestCase):
         self._test_load_rainbow(gpu=0)
 
 
-
 class A3CFF(chainer.ChainList, agents.a3c.A3CModel):
 
     def __init__(self, n_actions):
@@ -324,3 +323,78 @@ class TestLoadPPO(unittest.TestCase):
     @testing.attr.gpu
     def test_gpu(self):
         self._test_load_ppo(gpu=0)
+
+@testing.parameterize(*testing.product(
+    {
+        'pretrained_type': ["best", "final"],
+    }
+))
+class TestLoadTD3(unittest.TestCase):
+
+    def _test_load_td3(self, gpu):
+        def concat_obs_and_action(obs, action):
+            """Concat observation and action to feed the critic."""
+            return F.concat((obs, action), axis=-1)
+
+        def make_q_func_with_optimizer():
+            q_func = chainer.Sequential(
+                concat_obs_and_action,
+                L.Linear(None, 400, initialW=winit),
+                F.relu,
+                L.Linear(None, 300, initialW=winit),
+                F.relu,
+                L.Linear(None, 1, initialW=winit),
+            )
+            q_func_optimizer = optimizers.Adam().setup(q_func)
+            return q_func, q_func_optimizer
+
+        winit = chainer.initializers.LeCunUniform(3 ** -0.5)
+
+        q_func1, q_func1_optimizer = make_q_func_with_optimizer()
+        q_func2, q_func2_optimizer = make_q_func_with_optimizer()
+
+        action_size = 3
+        policy = chainer.Sequential(
+            L.Linear(None, 400, initialW=winit),
+            F.relu,
+            L.Linear(None, 300, initialW=winit),
+            F.relu,
+            L.Linear(None, action_size, initialW=winit),
+            F.tanh,
+            chainerrl.distribution.ContinuousDeterministicDistribution,
+            ) 
+        policy_optimizer = optimizers.Adam().setup(policy)
+
+        rbuf = replay_buffer.ReplayBuffer(100)
+        explorer = explorers.AdditiveGaussian(scale=0.1,
+                                   low=[-1., -1., -1.],
+                                   high=[1., 1., 1.])
+
+        agent = chainerrl.agents.TD3(
+                    policy,
+                    q_func1,
+                    q_func2,
+                    policy_optimizer,
+                    q_func1_optimizer,
+                    q_func2_optimizer,
+                    rbuf,
+                    gamma=0.99,
+                    soft_update_tau=5e-3,
+                    explorer=explorer,
+                    replay_start_size=10000,
+                    gpu=gpu,
+                    minibatch_size=100,
+                    burnin_action_func=None)
+
+
+        model, exists = download_model("TD3", "Hopper-v2",
+                                       model_type=self.pretrained_type)
+        agent.load(model)
+        assert exists
+
+    def test_cpu(self):
+        self._test_load_td3(gpu=None)
+
+    @testing.attr.gpu
+    def test_gpu(self):
+        self._test_load_td3(gpu=0)
