@@ -1,12 +1,3 @@
-from __future__ import division
-from __future__ import unicode_literals
-from __future__ import print_function
-from __future__ import absolute_import
-from builtins import *  # NOQA
-from future import standard_library
-from future.utils import with_metaclass
-standard_library.install_aliases()  # NOQA
-
 from abc import ABCMeta
 from abc import abstractmethod
 import collections
@@ -24,7 +15,7 @@ def unchain_backward(state):
         state.unchain_backward()
 
 
-class Recurrent(with_metaclass(ABCMeta, object)):
+class Recurrent(object, metaclass=ABCMeta):
     """Interface of recurrent and stateful models.
 
     This is an interface of recurrent and stateful models. ChainerRL supports

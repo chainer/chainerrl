@@ -15,7 +15,7 @@ ChainerRL is a deep reinforcement learning library that implements various state
 
 ## Installation
 
-ChainerRL is tested with Python 2.7+ and 3.5.1+. For other requirements, see [requirements.txt](requirements.txt).
+ChainerRL is tested with 3.5.1+. For other requirements, see [requirements.txt](requirements.txt).
 
 ChainerRL can be installed via PyPI:
 ```
