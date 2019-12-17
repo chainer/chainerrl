@@ -18,7 +18,7 @@ from chainerrl.action_value import DiscreteActionValue
 from chainerrl.q_functions import DistributionalDuelingDQN
 from chainerrl.misc import download_model
 from chainerrl import replay_buffer
-from chainerrl import v_functions 
+from chainerrl import v_functions
 
 
 @testing.parameterize(*testing.product(
@@ -65,6 +65,7 @@ class TestLoadDQN(unittest.TestCase):
     def test_gpu(self):
         self._test_load_dqn(gpu=0)
 
+
 @testing.parameterize(*testing.product(
     {
         'pretrained_type': ["best", "final"],
@@ -92,7 +93,6 @@ class TestLoadIQN(unittest.TestCase):
                     F.relu,
                     L.Linear(None, 4),
                 ),)
-
 
         opt = chainer.optimizers.Adam(5e-5, eps=1e-2)
         opt.setup(q_func)
@@ -127,6 +127,7 @@ class TestLoadIQN(unittest.TestCase):
     @testing.attr.gpu
     def test_gpu(self):
         self._test_load_iqn(gpu=0)
+
 
 @testing.parameterize(*testing.product(
     {
@@ -178,6 +179,7 @@ class A3CFF(chainer.ChainList, agents.a3c.A3CModel):
         out = self.head(state)
         return self.pi(out), self.v(out)
 
+
 @testing.parameterize(*testing.product(
     {
         'pretrained_type': ["final"],
@@ -189,10 +191,10 @@ class TestLoadA3C(unittest.TestCase):
         model = A3CFF(4)
         opt = rmsprop_async.RMSpropAsync(lr=7e-4,
                                          eps=1e-1,
-                                        alpha=0.99)
+                                         alpha=0.99)
         opt.setup(model)
         agent = agents.A3C(model, opt, t_max=5, gamma=0.99,
-                    beta=1e-2, phi=lambda x: x)
+                           beta=1e-2, phi=lambda x: x)
         model, exists = download_model("A3C", "BreakoutNoFrameskip-v4",
                                        model_type=self.pretrained_type)
         agent.load(model)
@@ -213,8 +215,8 @@ class TestLoadA3C(unittest.TestCase):
 ))
 class TestLoadDDPG(unittest.TestCase):
     explorer = explorers.AdditiveGaussian(scale=0.1,
-                                   low=[-1., -1., -1.],
-                                   high=[1., 1., 1.])
+                                          low=[-1., -1., -1.],
+                                          high=[1., 1., 1.])
 
     def _test_load_ddpg(self, gpu):
 
@@ -244,7 +246,7 @@ class TestLoadDDPG(unittest.TestCase):
         obs_low = [-np.inf] * 11
         fake_obs = chainer.Variable(
             model.xp.zeros_like(
-                obs_low, dtype=np.float32)[None],name='observation')
+                obs_low, dtype=np.float32)[None], name='observation')
         fake_action = chainer.Variable(
             model.xp.zeros_like([-1., -1., -1.], dtype=np.float32)[None],
             name='action')
@@ -257,8 +259,8 @@ class TestLoadDDPG(unittest.TestCase):
         opt_c.setup(model['q_function'])
 
         explorer = explorers.AdditiveGaussian(scale=0.1,
-                                   low=[-1., -1., -1.],
-                                   high=[1., 1., 1.])
+                                              low=[-1., -1., -1.],
+                                              high=[1., 1., 1.])
 
         agent = agents.DDPG(
             model,
@@ -289,6 +291,7 @@ class TestLoadDDPG(unittest.TestCase):
     def test_gpu(self):
         self._test_load_ddpg(gpu=0)
 
+
 @testing.parameterize(*testing.product(
     {
         'pretrained_type': ["best", "final"],
@@ -306,7 +309,7 @@ class TestLoadTRPO(unittest.TestCase):
             L.Linear(None, 64, initialW=winit),
             F.tanh,
             L.Linear(None, action_size, initialW=winit_last),
-                policies.GaussianHeadWithStateIndependentCovariance(
+            policies.GaussianHeadWithStateIndependentCovariance(
                 action_size=action_size,
                 var_type='diagonal',
                 var_func=lambda x: F.exp(2 * x),  # Parameterize log std
@@ -360,7 +363,7 @@ class TestLoadPPO(unittest.TestCase):
             L.Linear(None, 64, initialW=winit),
             F.tanh,
             L.Linear(None, action_size, initialW=winit_last),
-                policies.GaussianHeadWithStateIndependentCovariance(
+            policies.GaussianHeadWithStateIndependentCovariance(
                 action_size=action_size,
                 var_type='diagonal',
                 var_func=lambda x: F.exp(2 * x),  # Parameterize log std
@@ -379,7 +382,6 @@ class TestLoadPPO(unittest.TestCase):
 
         opt = chainer.optimizers.Adam(3e-4, eps=1e-5)
         opt.setup(model)
-
 
         agent = agents.PPO(
                            model,
@@ -406,6 +408,7 @@ class TestLoadPPO(unittest.TestCase):
     @testing.attr.gpu
     def test_gpu(self):
         self._test_load_ppo(gpu=0)
+
 
 @testing.parameterize(*testing.product(
     {
@@ -444,14 +447,14 @@ class TestLoadTD3(unittest.TestCase):
             F.relu,
             L.Linear(None, action_size, initialW=winit),
             F.tanh,
-            chainerrl.distribution.ContinuousDeterministicDistribution,
-            ) 
+            chainerrl.distribution.ContinuousDeterministicDistribution,)
+
         policy_optimizer = optimizers.Adam().setup(policy)
 
         rbuf = replay_buffer.ReplayBuffer(100)
         explorer = explorers.AdditiveGaussian(scale=0.1,
-                                   low=[-1., -1., -1.],
-                                   high=[1., 1., 1.])
+                                              low=[-1., -1., -1.],
+                                              high=[1., 1., 1.])
 
         agent = chainerrl.agents.TD3(
                     policy,
@@ -468,7 +471,6 @@ class TestLoadTD3(unittest.TestCase):
                     gpu=gpu,
                     minibatch_size=100,
                     burnin_action_func=None)
-
 
         model, exists = download_model("TD3", "Hopper-v2",
                                        model_type=self.pretrained_type)
