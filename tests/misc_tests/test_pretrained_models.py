@@ -221,11 +221,6 @@ class TestLoadDDPG(unittest.TestCase):
         def concat_obs_and_action(obs, action):
             return F.concat((obs, action), axis=-1)
 
-        def burnin_action_func():
-            return np.random.uniform(
-                action_space.low, action_space.high).astype(np.float32)
-            action_size = action_space.low.size
-
         action_size = 3
         winit = chainer.initializers.LeCunUniform(3 ** -0.5)
         q_func = chainer.Sequential(
@@ -245,10 +240,24 @@ class TestLoadDDPG(unittest.TestCase):
             chainerrl.distribution.ContinuousDeterministicDistribution,)
         from chainerrl.agents.ddpg import DDPGModel
         model = DDPGModel(q_func=q_func, policy=policy)
+
+        fake_obs = chainer.Variable(
+            model.xp.zeros_like([-np.inf, -np.inf, -np.inf, -np.inf, -np.inf, -np.inf, -np.inf, -np.inf, -np.inf, -np.inf, -np.inf], dtype=np.float32)[None],
+            name='observation')
+        fake_action = chainer.Variable(
+            model.xp.zeros_like([-1., -1., -1.], dtype=np.float32)[None],
+            name='action')
+        policy(fake_obs)
+        q_func(fake_obs, fake_action)
+
         opt_a = optimizers.Adam()
         opt_c = optimizers.Adam()
         opt_a.setup(model['policy'])
         opt_c.setup(model['q_function'])
+
+        explorer = explorers.AdditiveGaussian(scale=0.1,
+                                   low=[-1., -1., -1.],
+                                   high=[1., 1., 1.])
 
         agent = agents.DDPG(
             model,
@@ -265,7 +274,7 @@ class TestLoadDDPG(unittest.TestCase):
             n_times_update=1,
             gpu=gpu,
             minibatch_size=100,
-            burnin_action_func=burnin_action_func)
+            burnin_action_func=None)
 
         model, exists = download_model("DDPG", "Hopper-v2",
                                        model_type=self.pretrained_type)
