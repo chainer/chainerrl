@@ -456,7 +456,7 @@ class TestLoadTD3(unittest.TestCase):
                                               low=[-1., -1., -1.],
                                               high=[1., 1., 1.])
 
-        agent = chainerrl.agents.TD3(
+        agent = agents.TD3(
                     policy,
                     q_func1,
                     q_func2,
@@ -483,3 +483,82 @@ class TestLoadTD3(unittest.TestCase):
     @testing.attr.gpu
     def test_gpu(self):
         self._test_load_td3(gpu=0)
+
+
+@testing.parameterize(*testing.product(
+    {
+        'pretrained_type': ["best", "final"],
+    }
+))
+class TestLoadSAC(unittest.TestCase):
+
+    def _test_load_sac(self, gpu):
+
+        winit = chainer.initializers.GlorotUniform()
+        winit_policy_output = chainer.initializers.GlorotUniform(1.0)
+
+        def concat_obs_and_action(obs, action):
+            """Concat observation and action to feed the critic."""
+            return F.concat((obs, action), axis=-1)
+
+        def squashed_diagonal_gaussian_head(x):
+            assert x.shape[-1] == 3 * 2
+            mean, log_scale = F.split_axis(x, 2, axis=1)
+            log_scale = F.clip(log_scale, -20., 2.)
+            var = F.exp(log_scale * 2)
+            return chainerrl.distribution.SquashedGaussianDistribution(
+                mean, var=var)
+
+        policy = chainer.Sequential(
+            L.Linear(None, 256, initialW=winit),
+            F.relu,
+            L.Linear(None, 256, initialW=winit),
+            F.relu,
+            L.Linear(None, 3 * 2, initialW=winit_policy_output),
+            squashed_diagonal_gaussian_head,
+        )
+        policy_optimizer = optimizers.Adam(3e-4).setup(policy)
+
+        def make_q_func_with_optimizer():
+            q_func = chainer.Sequential(
+                concat_obs_and_action,
+                L.Linear(None, 256, initialW=winit),
+                F.relu,
+                L.Linear(None, 256, initialW=winit),
+                F.relu,
+                L.Linear(None, 1, initialW=winit),
+            )
+            q_func_optimizer = optimizers.Adam(3e-4).setup(q_func)
+            return q_func, q_func_optimizer
+
+        q_func1, q_func1_optimizer = make_q_func_with_optimizer()
+        q_func2, q_func2_optimizer = make_q_func_with_optimizer()
+
+        agent = agents.SoftActorCritic(
+                    policy,
+                    q_func1,
+                    q_func2,
+                    policy_optimizer,
+                    q_func1_optimizer,
+                    q_func2_optimizer,
+                    replay_buffer.ReplayBuffer(100),
+                    gamma=0.99,
+                    replay_start_size=1000,
+                    gpu=gpu,
+                    minibatch_size=256,
+                    burnin_action_func=None,
+                    entropy_target=-3,
+                    temperature_optimizer=optimizers.Adam(3e-4),
+                )
+
+        model, exists = download_model("SAC", "Hopper-v2",
+                                       model_type=self.pretrained_type)
+        agent.load(model)
+        assert exists
+
+    def test_cpu(self):
+        self._test_load_sac(gpu=None)
+
+    @testing.attr.gpu
+    def test_gpu(self):
+        self._test_load_sac(gpu=0)
