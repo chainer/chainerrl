@@ -241,9 +241,10 @@ class TestLoadDDPG(unittest.TestCase):
         from chainerrl.agents.ddpg import DDPGModel
         model = DDPGModel(q_func=q_func, policy=policy)
 
+        obs_low = [-np.inf] * 11
         fake_obs = chainer.Variable(
-            model.xp.zeros_like([-np.inf, -np.inf, -np.inf, -np.inf, -np.inf, -np.inf, -np.inf, -np.inf, -np.inf, -np.inf, -np.inf], dtype=np.float32)[None],
-            name='observation')
+            model.xp.zeros_like(
+                obs_low, dtype=np.float32)[None],name='observation')
         fake_action = chainer.Variable(
             model.xp.zeros_like([-1., -1., -1.], dtype=np.float32)[None],
             name='action')
