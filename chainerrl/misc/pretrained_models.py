@@ -60,7 +60,7 @@ def cached_download(url):
     This is different from the original
     :func:`~chainer.dataset.cached_download` in that the download
     progress is reported.
-    It downloads a file from the URL if there is no corresponding cache. 
+    It downloads a file from the URL if there is no corresponding cache.
     If there is already a cache for the given URL, it just returns the
     path to the cache without downloading the same file.
     Args:
@@ -144,5 +144,7 @@ def download_model(alg, env, model_type="best"):
     assert model_type in MODELS[alg], \
         "Model type \"" + model_type + "\" is not supported."
     env = env.replace("NoFrameskip-v4", "")
-    model_path, is_cached = download_and_store_model(alg, download_url, env, model_type)
+    model_path, is_cached = download_and_store_model(alg,
+                                                     download_url,
+                                                     env, model_type)
     return model_path, is_cached
