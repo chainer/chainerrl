@@ -67,7 +67,7 @@ main() {
     py2.* ) docker_args+=(--env="PYTHON=python");;
   esac
 
-  for ZIP in a3c_models.zip dqn_models.zip iqn_models.zip rainbow_models.zip ddpg_models.zip trpo_models.zip ppo_models.zip td3_models.zip sac_models.zip
+  for ZIP in a3c_results.zip dqn_results.zip iqn_results.zip rainbow_results.zip ddpg_results.zip trpo_results.zip ppo_results.zip td3_results.zip sac_results.zip
   do
       gsutil cp gs://chainerrl-asia-pfn-public-ci/${ZIP} .
       mkdir -p ~/.chainer/dataset/pfnet/chainerrl/models
