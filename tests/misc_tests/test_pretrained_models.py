@@ -75,24 +75,24 @@ class TestLoadIQN(unittest.TestCase):
 
     def _test_load_iqn(self, gpu):
         q_func = agents.iqn.ImplicitQuantileQFunction(
-                psi=links.Sequence(
-                    L.Convolution2D(None, 32, 8, stride=4),
-                    F.relu,
-                    L.Convolution2D(None, 64, 4, stride=2),
-                    F.relu,
-                    L.Convolution2D(None, 64, 3, stride=1),
-                    F.relu,
-                    functools.partial(F.reshape, shape=(-1, 3136)),
-                ),
-                phi=links.Sequence(
-                    agents.iqn.CosineBasisLinear(64, 3136),
-                    F.relu,
-                ),
-                f=links.Sequence(
-                    L.Linear(None, 512),
-                    F.relu,
-                    L.Linear(None, 4),
-                ),)
+            psi=links.Sequence(
+                L.Convolution2D(None, 32, 8, stride=4),
+                F.relu,
+                L.Convolution2D(None, 64, 4, stride=2),
+                F.relu,
+                L.Convolution2D(None, 64, 3, stride=1),
+                F.relu,
+                functools.partial(F.reshape, shape=(-1, 3136)),
+            ),
+            phi=links.Sequence(
+                agents.iqn.CosineBasisLinear(64, 3136),
+                F.relu,
+            ),
+            f=links.Sequence(
+                L.Linear(None, 512),
+                F.relu,
+                L.Linear(None, 4),
+            ),)
 
         opt = chainer.optimizers.Adam(5e-5, eps=1e-2)
         opt.setup(q_func)
@@ -384,18 +384,18 @@ class TestLoadPPO(unittest.TestCase):
         opt.setup(model)
 
         agent = agents.PPO(
-                           model,
-                           opt,
-                           obs_normalizer=None,
-                           gpu=gpu,
-                           update_interval=2048,
-                           minibatch_size=64,
-                           epochs=10,
-                           clip_eps_vf=None,
-                           entropy_coef=0,
-                           standardize_advantages=True,
-                           gamma=0.995,
-                           lambd=0.97)
+            model,
+            opt,
+            obs_normalizer=None,
+            gpu=gpu,
+            update_interval=2048,
+            minibatch_size=64,
+            epochs=10,
+            clip_eps_vf=None,
+            entropy_coef=0,
+            standardize_advantages=True,
+            gamma=0.995,
+            lambd=0.97)
 
         model, exists = download_model("PPO", "Hopper-v2",
                                        model_type=self.pretrained_type)
@@ -457,20 +457,20 @@ class TestLoadTD3(unittest.TestCase):
                                               high=[1., 1., 1.])
 
         agent = agents.TD3(
-                    policy,
-                    q_func1,
-                    q_func2,
-                    policy_optimizer,
-                    q_func1_optimizer,
-                    q_func2_optimizer,
-                    rbuf,
-                    gamma=0.99,
-                    soft_update_tau=5e-3,
-                    explorer=explorer,
-                    replay_start_size=10000,
-                    gpu=gpu,
-                    minibatch_size=100,
-                    burnin_action_func=None)
+            policy,
+            q_func1,
+            q_func2,
+            policy_optimizer,
+            q_func1_optimizer,
+            q_func2_optimizer,
+            rbuf,
+            gamma=0.99,
+            soft_update_tau=5e-3,
+            explorer=explorer,
+            replay_start_size=10000,
+            gpu=gpu,
+            minibatch_size=100,
+            burnin_action_func=None)
 
         model, exists = download_model("TD3", "Hopper-v2",
                                        model_type=self.pretrained_type)
@@ -535,21 +535,21 @@ class TestLoadSAC(unittest.TestCase):
         q_func2, q_func2_optimizer = make_q_func_with_optimizer()
 
         agent = agents.SoftActorCritic(
-                    policy,
-                    q_func1,
-                    q_func2,
-                    policy_optimizer,
-                    q_func1_optimizer,
-                    q_func2_optimizer,
-                    replay_buffer.ReplayBuffer(100),
-                    gamma=0.99,
-                    replay_start_size=1000,
-                    gpu=gpu,
-                    minibatch_size=256,
-                    burnin_action_func=None,
-                    entropy_target=-3,
-                    temperature_optimizer=optimizers.Adam(3e-4),
-                )
+            policy,
+            q_func1,
+            q_func2,
+            policy_optimizer,
+            q_func1_optimizer,
+            q_func2_optimizer,
+            replay_buffer.ReplayBuffer(100),
+            gamma=0.99,
+            replay_start_size=1000,
+            gpu=gpu,
+            minibatch_size=256,
+            burnin_action_func=None,
+            entropy_target=-3,
+            temperature_optimizer=optimizers.Adam(3e-4),
+        )
 
         model, exists = download_model("SAC", "Hopper-v2",
                                        model_type=self.pretrained_type)
