@@ -114,3 +114,18 @@ Any kind of contribution to ChainerRL would be highly appreciated! If you are in
 ## License
 
 [MIT License](LICENSE).
+
+## Citations
+
+To cite ChainerRL in publications:
+
+```
+@InProceedings{fujita2019chainerrl,
+  author = {Fujita, Yasuhiro and Kataoka, Toshiki and Nagarajan, Prabhat and Ishikawa, Takahiro},
+  title = {ChainerRL: A Deep Reinforcement Learning Library},
+  booktitle = {Workshop on Deep Reinforcement Learning at the 33rd Conference on Neural Information Processing Systems},
+  location = {Vancouver, Canada},
+  month = {December},
+  year = {2019}
+}
+```
