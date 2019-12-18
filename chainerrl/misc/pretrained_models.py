@@ -29,7 +29,7 @@ MODELS = {
     "SAC": ["best", "final"]
 }
 
-url = "https://chainer-assets.preferred.jp/chainerrl/"
+download_url = "https://chainer-assets.preferred.jp/chainerrl/"
 
 
 def _reporthook(count, block_size, total_size):
@@ -56,15 +56,13 @@ def _reporthook(count, block_size, total_size):
 
 def cached_download(url):
     """Downloads a file and caches it.
+
     This is different from the original
     :func:`~chainer.dataset.cached_download` in that the download
-    progress is reported. Note that this progress report can be disabled
-    by setting the environment variable `CHAINERCV_DOWNLOAD_REPORT` to `'OFF'`.
-    It downloads a file from the URL if there is no corresponding cache. After
-    the download, this function stores a cache to the directory under the
-    dataset root (see :func:`set_dataset_root`). If there is already a cache
-    for the given URL, it just returns the path to the cache without
-    downloading the same file.
+    progress is reported.
+    It downloads a file from the URL if there is no corresponding cache. 
+    If there is already a cache for the given URL, it just returns the
+    path to the cache without downloading the same file.
     Args:
         url (string): URL to download from.
     Returns:
@@ -131,10 +129,20 @@ def download_and_store_model(alg, url, env, model_type):
 
 
 def download_model(alg, env, model_type="best"):
+    """Downloads and returns pretrained model and returns it.
+
+    Args:
+        alg (string): URL to download from.
+        env (string): Gym Environment name.
+        model_type (string): Either `best` or `final`.
+    Returns:
+        model_path: Path to the downloaded file.
+        is_cached: whether the model was already cached.
+    """
     assert alg in MODELS, \
         "No pretrained models for " + alg + "."
     assert model_type in MODELS[alg], \
         "Model type \"" + model_type + "\" is not supported."
     env = env.replace("NoFrameskip-v4", "")
-    model_path, is_cached = download_and_store_model(alg, url, env, model_type)
+    model_path, is_cached = download_and_store_model(alg, download_url, env, model_type)
     return model_path, is_cached
