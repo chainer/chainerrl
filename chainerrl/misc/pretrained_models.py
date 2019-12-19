@@ -102,6 +102,7 @@ def cached_download(url):
 
 def download_and_store_model(alg, url, env, model_type):
     """Downloads a model file and puts it under model directory.
+    
     It downloads a file from the URL and puts it under model directory.
     If there is already a file at the destination path,
     it just returns the path without downloading the same file.
@@ -129,7 +130,7 @@ def download_and_store_model(alg, url, env, model_type):
 
 
 def download_model(alg, env, model_type="best"):
-    """Downloads and returns pretrained model and returns it.
+    """Downloads and returns pretrained model.
 
     Args:
         alg (string): URL to download from.
