@@ -1,4 +1,5 @@
 import functools
+import os
 import unittest
 
 import chainer
@@ -56,7 +57,8 @@ class TestLoadDQN(unittest.TestCase):
         model, exists = download_model("DQN", "BreakoutNoFrameskip-v4",
                                        model_type=self.pretrained_type)
         agent.load(model)
-        assert exists
+        if os.environ.get('CHAINERRL_ASSERT_DOWNLOADED_MODEL_IS_CACHED'):
+            assert exists
 
     def test_cpu(self):
         self._test_load_dqn(gpu=None)
@@ -119,7 +121,8 @@ class TestLoadIQN(unittest.TestCase):
         model, exists = download_model("IQN", "BreakoutNoFrameskip-v4",
                                        model_type=self.pretrained_type)
         agent.load(model)
-        assert exists
+        if os.environ.get('CHAINERRL_ASSERT_DOWNLOADED_MODEL_IS_CACHED'):
+            assert exists
 
     def test_cpu(self):
         self._test_load_iqn(gpu=None)
@@ -156,7 +159,8 @@ class TestLoadRainbow(unittest.TestCase):
         model, exists = download_model("Rainbow", "BreakoutNoFrameskip-v4",
                                        model_type=self.pretrained_type)
         agent.load(model)
-        assert exists
+        if os.environ.get('CHAINERRL_ASSERT_DOWNLOADED_MODEL_IS_CACHED'):
+            assert exists
 
     def test_cpu(self):
         self._test_load_rainbow(gpu=None)
@@ -198,7 +202,8 @@ class TestLoadA3C(unittest.TestCase):
         model, exists = download_model("A3C", "BreakoutNoFrameskip-v4",
                                        model_type=self.pretrained_type)
         agent.load(model)
-        assert exists
+        if os.environ.get('CHAINERRL_ASSERT_DOWNLOADED_MODEL_IS_CACHED'):
+            assert exists
 
     def test_cpu(self):
         self._test_load_a3c(gpu=None)
@@ -282,7 +287,8 @@ class TestLoadDDPG(unittest.TestCase):
         model, exists = download_model("DDPG", "Hopper-v2",
                                        model_type=self.pretrained_type)
         agent.load(model)
-        assert exists
+        if os.environ.get('CHAINERRL_ASSERT_DOWNLOADED_MODEL_IS_CACHED'):
+            assert exists
 
     def test_cpu(self):
         self._test_load_ddpg(gpu=None)
@@ -343,7 +349,8 @@ class TestLoadTRPO(unittest.TestCase):
         model, exists = download_model("TRPO", "Hopper-v2",
                                        model_type=self.pretrained_type)
         agent.load(model)
-        assert exists
+        if os.environ.get('CHAINERRL_ASSERT_DOWNLOADED_MODEL_IS_CACHED'):
+            assert exists
 
 
 @testing.parameterize(*testing.product(
@@ -400,7 +407,8 @@ class TestLoadPPO(unittest.TestCase):
         model, exists = download_model("PPO", "Hopper-v2",
                                        model_type=self.pretrained_type)
         agent.load(model)
-        assert exists
+        if os.environ.get('CHAINERRL_ASSERT_DOWNLOADED_MODEL_IS_CACHED'):
+            assert exists
 
     def test_cpu(self):
         self._test_load_ppo(gpu=None)
@@ -475,7 +483,8 @@ class TestLoadTD3(unittest.TestCase):
         model, exists = download_model("TD3", "Hopper-v2",
                                        model_type=self.pretrained_type)
         agent.load(model)
-        assert exists
+        if os.environ.get('CHAINERRL_ASSERT_DOWNLOADED_MODEL_IS_CACHED'):
+            assert exists
 
     def test_cpu(self):
         self._test_load_td3(gpu=None)
@@ -554,7 +563,8 @@ class TestLoadSAC(unittest.TestCase):
         model, exists = download_model("SAC", "Hopper-v2",
                                        model_type=self.pretrained_type)
         agent.load(model)
-        assert exists
+        if os.environ.get('CHAINERRL_ASSERT_DOWNLOADED_MODEL_IS_CACHED'):
+            assert exists
 
     def test_cpu(self):
         self._test_load_sac(gpu=None)
