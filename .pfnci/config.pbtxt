@@ -14,7 +14,7 @@ configs {
       seconds: 1200
     }
     environment_variables { key: "GPU" value: "1" }
-    environment_variables {key: "CHAINERRL_ASSERT_DOWNLOADED_MODEL_IS_CACHED": "1"}
+    environment_variables { key: "CHAINERRL_ASSERT_DOWNLOADED_MODEL_IS_CACHED" value: "1" }
     command: "bash .pfnci/script.sh py3.gpu"
   }
 }
@@ -32,7 +32,7 @@ configs {
     }
     environment_variables { key: "GPU" value: "1" }
     environment_variables { key: "SLOW" value: "1" }
-    environment_variables {key: "CHAINERRL_ASSERT_DOWNLOADED_MODEL_IS_CACHED": "1"}
+    environment_variables { key: "CHAINERRL_ASSERT_DOWNLOADED_MODEL_IS_CACHED" value: "1" }
     command: "bash .pfnci/script.sh py3.gpu"
   }
 }
@@ -48,7 +48,7 @@ configs {
       seconds: 2400
     }
     environment_variables { key: "SLOW" value: "1" }
-    environment_variables {key: "CHAINERRL_ASSERT_DOWNLOADED_MODEL_IS_CACHED": "1"}
+    environment_variables { key: "CHAINERRL_ASSERT_DOWNLOADED_MODEL_IS_CACHED" value: "1" }
     command: "bash .pfnci/script.sh py3.cpu"
   }
 }
@@ -65,7 +65,7 @@ configs {
     time_limit {
       seconds: 1200
     }
-    environment_variables {key: "CHAINERRL_ASSERT_DOWNLOADED_MODEL_IS_CACHED": "1"}
+    environment_variables { key: "CHAINERRL_ASSERT_DOWNLOADED_MODEL_IS_CACHED" value: "1" }
     command: "bash .pfnci/script.sh py3.cpu"
   }
 }
@@ -82,7 +82,7 @@ configs {
       cpu: 10
       memory: 10
     }
-    environment_variables {key: "CHAINERRL_ASSERT_DOWNLOADED_MODEL_IS_CACHED": "1"}
+    environment_variables { key: "CHAINERRL_ASSERT_DOWNLOADED_MODEL_IS_CACHED" value: "1" }
     command: "bash .pfnci/script.sh py2.cpu"
   }
 }
@@ -99,7 +99,7 @@ configs {
     time_limit {
       seconds: 1200
     }
-    environment_variables {key: "CHAINERRL_ASSERT_DOWNLOADED_MODEL_IS_CACHED": "1"}
+    environment_variables { key: "CHAINERRL_ASSERT_DOWNLOADED_MODEL_IS_CACHED" value: "1" }
     command: "bash .pfnci/script.sh py3.chainer4"
   }
 }
