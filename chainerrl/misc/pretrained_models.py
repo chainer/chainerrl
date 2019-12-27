@@ -104,9 +104,13 @@ def download_and_store_model(alg, url, env, model_type):
     If there is already a file at the destination path,
     it just returns the path without downloading the same file.
     Args:
+        alg (string): String representation of algorithm used in MODELS dict.
         url (string): URL to download from.
+        env (string): Environment in which pretrained model was trained.
+        model_type (string): Either `best` or `final`.
     Returns:
         string: Path to the downloaded file.
+        bool: whether the model was alredy cached.
     """
     with filelock.FileLock(os.path.join(
             get_dataset_directory(os.path.join('pfnet', 'chainerrl', '.lock')),
