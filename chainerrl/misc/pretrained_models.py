@@ -137,8 +137,8 @@ def download_model(alg, env, model_type="best"):
         env (string): Gym Environment name.
         model_type (string): Either `best` or `final`.
     Returns:
-        model_path: Path to the downloaded file.
-        is_cached: whether the model was already cached.
+        str: Path to the downloaded file.
+        bool: whether the model was already cached.
     """
     assert alg in MODELS, \
         "No pretrained models for " + alg + "."
