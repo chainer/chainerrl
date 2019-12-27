@@ -4,7 +4,7 @@
 # https://github.com/chainer/xpytest/blob/master/proto/test_case.proto
 
 # Slow tests take 60+ seconds.
-rules { name: "agents_tests/test_ddpg.py" xdist: 4 deadline: 480 }
+rules { name: "agents_tests/test_ddpg.py" xdist: 4 deadline: 600 }
 rules { name: "agents_tests/test_reinforce.py" xdist: 4 deadline: 480 }
 rules { name: "agents_tests/test_pcl.py" xdist: 4 deadline: 480 }
 
