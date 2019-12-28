@@ -2,7 +2,6 @@
 https://github.com/chainer/chainercv/blob/master/chainercv/utils/download.py
 """
 
-from distutils.util import strtobool
 import filelock
 import hashlib
 import os
