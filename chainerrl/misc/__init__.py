@@ -7,3 +7,4 @@ from chainerrl.misc import env_modifiers  # NOQA
 from chainerrl.misc.namedpersistent import namedpersistent  # NOQA
 from chainerrl.misc.is_return_code_zero import is_return_code_zero  # NOQA
 from chainerrl.misc.random_seed import set_random_seed  # NOQA
+from chainerrl.misc.pretrained_models import download_model  # NOQA

@@ -11,8 +11,15 @@ We follow the training and evaluation settings of [Deep Reinforcement Learning t
 
 ## Running the Example
 
+To run the training example:
 ```
 python train_ppo.py [options]
+```
+
+We have already pretrained models from this script for all the domains list in the [results](#Results) section. To load a pretrained model:
+
+```
+python train_ppo.py --demo --load-pretrained --env HalfCheetah-v2 --gpu -1
 ```
 
 ### Useful Options
@@ -22,6 +29,8 @@ python train_ppo.py [options]
 - `--render`. Add this option to render the states in a GUI window.
 - `--seed`. This option specifies the random seed used.
 - `--outdir` This option specifies the output directory to which the results are written.
+- `--demo`. Runs an evaluation, instead of training the agent.
+- `--load-pretrained` Loads the pretrained model. Both `--load` and `--load-pretrained` cannot be used together.
 
 To view the full list of options, either view the code or run the example with the `--help` option.
 

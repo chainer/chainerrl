@@ -58,6 +58,10 @@ def main():
                         help='Render env states in a GUI window.')
     parser.add_argument('--demo', action='store_true',
                         help='Just run evaluation, not training.')
+    parser.add_argument('--load-pretrained', action='store_true',
+                        default=False)
+    parser.add_argument('--pretrained-type', type=str, default="best",
+                        choices=['best', 'final'])
     parser.add_argument('--monitor', action='store_true',
                         help='Wrap env with gym.wrappers.Monitor.')
     parser.add_argument('--logger-level', type=int, default=logging.INFO,
@@ -169,8 +173,15 @@ def main():
         burnin_action_func=burnin_action_func,
     )
 
-    if len(args.load) > 0:
-        agent.load(args.load)
+    if len(args.load) > 0 or args.load_pretrained:
+        # either load or load_pretrained must be false
+        assert not len(args.load) > 0 or not args.load_pretrained
+        if len(args.load) > 0:
+            agent.load(args.load)
+        else:
+            agent.load(misc.download_model(
+                "TD3", args.env,
+                model_type=args.pretrained_type)[0])
 
     eval_env = make_env(test=True)
     if args.demo:

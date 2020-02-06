@@ -34,7 +34,7 @@ main() {
   wait
 
   # Prepare docker args.
-  docker_args=(docker run  --rm --volume="$(pwd):/src:ro")
+  docker_args=(docker run  --rm --volume="$(pwd):/src:ro" --volume="/root/.chainer:/root/.chainer/") 
   if [ "${GPU:-0}" != '0' ]; then
     docker_args+=(--ipc=host --privileged --env="GPU=${GPU}" --runtime=nvidia)
   fi
@@ -66,6 +66,14 @@ main() {
   case "${TARGET}" in
     py2.* ) docker_args+=(--env="PYTHON=python");;
   esac
+
+  for ZIP in a3c_results.zip dqn_results.zip iqn_results.zip rainbow_results.zip ddpg_results.zip trpo_results.zip ppo_results.zip td3_results.zip sac_results.zip
+  do
+      gsutil cp gs://chainerrl-asia-pfn-public-ci/${ZIP} .
+      mkdir -p ~/.chainer/dataset/pfnet/chainerrl/models
+      unzip ${ZIP} -d ~/.chainer/dataset/pfnet/chainerrl/models/
+      rm ${ZIP}
+  done
 
   run "${docker_args[@]}" "${docker_image}" bash /src/.pfnci/run.sh "${TARGET}"
 }

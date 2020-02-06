@@ -48,7 +48,7 @@ script:
   - flake8 examples
   - autopep8 -r chainerrl tests examples --diff | tee check_autopep8
   - test ! -s check_autopep8
-  - pytest -m "not gpu and not slow" -x tests --cov=chainerrl
+  - pytest -m "not gpu and not slow" -x tests --cov=chainerrl --ignore tests/misc_tests/test_pretrained_models.py
   - ./test_examples.sh -1
   - if [[ $TRAVIS_PYTHON_VERSION == 3.6 && $CHAINER_VERSION == stable ]]; then
       jupyter nbconvert --to notebook --execute examples/quickstart/quickstart.ipynb --ExecutePreprocessor.timeout=600;

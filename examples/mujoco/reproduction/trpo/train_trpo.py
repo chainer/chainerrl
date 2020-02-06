@@ -40,6 +40,10 @@ def main():
                         help='Render the env')
     parser.add_argument('--demo', action='store_true', default=False,
                         help='Run demo episodes, not training')
+    parser.add_argument('--load-pretrained', action='store_true',
+                        default=False)
+    parser.add_argument('--pretrained-type', type=str, default="best",
+                        choices=['best', 'final'])
     parser.add_argument('--load', type=str, default='',
                         help='Directory path to load a saved agent data from'
                              ' if it is a non-empty string.')
@@ -149,8 +153,15 @@ def main():
         entropy_coef=0,
     )
 
-    if args.load:
-        agent.load(args.load)
+    if args.load or args.load_pretrained:
+        # either load or load_pretrained must be false
+        assert not args.load or not args.load_pretrained
+        if args.load:
+            agent.load(args.load)
+        else:
+            agent.load(chainerrl.misc.download_model(
+                "TRPO", args.env,
+                model_type=args.pretrained_type)[0])
 
     if args.demo:
         env = make_env(test=True)

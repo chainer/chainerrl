@@ -8,8 +8,14 @@ This example trains an Asynchronous Advantage Actor Critic (A3C) agent, from the
 
 ## Running the Example
 
+To run the training example:
 ```
 python train_a3c.py [options]
+```
+
+We have already trained models from this script for all the domains list in the [results](#Results). To load a pretrained model:
+```
+python train_a3c.py --demo --load-pretrained --env BreakoutNoFrameskip-v4
 ```
 
 ### Useful Options
@@ -17,8 +23,11 @@ python train_a3c.py [options]
 - `--render`. Add this option to render the states in a GUI window.
 - `--seed`. This option specifies the random seed used.
 - `--outdir` This option specifies the output directory to which the results are written.
+- `--demo`. Runs an evaluation, instead of training the agent.
+- `--load-pretrained` Loads the pretrained model. Both `--load` and `--load-pretrained` cannot be used together.
 
 To view the full list of options, either view the code or run the example with the `--help` option.
+
 
 ## Results
 These results reflect ChainerRL  `v0.7.0`. The reported results are compared against the scores from the [Noisy Networks Paper](https://arxiv.org/abs/1706.10295), since the original paper does not report scores for the no-op evaluation protocol.
