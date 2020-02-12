@@ -1,10 +1,10 @@
 import os
 import tempfile
 import unittest
+from unittest import mock
 
 import chainer
 from chainer import testing
-import mock
 
 import chainerrl.experiments as experiments
 
