@@ -2,9 +2,9 @@ import multiprocessing as mp
 import os
 import tempfile
 import unittest
+from unittest import mock
 
 from chainer import testing
-import mock
 
 import chainerrl
 from chainerrl.experiments.train_agent_async import train_loop
