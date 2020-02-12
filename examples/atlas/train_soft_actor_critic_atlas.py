@@ -26,6 +26,11 @@ def concat_obs_and_action(obs, action):
 
 def make_env(args, seed, test):
     if args.env.startswith('Roboschool'):
+        # Check gym version because roboschool does not work with gym>=0.15.6
+        from distutils.version import StrictVersion
+        gym_version = StrictVersion(gym.__version__)
+        if gym_version >= StrictVersion('0.15.6'):
+            raise RuntimeError('roboschool does not work with gym>=0.15.6')
         import roboschool  # NOQA
     env = gym.make(args.env)
     # Unwrap TimiLimit wrapper
