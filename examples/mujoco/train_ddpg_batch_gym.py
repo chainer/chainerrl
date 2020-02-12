@@ -104,8 +104,7 @@ def main():
              for idx, env in enumerate(range(args.num_envs))])
 
     sample_env = make_env(0, test=False)
-    timestep_limit = sample_env.spec.tags.get(
-        'wrapper_config.TimeLimit.max_episode_steps')
+    timestep_limit = sample_env.spec.max_episode_steps
 
     obs_size = np.asarray(sample_env.observation_space.shape).prod()
     action_space = sample_env.action_space
