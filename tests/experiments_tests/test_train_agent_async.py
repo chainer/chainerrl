@@ -88,7 +88,7 @@ class TestTrainAgentAsync(unittest.TestCase):
 
         # All the envs (including eval envs) should to be closed
         for env in envs + eval_envs:
-            env.close.assert_called_once()
+            assert env.close.call_count == 1
 
         if self.num_envs == 1:
             self.assertEqual(hook.call_count, steps)
