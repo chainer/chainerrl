@@ -110,8 +110,7 @@ def main():
         return env
 
     sample_env = gym.make(args.env)
-    timestep_limit = sample_env.spec.tags.get(
-        'wrapper_config.TimeLimit.max_episode_steps')
+    timestep_limit = sample_env.spec.max_episode_steps
     obs_space = sample_env.observation_space
     action_space = sample_env.action_space
 

@@ -26,6 +26,11 @@ def concat_obs_and_action(obs, action):
 
 def make_env(args, seed, test):
     if args.env.startswith('Roboschool'):
+        # Check gym version because roboschool does not work with gym>=0.15.6
+        from distutils.version import StrictVersion
+        gym_version = StrictVersion(gym.__version__)
+        if gym_version >= StrictVersion('0.15.6'):
+            raise RuntimeError('roboschool does not work with gym>=0.15.6')
         import roboschool  # NOQA
     env = gym.make(args.env)
     # Unwrap TimiLimit wrapper
@@ -120,8 +125,7 @@ def main():
              for idx, env in enumerate(range(args.num_envs))])
 
     sample_env = make_env(args, process_seeds[0], test=False)
-    timestep_limit = sample_env.spec.tags.get(
-        'wrapper_config.TimeLimit.max_episode_steps')
+    timestep_limit = sample_env.spec.max_episode_steps
     obs_space = sample_env.observation_space
     action_space = sample_env.action_space
     print('Observation space:', obs_space)
