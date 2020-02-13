@@ -99,8 +99,7 @@ def main():
         return env
 
     env = make_env(test=False)
-    timestep_limit = env.spec.tags.get(
-        'wrapper_config.TimeLimit.max_episode_steps')
+    timestep_limit = env.spec.max_episode_steps
     obs_space = env.observation_space
     obs_size = obs_space.low.size
     action_space = env.action_space

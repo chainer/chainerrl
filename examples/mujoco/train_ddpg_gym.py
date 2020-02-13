@@ -90,8 +90,7 @@ def main():
         return env
 
     env = make_env(test=False)
-    timestep_limit = env.spec.tags.get(
-        'wrapper_config.TimeLimit.max_episode_steps')
+    timestep_limit = env.spec.max_episode_steps
     obs_size = np.asarray(env.observation_space.shape).prod()
     action_space = env.action_space
 

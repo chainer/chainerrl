@@ -2,8 +2,8 @@
 only."""
 
 
-import mock
 import unittest
+from unittest import mock
 
 from chainer import testing
 import gym
