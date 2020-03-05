@@ -1,11 +1,3 @@
-from __future__ import print_function
-from __future__ import unicode_literals
-from __future__ import division
-from __future__ import absolute_import
-from builtins import *  # NOQA
-from future import standard_library
-standard_library.install_aliases()  # NOQA
-
 import logging
 import tempfile
 import unittest
@@ -116,7 +108,7 @@ class TestREINFORCE(unittest.TestCase):
                 )
 
         if gpu >= 0:
-            chainer.cuda.get_device(gpu).use()
+            chainer.cuda.get_device_from_id(gpu).use()
             model.to_gpu()
 
         opt = optimizers.Adam()

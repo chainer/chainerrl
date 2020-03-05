@@ -1,11 +1,3 @@
-from __future__ import unicode_literals
-from __future__ import print_function
-from __future__ import division
-from __future__ import absolute_import
-from future import standard_library
-from builtins import *  # NOQA
-standard_library.install_aliases()  # NOQA
-
 import copy
 from logging import getLogger
 
@@ -105,7 +97,7 @@ class DDPG(AttributeSavingMixin, BatchAgent):
         self.model = model
 
         if gpu is not None and gpu >= 0:
-            cuda.get_device(gpu).use()
+            cuda.get_device_from_id(gpu).use()
             self.model.to_gpu(device=gpu)
 
         self.xp = self.model.xp

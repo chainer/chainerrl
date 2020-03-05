@@ -1,16 +1,13 @@
-from __future__ import print_function
-from __future__ import unicode_literals
-from __future__ import division
-from __future__ import absolute_import
-from builtins import *  # NOQA
-from future import standard_library
-standard_library.install_aliases()  # NOQA
-
 import unittest
 
 import chainer
 from chainer import functions as F
-from chainer.functions.connection.n_step_lstm import _lstm
+try:
+    # chainer<=7.0.0b2
+    from chainer.functions.connection.n_step_lstm import _lstm
+except ImportError:
+    # chainer>=7.0.0b3 (https://github.com/chainer/chainer/pull/7725)
+    from chainer.functions.rnn.n_step_lstm import _lstm
 from chainer import links as L
 from chainer import testing
 import numpy as np

@@ -271,7 +271,7 @@ class FlickerFrame(gym.ObservationWrapper):
     def __init__(self, env):
         gym.ObservationWrapper.__init__(self, env)
 
-    def _observation(self, observation):
+    def observation(self, observation):
         if self.unwrapped.np_random.rand() < 0.5:
             return np.zeros_like(observation)
         else:

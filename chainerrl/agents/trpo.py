@@ -1,14 +1,7 @@
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-from __future__ import absolute_import
-from builtins import *  # NOQA
-from future import standard_library
-standard_library.install_aliases()  # NOQA
-
 import collections
 import itertools
 from logging import getLogger
+import random
 
 import chainer
 import chainer.functions as F
@@ -16,6 +9,10 @@ import numpy as np
 
 import chainerrl
 from chainerrl import agent
+from chainerrl.agents.ppo import _compute_explained_variance
+from chainerrl.agents.ppo import _make_dataset
+from chainerrl.agents.ppo import _make_dataset_recurrent
+from chainerrl.agents.ppo import _yield_subset_of_sequences_with_fixed_number_of_items  # NOQA
 from chainerrl.misc.batch_states import batch_states
 
 
@@ -174,6 +171,9 @@ class TRPO(agent.AttributeSavingMixin, agent.Agent):
                  vf_epochs=3,
                  vf_batch_size=64,
                  standardize_advantages=True,
+                 batch_states=batch_states,
+                 recurrent=False,
+                 max_recurrent_sequence_len=None,
                  line_search_max_backtrack=10,
                  conjugate_gradient_max_iter=10,
                  conjugate_gradient_damping=1e-2,
@@ -187,6 +187,17 @@ class TRPO(agent.AttributeSavingMixin, agent.Agent):
 
         self.policy = policy
         self.vf = vf
+        assert policy.xp is vf.xp, 'policy and vf must be on the same device'
+        if recurrent:
+            self.model = chainerrl.links.StatelessRecurrentBranched(policy, vf)
+        else:
+            self.model = chainerrl.links.Branched(policy, vf)
+        if policy.xp is not np:
+            if hasattr(policy, 'device'):
+                # Link.device is available only from chainer v6
+                self.model.to_device(policy.device)
+            else:
+                self.model.to_gpu(device=policy._device_id)
         self.vf_optimizer = vf_optimizer
         self.obs_normalizer = obs_normalizer
         self.gamma = gamma
@@ -198,6 +209,9 @@ class TRPO(agent.AttributeSavingMixin, agent.Agent):
         self.vf_epochs = vf_epochs
         self.vf_batch_size = vf_batch_size
         self.standardize_advantages = standardize_advantages
+        self.batch_states = batch_states
+        self.recurrent = recurrent
+        self.max_recurrent_sequence_len = max_recurrent_sequence_len
         self.line_search_max_backtrack = line_search_max_backtrack
         self.conjugate_gradient_max_iter = conjugate_gradient_max_iter
         self.conjugate_gradient_damping = conjugate_gradient_damping
@@ -209,6 +223,7 @@ class TRPO(agent.AttributeSavingMixin, agent.Agent):
         self.kl_record = collections.deque(maxlen=kl_stats_window)
         self.policy_step_size_record = collections.deque(
             maxlen=policy_step_size_stats_window)
+        self.explained_variance = np.nan
 
         assert self.policy.xp is self.vf.xp,\
             'policy and vf should be in the same device.'
@@ -224,60 +239,66 @@ class TRPO(agent.AttributeSavingMixin, agent.Agent):
         # Contains transitions of the last episode not moved to self.memory yet
         self.last_episode = []
 
+        # Batch versions of last_episode, last_state, and last_action
+        self.batch_last_episode = None
+        self.batch_last_state = None
+        self.batch_last_action = None
+
+        # Recurrent states of the model
+        self.train_recurrent_states = None
+        self.train_prev_recurrent_states = None
+        self.test_recurrent_states = None
+
+    def _initialize_batch_variables(self, num_envs):
+        self.batch_last_episode = [[] for _ in range(num_envs)]
+        self.batch_last_state = [None] * num_envs
+        self.batch_last_action = [None] * num_envs
+
     def _update_if_dataset_is_ready(self):
         dataset_size = (
             sum(len(episode) for episode in self.memory)
-            + len(self.last_episode))
+            + len(self.last_episode)
+            + (0 if self.batch_last_episode is None else sum(
+                len(episode) for episode in self.batch_last_episode)))
         if dataset_size >= self.update_interval:
             self._flush_last_episode()
-            dataset = self._make_dataset()
-            self._update(dataset)
-            self.memory = []
-
-    def _make_dataset(self):
-        dataset = list(itertools.chain.from_iterable(self.memory))
-        xp = self.vf.xp
-
-        # Compute v_pred and next_v_pred
-        states = batch_states([b['state'] for b in dataset], xp, self.phi)
-        next_states = batch_states([b['next_state']
-                                    for b in dataset], xp, self.phi)
-        if self.obs_normalizer:
-            states = self.obs_normalizer(states, update=False)
-            next_states = self.obs_normalizer(next_states, update=False)
-        with chainer.using_config('train', False), chainer.no_backprop_mode():
-            vs_pred = chainer.cuda.to_cpu(self.vf(states).array.ravel())
-            next_vs_pred = chainer.cuda.to_cpu(
-                self.vf(next_states).array.ravel())
-        for transition, v_pred, next_v_pred in zip(dataset,
-                                                   vs_pred,
-                                                   next_vs_pred):
-            transition['v_pred'] = v_pred
-            transition['next_v_pred'] = next_v_pred
-
-        # Update stats
-        self.value_record.extend(vs_pred)
-
-        # Compute adv and v_teacher
-        for episode in self.memory:
-            adv = 0.0
-            for transition in reversed(episode):
-                td_err = (
-                    transition['reward']
-                    + (self.gamma * transition['nonterminal']
-                       * transition['next_v_pred'])
-                    - transition['v_pred']
+            if self.recurrent:
+                dataset = _make_dataset_recurrent(
+                    episodes=self.memory,
+                    model=self.model,
+                    phi=self.phi,
+                    batch_states=self.batch_states,
+                    obs_normalizer=self.obs_normalizer,
+                    gamma=self.gamma,
+                    lambd=self.lambd,
+                    max_recurrent_sequence_len=self.max_recurrent_sequence_len,
                 )
-                adv = td_err + self.gamma * self.lambd * adv
-                transition['adv'] = adv
-                transition['v_teacher'] = adv + transition['v_pred']
-
-        return dataset
+                self._update_recurrent(dataset)
+            else:
+                dataset = _make_dataset(
+                    episodes=self.memory,
+                    model=self.model,
+                    phi=self.phi,
+                    batch_states=self.batch_states,
+                    obs_normalizer=self.obs_normalizer,
+                    gamma=self.gamma,
+                    lambd=self.lambd,
+                )
+                assert len(dataset) == dataset_size
+                self._update(dataset)
+            self.explained_variance = _compute_explained_variance(
+                list(itertools.chain.from_iterable(self.memory)))
+            self.memory = []
 
     def _flush_last_episode(self):
         if self.last_episode:
             self.memory.append(self.last_episode)
             self.last_episode = []
+        if self.batch_last_episode:
+            for i, episode in enumerate(self.batch_last_episode):
+                if episode:
+                    self.memory.append(episode)
+                    self.batch_last_episode[i] = []
 
     def _update(self, dataset):
         """Update both the policy and the value function."""
@@ -286,6 +307,53 @@ class TRPO(agent.AttributeSavingMixin, agent.Agent):
             self._update_obs_normalizer(dataset)
         self._update_policy(dataset)
         self._update_vf(dataset)
+
+    def _update_recurrent(self, dataset):
+        """Update both the policy and the value function."""
+
+        flat_dataset = list(itertools.chain.from_iterable(dataset))
+        if self.obs_normalizer:
+            self._update_obs_normalizer(flat_dataset)
+
+        self._update_policy_recurrent(dataset)
+        self._update_vf_recurrent(dataset)
+
+    def _update_vf_recurrent(self, dataset):
+
+        for epoch in range(self.vf_epochs):
+            random.shuffle(dataset)
+            for minibatch in _yield_subset_of_sequences_with_fixed_number_of_items(  # NOQA
+                    dataset, self.vf_batch_size):
+                self._update_vf_once_recurrent(minibatch)
+
+    def _update_vf_once_recurrent(self, episodes):
+
+        xp = self.model.xp
+        flat_transitions = list(itertools.chain.from_iterable(episodes))
+
+        # Prepare data for a recurrent model
+        seqs_states = []
+        for ep in episodes:
+            states = self.batch_states(
+                [transition['state'] for transition in ep], xp, self.phi)
+            if self.obs_normalizer:
+                states = self.obs_normalizer(states, update=False)
+            seqs_states.append(states)
+
+        flat_vs_teacher = xp.array(
+            [[transition['v_teacher']] for transition in flat_transitions],
+            dtype=np.float32)
+
+        with chainer.using_config('train', False),\
+                chainer.no_backprop_mode():
+            vf_rs = self.vf.concatenate_recurrent_states(
+                [ep[0]['recurrent_state'][1] for ep in episodes])
+
+        flat_vs_pred, _ = self.vf.n_step_forward(
+            seqs_states, recurrent_state=vf_rs, output_mode='concat')
+
+        vf_loss = F.mean_squared_error(flat_vs_pred, flat_vs_teacher)
+        self.vf_optimizer.update(lambda: vf_loss)
 
     def _update_obs_normalizer(self, dataset):
         assert self.obs_normalizer
@@ -318,11 +386,10 @@ class TRPO(agent.AttributeSavingMixin, agent.Agent):
             vf_loss = F.mean_squared_error(vs_pred, vs_teacher[..., None])
             self.vf_optimizer.update(lambda: vf_loss)
 
-    def _compute_gain(self, action_distrib, action_distrib_old, actions, advs):
+    def _compute_gain(self, log_prob, log_prob_old, entropy, advs):
         """Compute a gain to maximize."""
-        prob_ratio = F.exp(action_distrib.log_prob(actions)
-                           - action_distrib_old.log_prob(actions))
-        mean_entropy = F.mean(action_distrib.entropy)
+        prob_ratio = F.exp(log_prob - log_prob_old)
+        mean_entropy = F.mean(entropy)
         surrogate_gain = F.mean(prob_ratio * advs)
         return surrogate_gain + self.entropy_coef * mean_entropy
 
@@ -350,13 +417,19 @@ class TRPO(agent.AttributeSavingMixin, agent.Agent):
 
         # Recompute action distributions for batch backprop
         action_distrib = self.policy(states)
-        action_distrib_old = action_distrib.copy()
+
+        log_prob_old = xp.array(
+            [transition['log_prob'] for transition in dataset],
+            dtype=np.float32)
 
         gain = self._compute_gain(
-            action_distrib=action_distrib,
-            action_distrib_old=action_distrib_old,
-            actions=actions,
+            log_prob=action_distrib.log_prob(actions),
+            log_prob_old=log_prob_old,
+            entropy=action_distrib.entropy,
             advs=advs)
+
+        # Distribution to compute KL div against
+        action_distrib_old = action_distrib.copy()
 
         full_step = self._compute_kl_constrained_step(
             action_distrib=action_distrib,
@@ -365,9 +438,70 @@ class TRPO(agent.AttributeSavingMixin, agent.Agent):
 
         self._line_search(
             full_step=full_step,
-            states=states,
-            actions=actions,
+            dataset=dataset,
             advs=advs,
+            action_distrib_old=action_distrib_old,
+            gain=gain)
+
+    def _update_policy_recurrent(self, dataset):
+        """Update the policy using a given dataset.
+
+        The policy is updated via CG and line search.
+        """
+
+        xp = self.model.xp
+        flat_transitions = list(itertools.chain.from_iterable(dataset))
+
+        # Prepare data for a recurrent model
+        seqs_states = []
+        for ep in dataset:
+            states = self.batch_states(
+                [transition['state'] for transition in ep], xp, self.phi)
+            if self.obs_normalizer:
+                states = self.obs_normalizer(states, update=False)
+            seqs_states.append(states)
+
+        flat_actions = xp.array(
+            [transition['action'] for transition in flat_transitions])
+        flat_advs = xp.array(
+            [transition['adv'] for transition in flat_transitions],
+            dtype=np.float32)
+
+        if self.standardize_advantages:
+            mean_advs = xp.mean(flat_advs)
+            std_advs = xp.std(flat_advs)
+            flat_advs = (flat_advs - mean_advs) / (std_advs + 1e-8)
+
+        with chainer.using_config('train', False),\
+                chainer.no_backprop_mode():
+            policy_rs = self.policy.concatenate_recurrent_states(
+                [ep[0]['recurrent_state'][0] for ep in dataset])
+
+        flat_distribs, _ = self.policy.n_step_forward(
+            seqs_states, recurrent_state=policy_rs, output_mode='concat')
+
+        log_prob_old = xp.array(
+            [transition['log_prob'] for transition in flat_transitions],
+            dtype=np.float32)
+
+        gain = self._compute_gain(
+            log_prob=flat_distribs.log_prob(flat_actions),
+            log_prob_old=log_prob_old,
+            entropy=flat_distribs.entropy,
+            advs=flat_advs)
+
+        # Distribution to compute KL div against
+        action_distrib_old = flat_distribs.copy()
+
+        full_step = self._compute_kl_constrained_step(
+            action_distrib=flat_distribs,
+            action_distrib_old=action_distrib_old,
+            gain=gain)
+
+        self._line_search(
+            full_step=full_step,
+            dataset=dataset,
+            advs=flat_advs,
             action_distrib_old=action_distrib_old,
             gain=gain)
 
@@ -419,8 +553,7 @@ The gradient contains None. The policy may have unused parameters."
         scale = (2.0 * self.max_kl / (dId + 1e-8)) ** 0.5
         return scale * step_direction
 
-    def _line_search(self, full_step, states, actions, advs,
-                     action_distrib_old, gain):
+    def _line_search(self, full_step, dataset, advs, action_distrib_old, gain):
         """Do line search for a safe step size."""
         xp = self.policy.xp
         policy_params = _get_ordered_params(self.policy)
@@ -428,6 +561,42 @@ The gradient contains None. The policy may have unused parameters."
         policy_params_shapes = [param.shape for param in policy_params]
         step_size = 1.0
         flat_params = _flatten_and_concat_ndarrays(policy_params)
+
+        if self.recurrent:
+            seqs_states = []
+            for ep in dataset:
+                states = self.batch_states(
+                    [transition['state'] for transition in ep], xp, self.phi)
+                if self.obs_normalizer:
+                    states = self.obs_normalizer(states, update=False)
+                seqs_states.append(states)
+            with chainer.using_config('train', False),\
+                    chainer.no_backprop_mode():
+                policy_rs = self.policy.concatenate_recurrent_states(
+                    [ep[0]['recurrent_state'][0] for ep in dataset])
+
+            def evaluate_current_policy():
+                distrib, _ = self.policy.n_step_forward(
+                    seqs_states, recurrent_state=policy_rs,
+                    output_mode='concat')
+                return distrib
+        else:
+            states = self.batch_states(
+                [transition['state'] for transition in dataset], xp, self.phi)
+            if self.obs_normalizer:
+                states = self.obs_normalizer(states, update=False)
+
+            def evaluate_current_policy():
+                return self.policy(states)
+
+        flat_transitions = (list(itertools.chain.from_iterable(dataset))
+                            if self.recurrent else dataset)
+        actions = xp.array(
+            [transition['action'] for transition in flat_transitions])
+        log_prob_old = xp.array(
+            [transition['log_prob'] for transition in flat_transitions],
+            dtype=np.float32)
+
         for i in range(self.line_search_max_backtrack + 1):
             self.logger.info(
                 'Line search iteration: %s step size: %s', i, step_size)
@@ -440,11 +609,11 @@ The gradient contains None. The policy may have unused parameters."
             _replace_params_data(policy_params, new_params)
             with chainer.using_config('train', False),\
                     chainer.no_backprop_mode():
-                new_action_distrib = self.policy(states)
+                new_action_distrib = evaluate_current_policy()
                 new_gain = self._compute_gain(
-                    action_distrib=new_action_distrib,
-                    action_distrib_old=action_distrib_old,
-                    actions=actions,
+                    log_prob=new_action_distrib.log_prob(actions),
+                    log_prob_old=log_prob_old,
+                    entropy=new_action_distrib.entropy,
                     advs=advs)
                 new_kl = F.mean(action_distrib_old.kl(new_action_distrib))
 
@@ -481,62 +650,94 @@ Line search coundn't find a good step size. The policy was not updated.")
                     shapes=policy_params_shapes),
             )
 
-    def act_and_train(self, state, reward):
+    def act_and_train(self, obs, reward):
+
+        if self.last_state is not None:
+            transition = {
+                'state': self.last_state,
+                'action': self.last_action,
+                'reward': reward,
+                'next_state': obs,
+                'nonterminal': 1.0,
+            }
+            if self.recurrent:
+                transition['recurrent_state'] =\
+                    self.model.get_recurrent_state_at(
+                        self.train_prev_recurrent_states,
+                        0, unwrap_variable=True)
+                self.train_prev_recurrent_states = None
+                transition['next_recurrent_state'] =\
+                    self.model.get_recurrent_state_at(
+                        self.train_recurrent_states, 0, unwrap_variable=True)
+            self.last_episode.append(transition)
+
+        self._update_if_dataset_is_ready()
 
         xp = self.xp
-        b_state = batch_states([state], xp, self.phi)
+        b_state = self.batch_states([obs], xp, self.phi)
 
         if self.obs_normalizer:
             b_state = self.obs_normalizer(b_state, update=False)
 
         # action_distrib will be recomputed when computing gradients
         with chainer.using_config('train', False), chainer.no_backprop_mode():
-            action_distrib = self.policy(b_state)
+            if self.recurrent:
+                assert self.train_prev_recurrent_states is None
+                self.train_prev_recurrent_states = self.train_recurrent_states
+                (action_distrib, value), self.train_recurrent_states =\
+                    self.model(b_state, self.train_prev_recurrent_states)
+            else:
+                action_distrib, value = self.model(b_state)
             action = chainer.cuda.to_cpu(action_distrib.sample().array)[0]
             self.entropy_record.append(float(action_distrib.entropy.array))
+            self.value_record.append(float(value.array))
 
-        self.logger.debug('action_distrib: %s', action_distrib)
-        self.logger.debug('action: %s', action)
-
-        if self.last_state is not None:
-            self.last_episode.append({
-                'state': self.last_state,
-                'action': self.last_action,
-                'reward': reward,
-                'next_state': state,
-                'nonterminal': 1.0,
-            })
-        self.last_state = state
+        self.last_state = obs
         self.last_action = action
-
-        self._update_if_dataset_is_ready()
 
         return action
 
-    def act(self, state):
+    def act(self, obs):
         xp = self.xp
-        b_state = batch_states([state], xp, self.phi)
+        b_state = self.batch_states([obs], xp, self.phi)
+
         if self.obs_normalizer:
             b_state = self.obs_normalizer(b_state, update=False)
+
         with chainer.using_config('train', False), chainer.no_backprop_mode():
-            action_distrib = self.policy(b_state)
+            if self.recurrent:
+                action_distrib, self.test_recurrent_states =\
+                    self.policy(b_state, self.test_recurrent_states)
+            else:
+                action_distrib = self.policy(b_state)
             if self.act_deterministically:
                 action = chainer.cuda.to_cpu(
                     action_distrib.most_probable.array)[0]
             else:
-                action = chainer.cuda.to_cpu(action_distrib.sample().array)[0]
+                action = chainer.cuda.to_cpu(
+                    action_distrib.sample().array)[0]
+
         return action
 
     def stop_episode_and_train(self, state, reward, done=False):
 
         assert self.last_state is not None
-        self.last_episode.append({
+        transition = {
             'state': self.last_state,
             'action': self.last_action,
             'reward': reward,
             'next_state': state,
             'nonterminal': 0.0 if done else 1.0,
-        })
+        }
+        if self.recurrent:
+            transition['recurrent_state'] = self.model.get_recurrent_state_at(
+                self.train_prev_recurrent_states, 0, unwrap_variable=True)
+            self.train_prev_recurrent_states = None
+            transition['next_recurrent_state'] =\
+                self.model.get_recurrent_state_at(
+                    self.train_recurrent_states, 0, unwrap_variable=True)
+            self.train_recurrent_states = None
+        self.last_episode.append(transition)
 
         self.last_state = None
         self.last_action = None
@@ -547,7 +748,123 @@ Line search coundn't find a good step size. The policy was not updated.")
         self._update_if_dataset_is_ready()
 
     def stop_episode(self):
-        pass
+        self.test_recurrent_states = None
+
+    def batch_act(self, batch_obs):
+        xp = self.xp
+        b_state = self.batch_states(batch_obs, xp, self.phi)
+
+        if self.obs_normalizer:
+            b_state = self.obs_normalizer(b_state, update=False)
+
+        with chainer.using_config('train', False), chainer.no_backprop_mode():
+            if self.recurrent:
+                (action_distrib, _), self.test_recurrent_states = self.model(
+                    b_state, self.test_recurrent_states)
+            else:
+                action_distrib, _ = self.model(b_state)
+            if self.act_deterministically:
+                action = chainer.cuda.to_cpu(
+                    action_distrib.most_probable.array)
+            else:
+                action = chainer.cuda.to_cpu(action_distrib.sample().array)
+
+        return action
+
+    def batch_act_and_train(self, batch_obs):
+        xp = self.xp
+        b_state = self.batch_states(batch_obs, xp, self.phi)
+
+        if self.obs_normalizer:
+            b_state = self.obs_normalizer(b_state, update=False)
+
+        num_envs = len(batch_obs)
+        if self.batch_last_episode is None:
+            self._initialize_batch_variables(num_envs)
+        assert len(self.batch_last_episode) == num_envs
+        assert len(self.batch_last_state) == num_envs
+        assert len(self.batch_last_action) == num_envs
+
+        # action_distrib will be recomputed when computing gradients
+        with chainer.using_config('train', False), chainer.no_backprop_mode():
+            if self.recurrent:
+                assert self.train_prev_recurrent_states is None
+                self.train_prev_recurrent_states = self.train_recurrent_states
+                (action_distrib, batch_value), self.train_recurrent_states =\
+                    self.model(b_state, self.train_prev_recurrent_states)
+            else:
+                action_distrib, batch_value = self.model(b_state)
+            batch_action = chainer.cuda.to_cpu(action_distrib.sample().array)
+            self.entropy_record.extend(
+                chainer.cuda.to_cpu(action_distrib.entropy.array))
+            self.value_record.extend(chainer.cuda.to_cpu((batch_value.array)))
+
+        self.batch_last_state = list(batch_obs)
+        self.batch_last_action = list(batch_action)
+
+        return batch_action
+
+    def batch_observe(self, batch_obs, batch_reward, batch_done, batch_reset):
+        if self.recurrent:
+            # Reset recurrent states when episodes end
+            indices_that_ended = [
+                i for i, (done, reset)
+                in enumerate(zip(batch_done, batch_reset)) if done or reset]
+            if indices_that_ended:
+                self.test_recurrent_states =\
+                    self.model.mask_recurrent_state_at(
+                        self.test_recurrent_states, indices_that_ended)
+
+    def batch_observe_and_train(self, batch_obs, batch_reward,
+                                batch_done, batch_reset):
+
+        for i, (state, action, reward, next_state, done, reset) in enumerate(zip(  # NOQA
+            self.batch_last_state,
+            self.batch_last_action,
+            batch_reward,
+            batch_obs,
+            batch_done,
+            batch_reset,
+        )):
+            if state is not None:
+                assert action is not None
+                transition = {
+                    'state': state,
+                    'action': action,
+                    'reward': reward,
+                    'next_state': next_state,
+                    'nonterminal': 0.0 if done else 1.0,
+                }
+                if self.recurrent:
+                    transition['recurrent_state'] =\
+                        self.model.get_recurrent_state_at(
+                            self.train_prev_recurrent_states,
+                            i, unwrap_variable=True)
+                    transition['next_recurrent_state'] =\
+                        self.model.get_recurrent_state_at(
+                            self.train_recurrent_states,
+                            i, unwrap_variable=True)
+                self.batch_last_episode[i].append(transition)
+            if done or reset:
+                assert self.batch_last_episode[i]
+                self.memory.append(self.batch_last_episode[i])
+                self.batch_last_episode[i] = []
+            self.batch_last_state[i] = None
+            self.batch_last_action[i] = None
+
+        self.train_prev_recurrent_states = None
+
+        if self.recurrent:
+            # Reset recurrent states when episodes end
+            indices_that_ended = [
+                i for i, (done, reset)
+                in enumerate(zip(batch_done, batch_reset)) if done or reset]
+            if indices_that_ended:
+                self.train_recurrent_states =\
+                    self.model.mask_recurrent_state_at(
+                        self.train_recurrent_states, indices_that_ended)
+
+        self._update_if_dataset_is_ready()
 
     def get_statistics(self):
         return [
@@ -556,4 +873,5 @@ Line search coundn't find a good step size. The policy was not updated.")
             ('average_kl', _mean_or_nan(self.kl_record)),
             ('average_policy_step_size',
                 _mean_or_nan(self.policy_step_size_record)),
+            ('explained_variance', self.explained_variance),
         ]

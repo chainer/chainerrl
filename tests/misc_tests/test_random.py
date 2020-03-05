@@ -1,11 +1,3 @@
-from __future__ import print_function
-from __future__ import unicode_literals
-from __future__ import division
-from __future__ import absolute_import
-from builtins import *  # NOQA
-from future import standard_library
-standard_library.install_aliases()  # NOQA
-
 import timeit
 import unittest
 
@@ -104,9 +96,8 @@ class TestSampleNKSpeed(unittest.TestCase):
         # faster than random.sample
         t1 = self.get_timeit("""
 import random
-import six
 def sample_n_k(n, k):
-    return random.sample(six.moves.range(n), k)
+    return random.sample(range(n), k)
 """)
         self.assertLess(t, t1)
 

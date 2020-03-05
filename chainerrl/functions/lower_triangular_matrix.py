@@ -1,19 +1,9 @@
-from __future__ import print_function
-from __future__ import division
-from __future__ import absolute_import
-from future import standard_library
-standard_library.install_aliases()  # NOQA
+from functools import lru_cache
 
 from chainer import cuda
 from chainer import function
 from chainer.utils import type_check
 import numpy as np
-
-try:
-    # For Python 3.2 and later
-    from functools import lru_cache
-except Exception:
-    from fastcache import clru_cache as lru_cache
 
 
 def _get_batch_diagonal_cpu(array):

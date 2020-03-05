@@ -1,11 +1,3 @@
-from __future__ import print_function
-from __future__ import unicode_literals
-from __future__ import division
-from __future__ import absolute_import
-from builtins import *  # NOQA
-from future import standard_library
-standard_library.install_aliases()  # NOQA
-
 import logging
 import multiprocessing as mp
 import os
@@ -365,7 +357,7 @@ class AsyncEvaluator(object):
     """Object that is responsible for evaluating asynchronous multiple agents.
 
     Args:
-        n_steps (int): umber of timesteps used in each evaluation.
+        n_steps (int): Number of timesteps used in each evaluation.
         n_episodes (int): Number of episodes used in each evaluation.
         eval_interval (int): Interval of evaluations in steps.
         outdir (str): Path to a directory to save things.

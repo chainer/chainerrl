@@ -1,12 +1,7 @@
-from __future__ import unicode_literals
-from __future__ import print_function
-from __future__ import division
-from __future__ import absolute_import
-from future import standard_library
-standard_library.install_aliases()  # NOQA
 import unittest
 
 import chainer
+from chainer import functions as F
 from chainer import links as L
 import numpy as np
 
@@ -99,3 +94,71 @@ class TestCopyParam(unittest.TestCase):
 
         with self.assertRaises(TypeError):
             copy_param.soft_copy_param(target_link=a, source_link=b, tau=0.1)
+
+    def test_copy_grad(self):
+
+        def set_random_grad(link):
+            link.cleargrads()
+            x = np.random.normal(size=(1, 1)).astype(np.float32)
+            y = link(x) * np.random.normal()
+            F.sum(y).backward()
+
+        # When source is not None and target is None
+        a = L.Linear(1, 5)
+        b = L.Linear(1, 5)
+        set_random_grad(a)
+        b.cleargrads()
+        assert a.W.grad is not None
+        assert a.b.grad is not None
+        assert b.W.grad is None
+        assert b.b.grad is None
+        copy_param.copy_grad(target_link=b, source_link=a)
+        np.testing.assert_almost_equal(a.W.grad, b.W.grad)
+        np.testing.assert_almost_equal(a.b.grad, b.b.grad)
+        assert a.W.grad is not b.W.grad
+        assert a.b.grad is not b.b.grad
+
+        # When both are not None
+        a = L.Linear(1, 5)
+        b = L.Linear(1, 5)
+        set_random_grad(a)
+        set_random_grad(b)
+        assert a.W.grad is not None
+        assert a.b.grad is not None
+        assert b.W.grad is not None
+        assert b.b.grad is not None
+        copy_param.copy_grad(target_link=b, source_link=a)
+        np.testing.assert_almost_equal(a.W.grad, b.W.grad)
+        np.testing.assert_almost_equal(a.b.grad, b.b.grad)
+        assert a.W.grad is not b.W.grad
+        assert a.b.grad is not b.b.grad
+
+        # When source is None and target is not None
+        a = L.Linear(1, 5)
+        b = L.Linear(1, 5)
+        a.cleargrads()
+        set_random_grad(b)
+        assert a.W.grad is None
+        assert a.b.grad is None
+        assert b.W.grad is not None
+        assert b.b.grad is not None
+        copy_param.copy_grad(target_link=b, source_link=a)
+        assert a.W.grad is None
+        assert a.b.grad is None
+        assert b.W.grad is None
+        assert b.b.grad is None
+
+        # When both are None
+        a = L.Linear(1, 5)
+        b = L.Linear(1, 5)
+        a.cleargrads()
+        b.cleargrads()
+        assert a.W.grad is None
+        assert a.b.grad is None
+        assert b.W.grad is None
+        assert b.b.grad is None
+        copy_param.copy_grad(target_link=b, source_link=a)
+        assert a.W.grad is None
+        assert a.b.grad is None
+        assert b.W.grad is None
+        assert b.b.grad is None

@@ -6,20 +6,12 @@ Gym envs. Only discrete spaces are supported.
 To solve CartPole-v0, run:
     python train_categorical_dqn_gym.py --env CartPole-v0
 """
-from __future__ import print_function
-from __future__ import unicode_literals
-from __future__ import division
-from __future__ import absolute_import
-from builtins import *  # NOQA
-from future import standard_library
-standard_library.install_aliases()  # NOQA
 
 import argparse
 import sys
 
 from chainer import optimizers
 import gym
-import gym.wrappers
 
 import chainerrl
 from chainerrl import experiments
@@ -80,7 +72,7 @@ def main():
         # Cast observations to float32 because our model uses float32
         env = chainerrl.wrappers.CastObservationToFloat32(env)
         if args.monitor:
-            env = gym.wrappers.Monitor(env, args.outdir)
+            env = chainerrl.wrappers.Monitor(env, args.outdir)
         if not test:
             # Scale rewards (and thus returns) to a reasonable range so that
             # training is easier
@@ -91,8 +83,7 @@ def main():
         return env
 
     env = make_env(test=False)
-    timestep_limit = env.spec.tags.get(
-        'wrapper_config.TimeLimit.max_episode_steps')
+    timestep_limit = env.spec.max_episode_steps
     obs_size = env.observation_space.low.size
     action_space = env.action_space
 

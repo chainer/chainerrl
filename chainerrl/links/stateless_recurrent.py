@@ -1,11 +1,3 @@
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-from __future__ import absolute_import
-from builtins import *  # NOQA
-from future import standard_library
-standard_library.install_aliases()  # NOQA
-
 from cached_property import cached_property
 import chainer
 import chainer.functions as F
@@ -329,7 +321,7 @@ def concatenate_recurrent_states(link, split_recurrent_states):
         device = link.device
         hs = []
         cs = []
-        for i, srs in enumerate(split_recurrent_states):
+        for srs in split_recurrent_states:
             if srs is None:
                 h = xp.zeros((n_layers, 1, out_size), dtype=np.float32)
                 c = xp.zeros((n_layers, 1, out_size), dtype=np.float32)
@@ -354,7 +346,7 @@ def concatenate_recurrent_states(link, split_recurrent_states):
         xp = link.xp
         device = link.device
         hs = []
-        for i, srs in enumerate(split_recurrent_states):
+        for srs in split_recurrent_states:
             if srs is None:
                 h = xp.zeros((n_layers, 1, out_size), dtype=np.float32)
             else:
@@ -387,9 +379,13 @@ class StatelessRecurrentChainList(StatelessRecurrent, chainer.ChainList):
 
     @cached_property
     def recurrent_children(self):
-        """Return recurrent child links."""
-        return [child for child in self.children()
-                if is_recurrent_link(child)]
+        """Return recurrent child links.
+
+        Returns:
+            tuple: Tuple of `chainer.Link`s that are recurrent.
+        """
+        return tuple(child for child in self.children()
+                     if is_recurrent_link(child))
 
     def mask_recurrent_state_at(self, recurrent_states, indices):
         return mask_recurrent_states_of_links_at(

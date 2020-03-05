@@ -1,11 +1,3 @@
-from __future__ import unicode_literals
-from __future__ import print_function
-from __future__ import division
-from __future__ import absolute_import
-from builtins import *  # NOQA
-from future import standard_library
-standard_library.install_aliases()  # NOQA
-
 import multiprocessing as mp
 import warnings
 
@@ -52,13 +44,13 @@ def _set_persistent_values_recursively(link, persistent_name, shared_array):
     else:
         assert isinstance(link, (chainer.Chain, chainer.ChainList))
         assert '/' in persistent_name
-        child_name, remaining = persistent_name.split('/', maxsplit=1)
+        child_name, remaining = persistent_name.split('/', 1)
         if isinstance(link, chainer.Chain):
             _set_persistent_values_recursively(
                 getattr(link, child_name), remaining, shared_array)
         else:
             _set_persistent_values_recursively(
-                link._children[int(child_name)], remaining, shared_array)
+                link[int(child_name)], remaining, shared_array)
 
 
 def set_shared_params(a, b):
@@ -132,6 +124,8 @@ def extract_params_as_shared_arrays(link):
                 typecode, persistent.ravel())
         else:
             assert np.isscalar(persistent)
+            # Wrap by a 1-dim array because multiprocessing.RawArray does not
+            # accept a 0-dim array.
             persistent_as_array = np.asarray([persistent])
             typecode = persistent_as_array.dtype.char
             shared_arrays[persistent_name] = mp.RawArray(

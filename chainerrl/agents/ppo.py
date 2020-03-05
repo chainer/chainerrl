@@ -1,11 +1,3 @@
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-from __future__ import absolute_import
-from builtins import *  # NOQA
-from future import standard_library
-standard_library.install_aliases()  # NOQA
-
 import collections
 import itertools
 import random
@@ -558,7 +550,7 @@ class PPO(agent.AttributeSavingMixin, agent.BatchAgent):
             mean_advs = None
             std_advs = None
 
-        for epoch in range(self.epochs):
+        for _ in range(self.epochs):
             random.shuffle(dataset)
             for minibatch in _yield_subset_of_sequences_with_fixed_number_of_items(  # NOQA
                     dataset, self.minibatch_size):

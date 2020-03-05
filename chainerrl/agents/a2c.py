@@ -1,11 +1,3 @@
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-from __future__ import absolute_import
-from builtins import *  # NOQA
-from future import standard_library
-standard_library.install_aliases()  # NOQA
-
 from logging import getLogger
 import warnings
 
@@ -110,7 +102,7 @@ class A2C(agent.AttributeSavingMixin, agent.BatchAgent):
         self.model = model
         self.gpu = gpu
         if gpu is not None and gpu >= 0:
-            chainer.cuda.get_device(gpu).use()
+            chainer.cuda.get_device_from_id(gpu).use()
             self.model.to_gpu(device=gpu)
 
         self.optimizer = optimizer

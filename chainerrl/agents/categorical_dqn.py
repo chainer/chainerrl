@@ -1,10 +1,3 @@
-from __future__ import unicode_literals
-from __future__ import print_function
-from __future__ import division
-from __future__ import absolute_import
-from future import standard_library
-standard_library.install_aliases()  # NOQA
-
 import chainer
 from chainer import cuda
 import chainer.functions as F
@@ -51,7 +44,7 @@ def _apply_categorical_projection(y, y_probs, z):
     assert u.shape == (batch_size, n_atoms)
 
     if cuda.available and xp is cuda.cupy:
-        scatter_add = xp.scatter_add
+        scatter_add = cuda.cupyx.scatter_add
     else:
         scatter_add = np.add.at
 

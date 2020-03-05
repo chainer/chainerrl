@@ -1,11 +1,3 @@
-from __future__ import division
-from __future__ import unicode_literals
-from __future__ import print_function
-from __future__ import absolute_import
-from builtins import *  # NOQA
-from future import standard_library
-standard_library.install_aliases()  # NOQA
-
 from logging import getLogger
 
 import numpy as np
@@ -49,7 +41,7 @@ class ConstantEpsilonGreedy(explorer.Explorer):
 
 
 class LinearDecayEpsilonGreedy(explorer.Explorer):
-    """Epsilon-greedy with linearyly decayed epsilon
+    """Epsilon-greedy with linearly decayed epsilon
 
     Args:
       start_epsilon: max value of epsilon

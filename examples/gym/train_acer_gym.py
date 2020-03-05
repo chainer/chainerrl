@@ -1,10 +1,3 @@
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-from __future__ import absolute_import
-from builtins import *  # NOQA
-from future import standard_library
-standard_library.install_aliases()  # NOQA
 import argparse
 import os
 
@@ -17,7 +10,6 @@ from chainer.initializers import LeCunNormal
 from chainer import links as L
 import gym
 from gym import spaces
-import gym.wrappers
 import numpy as np
 
 import chainerrl
@@ -93,7 +85,7 @@ def main():
         # Cast observations to float32 because our model uses float32
         env = chainerrl.wrappers.CastObservationToFloat32(env)
         if args.monitor and process_idx == 0:
-            env = gym.wrappers.Monitor(env, args.outdir)
+            env = chainerrl.wrappers.Monitor(env, args.outdir)
         if not test:
             # Scale rewards (and thus returns) to a reasonable range so that
             # training is easier
@@ -103,8 +95,7 @@ def main():
         return env
 
     sample_env = gym.make(args.env)
-    timestep_limit = sample_env.spec.tags.get(
-        'wrapper_config.TimeLimit.max_episode_steps')
+    timestep_limit = sample_env.spec.max_episode_steps
     obs_space = sample_env.observation_space
     action_space = sample_env.action_space
 

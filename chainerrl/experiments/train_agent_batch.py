@@ -1,25 +1,19 @@
-from __future__ import print_function
-from __future__ import unicode_literals
-from __future__ import division
-from __future__ import absolute_import
-from future import standard_library
-standard_library.install_aliases()  # NOQA
-
 from collections import deque
 import logging
+import os
 
 import numpy as np
 
 
 from chainerrl.experiments.evaluator import Evaluator
 from chainerrl.experiments.evaluator import save_agent
-from chainerrl.misc.makedirs import makedirs
 
 
-def train_agent_batch(agent, env, steps, outdir, log_interval=None,
+def train_agent_batch(agent, env, steps, outdir,
+                      checkpoint_freq=None, log_interval=None,
                       max_episode_len=None, eval_interval=None,
                       step_offset=0, evaluator=None, successful_score=None,
-                      step_hooks=[], return_window_size=100, logger=None):
+                      step_hooks=(), return_window_size=100, logger=None):
     """Train an agent in a batch environment.
 
     Args:
@@ -28,6 +22,7 @@ def train_agent_batch(agent, env, steps, outdir, log_interval=None,
         steps (int): Number of total time steps for training.
         eval_interval (int): Interval of evaluation.
         outdir (str): Path to the directory to output things.
+        checkpoint_freq (int): frequency at which agents are stored.
         log_interval (int): Interval of logging.
         max_episode_len (int): Maximum episode length.
         step_offset (int): Time step from which training starts.
@@ -35,7 +30,7 @@ def train_agent_batch(agent, env, steps, outdir, log_interval=None,
             the average returns of the current agent.
         successful_score (float): Finish training if the mean score is greater
             or equal to thisvalue if not None
-        step_hooks (list): List of callable objects that accepts
+        step_hooks (Sequence): Sequence of callable objects that accepts
             (env, agent, step) as arguments. They are called every step.
             See chainerrl.experiments.hooks.
         logger (logging.Logger): Logger used in this function.
@@ -92,6 +87,10 @@ def train_agent_batch(agent, env, steps, outdir, log_interval=None,
 
             for _ in range(num_envs):
                 t += 1
+                if checkpoint_freq and t % checkpoint_freq == 0:
+                    save_agent(agent, t, outdir, logger,
+                               suffix='_checkpoint')
+
                 for hook in step_hooks:
                     hook(env, agent, t)
 
@@ -141,6 +140,7 @@ def train_agent_batch_with_evaluation(agent,
                                       eval_n_episodes,
                                       eval_interval,
                                       outdir,
+                                      checkpoint_freq=None,
                                       max_episode_len=None,
                                       step_offset=0,
                                       eval_max_episode_len=None,
@@ -148,7 +148,7 @@ def train_agent_batch_with_evaluation(agent,
                                       eval_env=None,
                                       log_interval=None,
                                       successful_score=None,
-                                      step_hooks=[],
+                                      step_hooks=(),
                                       save_best_so_far_agent=True,
                                       logger=None,
                                       ):
@@ -163,6 +163,7 @@ def train_agent_batch_with_evaluation(agent,
         eval_interval (int): Interval of evaluation.
         outdir (str): Path to the directory to output things.
         log_interval (int): Interval of logging.
+        checkpoint_freq (int): frequency with which to store networks
         max_episode_len (int): Maximum episode length.
         step_offset (int): Time step from which training starts.
         return_window_size (int): Number of training episodes used to estimate
@@ -172,7 +173,7 @@ def train_agent_batch_with_evaluation(agent,
         eval_env: Environment used for evaluation.
         successful_score (float): Finish training if the mean score is greater
             or equal to thisvalue if not None
-        step_hooks (list): List of callable objects that accepts
+        step_hooks (Sequence): Sequence of callable objects that accepts
             (env, agent, step) as arguments. They are called every step.
             See chainerrl.experiments.hooks.
         save_best_so_far_agent (bool): If set to True, after each evaluation,
@@ -183,7 +184,7 @@ def train_agent_batch_with_evaluation(agent,
 
     logger = logger or logging.getLogger(__name__)
 
-    makedirs(outdir, exist_ok=True)
+    os.makedirs(outdir, exist_ok=True)
 
     if eval_env is None:
         eval_env = env
@@ -204,6 +205,7 @@ def train_agent_batch_with_evaluation(agent,
 
     train_agent_batch(
         agent, env, steps, outdir,
+        checkpoint_freq=checkpoint_freq,
         max_episode_len=max_episode_len,
         step_offset=step_offset,
         eval_interval=eval_interval,

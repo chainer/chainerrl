@@ -1,11 +1,3 @@
-from __future__ import print_function
-from __future__ import division
-from __future__ import unicode_literals
-from __future__ import absolute_import
-from builtins import *  # NOQA
-from future import standard_library
-standard_library.install_aliases()  # NOQA
-
 import logging
 import multiprocessing as mp
 import os
@@ -21,7 +13,7 @@ def train_loop(process_idx, env, agent, steps, outdir, counter,
                episodes_counter, stop_event,
                max_episode_len=None, evaluator=None, eval_env=None,
                successful_score=None, logger=None,
-               global_step_hooks=[]):
+               global_step_hooks=()):
 
     logger = logger or logging.getLogger(__name__)
 
@@ -169,7 +161,7 @@ def train_agent_async(
             or equal to this value if not None
         agent (Agent): Agent to train.
         make_agent (callable): (process_idx) -> Agent
-        global_step_hooks (list): List of callable objects that accepts
+        global_step_hooks (Sequence): Sequence of callable objects that accepts
             (env, agent, step) as arguments. They are called every global
             step. See chainerrl.experiments.hooks.
         save_best_so_far_agent (bool): If set to True, after each evaluation,

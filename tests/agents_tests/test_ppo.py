@@ -1,11 +1,3 @@
-from __future__ import print_function
-from __future__ import unicode_literals
-from __future__ import division
-from __future__ import absolute_import
-from builtins import *  # NOQA
-from future import standard_library
-standard_library.install_aliases()  # NOQA
-
 import copy
 import itertools
 import os
@@ -21,8 +13,8 @@ import numpy as np
 
 import chainerrl
 from chainerrl.agents.a3c import A3CSeparateModel
-from chainerrl.agents.ppo import PPO
 from chainerrl.agents import ppo
+from chainerrl.agents.ppo import PPO
 from chainerrl.envs.abc import ABC
 from chainerrl.experiments.evaluator import batch_run_evaluation_episodes
 from chainerrl.experiments.evaluator import run_evaluation_episodes
@@ -31,8 +23,8 @@ from chainerrl.experiments import train_agent_with_evaluation
 from chainerrl.misc.batch_states import batch_states
 from chainerrl import policies
 
-from chainerrl.links import StatelessRecurrentSequential
 from chainerrl.links import StatelessRecurrentBranched
+from chainerrl.links import StatelessRecurrentSequential
 
 
 def make_random_episodes(n_episodes=10, obs_size=2, n_actions=3):

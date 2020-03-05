@@ -1,11 +1,3 @@
-from __future__ import print_function
-from __future__ import unicode_literals
-from __future__ import division
-from __future__ import absolute_import
-from builtins import *  # NOQA
-from future import standard_library
-standard_library.install_aliases()  # NOQA
-
 from cached_property import cached_property
 import chainer
 import numpy as np
@@ -81,5 +73,9 @@ class StatelessRecurrentSequential(
         order of links in `Sequential.children()`.
 
         See https://github.com/chainer/chainer/issues/6053
+
+        Returns:
+            tuple: Tuple of `chainer.Link`s that are recurrent.
         """
-        return [child for child in self._layers if is_recurrent_link(child)]
+        return tuple(child for child in self._layers
+                     if is_recurrent_link(child))
