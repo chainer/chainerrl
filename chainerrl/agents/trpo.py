@@ -107,8 +107,7 @@ class TRPO(agent.AttributeSavingMixin, agent.Agent):
     Args:
         policy (Policy): Stochastic policy. Its forward computation must
             contain only functions that support second-order derivatives.
-            Recurrent models are not supported.
-        vf (ValueFunction): Value function. Recurrent models are not supported.
+        vf (ValueFunction): Value function.
         vf_optimizer (chainer.Optimizer): Optimizer for the value function.
         obs_normalizer (chainerrl.links.EmpiricalNormalization or None):
             If set to chainerrl.links.EmpiricalNormalization, it is used to
