@@ -24,6 +24,7 @@ TARGET="$1"
 : "${GPU:=0}"
 : "${XPYTEST_NUM_THREADS:=$(nproc)}"
 : "${PYTHON=python3}"
+: "${PYTHON_VERSION=6}"
 : "${CHAINER=}"
 : "${SLOW:=0}"
 
@@ -68,9 +69,15 @@ main() {
     add-apt-repository ppa:cran/ffmpeg-3
   fi
 
-  apt-get update -q
-  apt-get install -qy --no-install-recommends \
-      "${PYTHON}-dev" "${PYTHON}-pip" "${PYTHON}-setuptools" \
+  add-apt-repository ppa:deadsnakes/ppa
+  apt-get update -q -y
+  apt install -y "${PYTHON}.${PYTHON_VERSION}"
+
+
+  apt-get install -qy --no-install-recommends "${PYTHON}.${PYTHON_VERSION}-dev" 
+  apt-get install -qy --no-install-recommends "${PYTHON}-pip"
+  pip3 install --upgrade pip
+  apt-get install -qy --no-install-recommends "${PYTHON}-setuptools" \
       zlib1g-dev make cmake g++ git ffmpeg freeglut3-dev xvfb
 
   if [ "${CHAINER}" != '' ]; then
@@ -81,6 +88,7 @@ main() {
     "${PYTHON}" -m pip install \
         'cython==0.28.0' 'numpy<1.10' 'scipy<0.19' 'more-itertools<=5.0.0'
   fi
+
 
   "${PYTHON}" -m pip install /chainerrl
   # TODO(chainerrl): Prepare test target instead.
