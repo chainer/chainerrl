@@ -89,7 +89,6 @@ main() {
         'cython==0.28.0' 'numpy<1.10' 'scipy<0.19' 'more-itertools<=5.0.0'
   fi
 
-
   "${PYTHON}" -m pip install /chainerrl
   # TODO(chainerrl): Prepare test target instead.
   # pytest does not run with attrs==19.2.0 (https://github.com/pytest-dev/pytest/issues/3280)  # NOQA
