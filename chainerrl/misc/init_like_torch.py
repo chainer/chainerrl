@@ -5,16 +5,16 @@ import numpy as np
 def init_like_torch(link):
     # Mimic torch's default parameter initialization
     # TODO(muupan): Use chainer's initializers when it is merged
-    for l in link.links():
-        if isinstance(l, L.Linear):
-            out_channels, in_channels = l.W.shape
+    for li in link.links():
+        if isinstance(li, L.Linear):
+            out_channels, in_channels = li.W.shape
             stdv = 1 / np.sqrt(in_channels)
-            l.W.array[:] = np.random.uniform(-stdv, stdv, size=l.W.shape)
-            if l.b is not None:
-                l.b.array[:] = np.random.uniform(-stdv, stdv, size=l.b.shape)
-        elif isinstance(l, L.Convolution2D):
-            out_channels, in_channels, kh, kw = l.W.shape
+            li.W.array[:] = np.random.uniform(-stdv, stdv, size=li.W.shape)
+            if li.b is not None:
+                li.b.array[:] = np.random.uniform(-stdv, stdv, size=li.b.shape)
+        elif isinstance(li, L.Convolution2D):
+            out_channels, in_channels, kh, kw = li.W.shape
             stdv = 1 / np.sqrt(in_channels * kh * kw)
-            l.W.array[:] = np.random.uniform(-stdv, stdv, size=l.W.shape)
-            if l.b is not None:
-                l.b.array[:] = np.random.uniform(-stdv, stdv, size=l.b.shape)
+            li.W.array[:] = np.random.uniform(-stdv, stdv, size=li.W.shape)
+            if li.b is not None:
+                li.b.array[:] = np.random.uniform(-stdv, stdv, size=li.b.shape)
