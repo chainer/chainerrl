@@ -91,52 +91,52 @@ class Recurrent(object, metaclass=ABCMeta):
 def get_state(chain):
     assert isinstance(chain, (chainer.Chain, chainer.ChainList))
     state = []
-    for l in chain.children():
-        if isinstance(l, chainer.links.LSTM):
-            state.append((l.c, l.h))
-        elif isinstance(l, Recurrent):
-            state.append(l.get_state())
-        elif isinstance(l, (chainer.Chain, chainer.ChainList)):
-            state.append(get_state(l))
+    for link in chain.children():
+        if isinstance(link, chainer.links.LSTM):
+            state.append((link.c, link.h))
+        elif isinstance(link, Recurrent):
+            state.append(link.get_state())
+        elif isinstance(link, (chainer.Chain, chainer.ChainList)):
+            state.append(get_state(link))
         else:
             state.append(None)
     return state
 
 
 def stateful_links(chain):
-    for l in chain.children():
-        if isinstance(l, (chainer.links.LSTM, Recurrent)):
-            yield l
-        elif isinstance(l, (chainer.Chain, chainer.ChainList)):
-            for m in stateful_links(l):
+    for link in chain.children():
+        if isinstance(link, (chainer.links.LSTM, Recurrent)):
+            yield link
+        elif isinstance(link, (chainer.Chain, chainer.ChainList)):
+            for m in stateful_links(link):
                 yield m
 
 
 def set_state(chain, state):
     assert isinstance(chain, (chainer.Chain, chainer.ChainList))
-    for l, s in zip(chain.children(), state):
-        if isinstance(l, chainer.links.LSTM):
+    for link, s in zip(chain.children(), state):
+        if isinstance(link, chainer.links.LSTM):
             c, h = s
             # LSTM.set_state doesn't accept None state
             if c is not None:
-                l.set_state(c, h)
-        elif isinstance(l, Recurrent):
-            l.set_state(s)
-        elif isinstance(l, (chainer.Chain, chainer.ChainList)):
-            set_state(l, s)
+                link.set_state(c, h)
+        elif isinstance(link, Recurrent):
+            link.set_state(s)
+        elif isinstance(link, (chainer.Chain, chainer.ChainList)):
+            set_state(link, s)
         else:
             assert s is None
 
 
 def reset_state(chain):
     assert isinstance(chain, (chainer.Chain, chainer.ChainList))
-    for l in chain.children():
-        if isinstance(l, chainer.links.LSTM):
-            l.reset_state()
-        elif isinstance(l, Recurrent):
-            l.reset_state()
-        elif isinstance(l, (chainer.Chain, chainer.ChainList)):
-            reset_state(l)
+    for link in chain.children():
+        if isinstance(link, chainer.links.LSTM):
+            link.reset_state()
+        elif isinstance(link, Recurrent):
+            link.reset_state()
+        elif isinstance(link, (chainer.Chain, chainer.ChainList)):
+            reset_state(link)
 
 
 class RecurrentChainMixin(Recurrent):

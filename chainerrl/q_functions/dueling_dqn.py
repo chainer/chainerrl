@@ -34,8 +34,8 @@ class DuelingDQN(chainer.Chain, StateQFunction):
 
     def __call__(self, x):
         h = x
-        for l in self.conv_layers:
-            h = self.activation(l(h))
+        for link in self.conv_layers:
+            h = self.activation(link(h))
 
         # Advantage
         batch_size = x.shape[0]
@@ -88,8 +88,8 @@ class DistributionalDuelingDQN(
 
     def __call__(self, x):
         h = x
-        for l in self.conv_layers:
-            h = self.activation(l(h))
+        for link in self.conv_layers:
+            h = self.activation(link(h))
 
         # Advantage
         batch_size = x.shape[0]
