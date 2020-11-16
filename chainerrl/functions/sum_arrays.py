@@ -31,7 +31,7 @@ class SumArrays(function.Function):
             'for (size_t j = 0; j < n_xs; ++j) {'
             '  y += xs_[j][i];'
             '}',
-            'sum_arrays'.format(n))(inputs[0], ptrs.data.ptr, len(ptrs))
+            'sum_arrays')(inputs[0], ptrs.data.ptr, len(ptrs))
         return y,
 
 

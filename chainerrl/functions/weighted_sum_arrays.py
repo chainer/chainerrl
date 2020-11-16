@@ -35,7 +35,7 @@ class WeightedSumArrays(function.Function):
             'for (size_t j = 0; j < n_xs; ++j) {'
             '  y += xs_[j][i] * ws[j];'
             '}',
-            'weighted_sum_arrays'.format(n))(inputs[0],
+            'weighted_sum_arrays')(inputs[0],
                                              ptrs.data.ptr,
                                              ws,
                                              len(ptrs))
