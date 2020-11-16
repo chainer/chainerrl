@@ -60,12 +60,12 @@ main() {
       --hint="/chainerrl/.pfnci/hint.pbtxt"
   )
 
+  apt-get install -qy --no-install-recommends software-properties-common
   UBUNTU_VERSION_ID=$(grep DISTRIB_RELEASE /etc/lsb-release | cut -d "=" -f2)
   if [ "$UBUNTU_VERSION_ID" = "16.04" ]; then
     # Because ffmpeg of ubuntu 16.04 causes segmentation fault,
     # we use jonathonf/ffmpeg-3
     apt-get update -q
-    apt-get install -qy --no-install-recommends software-properties-common
     add-apt-repository ppa:cran/ffmpeg-3
   fi
 
