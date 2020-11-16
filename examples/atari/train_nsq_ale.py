@@ -2,9 +2,6 @@ import argparse
 import os
 import random
 
-# This prevents numpy from using multiple threads
-os.environ['OMP_NUM_THREADS'] = '1'  # NOQA
-
 from chainer import links as L
 from gym import spaces
 import numpy as np
@@ -19,6 +16,9 @@ from chainerrl import misc
 from chainerrl.optimizers import rmsprop_async
 
 from chainerrl.wrappers import atari_wrappers
+
+# This prevents numpy from using multiple threads
+os.environ['OMP_NUM_THREADS'] = '1'
 
 
 def main():

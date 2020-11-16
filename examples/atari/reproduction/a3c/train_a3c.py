@@ -1,9 +1,6 @@
 import argparse
 import os
 
-# Prevent numpy from using multiple threads
-os.environ['OMP_NUM_THREADS'] = '1'  # NOQA
-
 import chainer
 import gym
 import numpy as np
@@ -19,6 +16,9 @@ from chainerrl import policies
 from chainerrl import v_functions
 
 from chainerrl.wrappers import atari_wrappers
+
+# Prevent numpy from using multiple threads
+os.environ['OMP_NUM_THREADS'] = '1'
 
 
 class A3CFF(chainer.ChainList, a3c.A3CModel):
