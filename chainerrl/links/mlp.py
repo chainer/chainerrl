@@ -31,6 +31,6 @@ class MLP(chainer.Chain):
     def __call__(self, x):
         h = x
         if self.hidden_sizes:
-            for l in self.hidden_layers:
-                h = self.nonlinearity(l(h))
+            for link in self.hidden_layers:
+                h = self.nonlinearity(link(h))
         return self.output(h)

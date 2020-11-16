@@ -5,7 +5,7 @@ Installation
 How to install ChainerRL
 ========================
 
-ChainerRL is tested with 3.5.1+. For other requirements, see ``requirements.txt``.
+ChainerRL is tested with 3.6. For other requirements, see ``requirements.txt``.
 
 .. literalinclude:: ../requirements.txt
   :caption: requirements.txt

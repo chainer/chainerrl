@@ -74,8 +74,8 @@ class MLPBN(chainer.Chain):
         if self.normalize_input:
             h = self.input_bn(h)
         if self.hidden_sizes:
-            for l in self.hidden_layers:
-                h = self.nonlinearity(l(h))
+            for link in self.hidden_layers:
+                h = self.nonlinearity(link(h))
         h = self.output(h)
         if self.normalize_output:
             h = self.output_bn(h)
