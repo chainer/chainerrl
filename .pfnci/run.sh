@@ -60,6 +60,7 @@ main() {
       --hint="/chainerrl/.pfnci/hint.pbtxt"
   )
 
+  apt-get update -q -y
   apt-get install -qy --no-install-recommends software-properties-common
   UBUNTU_VERSION_ID=$(grep DISTRIB_RELEASE /etc/lsb-release | cut -d "=" -f2)
   if [ "$UBUNTU_VERSION_ID" = "16.04" ]; then
