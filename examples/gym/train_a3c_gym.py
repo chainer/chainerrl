@@ -12,6 +12,9 @@ To solve InvertedPendulum-v1, run:
 import argparse
 import os
 
+# This prevents numpy from using multiple threads
+os.environ['OMP_NUM_THREADS'] = '1' # NOQA
+
 import chainer
 from chainer import functions as F
 from chainer import links as L
@@ -28,9 +31,6 @@ from chainerrl.optimizers import rmsprop_async
 from chainerrl import policies
 from chainerrl.recurrent import RecurrentChainMixin
 from chainerrl import v_function
-
-# This prevents numpy from using multiple threads
-os.environ['OMP_NUM_THREADS'] = '1'
 
 
 class A3CFFSoftmax(chainer.ChainList, a3c.A3CModel):
