@@ -1,6 +1,9 @@
 import argparse
 import os
 
+# This prevents numpy from using multiple threads
+os.environ['OMP_NUM_THREADS'] = '1'  # NOQA
+
 import chainer
 from chainer import functions as F
 from chainer.initializers import LeCunNormal
@@ -21,9 +24,6 @@ from chainerrl import policies
 from chainerrl import q_functions
 from chainerrl.replay_buffer import EpisodicReplayBuffer
 from chainerrl import v_functions
-
-# This prevents numpy from using multiple threads
-os.environ['OMP_NUM_THREADS'] = '1'
 
 
 def main():

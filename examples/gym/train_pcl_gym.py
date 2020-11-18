@@ -12,6 +12,9 @@ To solve InvertedPendulum-v1, run:
 import argparse
 import os
 
+# This prevents numpy from using multiple threads
+os.environ['OMP_NUM_THREADS'] = '1'  # NOQA
+
 import chainer
 import gym
 import gym.spaces
@@ -21,9 +24,6 @@ import chainerrl
 from chainerrl import experiments
 from chainerrl import misc
 from chainerrl.optimizers import rmsprop_async
-
-# This prevents numpy from using multiple threads
-os.environ['OMP_NUM_THREADS'] = '1'
 
 
 def exp_return_of_episode(episode):

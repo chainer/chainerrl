@@ -1,6 +1,9 @@
 import argparse
 import os
 
+# Prevent numpy from using multiple threads
+os.environ['OMP_NUM_THREADS'] = '1'  # NOQA
+
 import chainer
 from chainer import links as L
 import gym
@@ -19,9 +22,6 @@ from chainerrl.optimizers import rmsprop_async
 from chainerrl.replay_buffer import EpisodicReplayBuffer
 
 from chainerrl.wrappers import atari_wrappers
-
-# Prevent numpy from using multiple threads
-os.environ['OMP_NUM_THREADS'] = '1'
 
 
 def main():
