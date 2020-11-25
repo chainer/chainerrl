@@ -53,7 +53,6 @@ main() {
     # TODO(imos): Use pre-build Docker images instead because latest images are
     # not updated frequently.
     py3.cpu | py3.gpu ) docker_image=chainer/chainer:latest-python3;;
-    py2.cpu ) docker_image=chainer/chainer:latest-python2;;
     # Unsupported targets.
     * )
       echo "Unsupported target: ${TARGET}" >&2
@@ -63,9 +62,6 @@ main() {
   docker_args+=(--env="CHAINER=${chainer_version}")
   docker_args+=(--env="SLOW=${SLOW:-0}")
 
-  case "${TARGET}" in
-    py2.* ) docker_args+=(--env="PYTHON=python");;
-  esac
 
   for ZIP in a3c_results.zip dqn_results.zip iqn_results.zip rainbow_results.zip ddpg_results.zip trpo_results.zip ppo_results.zip td3_results.zip sac_results.zip
   do

@@ -33,7 +33,7 @@ def make_env(args, seed, test):
             raise RuntimeError('roboschool does not work with gym>=0.15.6')
         import roboschool  # NOQA
     env = gym.make(args.env)
-    # Unwrap TimiLimit wrapper
+    # Unwrap TimeLimit wrapper
     assert isinstance(env, gym.wrappers.TimeLimit)
     env = env.env
     # Use different random seeds for train and test envs

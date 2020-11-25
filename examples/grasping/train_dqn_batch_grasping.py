@@ -206,7 +206,6 @@ def main():
             maxSteps=max_episode_steps,
             isTest=test,
         )
-        assert env.observation_space is None
         env.observation_space = gym.spaces.Box(
             low=0, high=255, shape=(84, 84, 3), dtype=np.uint8)
         # (84, 84, 3) -> (3, 84, 84)

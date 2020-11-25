@@ -20,7 +20,6 @@ class SumArrays(function.Function):
         return [grads[0]] * len(inputs)
 
     def forward_gpu(self, inputs):
-        n = len(inputs)
         ptrs = cuda.cupy.asarray([x.data.ptr for x in inputs],
                                  dtype=cuda.cupy.int64)
         y = cuda.elementwise(
@@ -31,7 +30,7 @@ class SumArrays(function.Function):
             'for (size_t j = 0; j < n_xs; ++j) {'
             '  y += xs_[j][i];'
             '}',
-            'sum_arrays'.format(n))(inputs[0], ptrs.data.ptr, len(ptrs))
+            'sum_arrays')(inputs[0], ptrs.data.ptr, len(ptrs))
         return y,
 
 
