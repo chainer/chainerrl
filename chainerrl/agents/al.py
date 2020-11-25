@@ -1,16 +1,7 @@
-from __future__ import unicode_literals
-from __future__ import print_function
-from __future__ import division
-from __future__ import absolute_import
-from builtins import *  # NOQA
-from future import standard_library
-standard_library.install_aliases()  # NOQA
-
 import chainer
 from chainer import functions as F
 
 from chainerrl.agents import dqn
-from chainerrl.recurrent import state_kept
 
 
 class AL(dqn.DQN):
@@ -34,22 +25,32 @@ class AL(dqn.DQN):
         batch_state = exp_batch['state']
         batch_size = len(exp_batch['reward'])
 
-        qout = self.q_function(batch_state)
+        if self.recurrent:
+            qout, _ = self.model.n_step_forward(
+                batch_state, exp_batch['recurrent_state'],
+                output_mode='concat')
+        else:
+            qout = self.model(batch_state)
 
         batch_actions = exp_batch['action']
 
         batch_q = qout.evaluate_actions(batch_actions)
 
         # Compute target values
+        batch_next_state = exp_batch['next_state']
 
         with chainer.no_backprop_mode():
-            target_qout = self.target_q_function(batch_state)
+            if self.recurrent:
+                target_qout, _ = self.target_model.n_step_forward(
+                    batch_state, exp_batch['recurrent_state'],
+                    output_mode='concat')
+                target_next_qout, _ = self.target_model.n_step_forward(
+                    batch_next_state, exp_batch['next_recurrent_state'],
+                    output_mode='concat')
+            else:
+                target_qout = self.target_model(batch_state)
+                target_next_qout = self.target_model(batch_next_state)
 
-            batch_next_state = exp_batch['next_state']
-
-            with state_kept(self.target_q_function):
-                target_next_qout = self.target_q_function(
-                    batch_next_state)
             next_q_max = F.reshape(target_next_qout.max, (batch_size,))
 
             batch_rewards = exp_batch['reward']
@@ -65,6 +66,3 @@ class AL(dqn.DQN):
             tal_q = t_q + self.alpha * cur_advantage
 
         return batch_q, tal_q
-
-    def input_initial_batch_to_target_model(self, batch):
-        pass

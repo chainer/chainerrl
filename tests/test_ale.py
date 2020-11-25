@@ -1,11 +1,3 @@
-from __future__ import print_function
-from __future__ import unicode_literals
-from __future__ import division
-from __future__ import absolute_import
-from builtins import *  # NOQA
-from future import standard_library
-standard_library.install_aliases()  # NOQA
-
 import random
 import sys
 import tempfile
@@ -76,7 +68,7 @@ class TestALE(unittest.TestCase):
 
     def test_reward(self):
         env = ale.ALE('pong')
-        for episode in range(3):
+        for _ in range(3):
             total_r = 0
             while not env.is_terminal:
                 a = random.randrange(len(env.legal_actions))

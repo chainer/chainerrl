@@ -1,11 +1,3 @@
-from __future__ import division
-from __future__ import unicode_literals
-from __future__ import print_function
-from __future__ import absolute_import
-from builtins import *  # NOQA
-from future import standard_library
-standard_library.install_aliases()  # NOQA
-
 import chainer
 from chainer import cuda
 from chainer import functions as F
@@ -55,9 +47,11 @@ class FCStateQFunctionWithDiscreteAction(
 
     Args:
         n_dim_obs: number of dimensions of observation space
-        n_dim_action: number of dimensions of action space
+        n_actions (int): Number of actions in action space.
         n_hidden_channels: number of hidden channels
         n_hidden_layers: number of hidden layers
+        nonlinearity (callable): Nonlinearity applied after each hidden layer.
+        last_wscale (float): Weight scale of the last layer.
     """
 
     def __init__(self, ndim_obs, n_actions, n_hidden_channels,
@@ -72,7 +66,7 @@ class FCStateQFunctionWithDiscreteAction(
 
 class DistributionalSingleModelStateQFunctionWithDiscreteAction(
         chainer.Chain, StateQFunction, RecurrentChainMixin):
-    """distributional Q-function with discrete actions.
+    """Distributional Q-function with discrete actions.
 
     Args:
         model (chainer.Link):
@@ -124,7 +118,7 @@ class DistributionalFCStateQFunctionWithDiscreteAction(
 
 
 class FCLSTMStateQFunction(chainer.Chain, StateQFunction, RecurrentChainMixin):
-    """Fully-connected state-input discrete  Q-function.
+    """Fully-connected + LSTM state-input discrete Q-function.
 
     Args:
         n_dim_obs: number of dimensions of observation space
@@ -158,6 +152,8 @@ class FCQuadraticStateQFunction(
         chainer.Chain, StateQFunction):
     """Fully-connected state-input continuous Q-function.
 
+    See: https://arxiv.org/abs/1603.00748
+
     Args:
         n_input_channels: number of input channels
         n_dim_action: number of dimensions of action space
@@ -182,7 +178,7 @@ class FCQuadraticStateQFunction(
             hidden_layers = []
             assert n_hidden_layers >= 1
             hidden_layers.append(L.Linear(n_input_channels, n_hidden_channels))
-            for i in range(n_hidden_layers - 1):
+            for _ in range(n_hidden_layers - 1):
                 hidden_layers.append(
                     L.Linear(n_hidden_channels, n_hidden_channels))
             self.hidden_layers = chainer.ChainList(*hidden_layers)
@@ -218,7 +214,9 @@ class FCQuadraticStateQFunction(
 
 
 class FCBNQuadraticStateQFunction(chainer.Chain, StateQFunction):
-    """Fully-connected state-input continuous Q-function.
+    """Fully-connected + BN state-input continuous Q-function.
+
+    See: https://arxiv.org/abs/1603.00748
 
     Args:
         n_input_channels: number of input channels
@@ -227,6 +225,8 @@ class FCBNQuadraticStateQFunction(chainer.Chain, StateQFunction):
         n_hidden_layers: number of hidden layers
         action_space: action_space
         scale_mu (bool): scale mu by applying tanh if True
+        normalize_input (bool): If set to True, Batch Normalization is applied
+            to the observations
     """
 
     def __init__(self, n_input_channels, n_dim_action, n_hidden_channels,

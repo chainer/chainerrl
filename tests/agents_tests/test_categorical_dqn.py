@@ -1,10 +1,3 @@
-from __future__ import unicode_literals
-from __future__ import print_function
-from __future__ import division
-from __future__ import absolute_import
-from future import standard_library
-from builtins import *  # NOQA
-standard_library.install_aliases()  # NOQA
 import unittest
 
 import chainer
@@ -16,6 +9,8 @@ import basetest_dqn_like as base
 from basetest_training import _TestBatchTrainingMixin
 import chainerrl
 from chainerrl.agents import categorical_dqn
+from chainerrl.agents.categorical_dqn import compute_value_loss
+from chainerrl.agents.categorical_dqn import compute_weighted_value_loss
 from chainerrl.agents import CategoricalDQN
 
 
@@ -186,8 +181,8 @@ def make_distrib_recurrent_q_func(env):
     n_atoms = 51
     v_max = 10
     v_min = -10
-    return chainerrl.links.Sequence(
-        L.LSTM(env.observation_space.low.size, 20),
+    return chainerrl.links.StatelessRecurrentSequential(
+        L.NStepRNNTanh(1, env.observation_space.low.size, 20, 0),
         chainerrl.q_functions.DistributionalFCStateQFunctionWithDiscreteAction(  # NOQA
             20, env.action_space.n,
             n_atoms=n_atoms,
@@ -213,7 +208,8 @@ class TestCategoricalDQNOnDiscreteABC(
 
 # Continuous action spaces are not supported
 
-class TestCategoricalDQNOnDiscretePOABC(base._TestDQNOnDiscretePOABC):
+class TestCategoricalDQNOnDiscretePOABC(
+        _TestBatchTrainingMixin, base._TestDQNOnDiscretePOABC):
 
     def make_q_func(self, env):
         return make_distrib_recurrent_q_func(env)
@@ -222,4 +218,66 @@ class TestCategoricalDQNOnDiscretePOABC(base._TestDQNOnDiscretePOABC):
         return CategoricalDQN(
             q_func, opt, rbuf, gpu=gpu, gamma=0.9, explorer=explorer,
             replay_start_size=100, target_update_interval=100,
-            episodic_update=True)
+            recurrent=True)
+
+
+def categorical_loss(y, t):
+    return -t * np.log(np.clip(y, 1e-10, 1.))
+
+
+@testing.parameterize(
+    *testing.product({
+        'batch_accumulator': ['mean', 'sum'],
+    })
+)
+class TestComputeValueLoss(unittest.TestCase):
+
+    def setUp(self):
+        # y and t are (batchsize, n_atoms)
+        self.y = np.asarray([[0.1, 0.2, 0.3, 0.4],
+                             [0.05, 0.1, 0.2, 0.65]],
+                            dtype='f')
+        self.t = np.asarray([[0.2, 0.2, 0.2, 0.4],
+                             [0.1, 0.3, 0.3, 0.3]],
+                            dtype='f')
+        self.eltwise_losses = np.asarray(
+            [categorical_loss(a, b) for a, b in zip(self.y, self.t)])
+
+    def test_not_weighted(self):
+        loss = compute_value_loss(
+            self.eltwise_losses,
+            batch_accumulator=self.batch_accumulator).array
+        if self.batch_accumulator == 'mean':
+            eltwise_loss = self.eltwise_losses.sum(axis=1).mean()
+        else:
+            eltwise_loss = self.eltwise_losses.sum()
+        self.assertAlmostEqual(loss, eltwise_loss, places=5)
+
+    def test_uniformly_weighted(self):
+
+        # Uniform weights of size batch size
+        w1 = np.ones(self.y.shape[0], dtype='f')
+
+        loss_w1 = compute_weighted_value_loss(
+            self.eltwise_losses, self.y.shape[0], w1,
+            batch_accumulator=self.batch_accumulator).array
+        if self.batch_accumulator == 'mean':
+            eltwise_loss = self.eltwise_losses.sum(axis=1).mean()
+        else:
+            eltwise_loss = self.eltwise_losses.sum()
+        self.assertAlmostEqual(loss_w1, eltwise_loss, places=5)
+
+    def test_randomly_weighted(self):
+
+        # Random weights
+        wu = np.random.uniform(low=0, high=2, size=self.y.shape[0]).astype('f')
+
+        loss_wu = compute_weighted_value_loss(
+            self.eltwise_losses,
+            self.y.shape[0], wu,
+            batch_accumulator=self.batch_accumulator).array
+        if self.batch_accumulator == 'mean':
+            eltwise_loss = (self.eltwise_losses.sum(axis=1) * wu).mean()
+        else:
+            eltwise_loss = (self.eltwise_losses * wu[:, None]).sum()
+        self.assertAlmostEqual(loss_wu, eltwise_loss, places=5)

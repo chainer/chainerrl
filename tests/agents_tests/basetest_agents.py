@@ -1,9 +1,3 @@
-from __future__ import print_function
-from __future__ import unicode_literals
-from __future__ import division
-from __future__ import absolute_import
-from future import standard_library
-standard_library.install_aliases()  # NOQA
 import os
 import tempfile
 import unittest
@@ -48,6 +42,6 @@ class _TestAgentInterface(unittest.TestCase):
         train_agent(
             agent=agent,
             env=self.env,
-            steps=2000,
+            steps=200,
             outdir=tempfile.mkdtemp(),
             max_episode_len=10)

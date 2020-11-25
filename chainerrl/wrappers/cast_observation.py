@@ -1,11 +1,3 @@
-from __future__ import print_function
-from __future__ import unicode_literals
-from __future__ import division
-from __future__ import absolute_import
-from builtins import *  # NOQA
-from future import standard_library
-standard_library.install_aliases()  # NOQA
-
 import gym
 import numpy as np
 
@@ -25,7 +17,7 @@ class CastObservation(gym.ObservationWrapper):
         super().__init__(env)
         self.dtype = dtype
 
-    def _observation(self, observation):
+    def observation(self, observation):
         self.original_observation = observation
         return observation.astype(self.dtype, copy=False)
 

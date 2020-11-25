@@ -1,14 +1,7 @@
-from __future__ import unicode_literals
-from __future__ import print_function
-from __future__ import division
-from __future__ import absolute_import
-from builtins import *  # NOQA
-from future import standard_library
-standard_library.install_aliases()  # NOQA
-
 from multiprocessing import Pipe
 from multiprocessing import Process
 import signal
+import warnings
 
 from cached_property import cached_property
 import numpy as np
@@ -53,6 +46,13 @@ class MultiprocessVectorEnv(chainerrl.env.VectorEnv):
     """
 
     def __init__(self, env_fns):
+        if np.__version__ == '1.16.0':
+            warnings.warn("""
+NumPy 1.16.0 can cause severe memory leak in chainerrl.envs.MultiprocessVectorEnv.
+We recommend using other versions of NumPy.
+See https://github.com/numpy/numpy/issues/12793 for details.
+""")  # NOQA
+
         nenvs = len(env_fns)
         self.remotes, self.work_remotes = zip(*[Pipe() for _ in range(nenvs)])
         self.ps = \

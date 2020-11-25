@@ -1,11 +1,3 @@
-from __future__ import print_function
-from __future__ import unicode_literals
-from __future__ import division
-from __future__ import absolute_import
-from builtins import *  # NOQA
-from future import standard_library
-standard_library.install_aliases()  # NOQA
-
 import logging
 import multiprocessing as mp
 import os
@@ -72,7 +64,6 @@ def run_evaluation_episodes(env, agent, n_steps, n_episodes,
         reset = (done or episode_len == max_episode_len
                  or info.get('needs_reset', False))
         if reset:
-            agent.stop_episode()
             logger.info('evaluation episode %s length:%s R:%s',
                         len(scores), episode_len, test_r)
             # As mixing float and numpy float causes errors in statistics
@@ -82,6 +73,8 @@ def run_evaluation_episodes(env, agent, n_steps, n_episodes,
             terminate = len(scores) >= n_episodes
         else:
             terminate = timestep >= n_steps
+        if reset or terminate:
+            agent.stop_episode()
     # If all steps were used for a single unfinished episode
     if len(scores) == 0:
         scores.append(float(test_r))
@@ -150,8 +143,6 @@ def batch_run_evaluation_episodes(
         resets = np.logical_or(
             resets, [info.get('needs_reset', False) for info in infos])
 
-        # Agent observes the consequences
-        agent.batch_observe(obss, rs, dones, resets)
         # Make mask. 0 if done/reset, 1 if pass
         end = np.logical_or(resets, dones)
         not_end = np.logical_not(end)
@@ -206,6 +197,13 @@ def batch_run_evaluation_episodes(
                     eval_episode_lens.append(episode_lengths[index])
 
         if termination_conditions:
+            # If this is the last step, make sure the agent observes reset=True
+            resets.fill(True)
+
+        # Agent observes the consequences.
+        agent.batch_observe(obss, rs, dones, resets)
+
+        if termination_conditions:
             break
         else:
             obss = env.reset(not_end)
@@ -224,6 +222,7 @@ def eval_performance(env, agent, n_steps, n_episodes, max_episode_len=None,
     Args:
         env (Environment): Environment used for evaluation
         agent (Agent): Agent to evaluate.
+        n_steps (int): Number of timesteps to evaluate for.
         n_episodes (int): Number of evaluation episodes.
         max_episode_len (int or None): If specified, episodes longer than this
             value will be truncated.
@@ -358,6 +357,7 @@ class AsyncEvaluator(object):
     """Object that is responsible for evaluating asynchronous multiple agents.
 
     Args:
+        n_steps (int): Number of timesteps used in each evaluation.
         n_episodes (int): Number of episodes used in each evaluation.
         eval_interval (int): Interval of evaluations in steps.
         outdir (str): Path to a directory to save things.
@@ -369,7 +369,8 @@ class AsyncEvaluator(object):
     """
 
     def __init__(self,
-                 n_runs,
+                 n_steps,
+                 n_episodes,
                  eval_interval,
                  outdir,
                  max_episode_len=None,
@@ -377,9 +378,13 @@ class AsyncEvaluator(object):
                  save_best_so_far_agent=True,
                  logger=None,
                  ):
-
+        assert (n_steps is None) != (n_episodes is None), \
+            ("One of n_steps or n_episodes must be None. " +
+             "Either we evaluate for a specified number " +
+             "of episodes or for a specified number of timesteps.")
         self.start_time = time.time()
-        self.n_episodes = n_runs
+        self.n_steps = n_steps
+        self.n_episodes = n_episodes
         self.eval_interval = eval_interval
         self.outdir = outdir
         self.max_episode_len = max_episode_len
@@ -405,7 +410,7 @@ class AsyncEvaluator(object):
 
     def evaluate_and_update_max_score(self, t, episodes, env, agent):
         eval_stats = eval_performance(
-            env, agent, None, self.n_episodes,
+            env, agent, self.n_steps, self.n_episodes,
             max_episode_len=self.max_episode_len,
             logger=self.logger)
         elapsed = time.time() - self.start_time
@@ -426,7 +431,7 @@ class AsyncEvaluator(object):
                                  self._max_score.value, mean)
                 self._max_score.value = mean
                 if self.save_best_so_far_agent:
-                    save_agent(agent, t, self.outdir, self.logger)
+                    save_agent(agent, "best", self.outdir, self.logger)
         return mean
 
     def write_header(self, agent):

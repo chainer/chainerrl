@@ -1,11 +1,3 @@
-from __future__ import unicode_literals
-from __future__ import print_function
-from __future__ import division
-from __future__ import absolute_import
-from builtins import *  # NOQA
-from future import standard_library
-standard_library.install_aliases()  # NOQA
-
 import copy
 from logging import getLogger
 import multiprocessing as mp
@@ -114,10 +106,9 @@ class NSQ(AttributeSavingMixin, AsyncAgent):
         # loss /= self.t - self.t_start
 
         # Compute gradients using thread-specific model
-        self.q_function.zerograds()
+        self.q_function.cleargrads()
         loss.backward()
         # Copy the gradients to the globally shared model
-        self.shared_q_function.zerograds()
         copy_param.copy_grad(self.shared_q_function, self.q_function)
         # Update the globally shared model
         self.optimizer.update()

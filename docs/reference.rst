@@ -9,4 +9,9 @@ API Reference
    agents
    distributions
    experiments
+   explorers
+   links
+   policies
+   q_functions
    recurrent
+   replay_buffers

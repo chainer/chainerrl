@@ -1,11 +1,3 @@
-from __future__ import print_function
-from __future__ import division
-from __future__ import unicode_literals
-from __future__ import absolute_import
-from builtins import *  # NOQA
-from future import standard_library
-standard_library.install_aliases()  # NOQA
-
 import logging
 import multiprocessing as mp
 import os
@@ -19,7 +11,7 @@ def train_loop(process_idx, env, agent, steps, outdir, counter,
                episodes_counter, training_done,
                max_episode_len=None, evaluator=None, eval_env=None,
                successful_score=None, logger=None,
-               global_step_hooks=[]):
+               global_step_hooks=()):
 
     logger = logger or logging.getLogger(__name__)
 
@@ -133,13 +125,14 @@ def train_agent_async(outdir, processes, make_env,
                       profile=False,
                       steps=8 * 10 ** 7,
                       eval_interval=10 ** 6,
-                      eval_n_runs=10,
+                      eval_n_steps=None,
+                      eval_n_episodes=10,
                       max_episode_len=None,
                       step_offset=0,
                       successful_score=None,
                       agent=None,
                       make_agent=None,
-                      global_step_hooks=[],
+                      global_step_hooks=(),
                       save_best_so_far_agent=True,
                       logger=None,
                       ):
@@ -155,14 +148,15 @@ def train_agent_async(outdir, processes, make_env,
         steps (int): Number of global time steps for training.
         eval_interval (int): Interval of evaluation. If set to None, the agent
             will not be evaluated at all.
-        eval_n_runs (int): Number of runs for each time of evaluation.
+        eval_n_steps (int): Number of eval timesteps at each eval phase
+        eval_n_episodes (int): Number of eval episodes at each eval phase
         max_episode_len (int): Maximum episode length.
         step_offset (int): Time step from which training starts.
         successful_score (float): Finish training if the mean score is greater
             or equal to this value if not None
         agent (Agent): Agent to train.
         make_agent (callable): (process_idx) -> Agent
-        global_step_hooks (list): List of callable objects that accepts
+        global_step_hooks (Sequence): Sequence of callable objects that accepts
             (env, agent, step) as arguments. They are called every global
             step. See chainerrl.experiments.hooks.
         save_best_so_far_agent (bool): If set to True, after each evaluation,
@@ -194,7 +188,8 @@ def train_agent_async(outdir, processes, make_env,
         evaluator = None
     else:
         evaluator = AsyncEvaluator(
-            n_runs=eval_n_runs,
+            n_steps=eval_n_steps,
+            n_episodes=eval_n_episodes,
             eval_interval=eval_interval, outdir=outdir,
             max_episode_len=max_episode_len,
             step_offset=step_offset,

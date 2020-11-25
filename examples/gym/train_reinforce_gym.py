@@ -9,20 +9,12 @@ To solve CartPole-v0, run:
 To solve InvertedPendulum-v1, run:
     python train_reinforce_gym.py --env InvertedPendulum-v1
 """
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-from __future__ import absolute_import
-from builtins import *  # NOQA
-from future import standard_library
-standard_library.install_aliases()  # NOQA
 import argparse
 import os
 
 import chainer
 import gym
 import gym.spaces
-import gym.wrappers
 import numpy as np
 
 import chainerrl
@@ -70,7 +62,7 @@ def main():
         # Cast observations to float32 because our model uses float32
         env = chainerrl.wrappers.CastObservationToFloat32(env)
         if args.monitor:
-            env = gym.wrappers.Monitor(env, args.outdir)
+            env = chainerrl.wrappers.Monitor(env, args.outdir)
         if not test:
             # Scale rewards (and thus returns) to a reasonable range so that
             # training is easier
@@ -80,8 +72,7 @@ def main():
         return env
 
     train_env = make_env(test=False)
-    timestep_limit = train_env.spec.tags.get(
-        'wrapper_config.TimeLimit.max_episode_steps')
+    timestep_limit = train_env.spec.max_episode_steps
     obs_space = train_env.observation_space
     action_space = train_env.action_space
 
@@ -110,7 +101,7 @@ def main():
         os.path.join(args.outdir, 'model'))
 
     if args.gpu >= 0:
-        chainer.cuda.get_device(args.gpu).use()
+        chainer.cuda.get_device_from_id(args.gpu).use()
         model.to_gpu(args.gpu)
 
     opt = chainer.optimizers.Adam(alpha=args.lr)

@@ -1,17 +1,9 @@
-from __future__ import print_function
-from __future__ import unicode_literals
-from __future__ import division
-from __future__ import absolute_import
-from future import standard_library
-standard_library.install_aliases()  # NOQA
-
 import logging
 import os
 
 from chainerrl.experiments.evaluator import Evaluator
 from chainerrl.experiments.evaluator import save_agent
 from chainerrl.misc.ask_yes_no import ask_yes_no
-from chainerrl.misc.makedirs import makedirs
 
 
 def save_agent_replay_buffer(agent, t, outdir, suffix='', logger=None):
@@ -27,9 +19,9 @@ def ask_and_save_agent_replay_buffer(agent, t, outdir, suffix=''):
         save_agent_replay_buffer(agent, t, outdir, suffix=suffix)
 
 
-def train_agent(agent, env, steps, outdir, max_episode_len=None,
-                step_offset=0, evaluator=None, successful_score=None,
-                step_hooks=[], logger=None):
+def train_agent(agent, env, steps, outdir, checkpoint_freq=None,
+                max_episode_len=None, step_offset=0, evaluator=None,
+                successful_score=None, step_hooks=(), logger=None):
 
     logger = logger or logging.getLogger(__name__)
 
@@ -80,6 +72,8 @@ def train_agent(agent, env, steps, outdir, max_episode_len=None,
                 episode_len = 0
                 obs = env.reset()
                 r = 0
+            if checkpoint_freq and t % checkpoint_freq == 0:
+                save_agent(agent, t, outdir, logger, suffix='_checkpoint')
 
     except (Exception, KeyboardInterrupt):
         # Save the current model before being killed
@@ -97,12 +91,13 @@ def train_agent_with_evaluation(agent,
                                 eval_n_episodes,
                                 eval_interval,
                                 outdir,
+                                checkpoint_freq=None,
                                 train_max_episode_len=None,
                                 step_offset=0,
                                 eval_max_episode_len=None,
                                 eval_env=None,
                                 successful_score=None,
-                                step_hooks=[],
+                                step_hooks=(),
                                 save_best_so_far_agent=True,
                                 logger=None,
                                 ):
@@ -116,6 +111,7 @@ def train_agent_with_evaluation(agent,
         eval_n_episodes (int): Number of episodes at each evaluation phase.
         eval_interval (int): Interval of evaluation.
         outdir (str): Path to the directory to output data.
+        checkpoint_freq (int): frequency at which agents are stored.
         train_max_episode_len (int): Maximum episode length during training.
         step_offset (int): Time step from which training starts.
         eval_max_episode_len (int or None): Maximum episode length of
@@ -123,7 +119,7 @@ def train_agent_with_evaluation(agent,
         eval_env: Environment used for evaluation.
         successful_score (float): Finish training if the mean score is greater
             than or equal to this value if not None
-        step_hooks (list): List of callable objects that accepts
+        step_hooks (Sequence): Sequence of callable objects that accepts
             (env, agent, step) as arguments. They are called every step.
             See chainerrl.experiments.hooks.
         save_best_so_far_agent (bool): If set to True, after each evaluation
@@ -134,7 +130,7 @@ def train_agent_with_evaluation(agent,
 
     logger = logger or logging.getLogger(__name__)
 
-    makedirs(outdir, exist_ok=True)
+    os.makedirs(outdir, exist_ok=True)
 
     if eval_env is None:
         eval_env = env
@@ -155,6 +151,7 @@ def train_agent_with_evaluation(agent,
 
     train_agent(
         agent, env, steps, outdir,
+        checkpoint_freq=checkpoint_freq,
         max_episode_len=train_max_episode_len,
         step_offset=step_offset,
         evaluator=evaluator,

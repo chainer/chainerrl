@@ -1,11 +1,3 @@
-from __future__ import print_function
-from __future__ import unicode_literals
-from __future__ import division
-from __future__ import absolute_import
-from builtins import *  # NOQA
-from future import standard_library
-standard_library.install_aliases()  # NOQA
-
 import logging
 import os
 import tempfile
@@ -106,7 +98,8 @@ class TestNSQ(unittest.TestCase):
                 make_agent=make_agent, steps=steps,
                 max_episode_len=5,
                 eval_interval=500,
-                eval_n_runs=5,
+                eval_n_steps=None,
+                eval_n_episodes=5,
                 successful_score=1,
             )
             # There should be no AbnormalExitWarning

@@ -1,16 +1,7 @@
-from __future__ import division
-from __future__ import unicode_literals
-from __future__ import print_function
-from __future__ import absolute_import
-from builtins import *  # NOQA
-from future import standard_library
-standard_library.install_aliases()  # NOQA
-
 import chainer
 from chainer import functions as F
+from chainer.initializers import LeCunNormal
 from chainer import links as L
-
-from chainerrl.initializers import LeCunNormal
 
 
 class LinearBN(chainer.Chain):
@@ -83,8 +74,8 @@ class MLPBN(chainer.Chain):
         if self.normalize_input:
             h = self.input_bn(h)
         if self.hidden_sizes:
-            for l in self.hidden_layers:
-                h = self.nonlinearity(l(h))
+            for link in self.hidden_layers:
+                h = self.nonlinearity(link(h))
         h = self.output(h)
         if self.normalize_output:
             h = self.output_bn(h)

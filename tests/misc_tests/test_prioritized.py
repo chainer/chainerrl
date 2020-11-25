@@ -1,9 +1,3 @@
-from __future__ import unicode_literals
-from __future__ import print_function
-from __future__ import division
-from __future__ import absolute_import
-from future import standard_library
-standard_library.install_aliases()  # NOQA
 import unittest
 
 import numpy as np
@@ -40,7 +34,7 @@ class TestPrioritizedBuffer(unittest.TestCase):
             else:
                 return priority_init[x] / count_sampled[x]
 
-        for t in range(200):
+        for _ in range(200):
             sampled, probabilities, _ = \
                 buf.sample(16, uniform_ratio=self.uniform_ratio)
             priority_old = [priority(x, count_sampled[x]) for x in sampled]

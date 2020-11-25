@@ -10,13 +10,6 @@ To solve CartPole-v0, run:
 To solve Pendulum-v0, run:
     python train_dqn_gym.py --env Pendulum-v0
 """
-from __future__ import print_function
-from __future__ import unicode_literals
-from __future__ import division
-from __future__ import absolute_import
-from builtins import *  # NOQA
-from future import standard_library
-standard_library.install_aliases()  # NOQA
 
 import argparse
 import os
@@ -25,7 +18,6 @@ import sys
 from chainer import optimizers
 import gym
 from gym import spaces
-import gym.wrappers
 import numpy as np
 
 import chainerrl
@@ -59,7 +51,6 @@ def main():
     parser.add_argument('--load', type=str, default=None)
     parser.add_argument('--steps', type=int, default=10 ** 5)
     parser.add_argument('--prioritized-replay', action='store_true')
-    parser.add_argument('--episodic-replay', action='store_true')
     parser.add_argument('--replay-start-size', type=int, default=1000)
     parser.add_argument('--target-update-interval', type=int, default=10 ** 2)
     parser.add_argument('--target-update-method', type=str, default='hard')
@@ -95,7 +86,7 @@ def main():
         # Cast observations to float32 because our model uses float32
         env = chainerrl.wrappers.CastObservationToFloat32(env)
         if args.monitor:
-            env = gym.wrappers.Monitor(env, args.outdir)
+            env = chainerrl.wrappers.Monitor(env, args.outdir)
         if isinstance(env.action_space, spaces.Box):
             misc.env_modifiers.make_action_filtered(env, clip_action_filter)
         if not test:
@@ -108,8 +99,7 @@ def main():
         return env
 
     env = make_env(test=False)
-    timestep_limit = env.spec.tags.get(
-        'wrapper_config.TimeLimit.max_episode_steps')
+    timestep_limit = env.spec.max_episode_steps
     obs_space = env.observation_space
     obs_size = obs_space.low.size
     action_space = env.action_space
@@ -137,7 +127,7 @@ def main():
             action_space.sample)
 
     if args.noisy_net_sigma is not None:
-        links.to_factorized_noisy(q_func)
+        links.to_factorized_noisy(q_func, sigma_scale=args.noisy_net_sigma)
         # Turn off explorer
         explorer = explorers.Greedy()
 
@@ -150,26 +140,15 @@ def main():
     opt.setup(q_func)
 
     rbuf_capacity = 5 * 10 ** 5
-    if args.episodic_replay:
-        if args.minibatch_size is None:
-            args.minibatch_size = 4
-        if args.prioritized_replay:
-            betasteps = (args.steps - args.replay_start_size) \
-                // args.update_interval
-            rbuf = replay_buffer.PrioritizedEpisodicReplayBuffer(
-                rbuf_capacity, betasteps=betasteps)
-        else:
-            rbuf = replay_buffer.EpisodicReplayBuffer(rbuf_capacity)
+    if args.minibatch_size is None:
+        args.minibatch_size = 32
+    if args.prioritized_replay:
+        betasteps = (args.steps - args.replay_start_size) \
+            // args.update_interval
+        rbuf = replay_buffer.PrioritizedReplayBuffer(
+            rbuf_capacity, betasteps=betasteps)
     else:
-        if args.minibatch_size is None:
-            args.minibatch_size = 32
-        if args.prioritized_replay:
-            betasteps = (args.steps - args.replay_start_size) \
-                // args.update_interval
-            rbuf = replay_buffer.PrioritizedReplayBuffer(
-                rbuf_capacity, betasteps=betasteps)
-        else:
-            rbuf = replay_buffer.ReplayBuffer(rbuf_capacity)
+        rbuf = replay_buffer.ReplayBuffer(rbuf_capacity)
 
     agent = DQN(q_func, opt, rbuf, gpu=args.gpu, gamma=args.gamma,
                 explorer=explorer, replay_start_size=args.replay_start_size,
@@ -178,7 +157,7 @@ def main():
                 minibatch_size=args.minibatch_size,
                 target_update_method=args.target_update_method,
                 soft_update_tau=args.soft_update_tau,
-                episodic_update=args.episodic_replay, episodic_update_len=16)
+                )
 
     if args.load:
         agent.load(args.load)

@@ -6,13 +6,6 @@ Gym envs. Only discrete spaces are supported.
 To solve CartPole-v0, run:
     python train_categorical_dqn_gym.py --env CartPole-v0
 """
-from __future__ import print_function
-from __future__ import unicode_literals
-from __future__ import division
-from __future__ import absolute_import
-from builtins import *  # NOQA
-from future import standard_library
-standard_library.install_aliases()  # NOQA
 
 import argparse
 import sys
@@ -21,7 +14,6 @@ import chainer.functions as F
 import chainer.links as L
 from chainer import optimizers
 import gym
-import gym.wrappers
 
 import chainerrl
 from chainerrl import experiments
@@ -79,7 +71,7 @@ def main():
         # Cast observations to float32 because our model uses float32
         env = chainerrl.wrappers.CastObservationToFloat32(env)
         if args.monitor:
-            env = gym.wrappers.Monitor(env, args.outdir)
+            env = chainerrl.wrappers.Monitor(env, args.outdir)
         if not test:
             misc.env_modifiers.make_reward_filtered(
                 env, lambda x: x * args.reward_scale_factor)
@@ -89,8 +81,7 @@ def main():
         return env
 
     env = make_env(test=False)
-    timestep_limit = env.spec.tags.get(
-        'wrapper_config.TimeLimit.max_episode_steps')
+    timestep_limit = env.spec.max_episode_steps
     obs_size = env.observation_space.low.size
     action_space = env.action_space
 
@@ -134,17 +125,25 @@ def main():
         eval_stats = experiments.eval_performance(
             env=eval_env,
             agent=agent,
-            n_runs=args.eval_n_runs,
-            max_episode_len=timestep_limit)
+            n_steps=None,
+            n_episodes=args.eval_n_runs,
+            max_episode_len=timestep_limit,
+        )
         print('n_runs: {} mean: {} median: {} stdev {}'.format(
             args.eval_n_runs, eval_stats['mean'], eval_stats['median'],
             eval_stats['stdev']))
     else:
         experiments.train_agent_with_evaluation(
-            agent=agent, env=env, steps=args.steps,
-            eval_n_runs=args.eval_n_runs, eval_interval=args.eval_interval,
-            outdir=args.outdir, eval_env=eval_env,
-            max_episode_len=timestep_limit)
+            agent=agent,
+            env=env,
+            steps=args.steps,
+            eval_n_steps=None,
+            eval_n_episodes=args.eval_n_runs,
+            eval_interval=args.eval_interval,
+            outdir=args.outdir,
+            eval_env=eval_env,
+            train_max_episode_len=timestep_limit,
+        )
 
 
 if __name__ == '__main__':

@@ -1,12 +1,3 @@
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-from __future__ import absolute_import
-from builtins import *  # NOQA
-from future import standard_library
-standard_library.install_aliases()  # NOQA
-
-import contextlib
 import copy
 from logging import getLogger
 
@@ -190,16 +181,6 @@ class ACERSharedModel(links.Sequence, RecurrentChainMixin):
         super().__init__(shared, ACERSeparateModel(pi, q))
 
 
-@contextlib.contextmanager
-def backprop_truncated(*variables):
-    backup = [v.creator for v in variables]
-    for v in variables:
-        v.unchain()
-    yield
-    for v, backup_creator in zip(variables, backup):
-        v.set_creator(backup_creator)
-
-
 def compute_loss_with_kl_constraint(distrib, another_distrib, original_loss,
                                     delta):
     """Compute loss considering a KL constraint.
@@ -212,20 +193,17 @@ def compute_loss_with_kl_constraint(distrib, another_distrib, original_loss,
     Returns:
         loss (chainer.Variable)
     """
+    for param in distrib.params:
+        assert param.shape[0] == 1
+        assert param.requires_grad
     # Compute g: a direction to minimize the original loss
-    with backprop_truncated(*distrib.params):
-        F.squeeze(original_loss).backward()
-    g = [p.grad[0] for p in distrib.params]
-    for p in distrib.params:
-        p.cleargrad()
+    g = [grad.array[0] for grad in
+         chainer.grad([F.squeeze(original_loss)], distrib.params)]
 
     # Compute k: a direction to increase KL div.
     kl = F.squeeze(another_distrib.kl(distrib))
-    with backprop_truncated(*distrib.params):
-        (-kl).backward()
-    k = [p.grad[0] for p in distrib.params]
-    for p in distrib.params:
-        p.cleargrad()
+    k = [grad.array[0] for grad in
+         chainer.grad([-kl], distrib.params)]
 
     # Compute z: combination of g and k to keep small KL div.
     kg_dot = sum(np.dot(kp.ravel(), gp.ravel())
@@ -515,16 +493,16 @@ class ACER(agent.AttributeSavingMixin, agent.AsyncAgent):
             avg_action_distribs=avg_action_distribs)
 
         # Compute gradients using thread-specific model
-        self.model.zerograds()
+        self.model.cleargrads()
         F.squeeze(total_loss).backward()
         # Copy the gradients to the globally shared model
-        self.shared_model.zerograds()
         copy_param.copy_grad(
             target_link=self.shared_model, source_link=self.model)
         # Update the globally shared model
         if self.process_idx == 0:
             norm = sum(np.sum(np.square(param.grad))
-                       for param in self.optimizer.target.params())
+                       for param in self.optimizer.target.params()
+                       if param.grad is not None)
             self.logger.debug('grad norm:%s', norm)
         self.optimizer.update()
 

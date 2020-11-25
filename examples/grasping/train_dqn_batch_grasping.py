@@ -1,10 +1,3 @@
-from __future__ import print_function
-from __future__ import division
-from __future__ import unicode_literals
-from __future__ import absolute_import
-from builtins import *  # NOQA
-from future import standard_library
-standard_library.install_aliases()  # NOQA
 import argparse
 import functools
 import os
@@ -32,7 +25,7 @@ class CastAction(gym.ActionWrapper):
         super().__init__(env)
         self.type_ = type_
 
-    def _action(self, action):
+    def action(self, action):
         return self.type_(action)
 
 
@@ -42,8 +35,14 @@ class TransposeObservation(gym.ObservationWrapper):
     def __init__(self, env, axes):
         super().__init__(env)
         self._axes = axes
+        assert isinstance(env.observation_space, gym.spaces.Box)
+        self.observation_space = gym.spaces.Box(
+            low=env.observation_space.low.transpose(*self._axes),
+            high=env.observation_space.high.transpose(*self._axes),
+            dtype=env.observation_space.dtype,
+        )
 
-    def _observation(self, observation):
+    def observation(self, observation):
         return observation.transpose(*self._axes)
 
 
@@ -67,7 +66,7 @@ class ObserveElapsedSteps(gym.Wrapper):
         self._elapsed_steps = 0
         return self.env.reset(), self._elapsed_steps
 
-    def _step(self, action):
+    def step(self, action):
         observation, reward, done, info = self.env.step(action)
         self._elapsed_steps += 1
         assert self._elapsed_steps <= self._max_steps
@@ -207,12 +206,13 @@ def main():
             maxSteps=max_episode_steps,
             isTest=test,
         )
+        env.observation_space = gym.spaces.Box(
+            low=0, high=255, shape=(84, 84, 3), dtype=np.uint8)
         # (84, 84, 3) -> (3, 84, 84)
         env = TransposeObservation(env, (2, 0, 1))
         env = ObserveElapsedSteps(env, max_episode_steps)
-        # KukaDiverseObjectEnv internally asserts int actions and does not
-        # accept python-future's newint.
-        env = CastAction(env, __builtins__.int)
+        # KukaDiverseObjectEnv internally asserts int actions
+        env = CastAction(env, int)
         env.seed(int(env_seed))
         if test and args.record:
             assert args.render,\

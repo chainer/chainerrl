@@ -1,11 +1,3 @@
-from __future__ import print_function
-from __future__ import unicode_literals
-from __future__ import division
-from __future__ import absolute_import
-from builtins import *  # NOQA
-from future import standard_library
-standard_library.install_aliases()  # NOQA
-
 import gym
 import numpy as np
 
@@ -36,7 +28,7 @@ class RandomizeAction(gym.ActionWrapper):
         self._random_fraction = random_fraction
         self._np_random = np.random.RandomState()
 
-    def _action(self, action):
+    def action(self, action):
         if self._np_random.rand() < self._random_fraction:
             return self._np_random.randint(self.env.action_space.n)
         else:

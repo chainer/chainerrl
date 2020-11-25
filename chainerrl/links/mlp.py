@@ -1,16 +1,7 @@
-from __future__ import division
-from __future__ import unicode_literals
-from __future__ import print_function
-from __future__ import absolute_import
-from builtins import *  # NOQA
-from future import standard_library
-standard_library.install_aliases()  # NOQA
-
 import chainer
 from chainer import functions as F
+from chainer.initializers import LeCunNormal
 from chainer import links as L
-
-from chainerrl.initializers import LeCunNormal
 
 
 class MLP(chainer.Chain):
@@ -40,6 +31,6 @@ class MLP(chainer.Chain):
     def __call__(self, x):
         h = x
         if self.hidden_sizes:
-            for l in self.hidden_layers:
-                h = self.nonlinearity(l(h))
+            for link in self.hidden_layers:
+                h = self.nonlinearity(link(h))
         return self.output(h)

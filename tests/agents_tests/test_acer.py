@@ -1,11 +1,3 @@
-from __future__ import print_function
-from __future__ import unicode_literals
-from __future__ import division
-from __future__ import absolute_import
-from builtins import *  # NOQA
-from future import standard_library
-standard_library.install_aliases()  # NOQA
-
 import copy
 import logging
 import os
@@ -334,7 +326,7 @@ class TestEfficientTRPO(unittest.TestCase):
     testing.product({
         'discrete': [True, False],
         't_max': [5],
-        'use_lstm': [True, False],
+        'use_lstm': [True],
         'episodic': [True, False],
         'n_times_replay': [0, 2],
         'disable_online_update': [True, False],
@@ -357,7 +349,7 @@ class TestACER(unittest.TestCase):
                        episodic=self.episodic, steps=10, require_success=False)
 
     def _test_abc(self, t_max, use_lstm, discrete=True, episodic=True,
-                  steps=1000000, require_success=True):
+                  steps=100000, require_success=True):
 
         nproc = 8
 
@@ -461,7 +453,7 @@ class TestACER(unittest.TestCase):
         beta = 1e-5
         if self.n_times_replay == 0 and self.disable_online_update:
             # At least one of them must be enabled
-            self.disable_online_update = False
+            return
         agent = acer.ACER(
             model, opt, replay_buffer=replay_buffer,
             t_max=t_max, gamma=gamma, beta=beta,
@@ -480,7 +472,8 @@ class TestACER(unittest.TestCase):
                 agent=agent, steps=steps,
                 max_episode_len=max_episode_len,
                 eval_interval=500,
-                eval_n_runs=5,
+                eval_n_steps=None,
+                eval_n_episodes=5,
                 successful_score=1)
             assert len(warns) == 0, warns[0]
 

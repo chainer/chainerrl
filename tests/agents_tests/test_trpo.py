@@ -1,17 +1,10 @@
-from __future__ import print_function
-from __future__ import unicode_literals
-from __future__ import division
-from __future__ import absolute_import
-from builtins import *  # NOQA
-from future import standard_library
-standard_library.install_aliases()  # NOQA
-
 import os
 import tempfile
 import unittest
 
 import chainer
 import chainer.functions as F
+from chainer import links as L
 from chainer import optimizers
 from chainer import testing
 import numpy as np
@@ -19,9 +12,12 @@ import numpy as np
 import chainerrl
 from chainerrl.agents import trpo
 from chainerrl.envs.abc import ABC
+from chainerrl.experiments.evaluator import batch_run_evaluation_episodes
+from chainerrl.experiments.evaluator import run_evaluation_episodes
+from chainerrl.experiments import train_agent_batch_with_evaluation
 from chainerrl.experiments import train_agent_with_evaluation
+from chainerrl.links import StatelessRecurrentSequential
 from chainerrl import policies
-from chainerrl import v_functions
 
 
 class OldStyleIdentity(chainer.Function):
@@ -154,6 +150,17 @@ Chainer v{} does not support double backprop of these functions: {}.".format(
         'entropy_coef': [0.0, 1e-5],
         'standardize_advantages': [False, True],
         'standardize_obs': [False, True],
+        'recurrent': [False],
+    })
+    +
+    testing.product({
+        'discrete': [False, True],
+        'episodic': [False, True],
+        'lambd': [0.9],
+        'entropy_coef': [1e-5],
+        'standardize_advantages': [True],
+        'standardize_obs': [True],
+        'recurrent': [True],
     })
 ))
 class TestTRPO(unittest.TestCase):
@@ -180,8 +187,34 @@ class TestTRPO(unittest.TestCase):
     def test_abc_fast_gpu(self):
         self._test_abc(steps=100, require_success=False, gpu=0)
 
-    def _test_abc(self, steps=1000000,
+    @testing.attr.slow
+    def test_abc_batch_cpu(self):
+        self._test_abc_batch()
+        self._test_abc_batch(steps=0, load_model=True)
+
+    @testing.attr.slow
+    @testing.attr.gpu
+    def test_abc_batch_gpu(self):
+        self._test_abc_batch(gpu=0)
+
+    def test_abc_batch_fast_cpu(self):
+        self._test_abc_batch(steps=100, require_success=False)
+        self._test_abc_batch(steps=0, require_success=False, load_model=True)
+
+    @testing.attr.gpu
+    def test_abc_batch_fast_gpu(self):
+        self._test_abc_batch(steps=100, require_success=False, gpu=0)
+
+    def _test_abc(self, steps=100000,
                   require_success=True, gpu=-1, load_model=False):
+
+        if self.recurrent and gpu >= 0:
+            self.skipTest(
+                'NStepLSTM does not support double backprop with GPU.')
+        if self.recurrent and chainer.__version__ == '7.0.0b3':
+            self.skipTest(
+                'chainer==7.0.0b3 has a bug in double backrop of LSTM.'
+                ' See https://github.com/chainer/chainer/pull/8037')
 
         env, _ = self.make_env_and_successful_return(test=False)
         test_env, successful_return = self.make_env_and_successful_return(
@@ -212,20 +245,73 @@ class TestTRPO(unittest.TestCase):
         agent.stop_episode()
 
         # Test
-        n_test_runs = 5
-        for _ in range(n_test_runs):
-            total_r = 0.0
-            obs = test_env.reset()
-            done = False
-            reward = 0.0
-            while not done:
-                action = agent.act(obs)
-                obs, reward, done, _ = test_env.step(action)
-                total_r += reward
-            agent.stop_episode()
+        n_test_runs = 10
+        eval_returns = run_evaluation_episodes(
+            test_env,
+            agent,
+            n_steps=None,
+            n_episodes=n_test_runs,
+            max_episode_len=max_episode_len,
+        )
+        if require_success:
+            n_succeeded = np.sum(np.asarray(eval_returns) >= successful_return)
+            self.assertEqual(n_succeeded, n_test_runs)
 
-            if require_success:
-                self.assertAlmostEqual(total_r, successful_return)
+        # Save
+        agent.save(self.agent_dirname)
+
+    def _test_abc_batch(
+            self, steps=100000,
+            require_success=True, gpu=-1, load_model=False, num_envs=4):
+
+        if self.recurrent and gpu >= 0:
+            self.skipTest(
+                'NStepLSTM does not support double backprop with GPU.')
+        if self.recurrent and chainer.__version__ == '7.0.0b3':
+            self.skipTest(
+                'chainer==7.0.0b3 has a bug in double backrop of LSTM.'
+                ' See https://github.com/chainer/chainer/pull/8037')
+
+        env, _ = self.make_vec_env_and_successful_return(
+            test=False, num_envs=num_envs)
+        test_env, successful_return = self.make_vec_env_and_successful_return(
+            test=True, num_envs=num_envs)
+        agent = self.make_agent(env, gpu)
+        max_episode_len = None if self.episodic else 2
+
+        if load_model:
+            print('Load agent from', self.agent_dirname)
+            agent.load(self.agent_dirname)
+
+        # Train
+        train_agent_batch_with_evaluation(
+            agent=agent,
+            env=env,
+            steps=steps,
+            outdir=self.tmpdir,
+            eval_interval=200,
+            eval_n_steps=None,
+            eval_n_episodes=40,
+            successful_score=successful_return,
+            eval_env=test_env,
+            log_interval=100,
+            max_episode_len=max_episode_len,
+        )
+        env.close()
+
+        # Test
+        n_test_runs = 10
+        eval_returns = batch_run_evaluation_episodes(
+            test_env,
+            agent,
+            n_steps=None,
+            n_episodes=n_test_runs,
+            max_episode_len=max_episode_len,
+        )
+        test_env.close()
+        if require_success:
+            n_succeeded = np.sum(np.asarray(eval_returns) >= successful_return)
+            self.assertEqual(n_succeeded, n_test_runs)
 
         # Save
         agent.save(self.agent_dirname)
@@ -238,8 +324,9 @@ class TestTRPO(unittest.TestCase):
             policy.to_gpu(gpu)
             vf.to_gpu(gpu)
 
-        vf_opt = optimizers.Adam()
+        vf_opt = optimizers.Adam(alpha=1e-2)
         vf_opt.setup(vf)
+        vf_opt.add_hook(chainer.optimizer_hooks.GradientClipping(1))
 
         if self.standardize_obs:
             obs_normalizer = chainerrl.links.EmpiricalNormalization(
@@ -261,6 +348,7 @@ class TestTRPO(unittest.TestCase):
             update_interval=64,
             vf_batch_size=32,
             act_deterministically=True,
+            recurrent=self.recurrent,
         )
 
         return agent
@@ -268,47 +356,60 @@ class TestTRPO(unittest.TestCase):
     def make_model(self, env):
         n_hidden_channels = 20
 
-        n_dim_obs = env.observation_space.low.size
-        v = v_functions.FCVFunction(
-            n_dim_obs,
-            n_hidden_layers=1,
-            n_hidden_channels=n_hidden_channels,
-            nonlinearity=F.tanh,
-            last_wscale=0.01,
-        )
-
-        if self.discrete:
-            n_actions = env.action_space.n
-
-            pi = policies.FCSoftmaxPolicy(
-                n_dim_obs, n_actions,
-                n_hidden_layers=1,
-                n_hidden_channels=n_hidden_channels,
-                nonlinearity=F.tanh,
-                last_wscale=0.01,
+        obs_size = env.observation_space.low.size
+        if self.recurrent:
+            v = StatelessRecurrentSequential(
+                L.NStepLSTM(1, obs_size, n_hidden_channels, 0),
+                L.Linear(
+                    None, 1, initialW=chainer.initializers.LeCunNormal(1e-1)),
             )
+            if self.discrete:
+                n_actions = env.action_space.n
+                pi = StatelessRecurrentSequential(
+                    L.NStepLSTM(1, obs_size, n_hidden_channels, 0),
+                    policies.FCSoftmaxPolicy(
+                        n_hidden_channels, n_actions,
+                        n_hidden_layers=0,
+                        nonlinearity=F.tanh,
+                        last_wscale=1e-1,
+                    )
+                )
+            else:
+                action_size = env.action_space.low.size
+                pi = StatelessRecurrentSequential(
+                    L.NStepLSTM(1, obs_size, n_hidden_channels, 0),
+                    policies.FCGaussianPolicy(
+                        n_hidden_channels, action_size,
+                        n_hidden_layers=0,
+                        nonlinearity=F.tanh,
+                        mean_wscale=1e-1,
+                    )
+                )
         else:
-            n_dim_actions = env.action_space.low.size
-
-            pi = policies.FCGaussianPolicyWithStateIndependentCovariance(
-                n_dim_obs, n_dim_actions,
-                n_hidden_layers=1,
-                n_hidden_channels=n_hidden_channels,
-                nonlinearity=F.tanh,
-                mean_wscale=0.01,
-                var_type='diagonal',
+            v = chainer.Sequential(
+                L.Linear(None, n_hidden_channels),
+                F.tanh,
+                L.Linear(
+                    None, 1, initialW=chainer.initializers.LeCunNormal(1e-1)),
             )
-
-        # Check if KL div supports double-backprop
-        fake_obs = np.zeros_like(env.observation_space.low, dtype=np.float32)
-        action_distrib = pi(fake_obs[None])
-        kl = action_distrib.kl(action_distrib)
-        old_style_funcs = trpo._find_old_style_function([kl])
-        if old_style_funcs:
-            self.skipTest("\
-Chainer v{} does not support double backprop of these functions: {}.".format(
-                chainer.__version__, old_style_funcs))
-
+            if self.discrete:
+                n_actions = env.action_space.n
+                pi = policies.FCSoftmaxPolicy(
+                    obs_size, n_actions,
+                    n_hidden_layers=1,
+                    n_hidden_channels=n_hidden_channels,
+                    nonlinearity=F.tanh,
+                    last_wscale=1e-1,
+                )
+            else:
+                action_size = env.action_space.low.size
+                pi = policies.FCGaussianPolicy(
+                    obs_size, action_size,
+                    n_hidden_layers=1,
+                    n_hidden_channels=n_hidden_channels,
+                    nonlinearity=F.tanh,
+                    mean_wscale=1e-1,
+                )
         return pi, v
 
     def make_env_and_successful_return(self, test):
@@ -316,5 +417,13 @@ Chainer v{} does not support double backprop of these functions: {}.".format(
             discrete=self.discrete,
             episodic=self.episodic or test,
             deterministic=test,
+            partially_observable=self.recurrent,
         )
         return env, 1
+
+    def make_vec_env_and_successful_return(self, test, num_envs=3):
+        def make_env():
+            return self.make_env_and_successful_return(test)[0]
+        vec_env = chainerrl.envs.MultiprocessVectorEnv(
+            [make_env for _ in range(num_envs)])
+        return vec_env, 1.0

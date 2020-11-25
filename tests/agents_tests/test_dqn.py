@@ -1,10 +1,3 @@
-from __future__ import unicode_literals
-from __future__ import print_function
-from __future__ import division
-from __future__ import absolute_import
-from future import standard_library
-from builtins import *  # NOQA
-standard_library.install_aliases()  # NOQA
 import unittest
 
 from chainer import testing
@@ -54,13 +47,13 @@ class TestDQNOnContinuousABC(
                    replay_start_size=100, target_update_interval=100)
 
 
-# Batch training with recurrent models is currently not supported
-class TestDQNOnDiscretePOABC(base._TestDQNOnDiscretePOABC):
+class TestDQNOnDiscretePOABC(
+        _TestBatchTrainingMixin, base._TestDQNOnDiscretePOABC):
 
     def make_dqn_agent(self, env, q_func, opt, explorer, rbuf, gpu):
         return DQN(q_func, opt, rbuf, gpu=gpu, gamma=0.9, explorer=explorer,
                    replay_start_size=100, target_update_interval=100,
-                   episodic_update=True)
+                   recurrent=True)
 
 
 class TestNStepDQNOnDiscreteABC(base._TestNStepDQNOnDiscreteABC):

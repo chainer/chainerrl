@@ -1,20 +1,12 @@
-from __future__ import unicode_literals
-from __future__ import print_function
-from __future__ import division
-from __future__ import absolute_import
-from builtins import *  # NOQA
-from future import standard_library
-standard_library.install_aliases()  # NOQA
-
 from logging import getLogger
 
 import chainer
 from chainer import functions as F
+from chainer.initializers import LeCunNormal
 from chainer import links as L
 
 from chainerrl import distribution
 from chainerrl.functions.bound_by_tanh import bound_by_tanh
-from chainerrl.initializers import LeCunNormal
 from chainerrl.links.mlp import MLP
 from chainerrl.links.mlp_bn import MLPBN
 from chainerrl.policy import Policy

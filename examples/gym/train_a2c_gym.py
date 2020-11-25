@@ -6,19 +6,12 @@ Both discrete and continuous action spaces are supported.
 To solve CartPole-v0, run:
     python train_a2c_gym.py 8 --env CartPole-v0
 """
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-from __future__ import absolute_import
-from builtins import *  # NOQA
-from future import standard_library
-standard_library.install_aliases()  # NOQA
 import argparse
+import functools
 
 import chainer
 from chainer import functions as F
 import gym
-import gym.wrappers
 import numpy as np
 
 import chainerrl
@@ -142,7 +135,7 @@ def main():
         # Cast observations to float32 because our model uses float32
         env = chainerrl.wrappers.CastObservationToFloat32(env)
         if args.monitor and process_idx == 0:
-            env = gym.wrappers.Monitor(env, args.outdir)
+            env = chainerrl.wrappers.Monitor(env, args.outdir)
         # Scale rewards observed by agents
         if not test:
             misc.env_modifiers.make_reward_filtered(
@@ -153,12 +146,11 @@ def main():
 
     def make_batch_env(test):
         return chainerrl.envs.MultiprocessVectorEnv(
-            [(lambda: make_env(idx, test))
+            [functools.partial(make_env, idx, test)
              for idx, env in enumerate(range(args.num_envs))])
 
     sample_env = make_env(process_idx=0, test=False)
-    timestep_limit = sample_env.spec.tags.get(
-        'wrapper_config.TimeLimit.max_episode_steps')
+    timestep_limit = sample_env.spec.max_episode_steps
     obs_space = sample_env.observation_space
     action_space = sample_env.action_space
 
@@ -210,7 +202,6 @@ def main():
             eval_interval=args.eval_interval,
             outdir=args.outdir,
         )
-    sample_env.close()
 
 
 if __name__ == '__main__':
