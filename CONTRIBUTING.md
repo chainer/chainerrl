@@ -9,11 +9,15 @@ Contribution examples:
 
 If you could kindly send a PR to ChainerRL, please make sure all the tests successfully pass.
 
+When contributing to ChainerRL, we highly recommend installing the additional set of developer requirements, which may be necessary for testing:
+```
+pip install -r requirements-dev.txt
+```
+
 ## Testing
 
-To test chainerrl modules, install and run `pytest`. Pass `-m "not gpu"` to skip tests that require gpu. E.g.
+To test chainerrl modules, install and run `pytest` (after installing `pytest`). Pass `-m "not gpu"` to skip tests that require gpu. E.g.
 ```
-$ pip install pytest
 $ pytest -m "not gpu"
 ```
 
