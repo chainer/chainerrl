@@ -5,6 +5,7 @@ https://github.com/chainer/chainercv/blob/master/chainercv/utils/download.py
 import filelock
 import hashlib
 import os
+import posixpath
 import shutil
 import tempfile
 import time
@@ -116,13 +117,13 @@ def download_and_store_model(alg, url, env, model_type):
             'models.lock')):
         root = get_dataset_directory(
             os.path.join('pfnet', 'chainerrl', 'models', alg, env))
-        url_basepath = os.path.join(url, alg, env)
+        url_basepath = posixpath.join(url, alg, env)
         file = model_type + ".zip"
         path = os.path.join(root, file)
         is_cached = os.path.exists(path)
         if not is_cached:
-            cache_path = cached_download(os.path.join(url_basepath,
-                                                      file))
+            cache_path = cached_download(posixpath.join(url_basepath,
+                                                        file))
             os.rename(cache_path, path)
             with zipfile.ZipFile(path, 'r') as zip_ref:
                 zip_ref.extractall(root)
