@@ -23,7 +23,6 @@ class WeightedSumArrays(function.Function):
         return [w * grads[0] for w in self.weights]
 
     def forward_gpu(self, inputs):
-        n = len(inputs)
         ptrs = cuda.cupy.asarray([x.data.ptr for x in inputs],
                                  dtype=cuda.cupy.int64)
         ws = cuda.cupy.asarray(self.weights, dtype=cuda.cupy.float32)
@@ -35,10 +34,10 @@ class WeightedSumArrays(function.Function):
             'for (size_t j = 0; j < n_xs; ++j) {'
             '  y += xs_[j][i] * ws[j];'
             '}',
-            'weighted_sum_arrays'.format(n))(inputs[0],
-                                             ptrs.data.ptr,
-                                             ws,
-                                             len(ptrs))
+            'weighted_sum_arrays')(inputs[0],
+                                   ptrs.data.ptr,
+                                   ws,
+                                   len(ptrs))
         return y,
 
 

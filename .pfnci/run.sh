@@ -24,6 +24,7 @@ TARGET="$1"
 : "${GPU:=0}"
 : "${XPYTEST_NUM_THREADS:=$(nproc)}"
 : "${PYTHON=python3}"
+: "${PYTHON_VERSION=6}"
 : "${CHAINER=}"
 : "${SLOW:=0}"
 
@@ -59,18 +60,25 @@ main() {
       --hint="/chainerrl/.pfnci/hint.pbtxt"
   )
 
+  apt-get update -q -y
+  apt-get install -qy --no-install-recommends software-properties-common
   UBUNTU_VERSION_ID=$(grep DISTRIB_RELEASE /etc/lsb-release | cut -d "=" -f2)
   if [ "$UBUNTU_VERSION_ID" = "16.04" ]; then
     # Because ffmpeg of ubuntu 16.04 causes segmentation fault,
     # we use jonathonf/ffmpeg-3
     apt-get update -q
-    apt-get install -qy --no-install-recommends software-properties-common
     add-apt-repository ppa:cran/ffmpeg-3
   fi
 
-  apt-get update -q
-  apt-get install -qy --no-install-recommends \
-      "${PYTHON}-dev" "${PYTHON}-pip" "${PYTHON}-setuptools" \
+  add-apt-repository ppa:deadsnakes/ppa
+  apt-get update -q -y
+  apt install -y "${PYTHON}.${PYTHON_VERSION}"
+
+
+  apt-get install -qy --no-install-recommends "${PYTHON}.${PYTHON_VERSION}-dev" 
+  apt-get install -qy --no-install-recommends "${PYTHON}-pip"
+  pip3 install --upgrade pip
+  apt-get install -qy --no-install-recommends "${PYTHON}-setuptools" \
       zlib1g-dev make cmake g++ git ffmpeg freeglut3-dev xvfb
 
   if [ "${CHAINER}" != '' ]; then

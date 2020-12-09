@@ -169,7 +169,7 @@ def main():
             eval_n_episodes=None,
             eval_interval=args.eval_interval,
             global_step_hooks=[lr_decay_hook],
-            save_best_so_far_agent=False,
+            save_best_so_far_agent=True,
         )
 
 
