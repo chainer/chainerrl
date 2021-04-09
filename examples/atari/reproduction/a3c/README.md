@@ -127,11 +127,13 @@ Our evaluation protocol is designed to mirror the evaluation protocol of the ori
 We trained with 17 CPUs and no GPU. However, we used 16 processes (as per the A3C paper).
 
 
-| Training time (in days) across all runs (# domains x # seeds) | |
+| Training time (in days) across runs (# domains x 4 seeds) | |
 | ------------- |:-------------:|
 | Mean        |  0.84 |
 | Standard deviation | 0.194|
 | Fastest run | 0.666|
 | Slowest run | 1.46|
+
+**Note**: These training times represent the training times for only 4 seeds instead of 5 (due to an experimental error).
 
 				
