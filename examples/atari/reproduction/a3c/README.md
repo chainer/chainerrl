@@ -32,6 +32,80 @@ To view the full list of options, either view the code or run the example with t
 ## Results
 These results reflect ChainerRL  `v0.8.0`. The reported results are compared against the scores from the [Noisy Networks Paper](https://arxiv.org/abs/1706.10295), since the original paper does not report scores for the no-op evaluation protocol.
 
+| Results Summary ||
+| ------------- |:-------------:|
+| Reporting Protocol | The highest mean intermediate evaluation score |
+| Number of seeds | 5 |
+| Number of common domains | 54 |
+| Number of domains where paper scores higher | 24 |
+| Number of domains where PFRL scores higher | 27 |
+| Number of ties between paper and PFRL | 3 | 
+
+
+| Game        | PFRL Score           | Original Reported Scores |
+| ------------- |:-------------:|:-------------:|
+| AirRaid | 3923.8| N/A|
+| Alien | 2005.4| **2027**|
+| Amidar | 869.7| **904**|
+| Assault | **6832.6**| 2879|
+| Asterix | **9363.0**| 6822|
+| Asteroids | **2775.6**| 2544|
+| Atlantis | **836040.0**| 422700|
+| BankHeist | **1321.6**| 1296|
+| BattleZone | 7998.0| **16411**|
+| BeamRider | 9044.4| **9214**|
+| Berzerk | **1166.8**| 1022|
+| Bowling | 31.3| **37**|
+| Boxing | **96.0**| 91|
+| Breakout | **569.9**| 496|
+| Carnival | 4643.3| N/A|
+| Centipede | **5352.4**| 5350|
+| ChopperCommand | **6997.1**| 5285|
+| CrazyClimber | 121146.1| **134783**|
+| Defender | N/A| 52917|
+| DemonAttack | **111339.2**| 37085|
+| DoubleDunk | 1.5| **3**|
+| Enduro | 0.0| 0|
+| FishingDerby | **38.7**| -7|
+| Freeway | 0.0| 0|
+| Frostbite | **288.2**| 288|
+| Gopher | **9251.0**| 7992|
+| Gravitar | 244.5| **379**|
+| Hero | **36599.2**| 30791|
+| IceHockey | -4.5| **-2**|
+| Jamesbond | 376.9| **509**|
+| JourneyEscape | -989.2| N/A|
+| Kangaroo | 252.0| **1166**|
+| Krull | 8949.3| **9422**|
+| KungFuMaster | **39676.3**| 37422|
+| MontezumaRevenge | 2.8| **14**|
+| MsPacman | **2552.9**| 2436|
+| NameThisGame | **8646.0**| 7168|
+| Phoenix | **38428.3**| 9476|
+| Pitfall | -4.4| **0**|
+| Pong | **20.7**| 7|
+| Pooyan | 4237.9| N/A|
+| PrivateEye | 449.0| **3781**|
+| Qbert | **18889.2**| 18586|
+| Riverraid | 12683.5| N/A|
+| RoadRunner | 40660.6| **45315**|
+| Robotank | 3.1| **6**|
+| Seaquest | **1785.6**| 1744|
+| Skiing | -13094.2| **-12972**|
+| Solaris | 3784.2| **12380**|
+| SpaceInvaders | **1568.9**| 1034|
+| StarGunner | **60348.7**| 49156|
+| Surround | N/A| -8|
+| Tennis | -12.2| **-6**|
+| TimePilot | 4506.6| **10294**|
+| Tutankham | **296.7**| 213|
+| UpNDown | **95014.6**| 89067|
+| Venture | 0.0| 0|
+| VideoPinball | **377939.3**| 229402|
+| WizardOfWor | 2518.7| **8953**|
+| YarsRevenge | 19663.9| **21596**|
+| Zaxxon | 78.9| **16544**|
+
 
 ## Evaluation Protocol
 
