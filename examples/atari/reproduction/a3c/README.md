@@ -38,11 +38,11 @@ These results reflect ChainerRL  `v0.8.0`. The reported results are compared aga
 | Number of seeds | 5 |
 | Number of common domains | 54 |
 | Number of domains where paper scores higher | 24 |
-| Number of domains where PFRL scores higher | 27 |
-| Number of ties between paper and PFRL | 3 | 
+| Number of domains where ChainerRL scores higher | 27 |
+| Number of ties between paper and ChainerRL | 3 | 
 
 
-| Game        | PFRL Score           | Original Reported Scores |
+| Game        | ChainerRL Score           | Original Reported Scores |
 | ------------- |:-------------:|:-------------:|
 | AirRaid | 3923.8| N/A|
 | Alien | 2005.4| **2027**|
