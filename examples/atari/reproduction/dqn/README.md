@@ -35,12 +35,16 @@ To view the full list of options, either view the code or run the example with t
 These results reflect ChainerRL  `v0.6.0`.
 
 The summary of the results is as follows:
- - These results are averaged over 5 runs per domain
- - We ran this example on 59 Atari domains. 
- - The original DQN paper paper ran results on 49 Atari domains. Within these 49 domains the results are as follows:
- 	- On 26 domains, the scores reported in the DQN paper are higher than the scores achieved by ChainerRL.
- 	- On 22 domains, our DQN implementation outscores the reported results from the DQN paper.
- 	- On 1 domain, our implementation ties the reported score from the DQN paper.
+
+| Results Summary ||
+| ------------- |:-------------:|
+| Reporting Protocol | A re-evaluation of the best intermediate agent |
+| Number of seeds | 5 |
+| Number of common domains | 49 |
+| Number of domains where paper scores higher | 26 |
+| Number of domains where ChainerRL scores higher | 22 |
+| Number of ties between paper and ChainerRL | 1 | 
+
  - Note that the scores reported in the DQN paper are from a single run on each domain, and might not be an accurate reflection of the DQN's true performance.
  - The "Original Reported Scores" are obtained from _Extended Data Table 2_ in [Human-level control through Deep Reinforcement Learning](https://storage.googleapis.com/deepmind-media/dqn/DQNNaturePaper.pdf)
 
@@ -80,7 +84,7 @@ The summary of the results is as follows:
 | Kangaroo | **8831.3**| 6740|
 | Krull | **6215.0**| 3805|
 | KungFuMaster | **27616.7**| 23270|
-| MontezumaRevenge | **0.0**| **0.0**|
+| MontezumaRevenge | 0.0| 0.0|
 | MsPacman | **2526.6**| 2311|
 | NameThisGame | 7046.5| **7257**|
 | Phoenix | 7054.4| N/A|
@@ -106,7 +110,6 @@ The summary of the results is as follows:
 | WizardOfWor | 1957.3| **3393**|
 | YarsRevenge | 4397.3| N/A|
 | Zaxxon | **5698.7**| 4977|
-
 
 ## Evaluation Protocol
 Our evaluation protocol is designed to mirror the evaluation protocol of the original paper as closely as possible, in order to offer a fair comparison of the quality of our example implementation. Specifically, the details of our evaluation (also can be found in the code) are the following:
