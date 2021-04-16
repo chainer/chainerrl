@@ -1,12 +1,12 @@
 <div align="center"><img src="https://raw.githubusercontent.com/chainer/chainerrl/master/assets/ChainerRL.png" width="400"/></div>
 
-# ChainerRL
+# ChainerRL and PFRL
 [![Build Status](https://travis-ci.org/chainer/chainerrl.svg?branch=master)](https://travis-ci.org/chainer/chainerrl)
 [![Coverage Status](https://coveralls.io/repos/github/chainer/chainerrl/badge.svg?branch=master)](https://coveralls.io/github/chainer/chainerrl?branch=master)
 [![Documentation Status](https://readthedocs.org/projects/chainerrl/badge/?version=latest)](http://chainerrl.readthedocs.io/en/latest/?badge=latest)
 [![PyPI](https://img.shields.io/pypi/v/chainerrl.svg)](https://pypi.python.org/pypi/chainerrl)
 
-ChainerRL is a deep reinforcement learning library that implements various state-of-the-art deep reinforcement algorithms in Python using [Chainer](https://github.com/chainer/chainer), a flexible deep learning framework.
+ChainerRL (this repository) is a deep reinforcement learning library that implements various state-of-the-art deep reinforcement algorithms in Python using [Chainer](https://github.com/chainer/chainer), a flexible deep learning framework. [PFRL](https://github.com/pfnet/pfrl) is the PyTorch analog of ChainerRL.
 
 ![Breakout](assets/breakout.gif)
 ![Humanoid](assets/humanoid.gif)
@@ -117,7 +117,7 @@ Any kind of contribution to ChainerRL would be highly appreciated! If you are in
 
 ## Citations
 
-To cite ChainerRL in publications:
+To cite ChainerRL in publications, please cite our [JMLR paper](https://www.jmlr.org/papers/v22/20-376.html):
 
 ```
 @article{JMLR:v22:20-376,
