@@ -8,6 +8,7 @@ from chainer import testing
 import numpy as np
 
 from chainerrl import replay_buffer
+from chainerrl import replay_buffers
 
 
 @testing.parameterize(*testing.product(
@@ -21,7 +22,7 @@ class TestReplayBuffer(unittest.TestCase):
     def test_append_and_sample(self):
         capacity = self.capacity
         num_steps = self.num_steps
-        rbuf = replay_buffer.ReplayBuffer(capacity, num_steps)
+        rbuf = replay_buffers.ReplayBuffer(capacity, num_steps)
 
         self.assertEqual(len(rbuf), 0)
 
@@ -56,7 +57,7 @@ class TestReplayBuffer(unittest.TestCase):
     def test_append_and_terminate(self):
         capacity = self.capacity
         num_steps = self.num_steps
-        rbuf = replay_buffer.ReplayBuffer(capacity, num_steps)
+        rbuf = replay_buffers.ReplayBuffer(capacity, num_steps)
 
         self.assertEqual(len(rbuf), 0)
 
@@ -96,7 +97,7 @@ class TestReplayBuffer(unittest.TestCase):
     def test_stop_current_episode(self):
         capacity = self.capacity
         num_steps = self.num_steps
-        rbuf = replay_buffer.ReplayBuffer(capacity, num_steps)
+        rbuf = replay_buffers.ReplayBuffer(capacity, num_steps)
 
         self.assertEqual(len(rbuf), 0)
 
@@ -118,7 +119,7 @@ class TestReplayBuffer(unittest.TestCase):
 
         tempdir = tempfile.mkdtemp()
 
-        rbuf = replay_buffer.ReplayBuffer(capacity, num_steps)
+        rbuf = replay_buffers.ReplayBuffer(capacity, num_steps)
 
         correct_item = collections.deque([], maxlen=num_steps)
         # Add two transitions
@@ -141,7 +142,7 @@ class TestReplayBuffer(unittest.TestCase):
         rbuf.save(filename)
 
         # Initialize rbuf
-        rbuf = replay_buffer.ReplayBuffer(capacity)
+        rbuf = replay_buffers.ReplayBuffer(capacity)
 
         # Of course it has no transition yet
         self.assertEqual(len(rbuf), 0)
@@ -165,13 +166,163 @@ class TestReplayBuffer(unittest.TestCase):
 @testing.parameterize(*testing.product(
     {
         'capacity': [100, None],
+        'future_k': [0]
+    }
+))
+class TestHindsightReplayBuffer(unittest.TestCase):
+
+    def test_append_and_sample(self):
+
+        def reward_function(state, action, goal):
+            return 1
+
+        capacity = self.capacity
+        future_k = self.future_k
+        rbuf = replay_buffers.HindsightReplayBuffer(reward_function,
+                                                   capacity,
+                                                   future_k)
+
+        self.assertEqual(len(rbuf), 0)
+
+        # Add one and sample one
+        trans1 = dict(state={'observation':0, 'desired_goal':1}, 
+                      action=1, reward=2,
+                      next_state={'observation':1, 'desired_goal':1},
+                      next_action=4, is_state_terminal=True)
+        correct_item = collections.deque([trans1], maxlen=1)
+        rbuf.append(**trans1)
+        self.assertEqual(len(rbuf), 1)
+        s1 = rbuf.sample(1)
+        self.assertEqual(len(s1), 1)
+        self.assertEqual(s1[0], list(correct_item))
+
+
+    def test_stop_current_episode(self):
+        capacity = self.capacity
+        future_k = self.future_k
+        def reward_function(state, action, goal):
+            return 1
+        rbuf = replay_buffers.HindsightReplayBuffer(reward_function,
+                                                   capacity,
+                                                   future_k)
+
+        self.assertEqual(len(rbuf), 0)
+
+        # Add one and sample one
+        trans1 = dict(state={'observation': 0, 'desired_goal':1},
+                      action=1, reward=2,
+                      next_state={'observation': 3, 'desired_goal':1},
+                      next_action=4, is_state_terminal=False)
+        rbuf.append(**trans1)
+        # episode hasn't stopped so it shouldn't be added
+        self.assertEqual(len(rbuf), 0)
+        # episode ends
+        rbuf.stop_current_episode()
+        # episode ends, so we should add the transition
+        self.assertEqual(len(rbuf), 1)
+
+    def test_save_and_load(self):
+        capacity = self.capacity
+        future_k = self.future_k
+
+        def reward_function(state, action, goal):
+            return 1
+
+        tempdir = tempfile.mkdtemp()
+
+        rbuf = replay_buffers.HindsightReplayBuffer(reward_function,
+                                                   capacity,
+                                                   future_k)
+
+        transs = [dict(state={'observation':n, 'desired_goal':1},
+                       action=n + 10, reward=n + 20,
+                       next_state={'observation':n + 1, 'desired_goal':1},
+                       next_action=n + 11, is_state_terminal=False)
+                  for n in range(5)]
+
+        # Add two episodes
+        rbuf.append(**transs[0])
+        rbuf.append(**transs[1])
+        rbuf.stop_current_episode()
+
+        rbuf.append(**transs[2])
+        rbuf.append(**transs[3])
+        rbuf.append(**transs[4])
+        rbuf.stop_current_episode()
+
+        self.assertEqual(len(rbuf), 5)
+        self.assertEqual(rbuf.n_episodes, 2)
+
+        # Save
+        filename = os.path.join(tempdir, 'rbuf.pkl')
+        rbuf.save(filename)
+
+        # Initialize rbuf
+        rbuf = replay_buffers.HindsightReplayBuffer(reward_function,
+                                                   capacity,
+                                                   future_k)
+
+
+        # Of course it has no transition yet
+        self.assertEqual(len(rbuf), 0)
+
+        # Load the previously saved buffer
+        rbuf.load(filename)
+
+        # Sampled transitions are exactly what I added!
+        s5 = rbuf.sample(5)
+        print(s5)
+        self.assertEqual(len(s5), 5)
+        for t in s5:
+            n = t[0]['state']['observation']
+            self.assertIn(n, range(5))
+            self.assertEqual(t[0], transs[n])
+
+        # Unlike normal EpisodicBuffer, episodes
+        # are sampled with replacement
+        s2e = rbuf.sample_episodes(2)
+        self.assertEqual(len(s2e), 2)
+        episode_1 = s2e[0]
+        episode_2 = s2e[1]
+        episode_1_ob_1 = episode_1[0]['state']['observation']
+        episode_2_ob_1 = episode_2[0]['state']['observation']
+        if episode_1_ob_1 == 0:
+            if episode_2_ob_1 == 0:
+                # case: both are first episode
+                self.assertEqual(s2e[0], [transs[0], transs[1]])
+                self.assertEqual(episode_1, episode_2)
+            else:
+                # case: episode 1 and 2 are first and second episodes
+                # respectively
+                self.assertEqual(s2e[0], [transs[0], transs[1]])
+                self.assertEqual(s2e[1], [transs[2], transs[3], transs[4]])
+        else:
+            if episode_2_ob_1 == 1:
+                if episode_2_ob_1 == 0:
+                    # case: episode 1 and 2 are the second and first episodes,
+                    # respectively
+                    self.assertEqual(s2e[1], [transs[0], transs[1]])
+                    self.assertEqual(s2e[0], [transs[2], transs[3], transs[4]])                   
+                else:
+                    # case: both episodes are the second episode
+                    self.assertEqual(s2e[0], [transs[0], transs[1]])
+                    self.assertEqual(episode_1, episode_2)
+
+        # Sizes are correct!
+        self.assertEqual(len(rbuf), 5)
+        self.assertEqual(rbuf.n_episodes, 2)
+
+
+@testing.parameterize(*testing.product(
+    {
+        'capacity': [100, None],
     }
 ))
 class TestEpisodicReplayBuffer(unittest.TestCase):
 
     def test_append_and_sample(self):
         capacity = self.capacity
-        rbuf = replay_buffer.EpisodicReplayBuffer(capacity)
+        rbuf = replay_buffers.EpisodicReplayBuffer(capacity)
 
         for n in [10, 15, 5] * 3:
             transs = [dict(state=i, action=100 + i, reward=200 + i,
@@ -204,7 +355,7 @@ class TestEpisodicReplayBuffer(unittest.TestCase):
 
         tempdir = tempfile.mkdtemp()
 
-        rbuf = replay_buffer.EpisodicReplayBuffer(capacity)
+        rbuf = replay_buffers.EpisodicReplayBuffer(capacity)
 
         transs = [dict(state=n, action=n + 10, reward=n + 20,
                        next_state=n + 1, next_action=n + 11,
@@ -229,7 +380,7 @@ class TestEpisodicReplayBuffer(unittest.TestCase):
         rbuf.save(filename)
 
         # Initialize rbuf
-        rbuf = replay_buffer.EpisodicReplayBuffer(capacity)
+        rbuf = replay_buffers.EpisodicReplayBuffer(capacity)
 
         # Of course it has no transition yet
         self.assertEqual(len(rbuf), 0)
@@ -273,7 +424,7 @@ class TestPrioritizedReplayBuffer(unittest.TestCase):
     def test_append_and_sample(self):
         capacity = self.capacity
         num_steps = self.num_steps
-        rbuf = replay_buffer.PrioritizedReplayBuffer(
+        rbuf = replay_buffers.PrioritizedReplayBuffer(
             capacity,
             normalize_by_max=self.normalize_by_max,
             error_max=5,
@@ -380,7 +531,7 @@ class TestPrioritizedReplayBuffer(unittest.TestCase):
         if capacity is None:
             return
 
-        rbuf = replay_buffer.PrioritizedReplayBuffer(capacity)
+        rbuf = replay_buffers.PrioritizedReplayBuffer(capacity)
         # Fill the buffer
         for _ in range(capacity):
             trans1 = dict(state=0, action=1, reward=2, next_state=3,
@@ -401,7 +552,7 @@ class TestPrioritizedReplayBuffer(unittest.TestCase):
 
         tempdir = tempfile.mkdtemp()
 
-        rbuf = replay_buffer.PrioritizedReplayBuffer(capacity,
+        rbuf = replay_buffers.PrioritizedReplayBuffer(capacity,
                                                      num_steps=num_steps)
 
         # Add two transitions
@@ -425,7 +576,7 @@ class TestPrioritizedReplayBuffer(unittest.TestCase):
         rbuf.save(filename)
 
         # Initialize rbuf
-        rbuf = replay_buffer.PrioritizedReplayBuffer(capacity,
+        rbuf = replay_buffers.PrioritizedReplayBuffer(capacity,
                                                      num_steps=num_steps)
 
         # Of course it has no transition yet
@@ -474,7 +625,7 @@ def exp_return_of_episode(episode):
 class TestPrioritizedEpisodicReplayBuffer(unittest.TestCase):
 
     def test_append_and_sample(self):
-        rbuf = replay_buffer.PrioritizedEpisodicReplayBuffer(
+        rbuf = replay_buffers.PrioritizedEpisodicReplayBuffer(
             capacity=self.capacity,
             normalize_by_max=self.normalize_by_max,
             default_priority_func=self.default_priority_func,
@@ -527,16 +678,16 @@ class TestPrioritizedEpisodicReplayBuffer(unittest.TestCase):
 
 
 @testing.parameterize(*testing.product({
-    'replay_buffer_type': ['ReplayBuffer', 'PrioritizedReplayBuffer'],
+    'replay_buffers_type': ['ReplayBuffer', 'PrioritizedReplayBuffer'],
 }))
 class TestReplayBufferWithEnvID(unittest.TestCase):
 
     def test(self):
         n = 5
-        if self.replay_buffer_type == 'ReplayBuffer':
-            rbuf = replay_buffer.ReplayBuffer(capacity=None, num_steps=n)
-        elif self.replay_buffer_type == 'PrioritizedReplayBuffer':
-            rbuf = replay_buffer.PrioritizedReplayBuffer(
+        if self.replay_buffers_type == 'ReplayBuffer':
+            rbuf = replay_buffers.ReplayBuffer(capacity=None, num_steps=n)
+        elif self.replay_buffers_type == 'PrioritizedReplayBuffer':
+            rbuf = replay_buffers.PrioritizedReplayBuffer(
                 capacity=None, num_steps=n)
         else:
             assert False
@@ -576,16 +727,16 @@ class TestReplayBufferWithEnvID(unittest.TestCase):
 
 
 @testing.parameterize(*testing.product({
-    'replay_buffer_type': ['EpisodicReplayBuffer',
+    'replay_buffers_type': ['EpisodicReplayBuffer',
                            'PrioritizedEpisodicReplayBuffer'],
 }))
 class TestEpisodicReplayBufferWithEnvID(unittest.TestCase):
 
     def test(self):
-        if self.replay_buffer_type == 'EpisodicReplayBuffer':
-            rbuf = replay_buffer.EpisodicReplayBuffer(capacity=None)
-        elif self.replay_buffer_type == 'PrioritizedEpisodicReplayBuffer':
-            rbuf = replay_buffer.PrioritizedEpisodicReplayBuffer(capacity=None)
+        if self.replay_buffers_type == 'EpisodicReplayBuffer':
+            rbuf = replay_buffers.EpisodicReplayBuffer(capacity=None)
+        elif self.replay_buffers_type == 'PrioritizedEpisodicReplayBuffer':
+            rbuf = replay_buffers.PrioritizedEpisodicReplayBuffer(capacity=None)
         else:
             assert False
 
@@ -624,7 +775,7 @@ class TestEpisodicReplayBufferWithEnvID(unittest.TestCase):
 class TestReplayBufferFail(unittest.TestCase):
 
     def setUp(self):
-        self.rbuf = replay_buffer.PrioritizedReplayBuffer(100)
+        self.rbuf = replay_buffers.PrioritizedReplayBuffer(100)
         self.trans1 = dict(state=0, action=1, reward=2, next_state=3,
                            next_action=4, is_state_terminal=True)
         self.rbuf.append(**self.trans1)

@@ -9,3 +9,4 @@ do
   echo "Running example tests: ${SCRIPT}"
   bash ${SCRIPT} ${gpu}
 done
+
