@@ -1,8 +1,12 @@
+import copy
+import multiprocessing as mp
+import threading
 import chainer
 from chainer import cuda
 import chainer.functions as F
 import chainer.links as L
 
+import chainerrl
 from chainerrl.action_value import QuantileDiscreteActionValue
 from chainerrl.agents import dqn
 from chainerrl.links import StatelessRecurrentChainList
@@ -380,6 +384,8 @@ class IQN(dqn.DQN):
         with chainer.no_backprop_mode():
             t = self._compute_target_values(exp_batch)
 
+        self.q_record.extend(cuda.to_cpu(y.array.mean(axis=1)).ravel())
+
         eltwise_loss = compute_eltwise_huber_quantile_loss(y, t, taus)
         if errors_out is not None:
             del errors_out[:]
@@ -420,3 +426,58 @@ class IQN(dqn.DQN):
                 0, 1,
                 size=(len(batch_obs), self.quantile_thresholds_K)).astype('f')
         return tau2av(taus_tilde)
+
+    def setup_actor_learner_training(self, n_actors, n_updates=None):
+        # Override DQN.setup_actor_learner_training to use
+        # `ImplicitQuantileStateQFunctionActor`, not `StateQFunctionActor`.
+
+        # Make a copy on shared memory and share among actors and a learner
+        shared_model = copy.deepcopy(self.model).to_cpu()
+        shared_arrays = chainerrl.misc.async_.extract_params_as_shared_arrays(
+            shared_model)
+
+        # Pipes are used for infrequent communication
+        learner_pipes, actor_pipes = list(zip(*[
+            mp.Pipe() for _ in range(n_actors)]))
+
+        def make_actor(i):
+            chainerrl.misc.async_.set_shared_params(
+                shared_model, shared_arrays)
+            return chainerrl.agents.ImplicitQuantileStateQFunctionActor(
+                pipe=actor_pipes[i],
+                model=shared_model,
+                explorer=self.explorer,
+                phi=self.phi,
+                batch_states=self.batch_states,
+                logger=self.logger,
+                recurrent=self.recurrent,
+                quantile_thresholds_K=self.quantile_thresholds_K,
+            )
+
+        replay_buffer_lock = threading.Lock()
+
+        poller_stop_event = mp.Event()
+        poller = chainerrl.misc.StoppableThread(
+            target=self._poller_loop,
+            kwargs=dict(
+                shared_model=shared_model,
+                pipes=learner_pipes,
+                replay_buffer_lock=replay_buffer_lock,
+                stop_event=poller_stop_event,
+            ),
+            stop_event=poller_stop_event,
+        )
+
+        learner_stop_event = mp.Event()
+        learner = chainerrl.misc.StoppableThread(
+            target=self._learner_loop,
+            kwargs=dict(
+                pipes=learner_pipes,
+                replay_buffer_lock=replay_buffer_lock,
+                stop_event=learner_stop_event,
+                n_updates=n_updates,
+            ),
+            stop_event=learner_stop_event,
+        )
+
+        return make_actor, learner, poller

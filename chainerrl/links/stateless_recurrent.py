@@ -304,12 +304,21 @@ def get_recurrent_state_at(link, recurrent_state, indices, unwrap_variable):
         raise ValueError('{} is not a recurrent link'.format(link))
 
 
+def _to_device_variable_or_ndarray(device, x):
+    if isinstance(x, chainer.Variable):
+        x.to_device(device)
+        return x
+    else:
+        return chainer.dataset.to_device(device, x)
+
+
 def concatenate_recurrent_states(link, split_recurrent_states):
     if isinstance(link, L.NStepLSTM):
         # shape: (n_layers, batch_size, out_size)
         n_layers = link.n_layers
         out_size = link.out_size
         xp = link.xp
+        device = link.device
         hs = []
         cs = []
         for srs in split_recurrent_states:
@@ -318,6 +327,8 @@ def concatenate_recurrent_states(link, split_recurrent_states):
                 c = xp.zeros((n_layers, 1, out_size), dtype=np.float32)
             else:
                 h, c = srs
+                h = _to_device_variable_or_ndarray(device, h)
+                c = _to_device_variable_or_ndarray(device, c)
                 if h.ndim == 2:
                     assert h.shape == (n_layers, out_size)
                     assert c.shape == (n_layers, out_size)
@@ -333,12 +344,14 @@ def concatenate_recurrent_states(link, split_recurrent_states):
         n_layers = link.n_layers
         out_size = link.out_size
         xp = link.xp
+        device = link.device
         hs = []
         for srs in split_recurrent_states:
             if srs is None:
                 h = xp.zeros((n_layers, 1, out_size), dtype=np.float32)
             else:
                 h = srs
+                h = _to_device_variable_or_ndarray(device, h)
                 if h.ndim == 2:
                     assert h.shape == (n_layers, out_size)
                     # add batch axis

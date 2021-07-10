@@ -4,6 +4,7 @@ from chainer import links as L
 def copy_param(target_link, source_link):
     """Copy parameters of a link to another link."""
     target_params = dict(target_link.namedparams())
+    target_device = target_link.device
     for param_name, param in source_link.namedparams():
         if target_params[param_name].array is None:
             raise TypeError(
@@ -11,15 +12,15 @@ def copy_param(target_link, source_link):
                 'not initialized.\nPlease try to forward dummy input '
                 'beforehand to determine parameter shape of the model.'.format(
                     param_name))
-        target_params[param_name].array[...] = param.array
+        target_params[param_name].array[...] = target_device.send(param.array)
 
     # Copy Batch Normalization's statistics
     target_links = dict(target_link.namedlinks())
     for link_name, link in source_link.namedlinks():
         if isinstance(link, L.BatchNormalization):
             target_bn = target_links[link_name]
-            target_bn.avg_mean[...] = link.avg_mean
-            target_bn.avg_var[...] = link.avg_var
+            target_bn.avg_mean[...] = target_device.send(link.avg_mean)
+            target_bn.avg_var[...] = target_device.send(link.avg_var)
 
 
 def soft_copy_param(target_link, source_link, tau):

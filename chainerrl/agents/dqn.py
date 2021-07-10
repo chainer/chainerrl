@@ -1,16 +1,27 @@
+import collections
 import copy
 from logging import getLogger
+import multiprocessing as mp
+import time
 
 import chainer
 from chainer import cuda
 import chainer.functions as F
+import numpy as np
 
+import chainerrl
 from chainerrl import agent
 from chainerrl.misc.batch_states import batch_states
+from chainerrl.misc.copy_param import copy_param
 from chainerrl.misc.copy_param import synchronize_parameters
 from chainerrl.replay_buffer import batch_experiences
 from chainerrl.replay_buffer import batch_recurrent_experiences
 from chainerrl.replay_buffer import ReplayUpdater
+
+
+def _mean_or_nan(xs):
+    """Return its mean a non-empty sequence, numpy.nan for a empty one."""
+    return np.mean(xs) if xs else np.nan
 
 
 def compute_value_loss(y, t, clip_delta=True, batch_accumulator='mean'):
@@ -115,10 +126,6 @@ class DQN(agent.AttributeSavingMixin, agent.BatchAgent):
         target_update_method (str): 'hard' or 'soft'.
         soft_update_tau (float): Tau of soft target update.
         n_times_update (int): Number of repetition of update
-        average_q_decay (float): Decay rate of average Q, only used for
-            recording statistics
-        average_loss_decay (float): Decay rate of average loss, only used for
-            recording statistics
         batch_accumulator (str): 'mean' or 'sum'
         episodic_update_len (int or None): Subsequences of this length are used
             for update if set int and episodic_update=True
@@ -139,8 +146,7 @@ class DQN(agent.AttributeSavingMixin, agent.BatchAgent):
                  phi=lambda x: x,
                  target_update_method='hard',
                  soft_update_tau=1e-2,
-                 n_times_update=1, average_q_decay=0.999,
-                 average_loss_decay=0.99,
+                 n_times_update=1,
                  batch_accumulator='mean',
                  episodic_update_len=None,
                  logger=getLogger(__name__),
@@ -184,6 +190,13 @@ class DQN(agent.AttributeSavingMixin, agent.BatchAgent):
             replay_start_size=replay_start_size,
             update_interval=update_interval,
         )
+        self.minibatch_size = minibatch_size
+        self.episodic_update_len = episodic_update_len
+        self.replay_start_size = replay_start_size
+        self.update_interval = update_interval
+
+        assert target_update_interval % update_interval == 0,\
+            "target_update_interval should be a multiple of update_interval"
 
         self.t = 0
         self.last_state = None
@@ -192,10 +205,10 @@ class DQN(agent.AttributeSavingMixin, agent.BatchAgent):
         self.sync_target_network()
         # For backward compatibility
         self.target_q_function = self.target_model
-        self.average_q = 0
-        self.average_q_decay = average_q_decay
-        self.average_loss = 0
-        self.average_loss_decay = average_loss_decay
+
+        # Statistics
+        self.q_record = collections.deque(maxlen=1000)
+        self.loss_record = collections.deque(maxlen=100)
 
         # Recurrent states of the model
         self.train_recurrent_states = None
@@ -262,9 +275,7 @@ class DQN(agent.AttributeSavingMixin, agent.BatchAgent):
         if has_weight:
             self.replay_buffer.update_errors(errors_out)
 
-        # Update stats
-        self.average_loss *= self.average_loss_decay
-        self.average_loss += (1 - self.average_loss_decay) * float(loss.array)
+        self.loss_record.append(float(loss.array))
 
         self.model.cleargrads()
         loss.backward()
@@ -281,10 +292,8 @@ class DQN(agent.AttributeSavingMixin, agent.BatchAgent):
             batch_states=self.batch_states,
         )
         loss = self._compute_loss(exp_batch, errors_out=None)
-        # Update stats
-        self.average_loss *= self.average_loss_decay
-        self.average_loss += (1 - self.average_loss_decay) * float(loss.array)
         self.optimizer.update(lambda: loss)
+        self.loss_record.append(float(loss.array))
 
     def _compute_target_values(self, exp_batch):
         batch_next_state = exp_batch['next_state']
@@ -340,6 +349,8 @@ class DQN(agent.AttributeSavingMixin, agent.BatchAgent):
         """
         y, t = self._compute_y_and_t(exp_batch)
 
+        self.q_record.extend(cuda.to_cpu(y.array).ravel())
+
         if errors_out is not None:
             del errors_out[:]
             delta = F.absolute(y - t)
@@ -365,10 +376,6 @@ class DQN(agent.AttributeSavingMixin, agent.BatchAgent):
                     [obs], test=True)
             q = float(action_value.max.array)
             action = cuda.to_cpu(action_value.greedy_actions.array)[0]
-
-        # Update stats
-        self.average_q *= self.average_q_decay
-        self.average_q += (1 - self.average_q_decay) * q
 
         self.logger.debug('t:%s q:%s action_value:%s', self.t, q, action_value)
         return action
@@ -414,10 +421,6 @@ class DQN(agent.AttributeSavingMixin, agent.BatchAgent):
         action = self.explorer.select_action(
             self.t, lambda: greedy_action, action_value=action_value)
 
-        # Update stats
-        self.average_q *= self.average_q_decay
-        self.average_q += (1 - self.average_q_decay) * q
-
         self.t += 1
         self.last_state = obs
         self.last_action = action
@@ -443,9 +446,16 @@ class DQN(agent.AttributeSavingMixin, agent.BatchAgent):
 
     def batch_act_and_train(self, batch_obs):
         with chainer.using_config('train', False), chainer.no_backprop_mode():
+
+
+<< << << < HEAD
+            batch_av = self._evaluate_model_and_update_train_recurrent_states(
+                batch_obs)
+== == == =
             batch_av = self._evaluate_model_and_update_recurrent_states(
                 batch_obs, test=False)
             batch_maxq = batch_av.max.array
+>>>>>> > master
             batch_argmax = cuda.to_cpu(batch_av.greedy_actions.array)
         batch_action = [
             self.explorer.select_action(
@@ -455,10 +465,6 @@ class DQN(agent.AttributeSavingMixin, agent.BatchAgent):
             for i in range(len(batch_obs))]
         self.batch_last_obs = list(batch_obs)
         self.batch_last_action = list(batch_action)
-
-        # Update stats
-        self.average_q *= self.average_q_decay
-        self.average_q += (1 - self.average_q_decay) * float(batch_maxq.mean())
 
         return batch_action
 
@@ -560,13 +566,146 @@ class DQN(agent.AttributeSavingMixin, agent.BatchAgent):
             self.train_recurrent_states = None
         self.replay_buffer.stop_current_episode()
 
+    def _can_start_replay(self):
+        if len(self.replay_buffer) < self.replay_start_size:
+            return False
+        if (self.recurrent
+                and self.replay_buffer.n_episodes < self.minibatch_size):
+            return False
+        return True
+
+    def _poll_pipe(self, actor_idx, pipe, replay_buffer_lock):
+        if pipe.closed:
+            return
+        try:
+            while pipe.poll():
+                cmd, data = pipe.recv()
+                if cmd == 'get_statistics':
+                    assert data is None
+                    pipe.send(self.get_statistics())
+                elif cmd == 'load':
+                    self.load(data)
+                    pipe.send(None)
+                elif cmd == 'save':
+                    self.save(data)
+                    pipe.send(None)
+                elif cmd == 'transition':
+                    with replay_buffer_lock:
+                        self.replay_buffer.append(**data, env_id=actor_idx)
+                elif cmd == 'stop_episode':
+                    assert data is None
+                    with replay_buffer_lock:
+                        self.replay_buffer.stop_current_episode(
+                            env_id=actor_idx)
+                else:
+                    raise RuntimeError(
+                        'Unknown command from actor: {}'.format(cmd))
+        except EOFError:
+            pipe.close()
+
+    def _learner_loop(self, pipes, replay_buffer_lock, stop_event,
+                      n_updates=None):
+
+        # Device.use should be called in a new thread
+        self.model.device.use()
+        # To stop this loop, call stop_event.set()
+        while not stop_event.is_set():
+            time.sleep(1e-6)
+            # Update model if possible
+            if not self._can_start_replay():
+                continue
+            if n_updates is not None:
+                assert self.optimizer.t <= n_updates
+                if self.optimizer.t == n_updates:
+                    stop_event.set()
+                    break
+            if self.recurrent:
+                with replay_buffer_lock:
+                    episodes = self.replay_buffer.sample_episodes(
+                        self.minibatch_size, self.episodic_update_len)
+                self.update_from_episodes(episodes)
+            else:
+                with replay_buffer_lock:
+                    transitions = self.replay_buffer.sample(
+                        self.minibatch_size)
+                self.update(transitions)
+            # To keep the ratio of target updates to model updates,
+            # here we calculate back the effective current timestep
+            # from update_interval and number of updates so far.
+            effective_timestep = self.optimizer.t * self.update_interval
+            if effective_timestep % self.target_update_interval == 0:
+                self.sync_target_network()
+
+    def _poller_loop(self, shared_model, pipes, replay_buffer_lock,
+                     stop_event):
+        # To stop this loop, call stop_event.set()
+        while not stop_event.is_set():
+            time.sleep(1e-6)
+            # Poll actors for messages
+            for i, pipe in enumerate(pipes):
+                self._poll_pipe(i, pipe, replay_buffer_lock)
+            # Synchronize shared model
+            copy_param(source_link=self.model,
+                       target_link=shared_model)
+
+    def setup_actor_learner_training(self, n_actors, n_updates=None):
+        # Make a copy on shared memory and share among actors and a learner
+        shared_model = copy.deepcopy(self.model).to_cpu()
+        shared_arrays = chainerrl.misc.async_.extract_params_as_shared_arrays(
+            shared_model)
+
+        # Pipes are used for infrequent communication
+        learner_pipes, actor_pipes = list(zip(*[
+            mp.Pipe() for _ in range(n_actors)]))
+
+        def make_actor(i):
+            chainerrl.misc.async_.set_shared_params(
+                shared_model, shared_arrays)
+            return chainerrl.agents.StateQFunctionActor(
+                pipe=actor_pipes[i],
+                model=shared_model,
+                explorer=self.explorer,
+                phi=self.phi,
+                batch_states=self.batch_states,
+                logger=self.logger,
+                recurrent=self.recurrent,
+            )
+
+        replay_buffer_lock = mp.Lock()
+
+        poller_stop_event = mp.Event()
+        poller = chainerrl.misc.StoppableThread(
+            target=self._poller_loop,
+            kwargs=dict(
+                shared_model=shared_model,
+                pipes=learner_pipes,
+                replay_buffer_lock=replay_buffer_lock,
+                stop_event=poller_stop_event,
+            ),
+            stop_event=poller_stop_event,
+        )
+
+        learner_stop_event = mp.Event()
+        learner = chainerrl.misc.StoppableThread(
+            target=self._learner_loop,
+            kwargs=dict(
+                pipes=learner_pipes,
+                replay_buffer_lock=replay_buffer_lock,
+                stop_event=learner_stop_event,
+                n_updates=n_updates,
+            ),
+            stop_event=learner_stop_event,
+        )
+
+        return make_actor, learner, poller
+
     def stop_episode(self):
         if self.recurrent:
             self.test_recurrent_states = None
 
     def get_statistics(self):
         return [
-            ('average_q', self.average_q),
-            ('average_loss', self.average_loss),
+            ('average_q', _mean_or_nan(self.q_record)),
+            ('average_loss', _mean_or_nan(self.loss_record)),
             ('n_updates', self.optimizer.t),
         ]

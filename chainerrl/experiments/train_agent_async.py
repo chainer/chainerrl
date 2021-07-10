@@ -2,13 +2,15 @@ import logging
 import multiprocessing as mp
 import os
 
+import numpy as np
+
 from chainerrl.experiments.evaluator import AsyncEvaluator
 from chainerrl.misc import async_
 from chainerrl.misc import random_seed
 
 
 def train_loop(process_idx, env, agent, steps, outdir, counter,
-               episodes_counter, training_done,
+               episodes_counter, stop_event,
                max_episode_len=None, evaluator=None, eval_env=None,
                successful_score=None, logger=None,
                global_step_hooks=()):
@@ -50,7 +52,7 @@ def train_loop(process_idx, env, agent, steps, outdir, counter,
 
             reset = (episode_len == max_episode_len
                      or info.get('needs_reset', False))
-            if done or reset or global_t >= steps or training_done.value:
+            if done or reset or global_t >= steps or stop_event.is_set():
                 agent.stop_episode_and_train(obs, r, done)
 
                 if process_idx == 0:
@@ -67,10 +69,8 @@ def train_loop(process_idx, env, agent, steps, outdir, counter,
                     if (eval_score is not None and
                             successful_score is not None and
                             eval_score >= successful_score):
-                        with training_done.get_lock():
-                            if not training_done.value:
-                                training_done.value = True
-                                successful = True
+                        stop_event.set()
+                        successful = True
                         # Break immediately in order to avoid an additional
                         # call of agent.act_and_train
                         break
@@ -79,7 +79,7 @@ def train_loop(process_idx, env, agent, steps, outdir, counter,
                     episodes_counter.value += 1
                     global_episodes = episodes_counter.value
 
-                if global_t >= steps or training_done.value:
+                if global_t >= steps or stop_event.is_set():
                     break
 
                 # Start a new episode
@@ -121,21 +121,26 @@ def set_shared_objects(agent, shared_objects):
         setattr(agent, attr, new_value)
 
 
-def train_agent_async(outdir, processes, make_env,
-                      profile=False,
-                      steps=8 * 10 ** 7,
-                      eval_interval=10 ** 6,
-                      eval_n_steps=None,
-                      eval_n_episodes=10,
-                      max_episode_len=None,
-                      step_offset=0,
-                      successful_score=None,
-                      agent=None,
-                      make_agent=None,
-                      global_step_hooks=(),
-                      save_best_so_far_agent=True,
-                      logger=None,
-                      ):
+def train_agent_async(
+    outdir,
+    processes,
+    make_env,
+    profile=False,
+    steps=8 * 10 ** 7,
+    eval_interval=10 ** 6,
+    eval_n_steps=None,
+    eval_n_episodes=10,
+    max_episode_len=None,
+    step_offset=0,
+    successful_score=None,
+    agent=None,
+    make_agent=None,
+    global_step_hooks=[],
+    save_best_so_far_agent=True,
+    logger=None,
+    random_seeds=None,
+    stop_event=None,
+):
     """Train agent asynchronously using multiprocessing.
 
     Either `agent` or `make_agent` must be specified.
@@ -163,6 +168,10 @@ def train_agent_async(outdir, processes, make_env,
             if the score (= mean return of evaluation episodes) exceeds
             the best-so-far score, the current agent is saved.
         logger (logging.Logger): Logger used in this function.
+        random_seeds (array-like of ints or None): Random seeds for processes.
+            If set to None, [0, 1, ..., processes-1] are used.
+        stop_event (multiprocessing.Event or None): Event to stop training.
+            If set to None, a new Event object is created and used internally.
 
     Returns:
         Trained agent.
@@ -175,7 +184,9 @@ def train_agent_async(outdir, processes, make_env,
 
     counter = mp.Value('l', 0)
     episodes_counter = mp.Value('l', 0)
-    training_done = mp.Value('b', False)  # bool
+
+    if stop_event is None:
+        stop_event = mp.Event()
 
     if agent is None:
         assert make_agent is not None
@@ -197,8 +208,11 @@ def train_agent_async(outdir, processes, make_env,
             logger=logger,
         )
 
+    if random_seeds is None:
+        random_seeds = np.arange(processes)
+
     def run_func(process_idx):
-        random_seed.set_random_seed(process_idx)
+        random_seed.set_random_seed(random_seeds[process_idx])
 
         env = make_env(process_idx, test=False)
         if evaluator is None:
@@ -224,7 +238,7 @@ def train_agent_async(outdir, processes, make_env,
                 max_episode_len=max_episode_len,
                 evaluator=evaluator,
                 successful_score=successful_score,
-                training_done=training_done,
+                stop_event=stop_event,
                 eval_env=eval_env,
                 global_step_hooks=global_step_hooks,
                 logger=logger)
@@ -241,5 +255,7 @@ def train_agent_async(outdir, processes, make_env,
             eval_env.close()
 
     async_.run_async(processes, run_func)
+
+    stop_event.set()
 
     return agent

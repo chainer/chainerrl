@@ -5,7 +5,6 @@ import chainer
 import numpy as np
 
 import chainerrl
-from chainerrl.misc import random_seed
 
 
 class AbnormalExitWarning(Warning):
@@ -170,13 +169,8 @@ def run_async(n_process, run_func):
 
     processes = []
 
-    def set_seed_and_run(process_idx, run_func):
-        random_seed.set_random_seed(np.random.randint(0, 2 ** 32))
-        run_func(process_idx)
-
     for process_idx in range(n_process):
-        processes.append(mp.Process(target=set_seed_and_run, args=(
-            process_idx, run_func)))
+        processes.append(mp.Process(target=run_func, args=(process_idx,)))
 
     for p in processes:
         p.start()

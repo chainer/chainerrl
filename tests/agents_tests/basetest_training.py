@@ -8,6 +8,7 @@ import numpy as np
 
 import chainerrl
 from chainerrl.experiments.evaluator import batch_run_evaluation_episodes
+from chainerrl.experiments import train_agent_async
 from chainerrl.experiments import train_agent_batch_with_evaluation
 from chainerrl.experiments import train_agent_with_evaluation
 from chainerrl.misc import random_seed
@@ -178,3 +179,72 @@ class _TestBatchTrainingMixin(object):
         self._test_batch_training(-1, steps=10, require_success=False)
         self._test_batch_training(
             -1, steps=0, load_model=True, require_success=False)
+
+
+class _TestActorLearnerTrainingMixin(object):
+    """Mixin for testing actor-learner training.
+
+    Inherit this after _TestTraining to enable test cases for batch training.
+    """
+
+    def _test_actor_learner_training(self, gpu, steps=100000,
+                                     require_success=True):
+
+        logging.basicConfig(level=logging.DEBUG)
+
+        test_env, successful_return = self.make_env_and_successful_return(
+            test=True)
+        agent = self.make_agent(test_env, gpu)
+
+        def make_env(process_idx, test):
+            env, _ = self.make_env_and_successful_return(test=test)
+            return env
+
+        # Train
+        if steps > 0:
+            make_actor, learner, poller =\
+                agent.setup_actor_learner_training(n_actors=2)
+
+            poller.start()
+            learner.start()
+            train_agent_async(
+                processes=2,
+                steps=steps,
+                outdir=self.tmpdir,
+                eval_interval=200,
+                eval_n_steps=None,
+                eval_n_episodes=5,
+                successful_score=successful_return,
+                make_env=make_env,
+                make_agent=make_actor,
+                stop_event=learner.stop_event,
+            )
+            learner.stop()
+            learner.join()
+            poller.stop()
+            poller.join()
+
+        # Test
+
+        # Because in actor-learner traininig the model can be updated between
+        # evaluation and saving, it is difficult too guarantee the learned
+        # model succeeds. Thus we only check if the training was successful.
+
+        if require_success:
+            assert os.path.exists(os.path.join(self.tmpdir, 'successful'))
+
+    @testing.attr.slow
+    @testing.attr.gpu
+    def test_actor_learner_training_gpu(self):
+        self._test_actor_learner_training(0, steps=100000)
+
+    @testing.attr.slow
+    def test_actor_learner_training_cpu(self):
+        self._test_actor_learner_training(-1, steps=100000)
+
+    @testing.attr.gpu
+    def test_actor_learner_training_gpu_fast(self):
+        self._test_actor_learner_training(0, steps=10, require_success=False)
+
+    def test_actor_learner_training_cpu_fast(self):
+        self._test_actor_learner_training(-1, steps=10, require_success=False)

@@ -10,6 +10,7 @@ from chainerrl.agents.double_iqn import DoubleIQN  # NOQA
 from chainerrl.agents.double_pal import DoublePAL  # NOQA
 from chainerrl.agents.dpp import DPP  # NOQA
 from chainerrl.agents.dqn import DQN  # NOQA
+from chainerrl.agents.implicit_quantile_state_q_function_actor import ImplicitQuantileStateQFunctionActor  # NOQA
 from chainerrl.agents.iqn import IQN  # NOQA
 from chainerrl.agents.nsq import NSQ  # NOQA
 from chainerrl.agents.pal import PAL  # NOQA
@@ -22,3 +23,4 @@ from chainerrl.agents.sarsa import SARSA  # NOQA
 from chainerrl.agents.soft_actor_critic import SoftActorCritic  # NOQA
 from chainerrl.agents.td3 import TD3  # NOQA
 from chainerrl.agents.trpo import TRPO  # NOQA
+from chainerrl.agents.state_q_function_actor import StateQFunctionActor  # NOQA

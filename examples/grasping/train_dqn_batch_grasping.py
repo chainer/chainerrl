@@ -2,6 +2,9 @@ import argparse
 import functools
 import os
 
+# Prevent numpy from using multiple threads
+os.environ['OMP_NUM_THREADS'] = '1'  # NOQA
+
 import chainer
 from chainer import functions as F
 from chainer import links as L
@@ -292,18 +295,27 @@ def main():
             args.eval_n_runs, eval_stats['mean'], eval_stats['median'],
             eval_stats['stdev']))
     else:
-        experiments.train_agent_batch_with_evaluation(
-            agent=agent,
-            env=make_batch_env(test=False),
-            eval_env=eval_env,
+
+        make_actor, learner, poller = agent.setup_actor_learner_training(
+            args.num_envs)
+
+        poller.start()
+        learner.start()
+        experiments.train_agent_async(
+            processes=args.num_envs,
+            make_agent=make_actor,
+            make_env=make_env,
             steps=args.steps,
             eval_n_steps=None,
             eval_n_episodes=args.eval_n_runs,
             eval_interval=args.eval_interval,
             outdir=args.outdir,
-            save_best_so_far_agent=False,
-            log_interval=1000,
+            stop_event=learner.stop_event,
         )
+        learner.stop()
+        learner.join()
+        poller.stop()
+        poller.join()
 
 
 if __name__ == '__main__':
