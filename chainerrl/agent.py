@@ -115,6 +115,11 @@ class AttributeSavingMixin(object):
                     for ancestor in ancestors
                 ), "Avoid an infinite loop"
                 attr_value.__save(os.path.join(dirname, attr), ancestors)
+            elif isinstance(attr_value, list):
+                makedirs(os.path.join(dirname, attr), exist_ok=True)
+                for i, elem in enumerate(attr_value):
+                    serializers.save_npz(
+                        os.path.join(dirname, attr, '{}.npz'.format(i)), elem)
             else:
                 serializers.save_npz(
                     os.path.join(dirname, '{}.npz'.format(attr)),
@@ -138,6 +143,10 @@ class AttributeSavingMixin(object):
                     for ancestor in ancestors
                 ), "Avoid an infinite loop"
                 attr_value.load(os.path.join(dirname, attr))
+            elif isinstance(attr_value, list):
+                for i, elem in enumerate(attr_value):
+                    load_npz_no_strict(
+                        os.path.join(dirname, attr, '{}.npz'.format(i)), elem)
             else:
                 """Fix Chainer Issue #2772
 
