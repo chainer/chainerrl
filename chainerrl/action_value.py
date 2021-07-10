@@ -187,12 +187,22 @@ class QuantileDiscreteActionValue(DiscreteActionValue):
 
     Args:
         quantiles (chainer.Variable): (batch_size, n_taus, n_actions)
+        weights (None or chainer.Variable): (batch_size, n_taus)
         q_values_formatter (callable):
     """
 
-    def __init__(self, quantiles, q_values_formatter=lambda x: x):
+    def __init__(
+            self,
+            quantiles,
+            weights=None,
+            q_values_formatter=lambda x: x,
+    ):
         assert quantiles.ndim == 3
         self.quantiles = quantiles
+        self.weights = weights
+        if weights is not None:
+            assert weights.ndim == 2
+            assert weights.shape == quantiles.shape[:2]
         self.xp = cuda.get_array_module(quantiles.array)
         self.n_actions = quantiles.shape[2]
         self.q_values_formatter = q_values_formatter
@@ -200,7 +210,10 @@ class QuantileDiscreteActionValue(DiscreteActionValue):
     @cached_property
     def q_values(self):
         with chainer.force_backprop_mode():
-            return F.mean(self.quantiles, axis=1)
+            if self.weights is not None:
+                return F.sum(self.weights[..., None] * self.quantiles, axis=1)
+            else:
+                return F.mean(self.quantiles, axis=1)
 
     def evaluate_actions_as_quantiles(self, actions):
         """Return the return quantiles of given actions.
