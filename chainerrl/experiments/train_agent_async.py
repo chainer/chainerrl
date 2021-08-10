@@ -1,7 +1,7 @@
 import logging
 import multiprocessing as mp
 import os
-
+import copy
 from chainerrl.experiments.evaluator import AsyncEvaluator
 from chainerrl.misc import async_
 from chainerrl.misc import random_seed
@@ -63,7 +63,7 @@ def train_loop(process_idx, env, agent, steps, outdir, counter,
                 if evaluator is not None:
                     eval_score = evaluator.evaluate_if_necessary(
                         t=global_t, episodes=global_episodes,
-                        env=eval_env, agent=agent)
+                        env=eval_env, agent=copy.deepcopy(agent))
                     if (eval_score is not None and
                             successful_score is not None and
                             eval_score >= successful_score):
